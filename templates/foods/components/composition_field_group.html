@@ -1,0 +1,26 @@
+{# components/field_group.html #}
+<div class="card mb-4">
+    <div class="card-header">
+        <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#{{ collapse_id }}">
+            <h3>{{ title }} <i class="fas fa-chevron-down"></i></h3>
+        </button>
+    </div>
+
+    <div id="{{ collapse_id }}" class="collapse show">
+        <div class="card-body">
+            {% for field_name in fields %}
+                <div class="form-group">
+                    <label for="id_{{ field_name }}">
+                        {{ form[field_name].label }}
+                        {% if form[field_name].help_text %}
+                            <small class="text-muted">({{ form[field_name].help_text }})</small>
+                        {% endif %}
+                    </label>
+                    <div class="input-group">
+                        {{ form[field_name] }}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>

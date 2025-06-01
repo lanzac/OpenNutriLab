@@ -1,0 +1,121 @@
+{% load form_tags %}
+
+{% for category_name, category_fields in form.fields_categories.items %}
+  <li class="list-group-item">
+    <span class="h6 d-block text-center text-uppercase mb-2" style="text-decoration: underline;">
+      {{ category_name|capfirst }}
+    </span>
+    {% for field_name in category_fields %}
+      {% with field=form|get_field:field_name %}
+        <div class="form-group mb-3">
+          <label class="form-label" for="id_{{ field.name }}">{{ field.label }}</label>
+          {% if field.name == "image" and form.instance.image %}
+            <div class="mb-2">
+              <img src="{{ form.instance.image.url }}" alt="Image" class="img-thumbnail" style="max-width: 200px;">
+            </div>
+          {% endif %}
+          <div class="input-group align-items-start">
+            {% if field.name == "barcode" %}
+              {{ field }}
+              <button type="button" class="btn btn-outline-secondary" id="fetch-food-data">🔍 Fetch</button>
+            {% elif field.name == "image" %}
+                {{ field }}
+                <div class="ms-3">
+                  <img id="image-preview" src="#" alt="Preview" class="img-fluid d-none" style="max-height: 80px;">
+                  <div id="image-error" class="text-danger d-none mt-2">Image not found</div>
+                </div>
+            {% else %}
+              {{ field }}
+            {% endif %}
+            {% if category_name != "description" %}
+              <span class="input-group-text">per 100g</span>
+            {% endif %}
+          </div>
+          {% for error in field.errors %}
+            <div class="invalid-feedback d-block">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endwith %}
+    {% endfor %}
+  </li>
+{% endfor %}
+
+
+<script>
+
+function updateFormFields(data) {
+  const simpleFields = {
+      'id_name': data.name,
+      'id_description': data.description,
+      'id_energy_0': data.energy,
+      'id_macronutrient_Fiber_0': data.macronutrients.fiber,
+      'id_macronutrient_Carbohydrates_0': data.macronutrients.carbohydrates,
+      'id_macronutrient_Sugars_0': data.macronutrients.sugars,
+      'id_macronutrient_Fat_0': data.macronutrients.fat,
+      'id_macronutrient_Saturated_Fat_0': data.macronutrients.saturated_fat,
+      'id_macronutrient_Proteins_0': data.macronutrients.proteins,
+  };
+
+  for (const [id, value] of Object.entries(simpleFields)) {
+      const input = document.getElementById(id);
+      if (input) input.value = value;
+  }
+
+  // Fixe l'unité de l'énergie à kJ (id_energy_1 est le select d'unité)
+  const energyUnit = document.getElementById('id_energy_1');
+  if (energyUnit) energyUnit.value = 'kJ';
+}
+
+
+
+document.getElementById('fetch-food-data').addEventListener('click', async function () {
+    const barcode = document.getElementById('id_barcode').value;
+
+    if (!barcode) {
+        alert("Veuillez saisir un code-barres.");
+        return;
+    }
+
+    try {
+        const response = await fetch(`/foods/fetch-info/${barcode}/`);
+        if (!response.ok) {
+            throw new Error("Erreur lors de la récupération.");
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            updateFormFields(data);
+            alert("Données alimentaires récupérées avec succès !");
+
+            // Affiche l'image si elle est présente
+            const imagePreview = document.getElementById('image-preview');
+            const imageField = document.getElementById('id_image');
+            if (data.image_url) {
+                imagePreview.src = data.image_url;
+                imagePreview.classList.remove('d-none');
+
+                // Charger l'image dans le champ input file
+                const response = await fetch(data.image_url);
+                const blob = await response.blob();
+                // Extraire le nom de fichier depuis l'URL
+                const urlParts = data.image_url.split('/');
+                const originalName = urlParts[urlParts.length - 1];
+                const fileName = `${barcode}_${originalName}`;
+                const file = new File([blob], fileName, { type: blob.type });
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                imageField.files = dataTransfer.files;
+            } else {
+                imagePreview.classList.add('d-none');
+            }
+
+        } else {
+            alert("Aucun aliment trouvé pour ce code-barres.");
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Erreur lors de la récupération des données.");
+    }
+});
+</script>

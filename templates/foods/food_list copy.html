@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {% load django_bootstrap5 %}
+        {% load django_bootstrap_input_group %}
+        {% comment %} <link href="/static/css/bootstrap.css" rel="stylesheet"> {% endcomment %}
+    </head>
+    <body>
+        <h1 style="margin: 30px">Django Vanilla Views</h1>
+        <div style="margin: 30px">
+            {% if food_list %}
+            <table class="table table-striped">
+                <tr><th>Food name</th><th>Created at</th><th></th><th></th></tr>
+                {% for food in food_list %}
+                    <tr>
+                        <td>{{ food.name }}</td>
+                        <td>{{ food.created_at }}</td>
+                        <td><a href="{% url 'edit_food' food.pk %}">edit</a></td>
+                        <td>
+                            <form method="POST" action="{% url 'delete_food' food.pk %}">
+                                {% csrf_token %}
+                                <input type="submit" class="btn btn-sm btn-danger" value="delete"></input>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </table>
+            {% endif %}
+            <p><a href="{% url 'create_food' %}">Create a new food</a></p>
+        </div>
+    </body>
+</html>

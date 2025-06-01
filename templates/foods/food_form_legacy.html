@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <link href="/static/css/bootstrap.css" rel="stylesheet">
+    </head>
+    <body>
+        <h1 style="margin: 30px">{% if food %}Edit food{% else %}Create food{% endif%}</h1>
+        <div style="margin: 30px">
+        <form method="POST" action=".">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <input type="submit" class="btn btn-primary" value="Save">
+        </form>
+        </div>
+    </body>
+</html>
