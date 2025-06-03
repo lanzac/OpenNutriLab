@@ -1,21 +1,13 @@
 from django.db import models
-import pint.babel_names
 from quantityfield.fields import QuantityField
-
-
-# Default Pint units definition file
-# https://github.com/hgrecco/pint/blob/master/pint/default_en.txt
-ENERGY_UNIT_CHOICES = ['kJ', 'kcal']
-
-VITAMIN_UNIT_CHOICES = ['mg', 'µg']
-
-VITAMIN_UNIT_CHOICES_HUMAN_READABLE = [
-    ('mg', 'mg'),
-    ('µg', 'µg'),
-]
-
-DEFAULT_MACRONUTRIENT_UNIT = 'g'
-DEFAULT_VITAMIN_UNIT = 'mg'
+from foods.units import (
+    DEFAULT_ENERGY_UNIT,
+    ENERGY_UNIT_CHOICES_VALUES,
+    DEFAULT_MACRONUTRIENT_UNIT,
+    DEFAULT_VITAMIN_UNIT,
+    VITAMIN_UNIT_CHOICES,
+    VITAMIN_UNIT_CHOICES_VALUES
+)
 
 
 class Macronutrient(models.Model):
@@ -31,8 +23,8 @@ class Vitamin(models.Model):
     emojis = models.CharField(max_length=100, blank=True, null=True)
     # Conventional default unit for the given vitamin to show in the form
     default_unit_in_form = models.CharField(
-        choices=VITAMIN_UNIT_CHOICES_HUMAN_READABLE,
-        max_length=2,
+        choices=VITAMIN_UNIT_CHOICES,
+        max_length=10,
         default=DEFAULT_VITAMIN_UNIT
     )
 
@@ -48,8 +40,7 @@ class Food(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     # 🔹 Energy
-    energy = QuantityField(base_units='kJ', unit_choices=ENERGY_UNIT_CHOICES, null=True)
-    # energy = MeasurementField(measurement=Energy, unit_choices=ENERGY_UNIT_CHOICES, null=True)
+    energy = QuantityField(base_units=DEFAULT_ENERGY_UNIT, unit_choices=ENERGY_UNIT_CHOICES_VALUES, null=True)
 
     # 🔹 Vitamins
     vitamins = models.ManyToManyField(Vitamin, through='FoodVitamin')
@@ -61,8 +52,10 @@ class Food(models.Model):
 class FoodVitamin(models.Model):
     food = models.ForeignKey('Food', on_delete=models.CASCADE)
     vitamin = models.ForeignKey(Vitamin, on_delete=models.CASCADE)
-    # amount = MeasurementField(measurement=Mass, unit_choices=VITAMIN_UNIT_CHOICES)
-    amount = QuantityField(base_units=DEFAULT_VITAMIN_UNIT, unit_choices=VITAMIN_UNIT_CHOICES)
+    # QuantityField unit_choices does not show the human-readable representation
+    # in the form, so I use a custom unit_choices, tell me if I'm wrong or if
+    # there is a better way to do it :)
+    amount = QuantityField(base_units=DEFAULT_VITAMIN_UNIT, unit_choices=VITAMIN_UNIT_CHOICES_VALUES, null=True)
 
     # For this manually created intermediate table (with "through") I need to add
     # the unicity constraint because Django not doing it :(

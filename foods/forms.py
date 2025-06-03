@@ -1,5 +1,5 @@
 from django import forms
-from .models import Food, Macronutrient, FoodMacronutrient, Vitamin, FoodVitamin, VITAMIN_UNIT_CHOICES, DEFAULT_VITAMIN_UNIT, DEFAULT_MACRONUTRIENT_UNIT
+from .models import Food, Macronutrient, FoodMacronutrient, Vitamin, FoodVitamin, VITAMIN_UNIT_CHOICES_VALUES, DEFAULT_VITAMIN_UNIT, DEFAULT_MACRONUTRIENT_UNIT
 from quantityfield.fields import QuantityFormField
 import copy
 from .widgets import InputGroupWithLabelWidget
@@ -46,7 +46,7 @@ class FoodForm(forms.ModelForm):
             # Champ pour la valeur
             # required=False is set because vitamin is optional to submit form
 
-            unit_choices = prioritize_unit_choice(vitamin.default_unit_in_form, VITAMIN_UNIT_CHOICES)
+            unit_choices = prioritize_unit_choice(vitamin.default_unit_in_form, VITAMIN_UNIT_CHOICES_VALUES)
 
             FoodVitaminFormField = QuantityFormField(
                 base_units=vitamin.default_unit_in_form,
