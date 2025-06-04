@@ -1,5 +1,5 @@
 [project]
-name = "opennutria"
+name = "nutrilibre"
 version = "0.1.0"
 description = "An open-source app for precise food and meal analysis"
 authors = [
