@@ -183,6 +183,23 @@ django = ">=4.2.9"
 sqlparse = ">=0.2"
 
 [[package]]
+name = "django-environ"
+version = "0.12.0"
+description = "A package that allows you to utilize 12factor inspired environment variables to configure your Django application."
+optional = false
+python-versions = "<4,>=3.9"
+groups = ["main"]
+files = [
+    {file = "django_environ-0.12.0-py2.py3-none-any.whl", hash = "sha256:92fb346a158abda07ffe6eb23135ce92843af06ecf8753f43adf9d2366dcc0ca"},
+    {file = "django_environ-0.12.0.tar.gz", hash = "sha256:227dc891453dd5bde769c3449cf4a74b6f2ee8f7ab2361c93a07068f4179041a"},
+]
+
+[package.extras]
+develop = ["coverage[toml] (>=5.0a4)", "furo (>=2024.8.6)", "pytest (>=4.6.11)", "setuptools (>=71.0.0)", "sphinx (>=5.0)", "sphinx-notfound-page"]
+docs = ["furo (>=2024.8.6)", "sphinx (>=5.0)", "sphinx-notfound-page"]
+testing = ["coverage[toml] (>=5.0a4)", "pytest (>=4.6.11)", "setuptools (>=71.0.0)"]
+
+[[package]]
 name = "django-extensions"
 version = "4.1"
 description = "Extensions for Django"
@@ -499,6 +516,29 @@ test = ["appdirs (==1.4.4)", "covdefaults (>=2.3)", "pytest (>=8.3.4)", "pytest-
 type = ["mypy (>=1.14.1)"]
 
 [[package]]
+name = "psycopg"
+version = "3.2.9"
+description = "PostgreSQL database adapter for Python"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "psycopg-3.2.9-py3-none-any.whl", hash = "sha256:01a8dadccdaac2123c916208c96e06631641c0566b22005493f09663c7a8d3b6"},
+    {file = "psycopg-3.2.9.tar.gz", hash = "sha256:2fbb46fcd17bc81f993f28c47f1ebea38d66ae97cc2dbc3cad73b37cefbff700"},
+]
+
+[package.dependencies]
+tzdata = {version = "*", markers = "sys_platform == \"win32\""}
+
+[package.extras]
+binary = ["psycopg-binary (==3.2.9) ; implementation_name != \"pypy\""]
+c = ["psycopg-c (==3.2.9) ; implementation_name != \"pypy\""]
+dev = ["ast-comments (>=1.1.2)", "black (>=24.1.0)", "codespell (>=2.2)", "dnspython (>=2.1)", "flake8 (>=4.0)", "isort-psycopg", "isort[colors] (>=6.0)", "mypy (>=1.14)", "pre-commit (>=4.0.1)", "types-setuptools (>=57.4)", "types-shapely (>=2.0)", "wheel (>=0.37)"]
+docs = ["Sphinx (>=5.0)", "furo (==2022.6.21)", "sphinx-autobuild (>=2021.3.14)", "sphinx-autodoc-typehints (>=1.12)"]
+pool = ["psycopg-pool"]
+test = ["anyio (>=4.0)", "mypy (>=1.14)", "pproxy (>=2.7)", "pytest (>=6.2.5)", "pytest-cov (>=3.0)", "pytest-randomly (>=3.5)"]
+
+[[package]]
 name = "requests"
 version = "2.32.3"
 description = "Python HTTP for Humans."
@@ -600,4 +640,4 @@ watchdog = ["watchdog (>=2.3)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.13"
-content-hash = "43842caf1743959a9f68b307b2f41ed4fba9fa55945bdd63f7991717574fa951"
+content-hash = "6d28a0ccf8c7a4c49c6b00761819cf00adf843c38a1c748a509ae826d3462247"
