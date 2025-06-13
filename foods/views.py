@@ -7,6 +7,55 @@ from .models import Food, Vitamin
 from .forms import FoodForm
 from django.http import JsonResponse
 import requests
+from typing import Any, Dict, Optional
+
+# Mapping général pour tous les champs à extraire (nom, image, description, nutriments...)
+PRODUCT_LABELS = {
+    'name': (['product_name'], str),
+    'image_url': (['image_small_url'], str),
+    'description': (['categories'], str),
+    'energy': (['energy-kj_100g', 'energy_100g', 'energy_value'], int),
+    'macronutrients': {
+        'fiber': (['fiber_100g', 'fiber', 'fiber_value'], float),
+        'carbohydrates': (['carbohydrates_100g', 'carbohydrates', 'carbohydrates_value'], float),
+        'sugars': (['sugars_100g', 'sugars', 'sugars_value'], float),
+        'fat': (['fat_100g', 'fat', 'fat_value'], float),
+        'saturated_fat': (['saturated-fat_100g', 'saturated-fat', 'saturated-fat_value'], float),
+        'proteins': (['proteins_100g', 'proteins', 'proteins_value'], float),
+    }
+}
+
+def extract_typed_fields(d: dict, fields: dict) -> dict:
+    """
+    Extrait récursivement les valeurs du dict d selon la structure de fields,
+    qui associe à chaque champ une liste de labels et un type cible.
+    Exemple d'utilisation :
+        merged_data = extract_typed_fields(nutrients, NUTRIENT_LABELS)
+        energy_kj = merged_data['energy']
+        macronutrients = merged_data['macronutrients']
+    """
+    result = {}
+    for key, value in fields.items():
+        if isinstance(value, dict):
+            result[key] = extract_typed_fields(d, value)
+        else:
+            labels, typ = value
+            raw = get_first_key_found(d, labels)
+            try:
+                result[key] = typ(raw)
+            except (TypeError, ValueError):
+                result[key] = typ()  # valeur par défaut du type
+    return result
+
+def get_first_key_found(d: dict, keys, default=0):
+    """
+    Retourne la première valeur trouvée dans le dict d pour la première clé présente dans keys.
+    """
+    for k in keys:
+        value = d.get(k)
+        if value not in (None, ''):
+            return value
+    return default
 
 def get_views_for_model(new_model: ModelBase, new_model_form: ModelForm):
 
@@ -58,45 +107,20 @@ def fetch_food_info(request, barcode):
     if response.status_code != 200:
         return JsonResponse({'success': False, 'error': 'API error'})
 
-    data = response.json()
+    data: Dict[str, Any] = response.json()
     if data.get('status') != 1:
         return JsonResponse({'success': False, 'error': 'Product not found'})
 
-    product = data.get('product', {})
-    nutriments = product.get('nutriments', {})
+    product: Dict[str, Any] = data.get('product', {})
+    nutrients: Dict[str, Any] = product.get('nutriments', {})
 
-    # 🔸 Exemple de correspondance avec ton modèle Django
-    name = product.get('product_name') or ''
-    image_url = product.get('image_small_url') or ''
-    description = product.get('categories') or ''
+    # Extraction généralisée
+    merged_data = extract_typed_fields({**product, **nutrients}, PRODUCT_LABELS)
 
-    # 🔸 Extraction de l'énergie (en kJ / 100g)
-    energy_kj = get_first(
-        nutriments.get('energy-kj_100g'),
-        nutriments.get('energy_100g'),
-        nutriments.get('energy')
-    )
-
-    macronutrient_keys = {
-        'fiber': ['fiber_100g', 'fiber', 'fiber_value'],
-        'carbohydrates': ['carbohydrates_100g', 'carbohydrates', 'carbohydrates_value'],
-        'sugars': ['sugars_100g', 'sugars', 'sugars_value'],
-        'fat': ['fat_100g', 'fat', 'fat_value'],
-        'saturated_fat': ['saturated-fat_100g', 'saturated-fat', 'saturated-fat_value'],
-        'proteins': ['proteins_100g', 'proteins', 'proteins_value'],
-    }
-
-    macronutrients = {
-        key: get_first(*(nutriments.get(k) for k in keys))
-        for key, keys in macronutrient_keys.items()
-    }
-
+    # Ingredients --------------------------------------------------------------
+    ingredients: Any = product.get('ingredients', '')
 
     return JsonResponse({
         'success': True,
-        'name': name,
-        'image_url': image_url,
-        'description': description,
-        'energy': energy_kj,
-        'macronutrients': macronutrients,
+        **merged_data,
     })
