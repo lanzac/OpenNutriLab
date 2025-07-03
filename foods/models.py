@@ -9,16 +9,22 @@ from foods.units import (
     VITAMIN_UNIT_CHOICES_VALUES
 )
 
-
 class Macronutrient(models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100, primary_key=True)
     description = models.TextField(blank=True)
 
     def __str__(self):
-        return f"Macronutrient {self.name}"
+        """
+        Returns a user-friendly label for the macronutrient, including its description if available.
+        """
+        label = self.name.replace('_', ' ').title()
+        if self.description:
+            label += f" ({self.description})"
+        return label
+
 
 class Vitamin(models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100, primary_key=True)
     description = models.TextField(blank=True)
     emojis = models.CharField(max_length=100, blank=True, null=True)
     # Conventional default unit for the given vitamin to show in the form
@@ -42,8 +48,20 @@ class Food(models.Model):
     # 🔹 Energy
     energy = QuantityField(base_units=DEFAULT_ENERGY_UNIT, unit_choices=ENERGY_UNIT_CHOICES_VALUES, null=True)
 
+
+    # 🔹 Macronutrients
+    macronutrients = models.ManyToManyField(
+        Macronutrient,
+        through='FoodMacronutrient',
+        related_name='foods'
+    )
+
     # 🔹 Vitamins
-    vitamins = models.ManyToManyField(Vitamin, through='FoodVitamin')
+    vitamins = models.ManyToManyField(
+        Vitamin, 
+        through='FoodVitamin',
+        related_name='foods')
+
 
     def __str__(self):
         return f"{self.name}"

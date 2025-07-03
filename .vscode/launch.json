@@ -1,20 +1,22 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Django (Docker attach)",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": {
+        "host": "localhost",
+        "port": 5678
+      },
+      "pathMappings": [
         {
-            "name": "Python Debugger: Django (runserver_plus)",
-            "type": "debugpy",
-            "request": "launch",
-            "args": [
-                "runserver_plus"
-            ],
-            "django": true,
-            "autoStartBrowser": false,
-            "program": "${workspaceFolder}/manage.py",
-            "justMyCode": false
+          "localRoot": "${workspaceFolder}",
+          "remoteRoot": "/app"
         }
-    ]
+      ],
+      "django": true,
+      "justMyCode": false
+    }
+  ]
 }

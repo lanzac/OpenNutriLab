@@ -1,0 +1,44 @@
+[
+  {
+    "model": "foods.macronutrient",
+    "pk": "fat",
+    "fields": {
+      "description": ""
+    }
+  },
+  {
+    "model": "foods.macronutrient",
+    "pk": "saturated_fat",
+    "fields": {
+      "description": ""
+    }
+  },
+  {
+    "model": "foods.macronutrient",
+    "pk": "carbohydrates",
+    "fields": {
+      "description": ""
+    }
+  },
+  {
+    "model": "foods.macronutrient",
+    "pk": "sugars",
+    "fields": {
+      "description": ""
+    }
+  },
+  {
+    "model": "foods.macronutrient",
+    "pk": "fiber",
+    "fields": {
+      "description": ""
+    }
+  },
+  {
+    "model": "foods.macronutrient",
+    "pk": "proteins",
+    "fields": {
+      "description": ""
+    }
+  }
+]

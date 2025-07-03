@@ -19,9 +19,11 @@ from django.urls import include, path
 from debug_toolbar.toolbar import debug_toolbar_urls
 from django.conf import settings
 from django.conf.urls.static import static
+from .api import api
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path("api/", api.urls),
     path('', include("foods.urls")),
     path("__reload__/", include("django_browser_reload.urls")),
 ] + debug_toolbar_urls()

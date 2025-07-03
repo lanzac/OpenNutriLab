@@ -9,53 +9,13 @@ from django.http import JsonResponse
 import requests
 from typing import Any, Dict, Optional
 
-# Mapping général pour tous les champs à extraire (nom, image, description, nutriments...)
-PRODUCT_LABELS = {
-    'name': (['product_name'], str),
-    'image_url': (['image_small_url'], str),
-    'description': (['categories'], str),
-    'energy': (['energy-kj_100g', 'energy_100g', 'energy_value'], int),
-    'macronutrients': {
-        'fiber': (['fiber_100g', 'fiber', 'fiber_value'], float),
-        'carbohydrates': (['carbohydrates_100g', 'carbohydrates', 'carbohydrates_value'], float),
-        'sugars': (['sugars_100g', 'sugars', 'sugars_value'], float),
-        'fat': (['fat_100g', 'fat', 'fat_value'], float),
-        'saturated_fat': (['saturated-fat_100g', 'saturated-fat', 'saturated-fat_value'], float),
-        'proteins': (['proteins_100g', 'proteins', 'proteins_value'], float),
-    }
-}
+from .off_utils import fetch_product_data
+from .schema import ProductSchema, MacronutrientsSchema
 
-def extract_typed_fields(d: dict, fields: dict) -> dict:
-    """
-    Extrait récursivement les valeurs du dict d selon la structure de fields,
-    qui associe à chaque champ une liste de labels et un type cible.
-    Exemple d'utilisation :
-        merged_data = extract_typed_fields(nutrients, NUTRIENT_LABELS)
-        energy_kj = merged_data['energy']
-        macronutrients = merged_data['macronutrients']
-    """
-    result = {}
-    for key, value in fields.items():
-        if isinstance(value, dict):
-            result[key] = extract_typed_fields(d, value)
-        else:
-            labels, typ = value
-            raw = get_first_key_found(d, labels)
-            try:
-                result[key] = typ(raw)
-            except (TypeError, ValueError):
-                result[key] = typ()  # valeur par défaut du type
-    return result
-
-def get_first_key_found(d: dict, keys, default=0):
-    """
-    Retourne la première valeur trouvée dans le dict d pour la première clé présente dans keys.
-    """
-    for k in keys:
-        value = d.get(k)
-        if value not in (None, ''):
-            return value
-    return default
+from django.core.files.uploadedfile import InMemoryUploadedFile
+from io import BytesIO
+import mimetypes
+import os
 
 def get_views_for_model(new_model: ModelBase, new_model_form: ModelForm):
 
@@ -69,20 +29,42 @@ def get_views_for_model(new_model: ModelBase, new_model_form: ModelForm):
         form_class = new_model_form
         success_url = reverse_url
 
-        def get_context_data(self, **kwargs):
-            context = super().get_context_data(**kwargs)
-            context['vitamins'] = Vitamin.objects.all()
-            return context
+        # def get_context_data(self, **kwargs):
+        #     context = super().get_context_data(**kwargs)
+        #     context['vitamins'] = Vitamin.objects.all()
+        #     return context
+        
+        def get_form(self, data=None, files=None, **kwargs):
+            # 👇 Initialiser les données
+            initial = {}
+            product_image_url = None
+
+            barcode = self.request.GET.get('barcode')
+            if barcode:
+                initial['barcode'] = barcode
+                try:
+                    product = fetch_product_data(barcode)
+                    initial.update(product_schema_to_form_data(product))
+                    product_image_url = getattr(product, 'image_url', None)
+                    print("Préremplissage réussi :", initial)
+                except Exception as e:
+                    print("Erreur lors du préremplissage :", e)
+
+            # 👇 Passe les données initiales à ton formulaire
+            form = self.form_class(data=data, files=files, initial=initial)
+            # Ajoute l'URL de l'image distante dans l'objet form pour le template
+            form.product_image_url = product_image_url
+            return form
 
     class ModelEditView(UpdateView):
         model = new_model
         form_class = new_model_form
         success_url = reverse_url
 
-        def get_context_data(self, **kwargs):
-            context = super().get_context_data(**kwargs)
-            context['vitamins'] = Vitamin.objects.all()
-            return context
+        # def get_context_data(self, **kwargs):
+        #     context = super().get_context_data(**kwargs)
+        #     context['vitamins'] = Vitamin.objects.all()
+        #     return context
 
     class ModelDeleteView(DeleteView):
         model = new_model
@@ -97,30 +79,41 @@ FoodListView, FoodCreateView, FoodEditView, FoodDeleteView = get_views_for_model
 )
 
 
-def get_first(*values):
-    return next((v for v in values if v not in (None, '')), 0)
-
-def fetch_food_info(request, barcode):
-    url = f"https://world.openfoodfacts.net/api/v2/product/{barcode}.json"
+def fetch_image(url: str) -> InMemoryUploadedFile:
     response = requests.get(url)
+    if response.status_code == 200:
+        content_type = response.headers.get('Content-Type', 'application/octet-stream')
+        extension = mimetypes.guess_extension(content_type.split(';')[0].strip())
+        if not extension:
+            extension = '.jpg'  # Default to jpg if unknown type
 
-    if response.status_code != 200:
-        return JsonResponse({'success': False, 'error': 'API error'})
+        image_file = InMemoryUploadedFile(
+            file=BytesIO(response.content),
+            field_name='image',
+            name=f'image{extension}',
+            content_type=content_type,
+            size=len(response.content),
+            charset=None
+        )
+        return image_file
+    raise ValueError("Could not fetch image from URL")
 
-    data: Dict[str, Any] = response.json()
-    if data.get('status') != 1:
-        return JsonResponse({'success': False, 'error': 'Product not found'})
 
-    product: Dict[str, Any] = data.get('product', {})
-    nutrients: Dict[str, Any] = product.get('nutriments', {})
-
-    # Extraction généralisée
-    merged_data = extract_typed_fields({**product, **nutrients}, PRODUCT_LABELS)
-
-    # Ingredients --------------------------------------------------------------
-    ingredients: Any = product.get('ingredients', '')
-
-    return JsonResponse({
-        'success': True,
-        **merged_data,
-    })
+def product_schema_to_form_data(product: ProductSchema) -> dict:
+    form_data = {
+        "name": product.name,
+        "description": product.description,
+        "energy": product.energy,
+    }
+    
+    if product.image_url:
+        try:
+            image = fetch_image()
+            form_data["image"] = image
+        except Exception as e:
+            print(f"Erreur lors de la récupération de l'image : {e}")
+    
+    for macro_name, amount in product.macronutrients.dict().items():
+        if amount is not None:
+            form_data[f"{MacronutrientsSchema.field_category}_{macro_name}"] = amount
+    return form_data
