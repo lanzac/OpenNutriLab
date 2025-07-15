@@ -8,7 +8,7 @@ from crispy_forms.bootstrap import (
     FieldWithButtons, StrictButton, AppendedText, AccordionGroup
 )
 from crispy_bootstrap5.bootstrap5 import BS5Accordion, FloatingField
-
+from .models import Food
 from django.urls import reverse
 from quantityfield.fields import QuantityFormField
 from .schema import AnnotatedSchema, MacronutrientsSchema
