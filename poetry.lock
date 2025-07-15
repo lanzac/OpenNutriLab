@@ -174,6 +174,25 @@ files = [
 ]
 
 [[package]]
+name = "crispy-bootstrap5"
+version = "2025.6"
+description = "Bootstrap5 template pack for django-crispy-forms"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "crispy_bootstrap5-2025.6-py3-none-any.whl", hash = "sha256:a343aa128b4383f35f00295b94de2b10862f2a4f24eda21fa6ead45234c07050"},
+    {file = "crispy_bootstrap5-2025.6.tar.gz", hash = "sha256:f1bde7cac074c650fc82f31777d4a4cfd0df2512c68bc4128f259c75d3daada4"},
+]
+
+[package.dependencies]
+django = ">=4.2"
+django-crispy-forms = ">=2.3"
+
+[package.extras]
+test = ["pytest", "pytest-django"]
+
+[[package]]
 name = "debugpy"
 version = "1.8.14"
 description = "An implementation of the Debug Adapter Protocol for Python"
@@ -244,6 +263,21 @@ files = [
 
 [package.dependencies]
 asgiref = ">=3.6"
+django = ">=4.2"
+
+[[package]]
+name = "django-crispy-forms"
+version = "2.4"
+description = "Best way to have Django DRY forms"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "django_crispy_forms-2.4-py3-none-any.whl", hash = "sha256:5a4b99876cfb1bdd3e47727731b6d4197c51c0da502befbfbec6a93010b02030"},
+    {file = "django_crispy_forms-2.4.tar.gz", hash = "sha256:915e1ffdeb2987d78b33fabfeff8e5203c8776aa910a3a659a2c514ca125f3bd"},
+]
+
+[package.dependencies]
 django = ">=4.2"
 
 [[package]]
@@ -926,4 +960,4 @@ watchdog = ["watchdog (>=2.3)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.13"
-content-hash = "6e887d7cc8052397149afb1b8890a74c0c82b48aed0cfb989ba5f28fed2e37c1"
+content-hash = "6b797d47d3ccb4f7a16e1ceaf6d2d8fc947669d1e56104dc89b087a958a4640e"

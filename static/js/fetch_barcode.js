@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (barcode) {
                 const url = new URL(window.location.href);
                 url.searchParams.set("barcode", barcode);
+                url.searchParams.set("refresh_data", "1");
                 window.location.href = url.toString();  // 🔁 recharge la page avec ?barcode=...
             } else {
                 alert("Veuillez entrer un code-barres.");

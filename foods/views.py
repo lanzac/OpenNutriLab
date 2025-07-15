@@ -10,12 +10,17 @@ import requests
 from typing import Any, Dict, Optional
 
 from .off_utils import fetch_product_data
-from .schema import ProductSchema, MacronutrientsSchema
+from .schema import ProductSchema, ProductFormSchema, product_schema_to_form_data
 
 from django.core.files.uploadedfile import InMemoryUploadedFile
-from io import BytesIO
 import mimetypes
 import os
+from django.contrib import messages
+from django.shortcuts import redirect
+from django.urls import reverse
+from django.utils.datastructures import MultiValueDict
+from django.conf import settings
+import uuid
 
 def get_views_for_model(new_model: ModelBase, new_model_form: ModelForm):
 
@@ -28,33 +33,82 @@ def get_views_for_model(new_model: ModelBase, new_model_form: ModelForm):
         model = new_model
         form_class = new_model_form
         success_url = reverse_url
+        
+        
+        def get(self, request, *args, **kwargs):
+            barcode = request.GET.get("barcode")
+            refresh = request.GET.get("refresh_data") == "1"
 
-        # def get_context_data(self, **kwargs):
-        #     context = super().get_context_data(**kwargs)
-        #     context['vitamins'] = Vitamin.objects.all()
-        #     return context
+            if barcode and refresh:
+                try:
+                    product = fetch_product_data(barcode, use_local=True)
+                    product_form: ProductFormSchema = product_schema_to_form_data(product)
+                    
+                    # Fetch image
+                    if product_form.image_url:
+                        image_path = fetch_image_to_tempfile(product_form.image_url, barcode=barcode)
+                        self.request.session['fetched_image_path'] = image_path
+                    
+                    
+                    request.session["prefill_data"] = product_form.dict()
+                except Exception as e:
+                    messages.warning(request, f"Erreur API : {e}")
+
+                # Rediriger vers l'URL sans `refresh_data=1`
+                base_url = reverse("create_food")
+                return redirect(f"{base_url}?barcode={barcode}")
+
+            return super().get(request, *args, **kwargs)
         
         def get_form(self, data=None, files=None, **kwargs):
-            # 👇 Initialiser les données
             initial = {}
-            product_image_url = None
 
-            barcode = self.request.GET.get('barcode')
-            if barcode:
-                initial['barcode'] = barcode
-                try:
-                    product = fetch_product_data(barcode)
-                    initial.update(product_schema_to_form_data(product))
-                    product_image_url = getattr(product, 'image_url', None)
-                    print("Préremplissage réussi :", initial)
-                except Exception as e:
-                    print("Erreur lors du préremplissage :", e)
+            barcode = self.request.GET.get("barcode")
+            refresh_data = self.request.GET.get("refresh_data")
 
-            # 👇 Passe les données initiales à ton formulaire
-            form = self.form_class(data=data, files=files, initial=initial)
-            # Ajoute l'URL de l'image distante dans l'objet form pour le template
-            form.product_image_url = product_image_url
-            return form
+            if barcode and not refresh_data:  # évite le double fetch
+                prefill = self.request.session.pop("prefill_data", None)
+                if prefill:
+                    initial.update(prefill)
+
+                
+                # This condition is only True when saving a new product
+                # Otherwise is just GET request for form files is None
+                if isinstance(files, MultiValueDict):
+                    # fetched_image = self.request.session.pop("fetched_image", None)
+                    # if fetched_image and files:
+                    #     files.setlist("image", [fetched_image])
+                    
+                    image_path = self.request.session.get("fetched_image_path")
+                    if image_path and os.path.exists(image_path):
+                        
+                        check_image_path = os.path.join(settings.MEDIA_ROOT, "images/products", os.path.basename(image_path))
+                        if os.path.exists(check_image_path):
+                            os.remove(check_image_path)
+                        
+                        from django.core.files.uploadedfile import SimpleUploadedFile
+                        with open(image_path, 'rb') as f:
+                            uploaded = SimpleUploadedFile(
+                                name=os.path.basename(image_path),
+                                content=f.read(),
+                                content_type="image/jpeg"
+                            )
+                            files.setlist("image", [uploaded])
+                    
+
+
+            return self.form_class(data=data, files=files, initial=initial, **kwargs)
+        
+        def form_valid(self, form):
+            self.request.session.pop("prefill_data", None)
+            
+            # Suppression du fichier temporaire s'il existe
+            image_path = self.request.session.pop("fetched_image_path", None)
+            if image_path and os.path.exists(image_path):
+                os.remove(image_path)
+            
+            
+            return super().form_valid(form)
 
     class ModelEditView(UpdateView):
         model = new_model
@@ -86,8 +140,11 @@ def fetch_image(url: str) -> InMemoryUploadedFile:
         extension = mimetypes.guess_extension(content_type.split(';')[0].strip())
         if not extension:
             extension = '.jpg'  # Default to jpg if unknown type
-
-        image_file = InMemoryUploadedFile(
+        # Utilise BytesIO pour le contenu binaire
+        from io import BytesIO
+        from django.core.files.uploadedfile import InMemoryUploadedFile
+         
+        return InMemoryUploadedFile(
             file=BytesIO(response.content),
             field_name='image',
             name=f'image{extension}',
@@ -95,25 +152,33 @@ def fetch_image(url: str) -> InMemoryUploadedFile:
             size=len(response.content),
             charset=None
         )
-        return image_file
     raise ValueError("Could not fetch image from URL")
 
+def fetch_image_to_tempfile(image_url, barcode=None):
+    response = requests.get(image_url)
+    response.raise_for_status()
 
-def product_schema_to_form_data(product: ProductSchema) -> dict:
-    form_data = {
-        "name": product.name,
-        "description": product.description,
-        "energy": product.energy,
-    }
+    # Déterminer l'extension via le type MIME
+    content_type = response.headers.get('Content-Type', 'application/octet-stream')
+    extension = mimetypes.guess_extension(content_type.split(';')[0].strip())
+    if not extension:
+        extension = '.jpg'  # fallback
+
+    # Créer un nom de fichier
+    base_name = f"{barcode}" if barcode else str(uuid.uuid4())
+    filename = f"{base_name}{extension}"
     
-    if product.image_url:
-        try:
-            image = fetch_image()
-            form_data["image"] = image
-        except Exception as e:
-            print(f"Erreur lors de la récupération de l'image : {e}")
+
+    # Dossier temporaire sous MEDIA_ROOT/tmp
+    temp_dir = os.path.join(settings.MEDIA_ROOT, "tmp")
+    os.makedirs(temp_dir, exist_ok=True)
+
+    file_path = os.path.join(temp_dir, filename)
     
-    for macro_name, amount in product.macronutrients.dict().items():
-        if amount is not None:
-            form_data[f"{MacronutrientsSchema.field_category}_{macro_name}"] = amount
-    return form_data
+    # Écriture du fichier
+    with open(file_path, 'wb') as f:
+        f.write(response.content)
+
+    return file_path  # chemin absolu
+
+

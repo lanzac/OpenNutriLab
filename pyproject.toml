@@ -23,6 +23,7 @@ dependencies = [
     "django-ninja (>=1.4.3,<2.0.0)",
     "debugpy (>=1.8.14,<2.0.0)",
     "glom (>=24.11.0,<25.0.0)",
+    "crispy-bootstrap5 (>=2025.6,<2026.0)",
 ]
 
 
