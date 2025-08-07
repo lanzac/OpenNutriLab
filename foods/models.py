@@ -8,6 +8,7 @@ from foods.units import (
     VITAMIN_UNIT_CHOICES,
     VITAMIN_UNIT_CHOICES_VALUES
 )
+from .fields import EAN13Field
 
 class Macronutrient(models.Model):
     name = models.CharField(max_length=100, primary_key=True)
@@ -39,7 +40,7 @@ class Vitamin(models.Model):
 
 
 class Food(models.Model):
-    barcode = models.CharField(max_length=13, primary_key=True)  # EAN-13 format
+    barcode = EAN13Field(primary_key=True)
     name = models.CharField(max_length=100)
     image = models.ImageField(upload_to='images/products/', null=True, blank=True)
     description = models.TextField(null=True, blank=True)
@@ -58,7 +59,7 @@ class Food(models.Model):
 
     # 🔹 Vitamins
     vitamins = models.ManyToManyField(
-        Vitamin, 
+        Vitamin,
         through='FoodVitamin',
         related_name='foods')
 
