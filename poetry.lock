@@ -370,6 +370,21 @@ build-doc = ["m2r2", "recommonmark (>=0.6.0)", "sphinx"]
 testing = ["pytest (>=6.1)", "pytest-cov (>=2.1)", "pytest-django (>=0.4)", "tox (>=3.2)"]
 
 [[package]]
+name = "django-types"
+version = "0.22.0"
+description = "Type stubs for Django"
+optional = false
+python-versions = "<4.0,>=3.10"
+groups = ["dev"]
+files = [
+    {file = "django_types-0.22.0-py3-none-any.whl", hash = "sha256:ba15c756c7a732e58afd0737e54489f1c5e6f1bd24132e9199c637b1f88b057c"},
+    {file = "django_types-0.22.0.tar.gz", hash = "sha256:4cecc9eee846e7ff2a398bec9dfe6543e76efb922a7a58c5d6064bcb0e6a3dc5"},
+]
+
+[package.dependencies]
+types-psycopg2 = ">=2.9.21.13"
+
+[[package]]
 name = "django-vanilla-views"
 version = "3.0.0"
 description = "Beautifully simple class based views."
@@ -882,6 +897,18 @@ dev = ["build", "hatch"]
 doc = ["sphinx"]
 
 [[package]]
+name = "types-psycopg2"
+version = "2.9.21.20250809"
+description = "Typing stubs for psycopg2"
+optional = false
+python-versions = ">=3.9"
+groups = ["dev"]
+files = [
+    {file = "types_psycopg2-2.9.21.20250809-py3-none-any.whl", hash = "sha256:59b7b0ed56dcae9efae62b8373497274fc1a0484bdc5135cdacbe5a8f44e1d7b"},
+    {file = "types_psycopg2-2.9.21.20250809.tar.gz", hash = "sha256:b7c2cbdcf7c0bd16240f59ba694347329b0463e43398de69784ea4dee45f3c6d"},
+]
+
+[[package]]
 name = "typing-extensions"
 version = "4.14.0"
 description = "Backported and Experimental Type Hints for Python 3.9+"
@@ -959,5 +986,5 @@ watchdog = ["watchdog (>=2.3)"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = "^3.13"
-content-hash = "6b797d47d3ccb4f7a16e1ceaf6d2d8fc947669d1e56104dc89b087a958a4640e"
+python-versions = ">=3.13,<4"
+content-hash = "ba4bb9a6b0158ece66b47096959abf32f6605549bfba40c3b87a696c03aaf335"

@@ -2,12 +2,10 @@
 name = "nutrilibre"
 version = "0.1.0"
 description = "An open-source app for precise food and meal analysis"
-authors = [
-    {name = "Andre Lanrezac",email = "a.lanrezac@gmail.com"}
-]
-license = {text = "Apache License 2.0"}
+authors = [{ name = "Andre Lanrezac", email = "a.lanrezac@gmail.com" }]
+license = { text = "Apache License 2.0" }
 readme = "README.md"
-requires-python = "^3.13"
+requires-python = ">=3.13,<4"
 dependencies = [
     "django (>=5.2.3,<6.0.0)",
     "django-debug-toolbar (>=5.2.0,<6.0.0)",
@@ -30,3 +28,7 @@ dependencies = [
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+django-types = "^0.22.0"
+
