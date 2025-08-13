@@ -1,11 +1,11 @@
-from enum import Enum
 from quantityfield.units import ureg
 from django.db import models
+from typing import Final
 
 
 # Default Pint units definition file
 # https://github.com/hgrecco/pint/blob/master/pint/default_en.txt
-DEFAULT_ENERGY_UNIT = f"{ureg.kJ:~P}" 
+DEFAULT_ENERGY_UNIT: Final = f"{ureg.kJ:~P}" 
 ENERGY_UNIT_CHOICES_VALUES = [DEFAULT_ENERGY_UNIT, f"{ureg.kcal:~P}"] 
 
 
@@ -23,8 +23,8 @@ class VitaminUnitChoices(models.TextChoices):
     # -> choices, labels, values
     
 
-DEFAULT_MACRONUTRIENT_UNIT = f"{ureg.g:~P}"
+DEFAULT_MACRONUTRIENT_UNIT: Final[str] = f"{ureg.g:~P}"
 
-DEFAULT_VITAMIN_UNIT = VitaminUnitChoices.MG.value
+DEFAULT_VITAMIN_UNIT: Final[str] = VitaminUnitChoices.MG.value
 VITAMIN_UNIT_CHOICES = VitaminUnitChoices.choices # value (choice value) + label (human-readable)
 VITAMIN_UNIT_CHOICES_VALUES = VitaminUnitChoices.values # only values (choice value)
