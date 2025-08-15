@@ -15,6 +15,9 @@ down:
 restart:
 	$(DC) down && $(DC) up
 
+build_web:
+	$(DC) build web
+
 # 🔹 Django Management
 migrate:
 	$(WEB) python manage.py migrate
@@ -40,6 +43,16 @@ collectstatic:
 # 🔹 Tests
 test:
 	$(WEB) python manage.py test
+
+pytest:
+	$(WEB) pytest
+
+# Coverage
+coverage_test:
+	$(WEB) coverage run -m pytest
+
+coverage_report:
+	$(WEB) coverage report
 
 # 🔹 Custom Nutrient Init
 init_nutrients:

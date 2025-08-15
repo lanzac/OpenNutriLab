@@ -31,4 +31,13 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.group.dev.dependencies]
 django-types = "^0.22.0"
+coverage = "^7.10.3"
+pytest = "^8.4.1"
+pytest-django = "^4.11.1"
+django-stubs-ext = "^5.2.2"
 
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "nutrilibre.settings"
+# -- recommended but optional:
+python_files = ["test_*.py", "*_test.py", "testing/python/*.py"]
