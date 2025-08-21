@@ -3,9 +3,9 @@ name = "nutrilibre"
 version = "0.1.0"
 description = "An open-source app for precise food and meal analysis"
 authors = [{ name = "Andre Lanrezac", email = "a.lanrezac@gmail.com" }]
-license = { text = "Apache License 2.0" }
-readme = "README.md"
 requires-python = ">=3.13,<4"
+readme = "README.md"
+license = { text = "Apache License 2.0" }
 dependencies = [
     "django (>=5.2.3,<6.0.0)",
     "django-debug-toolbar (>=5.2.0,<6.0.0)",
@@ -24,18 +24,18 @@ dependencies = [
     "crispy-bootstrap5 (>=2025.6,<2026.0)",
 ]
 
-
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.poetry.group.dev.dependencies]
-django-types = "^0.22.0"
-coverage = "^7.10.3"
-pytest = "^8.4.1"
-pytest-django = "^4.11.1"
-django-stubs-ext = "^5.2.2"
-
+[dependency-groups]
+dev = [
+    "django-types>=0.22.0,<0.23",
+    "coverage>=7.10.3,<8",
+    "pytest>=8.4.1,<9",
+    "pytest-django>=4.11.1,<5",
+    "django-stubs-ext>=5.2.2,<6",
+]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "nutrilibre.settings"
