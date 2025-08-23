@@ -1,5 +1,5 @@
 [project]
-name = "nutrilibre"
+name = "opennutrilab"
 version = "0.1.0"
 description = "An open-source app for precise food and meal analysis"
 authors = [{ name = "Andre Lanrezac", email = "a.lanrezac@gmail.com" }]
@@ -39,6 +39,6 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "nutrilibre.settings"
+DJANGO_SETTINGS_MODULE = "opennutrilab.settings"
 # -- recommended but optional:
 python_files = ["test_*.py", "*_test.py", "testing/python/*.py"]
