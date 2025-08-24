@@ -3,7 +3,7 @@ name = "opennutrilab"
 version = "0.1.0"
 description = "An open-source app for precise food and meal analysis"
 authors = [{ name = "Andre Lanrezac", email = "a.lanrezac@gmail.com" }]
-requires-python = ">=3.13,<4"
+requires-python = "==3.13.*"
 readme = "README.md"
 license = { text = "Apache License 2.0" }
 dependencies = [
@@ -19,6 +19,9 @@ dependencies = [
     "debugpy (>=1.8.14,<2.0.0)",
     "glom (>=24.11.0,<25.0.0)",
     "crispy-bootstrap5 (>=2025.6,<2026.0)",
+    "uvicorn>=0.35.0",
+    "whitenoise>=6.9.0",
+    "django-webpack-loader>=3.2.1",
 ]
 
 [build-system]
@@ -36,6 +39,8 @@ dev = [
     "django-debug-toolbar>=6.0.0",
     "basedpyright>=1.31.3",
     "pytest-sugar>=1.1.0",
+    "django-stubs-ext>=5.2.2",
+    "watchfiles>=1.1.0",
 ]
 
 [tool.pytest.ini_options]

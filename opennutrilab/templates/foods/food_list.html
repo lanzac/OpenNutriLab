@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="x-ua-compatible" content="ie=edge" />
+        <title>
+            {% block title %}
+                OpenNutriLab
+            {% endblock title %}
+        </title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content="Behold OpenNutriLab!" />
+        <meta name="author" content="André Lanrezac" />
+        <meta name="keywords" content="nutrition, open source">
+        <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}" />
+    </head>
+    <body>
+        <h1 class="page-title">Django Vanilla Views</h1>
+        <div class="content-container">
+            {% if food_list %}
+                <table class="table table-striped">
+                    <tr>
+                        <th>Food name</th>
+                        <th>Created at</th>
+                        <th></th>
+                        <th></th>
+                    </tr>
+                    {% for food in food_list %}
+                        <tr>
+                            <td>{{ food.name }}</td>
+                            <td>{{ food.created_at }}</td>
+                            <td>
+                                <a href="{% url 'edit_food' food.pk %}">edit</a>
+                            </td>
+                            <td>
+                                <form method="post" action="{% url 'delete_food' food.pk %}">
+                                    {% csrf_token %}
+                                    <input type="submit" class="btn btn-sm btn-danger" value="delete">
+                                </input>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </table>
+        {% endif %}
+        <p>
+            <a href="{% url 'create_food' %}">Create a new food</a>
+        </p>
+    </div>
+    <style>
+        .page-title {
+            margin: 30px;
+        }
+
+        .content-container {
+            margin: 30px;
+        }
+    </style>
+</body>
+</html>

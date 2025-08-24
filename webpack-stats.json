@@ -1,0 +1,34 @@
+{
+  "status": "done",
+  "assets": {
+    "css/project.eb1537f73be1558284cb.css": {
+      "name": "css/project.eb1537f73be1558284cb.css",
+      "path": "/app/opennutrilab/static/webpack_bundles/css/project.eb1537f73be1558284cb.css",
+      "publicPath": "/static/webpack_bundles/css/project.eb1537f73be1558284cb.css"
+    },
+    "js/fetch_barcode-c33b8623c6fc6441201e.js": {
+      "name": "js/fetch_barcode-c33b8623c6fc6441201e.js",
+      "path": "/app/opennutrilab/static/webpack_bundles/js/fetch_barcode-c33b8623c6fc6441201e.js",
+      "publicPath": "/static/webpack_bundles/js/fetch_barcode-c33b8623c6fc6441201e.js"
+    },
+    "js/project-c33b8623c6fc6441201e.js": {
+      "name": "js/project-c33b8623c6fc6441201e.js",
+      "path": "/app/opennutrilab/static/webpack_bundles/js/project-c33b8623c6fc6441201e.js",
+      "publicPath": "/static/webpack_bundles/js/project-c33b8623c6fc6441201e.js"
+    },
+    "js/vendors-c33b8623c6fc6441201e.js": {
+      "name": "js/vendors-c33b8623c6fc6441201e.js",
+      "path": "/app/opennutrilab/static/webpack_bundles/js/vendors-c33b8623c6fc6441201e.js",
+      "publicPath": "/static/webpack_bundles/js/vendors-c33b8623c6fc6441201e.js"
+    }
+  },
+  "chunks": {
+    "fetch_barcode": ["js/fetch_barcode-c33b8623c6fc6441201e.js"],
+    "project": [
+      "css/project.eb1537f73be1558284cb.css",
+      "js/project-c33b8623c6fc6441201e.js"
+    ],
+    "vendors": ["js/vendors-c33b8623c6fc6441201e.js"]
+  },
+  "publicPath": "/static/webpack_bundles/"
+}
