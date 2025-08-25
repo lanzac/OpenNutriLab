@@ -7,6 +7,7 @@
 __pycache__/
 db.sqlite3
 media/
+webpack-stats.json
 local_settings.py
 
 # Backup files #
