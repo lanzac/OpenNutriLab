@@ -1,0 +1,88 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Django: Start App",
+      "type": "shell",
+      "command": "python manage.py startapp ${input:appName}",
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "options": {
+        "statusbar": {
+          "color": "#079165",
+          "label": "$(new-folder) Dj: Start App",
+          "detail": "Django: Start App"
+        }
+      }
+    },
+    {
+      "label": "Django: Make Migrations",
+      "type": "shell",
+      "command": "python manage.py makemigrations",
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "options": {
+        "statusbar": {
+          "color": "#079165",
+          "label": "$(file-code) Dj: Make Migrations",
+          "detail": "Django: Make Migrations"
+        }
+      }
+    },
+    {
+      "label": "Django: Migrate",
+      "type": "shell",
+      "command": "python manage.py migrate",
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "options": {
+        "statusbar": {
+          "color": "#079165",
+          "label": "$(database) Dj: Migrate",
+          "detail": "Django: Migrate"
+        }
+      }
+    },
+    {
+      "label": "Covarage: Run Pytest",
+      "type": "shell",
+      "command": "covarage run -m pytest",
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "options": {
+        "statusbar": {
+          "color": "#079165",
+          "label": "$(run-all) Coverage: Test",
+          "detail": "Covarage: Run Pytest"
+        }
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "appName",
+      "type": "promptString",
+      "description": "Description of the input variable"
+    }
+  ]
+}
