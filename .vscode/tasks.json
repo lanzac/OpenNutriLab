@@ -59,9 +59,9 @@
       }
     },
     {
-      "label": "Covarage: Run Pytest",
+      "label": "Coverage: Run Pytest",
       "type": "shell",
-      "command": "covarage run -m pytest",
+      "command": "coverage run -m pytest",
       "problemMatcher": [],
       "presentation": {
         "echo": true,
@@ -73,7 +73,7 @@
         "statusbar": {
           "color": "#079165",
           "label": "$(run-all) Coverage: Test",
-          "detail": "Covarage: Run Pytest"
+          "detail": "Coverage: Run Pytest"
         }
       }
     }
