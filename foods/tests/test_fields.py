@@ -1,23 +1,29 @@
-from django.test import SimpleTestCase
+from django.db.models.fields import CharField
+
+
+import pytest
 from django.core.exceptions import ValidationError
 from foods.fields import EAN13Field
 
-class EAN13FieldTest(SimpleTestCase):
-    def setUp(self):
-        self.field = EAN13Field()
 
-    def test_valid_ean13(self):
-        valid = "3560071429508"
-        self.assertEqual(self.field.clean(valid, None), valid)
+@pytest.fixture
+def ean13_field() -> CharField[str]:
+    return EAN13Field()
 
-    def test_invalid_checksum(self):
-        with self.assertRaises(ValidationError):
-            self.field.clean("3560071429501", None)
 
-    def test_too_short(self):
-        with self.assertRaises(ValidationError):
-            self.field.clean("356007142950", None)
+def test_valid_ean13(ean13_field: EAN13Field) -> None:
+    valid = "3560071429508"
+    assert ean13_field.clean(value=valid, model_instance=None) == valid
 
-    def test_non_numeric(self):
-        with self.assertRaises(ValidationError):
-            self.field.clean("abcdefghijklm", None)
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "3560071429501",  # mauvais checksum
+        "356007142950",  # trop court
+        "abcdefghijklm",  # non numérique
+    ],
+)
+def test_invalid_ean13_values(ean13_field: EAN13Field, value: str) -> None:
+    with pytest.raises(ValidationError):
+        ean13_field.clean(value, None)
