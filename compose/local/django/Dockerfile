@@ -36,7 +36,15 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # devcontainer dependencies and utils
 RUN apt-get update && apt-get install --no-install-recommends -y \
-  sudo git bash-completion nano ssh
+  sudo git bash-completion nano ssh locales \
+  && sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen \
+  && locale-gen \
+  && update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+
+# For information: using git inside a devcontainer I had to set the
+# previous configuration for locales, otherwise I had the warning using pre-commit
+# > git -c user.useConfigOnly=true commit --quiet --allow-empty-message --file - bash: warning: setlocale: LC_ALL: cannot change locale (en_US.UTF-8)
+
 
 # Create devcontainer user and add it to sudoers
 RUN groupadd --gid 1000 dev-user \
