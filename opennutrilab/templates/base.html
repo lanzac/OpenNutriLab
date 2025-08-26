@@ -31,7 +31,10 @@
             {% render_bundle 'project' 'js' attrs='defer' %}
         {% endblock javascript %}
     </head>
-    <body class="{% block bodyclass %}{% endblock bodyclass %}">
+    {% comment %} Next line with style="visibility: hidden;" -> See fouc_helper.js for more details. {% endcomment %}
+    <body class="fouc-hidden {% block bodyclass %}{% endblock bodyclass %}">
+        {% comment %} Next line : See fouc_helper.js for more details. {% endcomment %}
+        <script>0</script>
         {% block body %}
             <div class="mb-1">
                 <nav class="navbar navbar-expand-md navbar-light bg-light">
@@ -117,5 +120,7 @@
 </script>
             {% endcomment %}
         {% endblock inline_javascript %}
+        {% comment %} Next line : See fouc_helper.js for more details. {% endcomment %}
+        <noscript><style>body { visibility: visible; }</style></noscript>
     </body>
 </html>
