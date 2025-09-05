@@ -10,25 +10,6 @@ def main():
     """Run administrative tasks."""
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.local")
 
-    # Setup logging to stdout (so Docker logs and dev logs work)
-    logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
-
-    # start debug section
-    from django.conf import settings
-
-    if settings.DEBUG:
-        if os.environ.get("RUN_MAIN") or os.environ.get("WERKZEUG_RUN_MAIN"):
-            import debugpy
-
-            debugpy.listen(("0.0.0.0", 5678))
-            logging.info(
-                "✅ debugpy is listening on 0.0.0.0:5678"
-            )  # we use logging instead of print to ensure it works in all environments
-            # debugpy.wait_for_client()  # Uncomment to wait for VSCode debugger to attach before continuing
-    else:
-        logging.info("❌ Debug mode is off. Debugging will not be available.")
-    # end debug section
-
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
