@@ -3,5 +3,8 @@
     {
       "file": ".github/instructions/.conventional-commit-with-gitmoji-ai-prompt.md"
     }
-  ]
+  ],
+  "[html][django-html][handlebars][hbs][mustache][jinja][jinja-html][nj][njk][nunjucks][twig]": {
+    "editor.defaultFormatter": "monosans.djlint"
+  }
 }

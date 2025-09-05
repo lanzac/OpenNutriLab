@@ -56,7 +56,10 @@
                 // django
                 "batisteo.vscode-django",
                 // My personal preference
-                "actboy168.tasks"
+                "actboy168.tasks",
+                "ms-ossdata.vscode-pgsql",
+                "waderyan.gitblame",
+                "monosans.djlint"
             ]
         }
     },
