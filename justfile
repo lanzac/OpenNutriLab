@@ -37,6 +37,13 @@ logs *args:
 manage +args:
     @docker compose run --rm django python ./manage.py {{args}}
 
-# node-bash: Open a bash shell in the opennutrilab_local_node container.
-node-bash:
+# node-shell: Open a bash shell in the opennutrilab_local_node container.
+node-shell:
     @docker exec -it opennutrilab_local_node bash
+
+# django-shell: Open the Django shell in the opennutrilab_local_django container.
+django-shell:
+    @docker exec -it opennutrilab_local_django /entrypoint python manage.py shell
+
+django-container-shell:
+    @docker exec -it opennutrilab_local_django /entrypoint bash
