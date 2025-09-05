@@ -2,11 +2,20 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Django (Docker attach)",
+      "name": "init_nutrients",
+      "type": "debugpy",
+      "request": "launch",
+      "args": ["init_nutrients"],
+      "django": true,
+      "autoStartBrowser": false,
+      "program": "${workspaceFolder}/manage.py"
+    },
+    {
+      "name": "Django (Devcontainer)",
       "type": "debugpy",
       "request": "attach",
       "connect": {
-        "host": "localhost",
+        "host": "127.0.0.1",
         "port": 5678
       },
       "pathMappings": [
