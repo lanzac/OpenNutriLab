@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 """Django's command-line utility for administrative tasks."""
 
+import logging
 import os
 import sys
-import logging
 
 
 def main():
     """Run administrative tasks."""
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "opennutrilab.settings")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.local")
 
     # Setup logging to stdout (so Docker logs and dev logs work)
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
@@ -22,11 +22,11 @@ def main():
 
             debugpy.listen(("0.0.0.0", 5678))
             logging.info(
-                "debugpy is listening on 0.0.0.0:5678"
+                "✅ debugpy is listening on 0.0.0.0:5678"
             )  # we use logging instead of print to ensure it works in all environments
             # debugpy.wait_for_client()  # Uncomment to wait for VSCode debugger to attach before continuing
     else:
-        logging.info("Debug mode is off. Debugging will not be available.")
+        logging.info("❌ Debug mode is off. Debugging will not be available.")
     # end debug section
 
     try:
