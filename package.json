@@ -39,6 +39,7 @@
     "build": "webpack --config webpack/prod.config.js"
   },
   "dependencies": {
-    "@fortawesome/fontawesome-free": "^7.0.0"
+    "@fortawesome/fontawesome-free": "^7.0.0",
+    "flag-icons": "^7.5.0"
   }
 }

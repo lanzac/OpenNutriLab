@@ -6,6 +6,7 @@ from pathlib import Path
 # https://github.com/sbdchd/django-types?tab=readme-ov-file#i-cannot-use-queryset-or-manager-with-type-annotations
 import django_stubs_ext
 import environ  # pyright: ignore[reportMissingTypeStubs]
+from django.utils.translation import gettext_lazy as _
 
 django_stubs_ext.monkeypatch()
 
@@ -31,12 +32,11 @@ TIME_ZONE = "UTC"
 # https://docs.djangoproject.com/en/dev/ref/settings/#language-code
 LANGUAGE_CODE = "en-us"
 # https://docs.djangoproject.com/en/dev/ref/settings/#languages
-# from django.utils.translation import gettext_lazy as _
-# LANGUAGES = [
-#     ('en', _('English')),
-#     ('fr-fr', _('French')),
-#     ('pt-br', _('Portuguese')),
-# ]
+
+LANGUAGES = [
+    ("en-us", _("English")),
+    ("fr-fr", _("French")),
+]
 # https://docs.djangoproject.com/en/dev/ref/settings/#site-id
 SITE_ID = 1
 # https://docs.djangoproject.com/en/dev/ref/settings/#use-i18n

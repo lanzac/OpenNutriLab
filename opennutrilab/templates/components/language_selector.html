@@ -1,0 +1,35 @@
+{% load static i18n %}
+<li class="nav-item dropdown">
+  <a class="nav-link dropdown-toggle"
+     href="#"
+     role="button"
+     data-bs-toggle="dropdown"
+     aria-expanded="false">
+    {% get_current_language as LANGUAGE_CODE %}
+    {% if LANGUAGE_CODE == "fr-fr" %}
+      <span class="fi fi-fr fis"></span> Français
+    {% else %}
+      <span class="fi fi-gb fis"></span> English
+    {% endif %}
+  </a>
+  <ul class="dropdown-menu">
+    <li>
+      <form action="{% url 'set_language' %}" method="post">
+        {% csrf_token %}
+        <input name="next" type="hidden" value="{{ request.path }}">
+        <button class="dropdown-item" name="language" value="en-us" type="submit">
+          <span class="fi fi-gb fis"></span> English
+        </button>
+      </form>
+    </li>
+    <li>
+      <form action="{% url 'set_language' %}" method="post">
+        {% csrf_token %}
+        <input name="next" type="hidden" value="{{ request.path }}">
+        <button class="dropdown-item" name="language" value="fr-fr" type="submit">
+          <span class="fi fi-fr fis"></span> Français
+        </button>
+      </form>
+    </li>
+  </ul>
+</li>
