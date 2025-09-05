@@ -2,10 +2,10 @@
 """Base settings to build other settings files upon."""
 
 from pathlib import Path
-import environ  # pyright: ignore[reportMissingTypeStubs]
 
 # https://github.com/sbdchd/django-types?tab=readme-ov-file#i-cannot-use-queryset-or-manager-with-type-annotations
 import django_stubs_ext
+import environ  # pyright: ignore[reportMissingTypeStubs]
 
 django_stubs_ext.monkeypatch()
 
@@ -77,10 +77,10 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = [
     "crispy_forms",
     "crispy_bootstrap5",
-    # "allauth",
-    # "allauth.account",
-    # "allauth.mfa",
-    # "allauth.socialaccount",
+    "allauth",
+    "allauth.account",
+    "allauth.mfa",
+    "allauth.socialaccount",
     # "django_celery_beat",
     # "rest_framework",
     # "rest_framework.authtoken",
@@ -90,7 +90,7 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
-    # "opennutrilab.users",
+    "opennutrilab.users",
     # Your stuff: custom apps go here
     "foods.apps.FoodsConfig",
 ]
@@ -103,18 +103,18 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 MIGRATION_MODULES = {"sites": "opennutrilab.contrib.sites.migrations"}
 
 # # AUTHENTICATION
-# # ------------------------------------------------------------------------------
-# # https://docs.djangoproject.com/en/dev/ref/settings/#authentication-backends
-# AUTHENTICATION_BACKENDS = [
-#     "django.contrib.auth.backends.ModelBackend",
-#     "allauth.account.auth_backends.AuthenticationBackend",
-# ]
+# ------------------------------------------------------------------------------
+# https://docs.djangoproject.com/en/dev/ref/settings/#authentication-backends
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
+]
 # # https://docs.djangoproject.com/en/dev/ref/settings/#auth-user-model
-# AUTH_USER_MODEL = "users.User"
+AUTH_USER_MODEL = "users.User"
 # # https://docs.djangoproject.com/en/dev/ref/settings/#login-redirect-url
-# LOGIN_REDIRECT_URL = "users:redirect"
+LOGIN_REDIRECT_URL = "users:redirect"
 # # https://docs.djangoproject.com/en/dev/ref/settings/#login-url
-# LOGIN_URL = "account_login"
+LOGIN_URL = "account_login"
 
 # PASSWORDS
 # ------------------------------------------------------------------------------
@@ -150,7 +150,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    # "allauth.account.middleware.AccountMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
 ]
 
 # STATIC
@@ -196,7 +196,7 @@ TEMPLATES = [
                 "django.template.context_processors.static",
                 "django.template.context_processors.tz",
                 "django.contrib.messages.context_processors.messages",
-                # "opennutrilab.users.context_processors.allauth_settings",
+                "opennutrilab.users.context_processors.allauth_settings",
             ],
         },
     },
@@ -238,7 +238,7 @@ EMAIL_TIMEOUT = 5
 # Django Admin URL.
 ADMIN_URL = "admin/"
 # https://docs.djangoproject.com/en/dev/ref/settings/#admins
-ADMINS = [("""Daniel Roy Greenfeld""", "daniel-roy-greenfeld@example.com")]
+ADMINS = [("""André Lanrezac""", "andre-lanrezac@example.com")]
 # https://docs.djangoproject.com/en/dev/ref/settings/#managers
 MANAGERS = ADMINS
 # https://cookiecutter-django.readthedocs.io/en/latest/settings.html#other-environment-settings
@@ -311,23 +311,23 @@ REDIS_SSL = REDIS_URL.startswith("rediss://")
 # CELERY_TASK_SEND_SENT_EVENT = True
 # # https://docs.celeryq.dev/en/stable/userguide/configuration.html#worker-hijack-root-logger
 # CELERY_WORKER_HIJACK_ROOT_LOGGER = False
-# # django-allauth
-# # ------------------------------------------------------------------------------
-# ACCOUNT_ALLOW_REGISTRATION = env.bool("DJANGO_ACCOUNT_ALLOW_REGISTRATION", True)
-# # https://docs.allauth.org/en/latest/account/configuration.html
-# ACCOUNT_LOGIN_METHODS = {"username"}
-# # https://docs.allauth.org/en/latest/account/configuration.html
-# ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
-# # https://docs.allauth.org/en/latest/account/configuration.html
-# ACCOUNT_EMAIL_VERIFICATION = "mandatory"
-# # https://docs.allauth.org/en/latest/account/configuration.html
-# ACCOUNT_ADAPTER = "opennutrilab.users.adapters.AccountAdapter"
-# # https://docs.allauth.org/en/latest/account/forms.html
-# ACCOUNT_FORMS = {"signup": "opennutrilab.users.forms.UserSignupForm"}
-# # https://docs.allauth.org/en/latest/socialaccount/configuration.html
-# SOCIALACCOUNT_ADAPTER = "opennutrilab.users.adapters.SocialAccountAdapter"
-# # https://docs.allauth.org/en/latest/socialaccount/configuration.html
-# SOCIALACCOUNT_FORMS = {"signup": "opennutrilab.users.forms.UserSocialSignupForm"}
+# django-allauth
+# ------------------------------------------------------------------------------
+ACCOUNT_ALLOW_REGISTRATION = env.bool("DJANGO_ACCOUNT_ALLOW_REGISTRATION", True)
+# https://docs.allauth.org/en/latest/account/configuration.html
+ACCOUNT_LOGIN_METHODS = {"username"}
+# https://docs.allauth.org/en/latest/account/configuration.html
+ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
+# https://docs.allauth.org/en/latest/account/configuration.html
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+# https://docs.allauth.org/en/latest/account/configuration.html
+ACCOUNT_ADAPTER = "opennutrilab.users.adapters.AccountAdapter"
+# https://docs.allauth.org/en/latest/account/forms.html
+ACCOUNT_FORMS = {"signup": "opennutrilab.users.forms.UserSignupForm"}
+# https://docs.allauth.org/en/latest/socialaccount/configuration.html
+SOCIALACCOUNT_ADAPTER = "opennutrilab.users.adapters.SocialAccountAdapter"
+# https://docs.allauth.org/en/latest/socialaccount/configuration.html
+SOCIALACCOUNT_FORMS = {"signup": "opennutrilab.users.forms.UserSocialSignupForm"}
 
 # django-rest-framework
 # -------------------------------------------------------------------------------
