@@ -5,7 +5,7 @@ description = "An open-source app for precise food and meal analysis"
 authors = [{ name = "Andre Lanrezac", email = "a.lanrezac@gmail.com" }]
 requires-python = "==3.13.*"
 readme = "README.md"
-license = { text = "Apache License 2.0" }
+license = { text = "GPL-3.0-or-later" }
 dependencies = [
     "django (>=5.2.3,<6.0.0)",
     "django-pint (>=0.7.3,<0.8.0)",
@@ -22,6 +22,9 @@ dependencies = [
     "uvicorn>=0.35.0",
     "whitenoise>=6.9.0",
     "django-webpack-loader>=3.2.1",
+    "django-cors-headers>=4.7.0",
+    "django-allauth[mfa]>=65.11.1",
+    "argon2-cffi>=25.1.0",
 ]
 
 [build-system]
@@ -42,9 +45,13 @@ dev = [
     "django-stubs-ext>=5.2.2",
     "watchfiles>=1.1.0",
     "pre-commit>=4.3.0",
+    "djlint>=1.36.4",
 ]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "opennutrilab.settings"
 # -- recommended but optional:
 python_files = ["test_*.py", "*_test.py", "testing/python/*.py"]
+
+[tool.djlint]
+indent=2
