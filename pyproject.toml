@@ -38,7 +38,6 @@ dev = [
     "pytest>=8.4.1,<9",
     "pytest-django>=4.11.1,<5",
     "django-extensions>=4.1",
-    "django-browser-reload>=1.18.0",
     "django-debug-toolbar>=6.0.0",
     "basedpyright>=1.31.3",
     "pytest-sugar>=1.1.0",
