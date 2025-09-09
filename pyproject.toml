@@ -58,10 +58,152 @@ dev = [
     "djangorestframework-types>=0.9.0",
 ]
 
+# ==== pytest ====
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "opennutrilab.settings"
-# -- recommended but optional:
-python_files = ["test_*.py", "*_test.py", "testing/python/*.py"]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+minversion = "6.0"
+addopts = "--ds=config.settings.test --reuse-db --import-mode=importlib"
+python_files = ["test_*.py", "test_*.py"]
 
+# ==== Coverage ====
+[tool.coverage.run]
+include = ["opennutrilab/**"]
+omit = ["*/migrations/*", "*/tests/*"]
+plugins = ["django_coverage_plugin"]
+
+# ==== basedpyright ====
+[tool.basedpyright]
+# Target Python version
+pythonVersion = "3.12"
+
+# Type checking mode: "off" | "basic" | "strict"
+# Use "strict" for stronger checks, "basic" for fewer warnings
+typeCheckingMode = "strict"
+
+# Use installed libraries' code for type inference (helpful with django-stubs, etc.)
+useLibraryCodeForTypes = true
+
+# Missing imports handling (equivalent to mypy ignore_missing_imports)
+reportMissingImports = false
+reportMissingTypeStubs = false
+
+# Optional type checks (null/None-related issues)
+reportOptionalMemberAccess = true
+reportOptionalCall = true
+reportOptionalSubscript = true
+reportOptionalIterable = true
+reportOptionalOperand = true
+
+# General diagnostics
+reportUnboundVariable = true
+reportUndefinedVariable = true
+reportUnusedImport = false    # Set to true if you want to detect unused imports
+reportUnusedVariable = false  # Set to true if you want to detect unused variables
+
+# Exclude paths from analysis (equivalent to mypy overrides for migrations)
+exclude = ["**/migrations/**", "**/node_modules/**", ".venv/**"]
+
+
+
+# ==== djLint ====
 [tool.djlint]
-indent=2
+blank_line_after_tag = "load,extends"
+close_void_tags = true
+format_css = true
+format_js = true
+# TODO: remove T002 when fixed https://github.com/djlint/djLint/issues/687
+ignore = "H006,H030,H031,T002"
+include = "H017,H035"
+indent = 2
+max_line_length = 119
+profile = "django"
+
+[tool.djlint.css]
+indent_size = 2
+
+[tool.djlint.js]
+indent_size = 2
+
+
+[tool.ruff]
+target-version = "py312"
+# Exclude a variety of commonly ignored directories.
+extend-exclude = [
+    "*/migrations/*.py",
+    "staticfiles/*",
+]
+
+[tool.ruff.lint]
+select = [
+    "F",
+    "E",
+    "W",
+    "C90",
+    "I",
+    "N",
+    "UP",
+    "YTT",
+    # "ANN", # flake8-annotations: we should support this in the future but 100+ errors atm
+    "ASYNC",
+    "S",
+    "BLE",
+    "FBT",
+    "B",
+    "A",
+    "COM",
+    "C4",
+    "DTZ",
+    "T10",
+    "DJ",
+    "EM",
+    "EXE",
+    "FA",
+    'ISC',
+    "ICN",
+    "G",
+    'INP',
+    'PIE',
+    "T20",
+    'PYI',
+    'PT',
+    "Q",
+    "RSE",
+    "RET",
+    "SLF",
+    "SLOT",
+    "SIM",
+    "TID",
+    "TC",
+    "INT",
+    # "ARG", # Unused function argument
+    "PTH",
+    "ERA",
+    "PD",
+    "PGH",
+    "PL",
+    "TRY",
+    "FLY",
+    # "NPY",
+    # "AIR",
+    "PERF",
+    # "FURB",
+    # "LOG",
+    "RUF",
+]
+ignore = [
+    "S101", # Use of assert detected https://docs.astral.sh/ruff/rules/assert/
+    "RUF012", # Mutable class attributes should be annotated with `typing.ClassVar`
+    "SIM102", # sometimes it's better to nest
+    "UP038", # Checks for uses of isinstance/issubclass that take a tuple
+    # of types for comparison.
+    # Deactivated because it can make the code slow:
+    # https://github.com/astral-sh/ruff/issues/7871
+]
+# The fixes in extend-unsafe-fixes will require
+# provide the `--unsafe-fixes` flag when fixing.
+extend-unsafe-fixes = [
+  "UP038",
+]
+
+[tool.ruff.lint.isort]
+force-single-line = true
