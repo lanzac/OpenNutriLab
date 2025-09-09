@@ -14,7 +14,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Behold OpenNutriLab!" />
     <meta name="author" content="André Lanrezac" />
-    <meta name="keywords" content="nutrition, open source">
+    <meta name="keywords" content="nutrition, open source" />
     <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}" />
     {% block css %}
       <!-- Your stuff: Third-party CSS libraries go here -->
@@ -63,8 +63,7 @@
                 {% if request.user.is_authenticated %}
                   <li class="nav-item">
                     <a class="nav-link"
-                       href="{% url 'users:detail' request.user.username %}">{% translate "My
-                    Profile" %}</a>
+                       href="{% url 'users:detail' request.user.username %}">{% translate "My Profile" %}</a>
                   </li>
                   <li class="nav-item">
                     {# URL provided by django-allauth/account/urls.py #}
@@ -115,13 +114,18 @@
     Script tags with only code, no src (defer by default). To run
     with a "defer" so that you run inline code:
     <script>
-        window.addEventListener('DOMContentLoaded', () => {
-            /* Run whatever you want */
-        });
+      window.addEventListener('DOMContentLoaded', () => {
+        /* Run whatever you want */
+      });
 </script>
       {% endcomment %}
     {% endblock inline_javascript %}
     {% comment %} Next line : See fouc_helper.js for more details. {% endcomment %}
-    <noscript><style>body { visibility: visible; }</style></noscript>
-  </body>
+    <noscript><style>
+  body {
+    visibility: visible;
+  }
+    </style>
+  </noscript>
+</body>
 </html>
