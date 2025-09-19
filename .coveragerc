@@ -4,3 +4,7 @@ source = foods,opennutrilab
 [report]
 show_missing = True
 fail_under = 90
+skip_covered = True
+omit =
+    */tests/*
+    */migrations/*
