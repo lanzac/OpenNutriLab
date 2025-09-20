@@ -2,6 +2,9 @@ from typing import final
 from typing import override
 
 from django.db import models
+from django.db.models import UniqueConstraint
+from django.db.models.functions import Lower
+from django.db.models.functions import Upper
 from quantityfield.fields import QuantityField
 
 from foods.units import DEFAULT_ENERGY_UNIT
@@ -19,6 +22,14 @@ class Macronutrient(models.Model):
     name = models.CharField(max_length=100, primary_key=True)
     description = models.TextField(blank=True, default="")
 
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                Lower("name"),
+                name="unique_macronutrient_name_case_insensitive",
+            ),
+        ]
+
     @override
     def __str__(self) -> str:
         label: str = self.name.replace("_", " ").title()
@@ -30,8 +41,10 @@ class Macronutrient(models.Model):
 @final
 class Vitamin(models.Model):
     name = models.CharField(max_length=100, primary_key=True)
-    description = models.TextField(blank=True, default="")
-    emojis = models.CharField(max_length=100, blank=True, default="")
+    common_name = models.TextField(max_length=100, blank=True)
+    atc_code = models.CharField(max_length=7, unique=True)
+    chembl_id = models.CharField(max_length=12, unique=True)
+
     # Conventional default unit for the given vitamin to show in the form
     default_unit_in_form = models.CharField(
         choices=VITAMIN_UNIT_CHOICES,
@@ -39,9 +52,28 @@ class Vitamin(models.Model):
         default=DEFAULT_VITAMIN_UNIT,
     )
 
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                Lower("name"),
+                name="unique_vitamin_name_case_insensitive",
+            ),
+            UniqueConstraint(
+                Upper("atc_code"),
+                name="unique_vitamin_atc_code_case_insensitive",
+            ),
+            UniqueConstraint(
+                Upper("chembl_id"),
+                name="unique_vitamin_chembl_id_case_insensitive",
+            ),
+        ]
+
     @override
     def __str__(self) -> str:
-        return f"Vitamin {self.name} {self.emojis if self.emojis else ''}"
+        label: str = self.name.replace("_", " ").title()
+        if self.common_name:
+            label += f" ({self.common_name})"
+        return label
 
 
 @final
