@@ -4,7 +4,7 @@
     {
       "label": "Django: Start App",
       "type": "shell",
-      "command": "python manage.py startapp ${input:appName}",
+      "command": "source /entrypoint && python manage.py startapp ${input:appName}",
       "problemMatcher": [],
       "presentation": {
         "echo": true,
@@ -23,7 +23,7 @@
     {
       "label": "Django: Make Migrations",
       "type": "shell",
-      "command": "python manage.py makemigrations",
+      "command": "source /entrypoint && python manage.py makemigrations",
       "problemMatcher": [],
       "presentation": {
         "echo": true,
@@ -42,7 +42,7 @@
     {
       "label": "Django: Migrate",
       "type": "shell",
-      "command": "python manage.py migrate",
+      "command": "source /entrypoint && python manage.py migrate",
       "problemMatcher": [],
       "presentation": {
         "echo": true,
@@ -61,7 +61,7 @@
     {
       "label": "Coverage: Run Pytest",
       "type": "shell",
-      "command": "coverage run -m pytest",
+      "command": "bash -ic 'source /entrypoint && coverage run -m pytest'",
       "problemMatcher": [],
       "presentation": {
         "echo": true,
@@ -74,6 +74,25 @@
           "color": "#079165",
           "label": "$(run-all) Coverage: Test",
           "detail": "Coverage: Run Pytest"
+        }
+      }
+    },
+    {
+      "label": "Coverage: Report",
+      "type": "shell",
+      "command": "coverage report",
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "options": {
+        "statusbar": {
+          "color": "#079165",
+          "label": "$(run-all) Coverage: Report",
+          "detail": "Coverage: Report"
         }
       }
     }
