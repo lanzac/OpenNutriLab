@@ -2,6 +2,9 @@ import pytest
 from django.db import IntegrityError
 from django.db import transaction
 
+from foods.models import Food
+from foods.models import FoodMacronutrient
+from foods.models import FoodVitamin
 from foods.models import Macronutrient
 from foods.models import Vitamin
 
@@ -162,3 +165,43 @@ def test_vitamin_common_name_optional():
         chembl_id="CHEMBL1550",
     )
     assert vitamin.common_name == ""  # blank=True → empty string by default
+
+
+# ----------------------------------------------------------------------------
+# Food model tests -----------------------------------------------------------
+# ----------------------------------------------------------------------------
+@pytest.mark.django_db
+def test_food_str() -> None:
+    from foods.models import Food  # noqa: PLC0415
+
+    food = Food.objects.create(barcode="3229820794556", name="muesli protéines")
+    assert str(food) == "Muesli Protéines"
+
+
+# ----------------------------------------------------------------------------
+# FoodVitamin model tests ----------------------------------------------------
+# ----------------------------------------------------------------------------
+@pytest.mark.django_db
+def test_foodvitamin_str_representation() -> None:
+    food = Food.objects.create(name="Apple")
+    vitamin = Vitamin.objects.create(
+        name="Ascorbic acid",
+        common_name="Vitamin C",
+        atc_code="A11GA01",
+        chembl_id="CHEMBL196",
+    )
+    fv = FoodVitamin.objects.create(food=food, vitamin=vitamin)
+
+    assert str(fv) == "Apple Ascorbic Acid (Vitamin C) amount"
+
+
+# ----------------------------------------------------------------------------
+# FoodMacronutrient model tests ----------------------------------------------
+# ----------------------------------------------------------------------------
+@pytest.mark.django_db
+def test_foodmacronutrient_str_representation() -> None:
+    food = Food.objects.create(name="Banana")
+    macro = Macronutrient.objects.create(name="Protein")
+    fm = FoodMacronutrient.objects.create(food=food, macronutrient=macro)
+
+    assert str(fm) == "Banana Protein amount"
