@@ -49,17 +49,15 @@
                 "mrmlnc.vscode-duplicate",
                 "visualstudioexptteam.vscodeintellicode",
                 "visualstudioexptteam.intellicode-api-usage-examples",
-                // python
                 "ms-python.python",
                 "charliermarsh.ruff",
                 "detachhead.basedpyright",
-                // django
                 "batisteo.vscode-django",
-                // My personal preference
                 "actboy168.tasks",
                 "ms-ossdata.vscode-pgsql",
                 "waderyan.gitblame",
-                "monosans.djlint"
+                "monosans.djlint",
+                "pamaron.pytest-runner"
             ]
         }
     },
