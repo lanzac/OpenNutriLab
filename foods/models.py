@@ -107,7 +107,8 @@ class Food(models.Model):
 
     @override
     def __str__(self) -> str:
-        return f"{self.name}"
+        label: str = self.name.replace("_", " ").title()
+        return label
 
 
 @final
@@ -137,7 +138,7 @@ class FoodVitamin(models.Model):
 
     @override
     def __str__(self) -> str:
-        return f"{self.food.name} Vitamin {self.vitamin.name} amount"
+        return f"{self.food} {self.vitamin} amount"
 
 
 @final
@@ -163,4 +164,4 @@ class FoodMacronutrient(models.Model):
 
     @override
     def __str__(self) -> str:
-        return f"{self.food.name} Macronutrient {self.macronutrient.name} amount"
+        return f"{self.food.name} {self.macronutrient.name} amount"
