@@ -41,7 +41,6 @@ class FoodForm(forms.ModelForm):
         self.fields_categories = {
             "description": self._meta.fields,
             "macronutrients": [],
-            "vitamins": [],
         }
         self.dynamic_fields_info: dict[Any, Any] = {}  # field_name -> info dict
         # Ajout des champs dynamiques
