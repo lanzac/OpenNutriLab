@@ -13,77 +13,108 @@ from foods.models import Vitamin
 # Macronutrient model tests --------------------------------------------------
 # ----------------------------------------------------------------------------
 @pytest.mark.django_db
-def test_macronutrient_str_without_description():
-    m = Macronutrient.objects.create(name="protein")
-    assert str(m) == "Protein"
+def test_macronutrient_reference_data():
+    expected_names = {
+        "fat",
+        "saturated_fat",
+        "carbohydrates",
+        "sugars",
+        "fiber",
+        "proteins",
+    }
+    existing_names = set(Macronutrient.objects.values_list("name", flat=True))
+    missing = expected_names - existing_names
+    assert not missing, f"Missing macronutrients in DB: {missing}"
 
 
 @pytest.mark.django_db
-def test_macronutrient_str_with_description():
-    m = Macronutrient.objects.create(name="protein", description="g/100g")
-    assert str(m) == "Protein (g/100g)"
-
-
-@pytest.mark.django_db
-def test_macronutrient_str_with_underscores():
-    m = Macronutrient.objects.create(name="total_fat")
-    assert str(m) == "Total Fat"
-
-
-@pytest.mark.django_db
-def test_macronutrient_str_with_multiple_underscores():
-    m = Macronutrient.objects.create(name="omega_3_fatty_acid")
-    assert str(m) == "Omega 3 Fatty Acid"
+@pytest.mark.parametrize(
+    argnames=("name", "description", "expected"),
+    argvalues=[
+        # Basic name without underscore or description
+        ("simplemacro", "", "Simplemacro"),
+        # Name with single underscore
+        ("macro_withoneunderscore", "", "Macro Withoneunderscore"),
+        # Name with multiple underscores
+        ("macro_with_multiple_underscores", "", "Macro With Multiple Underscores"),
+        # Name with description only
+        ("macrowithdescription", "g/100g", "Macrowithdescription (g/100g)"),
+        # Combination underscores and description
+        (
+            "macro_with_underscores_and_description",
+            "mg",
+            "Macro With Underscores And Description (mg)",
+        ),
+        # Name with description text
+        ("simplemacro", "per serving", "Simplemacro (per serving)"),
+    ],
+)
+def test_macronutrient_str(name: str, description: str, expected: str):
+    """
+    Test __str__ formatting for Macronutrient:
+    - replaces underscores with spaces
+    - applies title casing
+    - appends description if present
+    """
+    m = Macronutrient.objects.create(
+        name=name,
+        description=description or "",
+    )
+    assert str(m) == expected
 
 
 @pytest.mark.django_db
 def test_macronutrient_primary_key_case_insensitive_uniqueness():
     # Initial creation
-    Macronutrient.objects.create(name="protein")
+    Macronutrient.objects.create(name="macrotest")
 
     # Test exact duplicate
     with transaction.atomic(), pytest.raises(IntegrityError):
-        Macronutrient.objects.create(name="protein")
+        Macronutrient.objects.create(name="Macrotest")
 
     # Test case-insensitive duplicate
     with transaction.atomic(), pytest.raises(IntegrityError):
-        Macronutrient.objects.create(name="Protein")
+        Macronutrient.objects.create(name="Macrotest")
 
 
 # ----------------------------------------------------------------------------
 # Vitamin model tests --------------------------------------------------------
 # ----------------------------------------------------------------------------
 @pytest.mark.django_db
-def test_vitamin_str_without_common_name():
+@pytest.mark.parametrize(
+    argnames=("name", "common_name", "expected"),
+    argvalues=[
+        # Without common_name
+        ("vitatest", "", "Vitatest"),
+        # With common_name
+        ("vitatest", "Vitamin B1", "Vitatest (Vitamin B1)"),
+    ],
+)
+def test_vitamin_str(name: str, common_name: str, expected: str):
+    """
+    Test __str__ formatting for Vitamin:
+    - shows name
+    - appends common_name in parentheses if present
+    """
     m = Vitamin.objects.create(
-        name="thiamine",
+        name=name,
+        common_name=common_name or "",
         atc_code="A11DA01",
         chembl_id="CHEMBL1547",
     )
-    assert str(m) == "Thiamine"
-
-
-@pytest.mark.django_db
-def test_vitamin_str_with_common_name():
-    m = Vitamin.objects.create(
-        name="thiamine",
-        common_name="Vitamin B1",
-        atc_code="A11DA01",
-        chembl_id="CHEMBL1547",
-    )
-    assert str(m) == "Thiamine (Vitamin B1)"
+    assert str(m) == expected
 
 
 @pytest.mark.django_db
 def test_vitamin_name_case_insensitive_uniqueness():
     Vitamin.objects.create(
-        name="thiamine",
+        name="vitatest",
         atc_code="A11DA01",
         chembl_id="CHEMBL1547",
     )
     with transaction.atomic(), pytest.raises(IntegrityError):
         Vitamin.objects.create(
-            name="Thiamine",  # same name, different case
+            name="Vitatest",  # same name, different case
             atc_code="A11DA02",
             chembl_id="CHEMBL1548",
         )
@@ -92,13 +123,13 @@ def test_vitamin_name_case_insensitive_uniqueness():
 @pytest.mark.django_db
 def test_vitamin_atc_code_case_insensitive_uniqueness():
     Vitamin.objects.create(
-        name="thiamine",
+        name="vitatest",
         atc_code="A11DA01",
         chembl_id="CHEMBL1547",
     )
     with transaction.atomic(), pytest.raises(IntegrityError):
         Vitamin.objects.create(
-            name="riboflavine",
+            name="othervitatest",
             atc_code="a11da01",  # same ATC code, lowercase
             chembl_id="CHEMBL1548",
         )
@@ -107,13 +138,13 @@ def test_vitamin_atc_code_case_insensitive_uniqueness():
 @pytest.mark.django_db
 def test_vitamin_chembl_id_case_insensitive_uniqueness():
     Vitamin.objects.create(
-        name="thiamine",
+        name="vitatest",
         atc_code="A11DA01",
         chembl_id="CHEMBL1547",
     )
     with transaction.atomic(), pytest.raises(IntegrityError):
         Vitamin.objects.create(
-            name="riboflavine",
+            name="othervitatest",
             atc_code="A11DA02",
             chembl_id="chembl1547",  # same ChEMBL, lowercase
         )
@@ -200,8 +231,8 @@ def test_foodvitamin_str_representation() -> None:
 # ----------------------------------------------------------------------------
 @pytest.mark.django_db
 def test_foodmacronutrient_str_representation() -> None:
-    food = Food.objects.create(name="Banana")
-    macro = Macronutrient.objects.create(name="Protein")
+    food = Food.objects.create(name="BananaTest")
+    macro = Macronutrient.objects.create(name="ProteinsTest")
     fm = FoodMacronutrient.objects.create(food=food, macronutrient=macro)
 
-    assert str(fm) == "Banana Protein amount"
+    assert str(fm) == "BananaTest ProteinsTest amount"
