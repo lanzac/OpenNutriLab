@@ -84,6 +84,9 @@ class Food(models.Model):
     description = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # ------------------------------------------------------------------------
+    # Nutritional values -----------------------------------------------------
+    # ------------------------------------------------------------------------
     # 🔹 Energy
     energy: QuantityField = QuantityField(
         base_units=DEFAULT_ENERGY_UNIT,
@@ -104,6 +107,7 @@ class Food(models.Model):
         through="FoodVitamin",
         related_name="foods",
     )
+    # ------------------------------------------------------------------------
 
     @override
     def __str__(self) -> str:
