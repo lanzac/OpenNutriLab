@@ -26,6 +26,7 @@ from .models import Macronutrient
 
 if TYPE_CHECKING:
     from django.forms.widgets import Widget
+    from pint import Quantity
 
 
 class FoodForm(forms.ModelForm):
@@ -38,8 +39,15 @@ class FoodForm(forms.ModelForm):
             "description": forms.Textarea(attrs={"rows": 3}),
         }
 
-    def __init__(self, *args, **kwargs):  # pyright: ignore[reportMissingParameterType, reportUnknownParameterType]
+    def __init__(self, *args, extra_data: dict[str, str] | None = None, **kwargs):  # pyright: ignore[reportMissingParameterType, reportUnknownParameterType]
+        # register extra_data variable before calling the super() method
+        # https://djangoandy.com/2023/08/23/passing-custom-variables-into-django-forms/
+        self.extra_data: dict[str, str] | None = extra_data
         super().__init__(*args, **kwargs)  # pyright: ignore[reportUnknownArgumentType]
+
+        self.fetched_image_url: str | None = (
+            self.extra_data.get("fetched_image_url") if self.extra_data else None
+        )
 
         # --------------------------------------------------------------------
         # FormHelper configuration
@@ -57,10 +65,15 @@ class FoodForm(forms.ModelForm):
         self.fields[
             "barcode"
         ].help_text = "Enter the 13-digit EAN code from the packaging."
-        barcode_field: FieldWithButtons | Field = self._build_barcode_field()
+        barcode_field: FieldWithButtons | Field = self._get_barcode_field_layout()
+
+        # 🔹 Nutritional values
+        self._add_nutritional_value_fields()  # Add dynamic fields (macronutrients)
         nutritional_values_fields_layout: list[Field] = (
-            self._get_nutritional_values_fields_layout()
+            self._get_nutritional_values_layout()
         )
+
+        # 🔹 Configure widgets attrs for all QuantityFormField fields
         self._configure_field_widgets_attrs()
         # --------------------------------------------------------------------
 
@@ -69,10 +82,23 @@ class FoodForm(forms.ModelForm):
         # --------------------------------------------------------------------
         self.helper.layout = Layout(
             Row(
-                Column(barcode_field, css_class="col-md-6"),
-                Column(Field("name"), css_class="col-md-6"),
+                Column(
+                    Row(
+                        Column(barcode_field, css_class="col-md-6"),
+                        Column(Field("name"), css_class="col-md-6"),
+                    ),
+                    FloatingField(
+                        "description",
+                        style="height: 100px",
+                        css_class="col-md-8",
+                    ),
+                    css_class="col-md-8",
+                ),
+                Column(
+                    HTML("{% include 'foods/components/image_preview.html' %}"),
+                    css_class="col-md-4 d-flex align-items-center justify-content-center",  # noqa: E501
+                ),
             ),
-            FloatingField("description", style="height: 100px"),
             BS5Accordion(
                 AccordionGroup(
                     "Nutritional values (per 100g)",
@@ -91,7 +117,7 @@ class FoodForm(forms.ModelForm):
         )
         # --------------------------------------------------------------------
 
-    def _build_barcode_field(self) -> FieldWithButtons | Field:
+    def _get_barcode_field_layout(self) -> FieldWithButtons | Field:
         if not self.instance.pk:
             return FieldWithButtons(
                 Field("barcode"),
@@ -110,37 +136,19 @@ class FoodForm(forms.ModelForm):
         )
         return Field("barcode")
 
-    def _get_nutritional_values_fields_layout(self) -> list[Field]:
-        """
-        Build the crispy-forms layout for energy + all macronutrient fields.
-        If editing, pre-fill fields with the values from FoodMacronutrient.
-        """
-        fields_layout: list[Field] = []
+    def _add_nutritional_value_fields(self) -> None:
+        """Add energy + macronutrient fields to self.fields."""
+        # Energy field is already in the form, so no need to clone here
 
-        # Energy field (MultiWidgetField)
-        # Using PrependedText without text for MultiWidgetField to avoid layout issues
-        energy_field = PrependedText(field="energy", text="")
-        fields_layout.append(energy_field)
-
-        # Macronutrient fields (one field per macronutrient)
         for macronutrient in Macronutrient.objects.all():
-            # Becareful here with prefix "macronutrient_" which is used in the form
-            # field names in order to match the naming convention defined in
-            # ProductFormSchema
-            # Field name convention: "macronutrients_<macronutrient.name>"
             field_name = f"macronutrients_{macronutrient.name.lower()}"
+            form_field = FoodMacronutrient._meta.get_field("amount").formfield(  # noqa: SLF001
+                required=False,
+            )
+            form_field.label = str(macronutrient)
 
-            # Clone form field from FoodMacronutrient.amount (QuantityFormField)
-            # definition
-            macronutrient_form_field = FoodMacronutrient._meta.get_field(  # noqa: SLF001
-                field_name="amount",
-            ).formfield(required=False)
-
-            macronutrient_form_field.label = str(macronutrient)
-
-            # If editing an existing Food, try to fetch stored amountc
             if self.instance and self.instance.pk:
-                amount_value = (
+                amount_value: Quantity | None = (
                     FoodMacronutrient.objects.filter(
                         food=self.instance,
                         macronutrient=macronutrient,
@@ -148,25 +156,26 @@ class FoodForm(forms.ModelForm):
                     .values_list("amount", flat=True)
                     .first()
                 )
-
                 if amount_value is not None:
-                    macronutrient_form_field.initial = amount_value
+                    form_field.initial = amount_value
                 else:
-                    macronutrient_form_field.widget.attrs.update(
+                    form_field.widget.attrs.update(
                         {
                             "class": "form-control",
                             "placeholder": "!!! No data found for this field !!!",
                         },
                     )
 
-            # Add field into the form
-            self.fields[field_name] = macronutrient_form_field
-            # Add to crispy layout
-            fields_layout.append(
-                PrependedText(field=field_name, text=""),
-            )
+            self.fields[field_name] = form_field
 
-        return fields_layout
+    def _get_nutritional_values_layout(self) -> list[Field]:
+        """Return crispy-forms layout for energy + macronutrients."""
+        layout_fields: list[Field] = [PrependedText(field="energy", text="")]
+        layout_fields += [
+            PrependedText(field=f"macronutrients_{m.name.lower()}", text="")
+            for m in Macronutrient.objects.all()
+        ]
+        return layout_fields
 
     def _configure_field_widgets_attrs(self) -> None:
         for field in self.fields.values():

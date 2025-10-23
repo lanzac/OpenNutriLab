@@ -11,3 +11,7 @@
   background-color: #f2dede;
   border-color: #eed3d7;
 }
+
+.food-image-preview {
+  max-width: 200px;
+}
