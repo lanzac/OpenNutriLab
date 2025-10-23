@@ -2,5 +2,8 @@ from django.apps import AppConfig
 
 
 class FoodsConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'foods'
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "foods"
+
+    def ready(self):
+        import foods.signals  # noqa: F401, PLC0415
