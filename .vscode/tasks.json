@@ -16,7 +16,8 @@
         "statusbar": {
           "color": "#079165",
           "label": "$(new-folder) Dj: Start App",
-          "detail": "Django: Start App"
+          "detail": "Django: Start App",
+          "hide": true
         }
       }
     },
@@ -72,7 +73,7 @@
       "options": {
         "statusbar": {
           "color": "#079165",
-          "label": "$(run-all) Coverage: Test",
+          "label": "$(run-all) Cov: Test",
           "detail": "Coverage: Run Pytest"
         }
       }
@@ -91,7 +92,7 @@
       "options": {
         "statusbar": {
           "color": "#079165",
-          "label": "$(run-all) Coverage: Report",
+          "label": "$(run-all) Cov: Report",
           "detail": "Coverage: Report"
         }
       }
