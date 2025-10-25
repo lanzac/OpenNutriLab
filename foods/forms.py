@@ -142,7 +142,9 @@ class FoodForm(forms.ModelForm):
 
         for macronutrient in Macronutrient.objects.all():
             field_name = f"macronutrients_{macronutrient.name.lower()}"
-            form_field = FoodMacronutrient._meta.get_field("amount").formfield(  # noqa: SLF001
+            form_field: QuantityFormField = FoodMacronutrient._meta.get_field(  # noqa: SLF001
+                field_name="amount",
+            ).formfield(
                 required=False,
             )
             form_field.label = str(macronutrient)
@@ -203,7 +205,7 @@ class FoodForm(forms.ModelForm):
         # Iterate over all macronutrients to handle their dynamic form fields
         for macronutrient in Macronutrient.objects.all():
             field_name = f"macronutrients_{macronutrient.name.lower()}"
-            value = self.cleaned_data.get(field_name)
+            value: Quantity | None = self.cleaned_data.get(field_name)
 
             if value:
                 # Create or update the FoodMacronutrient entry for this macronutrient
