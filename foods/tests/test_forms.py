@@ -124,3 +124,53 @@ def test_food_form_save_creates_food_and_macronutrient_relations():
 
     # 3️⃣ No relation for "fat"
     assert not FoodMacronutrient.objects.filter(food=food, macronutrient=fat).exists()
+
+
+@pytest.mark.django_db
+def test_food_form_save_updates_existing_foodmacronutrient():
+    protein = Macronutrient.objects.create(name="protein_test")
+    food = Food.objects.create(name="Update Test", barcode="3229820794556")
+
+    FoodMacronutrient.objects.create(food=food, macronutrient=protein, amount=5.0)
+
+    form_data = {
+        "barcode": "3229820794556",
+        "name": "Update Test",
+        "energy_0": 150,
+        "energy_1": "kJ",
+        f"macronutrients_{protein.name.lower()}_0": 9.0,
+        f"macronutrients_{protein.name.lower()}_1": "g",
+    }
+
+    form = FoodForm(data=form_data, instance=food)
+    assert form.is_valid(), form.errors
+    form.save()
+
+    rel = FoodMacronutrient.objects.get(food=food, macronutrient=protein)
+    amount = cast("Quantity", rel.amount)
+    assert amount == Quantity(9.0, ureg.g)
+
+
+@pytest.mark.django_db
+def test_food_form_save_removes_macronutrient_if_value_missing():
+    protein = Macronutrient.objects.create(name="protein_test")
+    food = Food.objects.create(name="Delete Test", barcode="3229820794556")
+
+    FoodMacronutrient.objects.create(food=food, macronutrient=protein, amount=5.0)
+
+    form_data = {
+        "barcode": "3229820794556",
+        "name": "Delete Test",
+        "energy_0": 150,
+        "energy_1": "kJ",
+        f"macronutrients_{protein.name.lower()}_0": "",  # empty value = remove relation
+    }
+
+    form = FoodForm(data=form_data, instance=food)
+    assert form.is_valid(), form.errors
+    form.save()
+
+    assert not FoodMacronutrient.objects.filter(
+        food=food,
+        macronutrient=protein,
+    ).exists()
