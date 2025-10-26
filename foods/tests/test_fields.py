@@ -1,8 +1,7 @@
-from django.db.models.fields import CharField
-
-
 import pytest
 from django.core.exceptions import ValidationError
+from django.db.models.fields import CharField
+
 from foods.fields import EAN13Field
 
 
