@@ -181,22 +181,20 @@ class FoodForm(forms.ModelForm):
 
     def _configure_field_widgets_attrs(self) -> None:
         for field in self.fields.values():
-            if not isinstance(field, QuantityFormField):
-                continue
+            if isinstance(field, QuantityFormField):
+                widget: type[Widget] | Widget = field.widget
+                widget.attrs["step"] = "0.01"
 
-            widget: type[Widget] | Widget = field.widget
-            widget.attrs["step"] = "0.01"
-
-            if not isinstance(widget, forms.MultiWidget):
-                continue
-
-            for subwidget in widget.widgets:
-                if not isinstance(subwidget, forms.NumberInput):
-                    continue
-
-                subwidget.attrs.update(
-                    {"class": "form-control", "type": "number", "min": "0.00"},
-                )
+                if isinstance(widget, forms.MultiWidget):
+                    for subwidget in widget.widgets:
+                        if isinstance(subwidget, forms.NumberInput):
+                            subwidget.attrs.update(
+                                {
+                                    "class": "form-control",
+                                    "type": "number",
+                                    "min": "0.00",
+                                },
+                            )
 
     def save(self, commit: bool = True):  # noqa: FBT001, FBT002
         # Save the main Food object first
