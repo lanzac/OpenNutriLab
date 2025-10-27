@@ -39,10 +39,15 @@ class FoodForm(forms.ModelForm):
             "description": forms.Textarea(attrs={"rows": 3}),
         }
 
-    def __init__(self, *args, extra_data: dict[str, str] | None = None, **kwargs):  # pyright: ignore[reportMissingParameterType, reportUnknownParameterType]
+    def __init__(
+        self,
+        *args,  # pyright: ignore[reportMissingParameterType, reportUnknownParameterType]
+        extra_data: dict[str, str | None] | None = None,
+        **kwargs,  # pyright: ignore[reportMissingParameterType, reportUnknownParameterType]
+    ):
         # register extra_data variable before calling the super() method
         # https://djangoandy.com/2023/08/23/passing-custom-variables-into-django-forms/
-        self.extra_data: dict[str, str] | None = extra_data
+        self.extra_data: dict[str, str | None] | None = extra_data
         super().__init__(*args, **kwargs)  # pyright: ignore[reportUnknownArgumentType]
 
         self.fetched_image_url: str | None = (

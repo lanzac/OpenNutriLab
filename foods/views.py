@@ -31,7 +31,7 @@ class FoodCreateView(CreateView):
         self,
         data=None,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
         files=None,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
-        extra_data: dict[str, str] | None = None,
+        extra_data: dict[str, str | None] | None = None,
         **kwargs,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
     ):
         barcode: str | None = self.request.GET.get("barcode")
@@ -47,7 +47,7 @@ class FoodCreateView(CreateView):
         # Otherwise is just GET request for form files is None
         if isinstance(files, MultiValueDict):
             # First step: fetch image from URL
-            fetched_image_url: str = extra_data.get("fetched_image_url", "")  # pyright: ignore[reportOptionalMemberAccess]
+            fetched_image_url: str | None = extra_data.get("fetched_image_url", "")  # pyright: ignore[reportOptionalMemberAccess]
 
             if fetched_image_url:
                 resp = requests.get(fetched_image_url, timeout=10)
