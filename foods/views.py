@@ -55,8 +55,9 @@ class FoodCreateView(CreateView):
 
                 filename = f"{barcode}.jpg"
 
-                if default_storage.exists(f"image/products/{filename}"):
-                    default_storage.delete(f"image/products/{filename}")
+                path = f"images/products/{filename}"
+                if default_storage.exists(path):
+                    default_storage.delete(path)
 
                 image_file = InMemoryUploadedFile(
                     file=io.BytesIO(resp.content),
