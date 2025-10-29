@@ -54,10 +54,6 @@ class FoodForm(forms.ModelForm):
         self.extra_data: dict[str, str | None] | None = extra_data or {}
         super().__init__(*args, **kwargs)  # pyright: ignore[reportUnknownArgumentType]
 
-        self.fetched_image_url: str | None = (
-            self.extra_data.get("fetched_image_url") if self.extra_data else None
-        )
-
         # --------------------------------------------------------------------
         # FormHelper configuration
         # --------------------------------------------------------------------
