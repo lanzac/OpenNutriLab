@@ -195,6 +195,7 @@ ignore = [
     "RUF012", # Mutable class attributes should be annotated with `typing.ClassVar`
     "SIM102", # sometimes it's better to nest
     "UP038", # Checks for uses of isinstance/issubclass that take a tuple
+    "COM812",
     # of types for comparison.
     # Deactivated because it can make the code slow:
     # https://github.com/astral-sh/ruff/issues/7871
