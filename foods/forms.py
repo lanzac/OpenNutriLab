@@ -1,5 +1,7 @@
+import io
 from typing import TYPE_CHECKING
 
+import requests
 from crispy_bootstrap5.bootstrap5 import BS5Accordion
 from crispy_bootstrap5.bootstrap5 import FloatingField
 from crispy_forms.bootstrap import AccordionGroup
@@ -17,6 +19,8 @@ from crispy_forms.layout import Layout
 from crispy_forms.layout import Row
 from crispy_forms.layout import Submit
 from django import forms
+from django.core.files.storage import default_storage
+from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.urls import reverse
 from quantityfield.fields import QuantityFormField
 
@@ -47,7 +51,7 @@ class FoodForm(forms.ModelForm):
     ):
         # register extra_data variable before calling the super() method
         # https://djangoandy.com/2023/08/23/passing-custom-variables-into-django-forms/
-        self.extra_data: dict[str, str | None] | None = extra_data
+        self.extra_data: dict[str, str | None] | None = extra_data or {}
         super().__init__(*args, **kwargs)  # pyright: ignore[reportUnknownArgumentType]
 
         self.fetched_image_url: str | None = (
@@ -202,26 +206,46 @@ class FoodForm(forms.ModelForm):
                             )
 
     def save(self, commit: bool = True):  # noqa: FBT001, FBT002
-        # Save the main Food object first
-        food = super().save(commit=commit)
+        # 1️⃣ Save Food object without committing
+        food = super().save(commit=False)
 
-        # Iterate over all macronutrients to handle their dynamic form fields
+        # 2️⃣ Assign fetched image if needed
+        fetched_image_url = getattr(self, "extra_data", {}).get("fetched_image_url")
+        if fetched_image_url and not self.cleaned_data.get("image"):
+            resp = requests.get(fetched_image_url, timeout=10)
+            resp.raise_for_status()
+            filename = f"{self.cleaned_data['barcode']}.jpg"
+            path = f"images/products/{filename}"
+            if default_storage.exists(path):
+                default_storage.delete(path)
+
+            food.image = InMemoryUploadedFile(
+                io.BytesIO(resp.content),
+                field_name="image",
+                name=filename,
+                content_type="image/jpeg",
+                size=len(resp.content),
+                charset=None,
+            )
+
+        # 3️⃣ Handle macronutrients
         for macronutrient in Macronutrient.objects.all():
             field_name = f"macronutrients_{macronutrient.name.lower()}"
             value: Quantity | None = self.cleaned_data.get(field_name)
-
             if value:
-                # Create or update the FoodMacronutrient entry for this macronutrient
                 FoodMacronutrient.objects.update_or_create(
                     food=food,
                     macronutrient=macronutrient,
                     defaults={"amount": value},
                 )
             else:
-                # If no value was provided, remove the association to keep the DB clean
                 FoodMacronutrient.objects.filter(
                     food=food,
                     macronutrient=macronutrient,
                 ).delete()
+
+        # 4️⃣ Commit once
+        if commit:
+            food.save()
 
         return food

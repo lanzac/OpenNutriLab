@@ -1,10 +1,4 @@
-import io
-
-import requests
-from django.core.files.storage import default_storage
-from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.urls import reverse_lazy
-from django.utils.datastructures import MultiValueDict
 from vanilla import CreateView
 from vanilla import DeleteView
 from vanilla import ListView
@@ -42,32 +36,6 @@ class FoodCreateView(CreateView):
 
             initial.update(product_form.dict())  # pyright: ignore[reportUnknownMemberType]
             extra_data = {"fetched_image_url": product_form.image_url}
-
-        # This condition is only True when saving a new product
-        # Otherwise is just GET request for form files is None
-        if isinstance(files, MultiValueDict):
-            # First step: fetch image from URL
-            fetched_image_url: str | None = extra_data.get("fetched_image_url", "")  # pyright: ignore[reportOptionalMemberAccess]
-
-            if fetched_image_url:
-                resp = requests.get(fetched_image_url, timeout=10)
-                resp.raise_for_status()  # Optional: check HTTP status
-
-                filename = f"{barcode}.jpg"
-
-                path = f"images/products/{filename}"
-                if default_storage.exists(path):
-                    default_storage.delete(path)
-
-                image_file = InMemoryUploadedFile(
-                    file=io.BytesIO(resp.content),
-                    field_name="image",
-                    name=filename,
-                    content_type="image/jpeg",
-                    size=len(resp.content),
-                    charset=None,
-                )
-                files.setlist(key="image", list_=[image_file])  # pyright: ignore[reportUnknownMemberType]
 
         return self.form_class(
             data=data,
