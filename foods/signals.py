@@ -6,7 +6,7 @@ from .models import Food
 
 
 @receiver(post_delete, sender=Food)
-def delete_food_image(sender, instance, **kwargs):
+def delete_food_image(instance: Food, **kwargs):  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType, reportUnusedParameter]
     """Delete image file from storage when Food instance is deleted."""
     if instance.image:
         instance.image.delete(save=False)
