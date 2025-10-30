@@ -1,5 +1,6 @@
 {% load static i18n %}
 {% load render_bundle from webpack_loader %}
+
 <!DOCTYPE html>
 {% get_current_language as LANGUAGE_CODE %}
 <html lang="{{ LANGUAGE_CODE }}">
@@ -34,7 +35,9 @@
   {% comment %} Next line with style="visibility: hidden;" -> See fouc_helper.js for more details. {% endcomment %}
   <body class="fouc-hidden {% block bodyclass %}{% endblock bodyclass %}">
     {% comment %} Next line : See fouc_helper.js for more details. {% endcomment %}
-    <script>0</script>
+    <script>
+      0
+    </script>
     {% block body %}
       <div class="mb-1">
         <nav class="navbar navbar-expand-md navbar-light bg-light">
@@ -58,7 +61,7 @@
                   <a class="nav-link" href="{% url 'about' %}">{% translate "About" %}</a>
                 </li>
                 <li class="nav-item">
-                  <a class="nav-link" href="{% url 'list_foods' %}">{% translate "Inventory" %}</a>
+                  <a class="nav-link" href="{% url 'list_products' %}">{% translate "Inventory" %}</a>
                 </li>
                 {% if request.user.is_authenticated %}
                   <li class="nav-item">
@@ -117,7 +120,7 @@
       window.addEventListener('DOMContentLoaded', () => {
         /* Run whatever you want */
       });
-</script>
+    </script>
       {% endcomment %}
     {% endblock inline_javascript %}
     {% comment %} Next line : See fouc_helper.js for more details. {% endcomment %}
@@ -125,7 +128,7 @@
   body {
     visibility: visible;
   }
-    </style>
+</style>
   </noscript>
 </body>
 </html>

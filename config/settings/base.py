@@ -1,4 +1,4 @@
-# ruff: noqa: ERA001, E501
+# ruff: noqa: E501
 """Base settings to build other settings files upon."""
 
 import ssl
@@ -93,7 +93,7 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     "opennutrilab.users",
     # Your stuff: custom apps go here
-    "foods.apps.FoodsConfig",
+    "products.apps.ProductsConfig",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

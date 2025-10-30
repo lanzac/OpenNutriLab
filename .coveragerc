@@ -1,5 +1,5 @@
 [run]
-source = foods,opennutrilab
+source = products,opennutrilab
 
 [report]
 show_missing = True

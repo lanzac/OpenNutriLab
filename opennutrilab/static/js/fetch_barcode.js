@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function () {
-  const fetchButton = document.getElementById('fetch-food-data');
+  const fetchButton = document.getElementById('fetch-product-data');
   const barcodeField = document.getElementById('id_barcode');
 
   if (fetchButton && barcodeField) {
