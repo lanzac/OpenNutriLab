@@ -22,7 +22,12 @@ up:
 # down: Stop containers.
 down:
     @echo "Stopping containers..."
-    @docker compose down
+    @docker compose
+
+# restart: Restart containers.
+restart:
+    @echo "Restarting containers..."
+    @docker compose restart
 
 # prune: Remove containers and their volumes.
 prune *args:
