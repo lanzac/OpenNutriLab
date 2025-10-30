@@ -34,11 +34,11 @@ services:
     env_file:
       - ./.envs/.local/.postgres
 
-  # mailpit:
-  #   image: docker.io/axllent/mailpit:latest
-  #   container_name: opennutrilab_local_mailpit
-  #   ports:
-  #     - "8025:8025"
+  mailpit:
+    image: docker.io/axllent/mailpit:latest
+    container_name: opennutrilab_local_mailpit
+    ports:
+      - '8025:8025'
 
   redis:
     image: docker.io/redis:6
@@ -53,7 +53,7 @@ services:
     depends_on:
       - redis
       - postgres
-      # - mailpit
+      - mailpit
     ports: []
     command: /start-celeryworker
 
@@ -64,7 +64,7 @@ services:
     depends_on:
       - redis
       - postgres
-      # - mailpit
+      - mailpit
     ports: []
 
   node:
