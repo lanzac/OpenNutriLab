@@ -31,7 +31,7 @@ class FoodCreateView(CreateView):
         barcode: str | None = self.request.GET.get("barcode")
         initial = {}
         if barcode:
-            product: ProductSchema = fetch_product_data(barcode, use_local=False)
+            product: ProductSchema = fetch_product_data(barcode)
             product_form: ProductFormSchema = product_schema_to_form_data(product)
 
             initial.update(product_form.dict())  # pyright: ignore[reportUnknownMemberType]
