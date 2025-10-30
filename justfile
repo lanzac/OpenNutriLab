@@ -22,7 +22,7 @@ up:
 # down: Stop containers.
 down:
     @echo "Stopping containers..."
-    @docker compose
+    @docker compose down
 
 # restart: Restart containers.
 restart:
