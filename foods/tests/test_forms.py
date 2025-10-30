@@ -1,4 +1,6 @@
 from typing import cast
+from unittest.mock import Mock
+from unittest.mock import patch
 
 import pytest
 from crispy_forms.bootstrap import FieldWithButtons
@@ -174,3 +176,50 @@ def test_food_form_save_removes_macronutrient_if_value_missing():
         food=food,
         macronutrient=protein,
     ).exists()
+
+
+@pytest.mark.django_db
+def test_save_with_fetched_image_and_delete():
+    """Test save fetches image, deletes existing file, and assigns new image."""
+
+    path = "images/products/3242272270157.jpg"
+
+    with (
+        patch("foods.forms.requests.get") as mock_requests_get,
+        patch("django.core.files.storage.FileSystemStorage.exists") as mock_exists,
+        patch("django.core.files.storage.FileSystemStorage.delete") as mock_delete,
+        patch("django.core.files.storage.FileSystemStorage.save") as mock_save,
+    ):
+        # --- Mock HTTP response ---
+        mock_response = Mock()
+        mock_response.content = b"fake image bytes"
+        mock_response.raise_for_status = Mock()
+        mock_requests_get.return_value = mock_response
+
+        # --- Mock storage ---
+        mock_exists.return_value = True  # simulate file already exists
+        mock_save.return_value = path
+
+        # --- Form with minimal valid data ---
+        form = FoodForm(
+            data={
+                "barcode": "3242272270157",
+                "name": "Apple",
+                "energy_0": 100,
+                "energy_1": "kJ",
+            }
+        )
+        form.extra_data = {"fetched_image_url": "https://example.com/apple.jpg"}
+        form.full_clean()
+
+        # --- Call save ---
+        food: Food = form.save(commit=True)
+
+        # --- Assertions ---
+        mock_requests_get.assert_called_once_with(
+            "https://example.com/apple.jpg", timeout=10
+        )
+        mock_exists.assert_called_once_with(path)  # check exists called
+        mock_delete.assert_called_once_with(path)  # check delete called
+        mock_save.assert_called_once()  # file was saved
+        assert food.image.name == path
