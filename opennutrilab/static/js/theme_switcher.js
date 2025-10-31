@@ -1,42 +1,34 @@
-// https://mdbootstrap.com/docs/standard/extended/bootstrap-dark-mode-switch/#
-// Theme switcher logic for Bootstrap 5 (using data-bs-theme)
-const themeSwitcher = document.getElementById('themingSwitcher');
+// https://albertoroura.com/building-a-theme-switcher-for-bootstrap/
+function setTheme(mode = 'auto') {
+  const userMode = localStorage.getItem('bs-theme');
+  const sysMode = window.matchMedia('(prefers-color-scheme: light)').matches;
+  const useSystem = mode === 'system' || (!userMode && mode === 'auto');
+  const modeChosen = useSystem
+    ? 'system'
+    : mode === 'dark' || mode === 'light'
+      ? mode
+      : userMode;
 
-// Detect if system prefers dark mode
-const isSystemThemeSetToDark = window.matchMedia(
-  '(prefers-color-scheme: dark)',
-).matches;
-
-// Load saved theme from localStorage or fallback to system preference
-const savedTheme = localStorage.getItem('theme');
-const currentTheme = savedTheme || (isSystemThemeSetToDark ? 'dark' : 'light');
-
-// Apply theme to the <html> element
-document.documentElement.dataset.bsTheme = currentTheme;
-
-// Set the toggle switch position based on the current theme
-if (themeSwitcher) {
-  themeSwitcher.checked = currentTheme === 'dark';
-
-  // Listen for switch changes
-  themeSwitcher.addEventListener('change', (e) => {
-    toggleTheme(e.target.checked);
-  });
-}
-
-// Function to toggle between light and dark themes
-function toggleTheme(isChecked) {
-  const theme = isChecked ? 'dark' : 'light';
-  document.documentElement.dataset.bsTheme = theme;
-  localStorage.setItem('theme', theme);
-}
-
-// Keyboard shortcut: Shift + D toggles the theme
-document.addEventListener('keydown', (e) => {
-  if (e.shiftKey && e.key.toLowerCase() === 'd') {
-    if (themeSwitcher) {
-      themeSwitcher.checked = !themeSwitcher.checked;
-      toggleTheme(themeSwitcher.checked);
-    }
+  if (useSystem) {
+    localStorage.removeItem('bs-theme');
+  } else {
+    localStorage.setItem('bs-theme', modeChosen);
   }
-});
+
+  document.documentElement.setAttribute(
+    'data-bs-theme',
+    useSystem ? (sysMode ? 'light' : 'dark') : modeChosen,
+  );
+  document
+    .querySelectorAll('.mode-switch .btn')
+    .forEach((e) => e.classList.remove('text-body'));
+  document.getElementById(modeChosen).classList.add('text-body');
+}
+
+setTheme();
+document
+  .querySelectorAll('.mode-switch .btn')
+  .forEach((e) => e.addEventListener('click', () => setTheme(e.id)));
+window
+  .matchMedia('(prefers-color-scheme: light)')
+  .addEventListener('change', () => setTheme());

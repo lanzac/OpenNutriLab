@@ -1,12 +1,20 @@
-{% comment %} https://mdbootstrap.com/docs/standard/extended/bootstrap-dark-mode-switch/# {% endcomment %}
+{% comment %} https://albertoroura.com/building-a-theme-switcher-for-bootstrap/ {% endcomment %}
 <li class="nav-item align-items-center d-flex">
-  <i class="fas fa-sun"></i>
-  <!-- Default switch -->
-  <div class="ms-2 form-check form-switch">
-    <input class="form-check-input"
-           type="checkbox"
-           role="switch"
-           id="themingSwitcher" />
+  <div class="mode-switch">
+    <button title="Use dark mode"
+            id="dark"
+            class="btn btn-sm btn-default text-secondary">
+      <i class="bi bi-moon"></i>
+    </button>
+    <button title="Use light mode"
+            id="light"
+            class="btn btn-sm btn-default text-secondary">
+      <i class="bi bi-sun"></i>
+    </button>
+    <button title="Use system preferred mode"
+            id="system"
+            class="btn btn-sm btn-default text-secondary">
+      <i class="bi bi-display"></i>
+    </button>
   </div>
-  <i class="fas fa-moon"></i>
 </li>

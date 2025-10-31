@@ -3,7 +3,7 @@
 
 <!DOCTYPE html>
 {% get_current_language as LANGUAGE_CODE %}
-<html lang="{{ LANGUAGE_CODE }}" data-mdb-theme="dark">
+<html lang="{{ LANGUAGE_CODE }}">
   <head>
     <meta charset="utf-8" />
     <meta http-equiv="x-ua-compatible" content="ie=edge" />
@@ -32,9 +32,9 @@
       {% render_bundle 'project' 'js' attrs='defer' %}
     {% endblock javascript %}
   </head>
-  {% comment %} Next line with style="visibility: hidden;" -> See fouc_helper.js for more details. {% endcomment %}
+  {% comment %} Next line with style="visibility: hidden;" (in class fouc-hidden) -> See fouc_helper.js for more details. {% endcomment %}
   <body class="fouc-hidden {% block bodyclass %}{% endblock bodyclass %}">
-    {% comment %} Next line : See fouc_helper.js for more details. {% endcomment %}
+    {% comment %} Next line (script 0) : See fouc_helper.js for more details. {% endcomment %}
     <script>
       0
     </script>

@@ -40,6 +40,7 @@
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.0.0",
+    "bootstrap-icons": "^1.13.1",
     "flag-icons": "^7.5.0"
   }
 }
