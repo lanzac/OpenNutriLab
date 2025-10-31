@@ -3,7 +3,7 @@
 
 <!DOCTYPE html>
 {% get_current_language as LANGUAGE_CODE %}
-<html lang="{{ LANGUAGE_CODE }}">
+<html lang="{{ LANGUAGE_CODE }}" data-mdb-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta http-equiv="x-ua-compatible" content="ie=edge" />
@@ -40,7 +40,7 @@
     </script>
     {% block body %}
       <div class="mb-1">
-        <nav class="navbar navbar-expand-md navbar-light bg-light">
+        <nav class="navbar navbar-expand-md bg-body-tertiary">
           <div class="container-fluid">
             <button class="navbar-toggler navbar-toggler-right"
                     type="button"
@@ -84,7 +84,10 @@
                     <a id="log-in-link" class="nav-link" href="{% url 'account_login' %}">{% translate "Sign In" %}</a>
                   </li>
                 {% endif %}
+              </ul>
+              <ul class="navbar-nav ms-auto">
                 {% include "components/language_selector.html" %}
+                {% include "components/dark_mode_switch.html" %}
               </ul>
             </div>
           </div>
