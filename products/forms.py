@@ -143,7 +143,7 @@ class ProductForm(forms.ModelForm):
         self.fields["barcode"].widget.attrs.update(
             {
                 "readonly": True,
-                "class": "form-control bg-light",
+                "class": "form-control bg-body-secondary",
             },
         )
         return Field("barcode")
