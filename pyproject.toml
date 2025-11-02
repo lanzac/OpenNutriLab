@@ -33,6 +33,8 @@ dependencies = [
     "psycopg[binary]>=3.2.10",
     "djangorestframework>=3.16.1",
     "drf-spectacular>=0.28.0",
+    "numpy>=2.3.4",
+    "pandas>=2.3.3",
 ]
 
 [build-system]
