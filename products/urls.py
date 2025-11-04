@@ -5,6 +5,7 @@ from .views import ProductCreateView
 from .views import ProductDeleteView
 from .views import ProductEditView
 from .views import ProductListView
+from .views import ProductPlotDataView
 
 urlpatterns: list[URLPattern] = [
     path(route="products/", view=ProductListView.as_view(), name="list_products"),
@@ -17,8 +18,11 @@ urlpatterns: list[URLPattern] = [
         name="edit_product",
     ),
     path(
-        route="productscts/<str:pk>/delete/",
+        route="products/<str:pk>/delete/",
         view=ProductDeleteView.as_view(),
         name="delete_product",
+    ),
+    path(
+        route="plot-data/", view=ProductPlotDataView.as_view(), name="product_plot_data"
     ),
 ]

@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 import requests
 from crispy_bootstrap5.bootstrap5 import BS5Accordion
 from crispy_bootstrap5.bootstrap5 import FloatingField
-from crispy_forms.bootstrap import AccordionGroup
 
 # https://django-crispy-forms.readthedocs.io/en/latest/layouts.html
 from crispy_forms.bootstrap import FieldWithButtons
@@ -21,8 +20,11 @@ from crispy_forms.layout import Submit
 from django import forms
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.template.loader import render_to_string
 from django.urls import reverse
 from quantityfield.fields import QuantityFormField
+
+from opennutrilab.crispy_bootstrap_extended.layouts import AccordionGroupExtended
 
 from .models import Macronutrient
 from .models import Product
@@ -30,6 +32,7 @@ from .models import ProductMacronutrient
 
 if TYPE_CHECKING:
     from django.forms.widgets import Widget
+    from django.utils.safestring import SafeText
     from pint import Quantity
 
 
@@ -60,6 +63,16 @@ class ProductForm(forms.ModelForm):
             self.extra_data.get("fetched_image_url") if self.extra_data else None
         )
 
+        # Configure Graph container template
+        graph_container_template: SafeText = render_to_string(
+            template_name="products/components/graph_container.html",
+            context={
+                "loader_id": "macronutrients_graph_loader",
+                "graph_id": "macronutrients_graph",
+                "loader_text": "Loading macronutrients graph...",
+            },
+        )
+
         # --------------------------------------------------------------------
         # FormHelper configuration
         # --------------------------------------------------------------------
@@ -67,6 +80,7 @@ class ProductForm(forms.ModelForm):
         # rendering behavior.
         # https://django-crispy-forms.readthedocs.io/en/latest/crispy_tag_forms.html#crispy-tag-forms
         self.helper = FormHelper()
+        self.helper.form_id = "product-form"
         # --------------------------------------------------------------------
 
         # --------------------------------------------------------------------
@@ -80,12 +94,17 @@ class ProductForm(forms.ModelForm):
 
         # 🔹 Nutritional values
         self._add_nutritional_value_fields()  # Add dynamic fields (macronutrients)
+
+        # 🔹 Get the "nutritional values" layouts (that include fields) that will
+        # be send to the form.
         nutritional_values_fields_layout: list[Field] = (
             self._get_nutritional_values_layout()
         )
 
         # 🔹 Configure widgets attrs for all QuantityFormField fields
+        # It is important to call this method after having added the dynamic fields.
         self._configure_field_widgets_attrs()
+
         # --------------------------------------------------------------------
 
         # --------------------------------------------------------------------
@@ -111,9 +130,10 @@ class ProductForm(forms.ModelForm):
                 ),
             ),
             BS5Accordion(
-                AccordionGroup(
+                AccordionGroupExtended(
                     "Nutritional values (per 100g)",
                     *nutritional_values_fields_layout,
+                    extra_data=graph_container_template,
                 ),
                 always_open=True,
             ),
@@ -134,7 +154,7 @@ class ProductForm(forms.ModelForm):
             return FieldWithButtons(
                 Field("barcode"),
                 StrictButton(
-                    "🔍 Fetch",
+                    content="🔍 Fetch",
                     css_class="btn btn-outline-secondary",
                     type="button",
                     id="fetch-product-data",
@@ -143,7 +163,7 @@ class ProductForm(forms.ModelForm):
         self.fields["barcode"].widget.attrs.update(
             {
                 "readonly": True,
-                "class": "form-control bg-body-secondary",
+                "class": "bg-body-secondary",
             },
         )
         return Field("barcode")
@@ -172,21 +192,20 @@ class ProductForm(forms.ModelForm):
                 )
                 if amount_value is not None:
                     form_field.initial = amount_value
-                else:
-                    form_field.widget.attrs.update(
-                        {
-                            "class": "form-control",
-                            "placeholder": "!!! No data found for this field !!!",
-                        },
-                    )
 
             self.fields[field_name] = form_field
 
     def _get_nutritional_values_layout(self) -> list[Field]:
         """Return crispy-forms layout for energy + macronutrients."""
-        layout_fields: list[Field] = [PrependedText(field="energy", text="")]
+        layout_fields: list[Field] = [
+            PrependedText(field="energy", text="", css_class="plot-input")
+        ]
         layout_fields += [
-            PrependedText(field=f"macronutrients_{m.name.lower()}", text="")
+            PrependedText(
+                field=f"macronutrients_{m.name.lower()}",
+                text="",
+                css_class="plot-input",
+            )
             for m in Macronutrient.objects.all()
         ]
         return layout_fields
@@ -195,14 +214,16 @@ class ProductForm(forms.ModelForm):
         for field in self.fields.values():
             if isinstance(field, QuantityFormField):
                 widget: type[Widget] | Widget = field.widget
+                # Important here to not assign class attribute to the widget attrs that
+                # would not allow to set custom "css_class" in the layout.
                 widget.attrs["step"] = "0.01"
+                widget.attrs["placeholder"] = "No data found"
 
                 if isinstance(widget, forms.MultiWidget):
                     for subwidget in widget.widgets:
                         if isinstance(subwidget, forms.NumberInput):
                             subwidget.attrs.update(
                                 {
-                                    "class": "form-control",
                                     "type": "number",
                                     "min": "0.00",
                                 },

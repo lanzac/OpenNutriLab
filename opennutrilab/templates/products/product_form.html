@@ -7,6 +7,7 @@
 {% block javascript %}
   {{ block.super }}
   {% render_bundle 'fetch_barcode' 'js' attrs='defer' %}
+  {% render_bundle 'plotly_loader' 'js' attrs='defer' %}
 {% endblock javascript %}
 {% block content %}
   <div class="container-md my-5">
@@ -36,4 +37,8 @@
       </div>
     </div>
   </div>
+  <script>
+    const plotDataUrl = "{% url 'product_plot_data' %}";
+  </script>
+  <script src="{% static 'products/js/product_form_macronutrients_graph.js' %}"></script>
 {% endblock content %}
