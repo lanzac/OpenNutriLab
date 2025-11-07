@@ -155,7 +155,7 @@ class ProductForm(forms.ModelForm):
         )
         # --------------------------------------------------------------------
 
-    def _get_barcode_field_layout(self) -> FieldWithButtons | Field:
+    def _get_barcode_field_layout(self) -> FieldWithButtons:
         if not self.instance.pk:
             return FieldWithButtons(
                 Field("barcode"),

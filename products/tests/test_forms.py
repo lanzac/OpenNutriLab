@@ -4,7 +4,6 @@ from unittest.mock import patch
 
 import pytest
 from crispy_forms.bootstrap import FieldWithButtons
-from crispy_forms.layout import Field
 from pint import Quantity
 from quantityfield.units import ureg
 
@@ -18,17 +17,17 @@ from products.models import ProductMacronutrient
 class TestBuildBarcodeField:
     def test_create_mode_returns_fieldwithbuttons(self):
         form = ProductForm(instance=Product())  # pas de pk
-        field: FieldWithButtons | Field = form._get_barcode_field_layout()  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+        field: FieldWithButtons = form._get_barcode_field_layout()  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
 
         assert isinstance(field, FieldWithButtons)
 
     def test_edit_mode_returns_readonly_field(self):
         product = Product.objects.create(name="Apple", barcode="1234567890123")
         form = ProductForm(instance=product)
-        field: FieldWithButtons | Field = form._get_barcode_field_layout()  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+        field: FieldWithButtons = form._get_barcode_field_layout()  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
 
         # Doit être un Field simple
-        assert isinstance(field, Field)
+        assert isinstance(field, FieldWithButtons)
 
         # Le widget doit être readonly et avec la classe bg-light
         widget_attrs = form.fields["barcode"].widget.attrs
