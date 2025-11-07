@@ -103,7 +103,7 @@ reportUnusedImport = false    # Set to true if you want to detect unused imports
 reportUnusedVariable = false  # Set to true if you want to detect unused variables
 
 # Exclude paths from analysis (equivalent to mypy overrides for migrations)
-exclude = ["**/migrations/**", "**/node_modules/**", ".venv/**"]
+ignore = ["**/migrations/**", "**/node_modules/**", ".venv/**"]
 
 
 
