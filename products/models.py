@@ -21,6 +21,9 @@ from .fields import EAN13Field
 class Macronutrient(models.Model):
     name = models.CharField(max_length=100, primary_key=True)
     description = models.TextField(blank=True, default="")
+    label = models.CharField(max_length=100, blank=True, default="")
+
+    order_index = models.PositiveIntegerField(default=0)
 
     class Meta:
         constraints = [
@@ -29,9 +32,13 @@ class Macronutrient(models.Model):
                 name="unique_macronutrient_name_case_insensitive",
             ),
         ]
+        ordering = ["order_index"]
 
     @override
     def __str__(self) -> str:
+        if self.label:
+            return self.label
+
         label: str = self.name.replace("_", " ").title()
         if self.description:
             label += f" ({self.description})"
