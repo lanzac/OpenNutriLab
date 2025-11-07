@@ -22,6 +22,7 @@ from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils.translation import gettext_lazy as _
 from quantityfield.fields import QuantityFormField
 
 from opennutrilab.crispy_bootstrap_extended.layouts import AccordionGroupExtended
@@ -44,6 +45,12 @@ class ProductForm(forms.ModelForm):
         fields: list[str] = ["barcode", "name", "image", "description", "energy"]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 3}),
+        }
+        labels: dict[str, str] = {
+            "barcode": _("Barcode"),
+            "name": _("Name"),
+            "description": _("Description"),
+            "energy": _("Energy"),
         }
 
     def __init__(
@@ -69,7 +76,7 @@ class ProductForm(forms.ModelForm):
             context={
                 "loader_id": "macronutrients_graph_loader",
                 "graph_id": "macronutrients_graph",
-                "loader_text": "Loading macronutrients graph...",
+                "loader_text": _("Loading macronutrients graph..."),
             },
         )
 
@@ -87,9 +94,9 @@ class ProductForm(forms.ModelForm):
         # Fields configuration
         # --------------------------------------------------------------------
         # 🔹Barcode
-        self.fields[
-            "barcode"
-        ].help_text = "Enter the 13-digit EAN code from the packaging."
+        self.fields["barcode"].help_text = _(
+            "Enter the 13-digit EAN code from the packaging."
+        )
         barcode_field: FieldWithButtons | Field = self._get_barcode_field_layout()
 
         # 🔹 Nutritional values
@@ -131,18 +138,17 @@ class ProductForm(forms.ModelForm):
             ),
             BS5Accordion(
                 AccordionGroupExtended(
-                    "Nutritional values (per 100g)",
+                    _("Nutritional values (per 100g)"),
                     *nutritional_values_fields_layout,
                     extra_data=graph_container_template,
                 ),
                 always_open=True,
             ),
             FormActions(
-                Submit("save", "Save", css_class="btn-primary"),
+                Submit(name=_("save"), value=_("Save"), css_class="btn-primary"),
                 HTML(
                     f'<a class="btn btn-secondary ms-2" '
-                    f'href="{reverse("list_products")}">'
-                    "Cancel</a>",
+                    f'href="{reverse("list_products")}">' + _("Cancel") + "</a>",
                 ),
                 css_class="mt-3",  # Add margin top
             ),
@@ -154,7 +160,7 @@ class ProductForm(forms.ModelForm):
             return FieldWithButtons(
                 Field("barcode"),
                 StrictButton(
-                    content="🔍 Fetch",
+                    content="🔍" + _("Fetch data"),
                     css_class="btn btn-outline-secondary",
                     type="button",
                     id="fetch-product-data",
@@ -172,6 +178,13 @@ class ProductForm(forms.ModelForm):
         """Add energy + macronutrient fields to self.fields."""
         # Energy field is already in the form, so no need to clone here
 
+        _("Fat")
+        _("of which Saturates")
+        _("Carbohydrates")
+        _("of which Sugars")
+        _("Fiber")
+        _("Proteins")
+
         for macronutrient in Macronutrient.objects.all():
             field_name = f"macronutrients_{macronutrient.name.lower()}"
             form_field: QuantityFormField = ProductMacronutrient._meta.get_field(  # noqa: SLF001
@@ -179,7 +192,7 @@ class ProductForm(forms.ModelForm):
             ).formfield(
                 required=False,
             )
-            form_field.label = str(macronutrient)
+            form_field.label = _(str(macronutrient))
 
             if self.instance and self.instance.pk:
                 amount_value: Quantity | None = (
@@ -217,7 +230,7 @@ class ProductForm(forms.ModelForm):
                 # Important here to not assign class attribute to the widget attrs that
                 # would not allow to set custom "css_class" in the layout.
                 widget.attrs["step"] = "0.01"
-                widget.attrs["placeholder"] = "No data found"
+                widget.attrs["placeholder"] = _("No data found")
 
                 if isinstance(widget, forms.MultiWidget):
                     for subwidget in widget.widgets:

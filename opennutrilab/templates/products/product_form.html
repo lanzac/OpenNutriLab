@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% load crispy_forms_tags %}
-{% load static %}
+{% load static i18n %}
 {% load render_bundle from webpack_loader %}
 
 {% block javascript %}
@@ -16,9 +16,9 @@
         <div class="card">
           <div class="card-header">
             {% if product %}
-              Edit product
+              {% translate "Edit product" %}
             {% else %}
-              Create product
+              {% translate "Add a new product" %}
             {% endif %}
           </div>
           <div class="card-body">
@@ -26,7 +26,7 @@
               {% csrf_token %}
               {% if form.errors %}
                 <div class="alert alert-danger">
-                  <strong>Formulaire invalide :</strong>
+                  <strong>{% translate "Invalid form" %}:</strong>
                   {{ form.errors }}
                 </div>
               {% endif %}
