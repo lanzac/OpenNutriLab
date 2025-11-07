@@ -1,3 +1,5 @@
+from typing import Any
+
 from django.http import HttpRequest
 from django.http import JsonResponse
 from django.urls import reverse_lazy
@@ -29,8 +31,8 @@ class ProductCreateView(CreateView):
         data=None,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
         files=None,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
         extra_data: dict[str, str | None] | None = None,
-        **kwargs,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
-    ):
+        **kwargs: Any,
+    ) -> form_class:
         barcode: str | None = self.request.GET.get("barcode")
         initial = {}
         if barcode:
@@ -46,7 +48,7 @@ class ProductCreateView(CreateView):
             files=files,
             initial=initial,
             extra_data=extra_data,
-            **kwargs,  # pyright: ignore[reportUnknownArgumentType]
+            **kwargs,
         )
 
 
@@ -54,6 +56,40 @@ class ProductEditView(UpdateView):
     model = Product
     form_class = ProductForm
     success_url = reverse_lazy("list_products")
+
+    def get_form(
+        self,
+        data=None,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
+        files=None,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
+        extra_data: dict[str, str | None] | None = None,
+        **kwargs: Any,  # https://adamj.eu/tech/2021/05/11/python-type-hints-args-and-kwargs/
+    ) -> form_class:
+        reset: bool = self.request.GET.get("reset") == "1"
+        initial = {}
+
+        product_instance: Product | None = kwargs.get("instance")
+
+        if product_instance is None:
+            msg = "Product instance is required to edit a product."
+            raise ValueError(msg)
+
+        barcode: str = product_instance.barcode
+
+        if barcode and reset:
+            product: ProductSchema = fetch_product_data(barcode)
+            product_form: ProductFormSchema = product_schema_to_form_data(product)
+
+            # not sure here if I should do : product_form.dict(exclude_none=True)
+            initial.update(product_form.dict())  # pyright: ignore[reportUnknownMemberType]
+            extra_data = {"fetched_image_url": product_form.image_url}
+
+        return self.form_class(
+            data=data,
+            files=files,
+            initial=initial,
+            extra_data=extra_data,
+            **kwargs,
+        )
 
 
 class ProductDeleteView(DeleteView):

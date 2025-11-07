@@ -172,7 +172,15 @@ class ProductForm(forms.ModelForm):
                 "class": "bg-body-secondary",
             },
         )
-        return Field("barcode")
+        return FieldWithButtons(
+            Field("barcode"),
+            StrictButton(
+                content="🔴 " + _("Reset data"),
+                css_class="btn btn-outline-secondary",
+                type="button",
+                id="reset-product-data",
+            ),
+        )
 
     def _add_nutritional_value_fields(self) -> None:
         """Add energy + macronutrient fields to self.fields."""
