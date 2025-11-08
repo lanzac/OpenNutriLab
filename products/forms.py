@@ -118,12 +118,10 @@ class ProductForm(forms.ModelForm):
         # FormHelper layout configuration
         # --------------------------------------------------------------------
         self.helper.layout = Layout(
+            Row(barcode_field),
             Row(
                 Column(
-                    Row(
-                        Column(barcode_field, css_class="col-md-6"),
-                        Column(Field("name"), css_class="col-md-6"),
-                    ),
+                    Field("name", css_class="col-md-8"),
                     FloatingField(
                         "description",
                         style="height: 100px",
@@ -143,6 +141,7 @@ class ProductForm(forms.ModelForm):
                     extra_data=graph_container_template,
                 ),
                 always_open=True,
+                css_class="mt-3",  # Add margin top
             ),
             FormActions(
                 Submit(name=_("save"), value=_("Save"), css_class="btn-primary"),
