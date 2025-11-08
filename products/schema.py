@@ -2,6 +2,8 @@ from ninja import Field
 from ninja import Schema
 
 
+# More information on : Regulation (EU) No 1169/2011
+# https://eur-lex.europa.eu/eli/reg/2011/1169/oj?locale=fr
 class MacronutrientsSchema(Schema):
     fat: float | None = None
     saturated_fat: float | None = None
@@ -9,6 +11,30 @@ class MacronutrientsSchema(Schema):
     sugars: float | None = None
     fiber: float | None = None
     proteins: float | None = None
+
+
+class MacronutrientsFormSchema(Schema):
+    fat: float | None = Field(default=None, alias="macronutrients_fat_0")
+    saturated_fat: float | None = Field(
+        default=None,
+        alias="macronutrients_saturated_fat_0",
+    )
+    carbohydrates: float | None = Field(
+        default=None,
+        alias="macronutrients_carbohydrates_0",
+    )
+    sugars: float | None = Field(
+        default=None,
+        alias="macronutrients_sugars_0",
+    )
+    fiber: float | None = Field(
+        default=None,
+        alias="macronutrients_fiber_0",
+    )
+    proteins: float | None = Field(
+        default=None,
+        alias="macronutrients_proteins_0",
+    )
 
 
 class ProductSchema(Schema):

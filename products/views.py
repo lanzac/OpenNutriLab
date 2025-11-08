@@ -1,13 +1,10 @@
 from typing import Any
 
-from django.http import HttpRequest
-from django.http import JsonResponse
 from django.urls import reverse_lazy
 from vanilla import CreateView
 from vanilla import DeleteView
 from vanilla import ListView
 from vanilla import UpdateView
-from vanilla import View
 
 from .forms import ProductForm
 from .models import Product
@@ -51,6 +48,13 @@ class ProductCreateView(CreateView):
             **kwargs,
         )
 
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        context: dict[str, Any] = super().get_context_data(**kwargs)  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+        context["macronutrients_api_url"] = reverse_lazy(
+            "api-1.0.0:get_macronutrients_form_data"
+        )
+        return context
+
 
 class ProductEditView(UpdateView):
     model = Product
@@ -91,31 +95,14 @@ class ProductEditView(UpdateView):
             **kwargs,
         )
 
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        context: dict[str, Any] = super().get_context_data(**kwargs)  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+        context["macronutrients_api_url"] = reverse_lazy(
+            "api-1.0.0:get_macronutrients_form_data"
+        )
+        return context
+
 
 class ProductDeleteView(DeleteView):
     model = Product
     success_url = reverse_lazy("list_products")
-
-
-class ProductPlotDataView(View):
-    def get(self, request: HttpRequest) -> JsonResponse:
-        try:
-            fat = float(request.GET.get("macronutrients_fat_0", 0))
-            saturated_fat = float(request.GET.get("macronutrients_saturated_fat_0", 0))
-            carbohydrates = float(request.GET.get("macronutrients_carbohydrates_0", 0))
-            sugars = float(request.GET.get("macronutrients_sugars_0", 0))
-            fiber = float(request.GET.get("macronutrients_fiber_0", 0))
-            proteins = float(request.GET.get("macronutrients_proteins_0", 0))
-        except ValueError:
-            return JsonResponse({"error": "invalid input"}, status=400)
-
-        return JsonResponse(
-            {
-                "fat": fat,
-                "saturated_fat": saturated_fat,
-                "carbohydrates": carbohydrates,
-                "sugars": sugars,
-                "fiber": fiber,
-                "proteins": proteins,
-            }
-        )

@@ -37,8 +37,10 @@
       </div>
     </div>
   </div>
-  <script>
-    const plotDataUrl = "{% url 'product_plot_data' %}";
+  <script type="text/javascript">
+    window.CONFIG = {
+      macronutrientsApiUrl: "{{ macronutrients_api_url }}",
+    };
   </script>
   <script src="{% static 'products/js/product_form_macronutrients_graph.js' %}"></script>
 {% endblock content %}

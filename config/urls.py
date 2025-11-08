@@ -10,6 +10,8 @@ from drf_spectacular.views import SpectacularAPIView
 from drf_spectacular.views import SpectacularSwaggerView
 from rest_framework.authtoken.views import obtain_auth_token
 
+from config import api_ninja
+
 urlpatterns = [
     path("i18n/", include("django.conf.urls.i18n")),  # Language switching
     path("", TemplateView.as_view(template_name="pages/home.html"), name="home"),
@@ -45,6 +47,7 @@ urlpatterns += [
         SpectacularSwaggerView.as_view(url_name="api-schema"),
         name="api-docs",
     ),
+    path("api-ninja/", api_ninja.api.urls),
 ]
 
 if settings.DEBUG:

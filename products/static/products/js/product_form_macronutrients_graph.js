@@ -69,33 +69,51 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 
     const params = new URLSearchParams(formData);
+    const apiUrl = window.CONFIG.macronutrientsApiUrl;
+
+    if (!apiUrl) {
+      console.error('API URL not found in window.CONFIG');
+      return;
+    }
 
     try {
-      const response = await fetch(plotDataUrl + '?' + params.toString());
+      const response = await fetch(apiUrl + '?' + params.toString());
       if (!response.ok) throw new Error('network error');
-      const new_data = await response.json();
 
-      if (new_data.fat && new_data.saturated_fat) {
-        const total = 100;
-        const used =
-          new_data.fat +
-          new_data.carbohydrates +
-          new_data.fiber +
-          new_data.proteins;
-        const remaining = Math.max(total - used, 0);
-        plot_data[0].values = [
-          new_data.fat,
-          new_data.saturated_fat,
-          new_data.carbohydrates,
-          new_data.sugars,
-          new_data.fiber,
-          new_data.proteins,
-          remaining,
-        ];
-        Plotly.react('macronutrients_graph', plot_data, plot_layout);
+      const newData = await response.json();
+      const macronutrients = newData?.macronutrients;
+
+      if (!macronutrients) {
+        console.warn('No macronutrient data found in response:', newData);
+        return; // nothing to update
       }
-    } catch (err) {
-      console.error('Error updating plot:', err);
+
+      const {
+        fat = 0,
+        saturated_fat = 0,
+        carbohydrates = 0,
+        sugars = 0,
+        fiber = 0,
+        proteins = 0,
+      } = macronutrients;
+
+      const TOTAL_PERCENTAGE = 100;
+      const used = fat + carbohydrates + fiber + proteins;
+      const remaining = Math.max(TOTAL_PERCENTAGE - used, 0);
+
+      plot_data[0].values = [
+        fat,
+        saturated_fat,
+        carbohydrates,
+        sugars,
+        fiber,
+        proteins,
+        remaining,
+      ];
+
+      Plotly.react('macronutrients_graph', plot_data, plot_layout);
+    } catch (error) {
+      console.error('Failed to update macronutrients graph:', error);
     }
   }
 
