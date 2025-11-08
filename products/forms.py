@@ -97,7 +97,7 @@ class ProductForm(forms.ModelForm):
         self.fields["barcode"].help_text = _(
             "Enter the 13-digit EAN code from the packaging."
         )
-        barcode_field: FieldWithButtons | Field = self._get_barcode_field_layout()
+        barcode_field: FieldWithButtons = self._get_barcode_field_layout()
 
         # 🔹 Nutritional values
         self._add_nutritional_value_fields()  # Add dynamic fields (macronutrients)
