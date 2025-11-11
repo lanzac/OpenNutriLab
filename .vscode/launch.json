@@ -2,15 +2,6 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "init_nutrients",
-      "type": "debugpy",
-      "request": "launch",
-      "args": ["init_nutrients"],
-      "django": true,
-      "autoStartBrowser": false,
-      "program": "${workspaceFolder}/manage.py"
-    },
-    {
       "name": "Django (Devcontainer)",
       "type": "debugpy",
       "request": "attach",
