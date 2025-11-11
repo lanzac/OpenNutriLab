@@ -36,7 +36,8 @@
         "statusbar": {
           "color": "#079165",
           "label": "$(file-code) Dj: Make Migrations",
-          "detail": "Django: Make Migrations"
+          "detail": "Django: Make Migrations",
+          "hide": true
         }
       }
     },
@@ -55,7 +56,8 @@
         "statusbar": {
           "color": "#079165",
           "label": "$(database) Dj: Migrate",
-          "detail": "Django: Migrate"
+          "detail": "Django: Migrate",
+          "hide": true
         }
       }
     },
