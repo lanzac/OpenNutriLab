@@ -193,7 +193,6 @@ class ProductForm(forms.ModelForm):
         _("Proteins")
 
         for macronutrient in Macronutrient.objects.all():
-            field_name = f"macronutrients_{macronutrient.name.lower()}"
             form_field: QuantityFormField = ProductMacronutrient._meta.get_field(  # noqa: SLF001
                 field_name="amount",
             ).formfield(
@@ -213,7 +212,7 @@ class ProductForm(forms.ModelForm):
                 if amount_value is not None:
                     form_field.initial = amount_value
 
-            self.fields[field_name] = form_field
+            self.fields[macronutrient.name_in_form] = form_field
 
     def _get_nutritional_values_layout(self) -> list[Field]:
         """Return crispy-forms layout for energy + macronutrients."""

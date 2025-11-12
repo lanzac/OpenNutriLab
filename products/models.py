@@ -22,7 +22,7 @@ class Macronutrient(models.Model):
     name = models.CharField(max_length=100, primary_key=True)
     description = models.TextField(blank=True, default="")
     label = models.CharField(max_length=100, blank=True, default="")
-
+    name_in_form = models.CharField(max_length=100, blank=True, default="")
     order_index = models.PositiveIntegerField(default=0)
 
     class Meta:

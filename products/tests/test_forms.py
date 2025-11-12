@@ -83,7 +83,11 @@ def test_macronutrient_field_not_initialized_without_existing_amount():
 def test_product_form_save_creates_product_and_macronutrient_relations():
     # --- Setup: initial data ---
     protein = Macronutrient.objects.create(name="protein_test")
+    protein.name_in_form = f"macronutrients_{protein.name.lower()}"
+    protein.save(update_fields=["name_in_form"])
     fat = Macronutrient.objects.create(name="fat_test")
+    fat.name_in_form = f"macronutrients_{fat.name.lower()}"
+    fat.save(update_fields=["name_in_form"])
 
     # --- Simulated form data ---
     form_data = {
@@ -91,10 +95,10 @@ def test_product_form_save_creates_product_and_macronutrient_relations():
         "name": "Test Product",
         "energy_0": 150,
         "energy_1": "kJ",
-        f"macronutrients_{protein.name.lower()}_0": 10.5,
-        f"macronutrients_{protein.name.lower()}_1": "g",
-        f"macronutrients_{fat.name.lower()}_0": "",  # empty field
-        f"macronutrients_{fat.name.lower()}_1": "g",
+        f"{protein.name_in_form}_0": 10.5,
+        f"{protein.name_in_form}_1": "g",
+        f"{fat.name_in_form}_0": "",  # empty field
+        f"{fat.name_in_form}_1": "g",
     }
 
     form = ProductForm(data=form_data)
@@ -132,6 +136,8 @@ def test_product_form_save_creates_product_and_macronutrient_relations():
 @pytest.mark.django_db
 def test_product_form_save_updates_existing_productmacronutrient():
     protein = Macronutrient.objects.create(name="protein_test")
+    protein.name_in_form = f"macronutrients_{protein.name.lower()}"
+    protein.save(update_fields=["name_in_form"])
     product = Product.objects.create(name="Update Test", barcode="3229820794556")
 
     ProductMacronutrient.objects.create(
@@ -143,8 +149,8 @@ def test_product_form_save_updates_existing_productmacronutrient():
         "name": "Update Test",
         "energy_0": 150,
         "energy_1": "kJ",
-        f"macronutrients_{protein.name.lower()}_0": 9.0,
-        f"macronutrients_{protein.name.lower()}_1": "g",
+        f"{protein.name_in_form}_0": 9.0,
+        f"{protein.name_in_form}_1": "g",
     }
 
     form = ProductForm(data=form_data, instance=product)
