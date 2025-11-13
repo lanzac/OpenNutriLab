@@ -7,7 +7,7 @@
   "[html][django-html][handlebars][hbs][mustache][jinja][jinja-html][nj][njk][nunjucks][twig]": {
     "editor.defaultFormatter": "monosans.djlint"
   },
-  "conventionalCommits.scopes": ["coverage", "dependencies", "config"],
+  "conventionalCommits.scopes": ["coverage", "dependencies", "config", "test"],
   "pytestrunner.usePoetry": false,
   "pytestrunner.virtualEnvPath": "/app/.venv",
   "pytestrunner.pytestArgs": ["-vv"],
