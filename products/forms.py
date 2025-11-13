@@ -273,7 +273,7 @@ class ProductForm(forms.ModelForm):
 
         # 3️⃣ Handle macronutrients
         for macronutrient in Macronutrient.objects.all():
-            field_name = f"macronutrients_{macronutrient.name.lower()}"
+            field_name = macronutrient.name_in_form
             value: Quantity | None = self.cleaned_data.get(field_name)
             if value:
                 ProductMacronutrient.objects.update_or_create(
