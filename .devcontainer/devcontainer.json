@@ -57,8 +57,8 @@
                 "ms-ossdata.vscode-pgsql",
                 "waderyan.gitblame",
                 "monosans.djlint",
-                "pamaron.pytest-runner",
-                "vivaxy.vscode-conventional-commits"
+                "vivaxy.vscode-conventional-commits",
+                "syntaf.vscode-pytest-runner"
             ]
         }
     },

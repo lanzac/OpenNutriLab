@@ -7,5 +7,11 @@
   "[html][django-html][handlebars][hbs][mustache][jinja][jinja-html][nj][njk][nunjucks][twig]": {
     "editor.defaultFormatter": "monosans.djlint"
   },
-  "conventionalCommits.scopes": ["coverage", "dependencies"]
+  "conventionalCommits.scopes": ["coverage", "dependencies", "config"],
+  "pytestrunner.usePoetry": false,
+  "pytestrunner.virtualEnvPath": "/app/.venv",
+  "pytestrunner.pytestArgs": ["-vv"],
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "editor.formatOnSave": true
 }
