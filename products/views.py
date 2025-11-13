@@ -8,10 +8,10 @@ from vanilla import UpdateView
 
 from .forms import ProductForm
 from .models import Product
-from .off_utils import fetch_product_data
-from .schema import ProductFormSchema
-from .schema import ProductSchema
-from .schema import product_schema_to_form_data
+from .openfoodfacts.schema import OFFProductSchema
+from .openfoodfacts.schema import ProductFormSchema
+from .openfoodfacts.schema import product_schema_to_form_data
+from .openfoodfacts.utils import fetch_product
 
 
 class ProductListView(ListView):
@@ -33,7 +33,7 @@ class ProductCreateView(CreateView):
         barcode: str | None = self.request.GET.get("barcode")
         initial = {}
         if barcode:
-            product: ProductSchema = fetch_product_data(barcode)
+            product: OFFProductSchema = fetch_product(barcode)
             product_form: ProductFormSchema = product_schema_to_form_data(product)
 
             # not sure here if I should do : product_form.dict(exclude_none=True)
@@ -80,7 +80,7 @@ class ProductEditView(UpdateView):
         barcode: str = product_instance.barcode
 
         if barcode and reset:
-            product: ProductSchema = fetch_product_data(barcode)
+            product: OFFProductSchema = fetch_product(barcode)
             product_form: ProductFormSchema = product_schema_to_form_data(product)
 
             # not sure here if I should do : product_form.dict(exclude_none=True)

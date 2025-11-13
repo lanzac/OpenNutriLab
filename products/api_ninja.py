@@ -1,25 +1,21 @@
-import requests
 from django.http import HttpRequest
+from django.http import HttpResponse
 from ninja import Query
 from ninja import Router
-from ninja.errors import HttpError
 
-from products.schema import MacronutrientsFormSchema
-from products.schema import ProductSchema
+from products.openfoodfacts.schema import MacronutrientsFormSchema
+from products.openfoodfacts.schema import OFFProductSchema
 
-from .off_utils import fetch_product_data
+from .openfoodfacts.utils import fetch_product
 
 router = Router()
 
 
-@router.get(path="/off/{barcode}", response=ProductSchema)
-def get_product(barcode: str) -> ProductSchema:
-    try:
-        return fetch_product_data(barcode)
-    except (requests.RequestException, ValueError, KeyError) as e:
-        raise HttpError(
-            status_code=404, message=f"Error when fetching the product data: {e}"
-        ) from e
+@router.get(path="/off/{barcode}")
+def get_product(
+    request: HttpRequest, response: HttpResponse, barcode: str
+) -> OFFProductSchema:
+    return fetch_product(barcode)
 
 
 @router.get(path="macronutrients/form-data")
