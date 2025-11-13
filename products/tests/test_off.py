@@ -1,17 +1,19 @@
 # Test OpenFoodFacts related fonctionalities
 import json
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
 
-from products.off_utils import fetch_local_product_data
-from products.off_utils import fetch_product_data
-from products.schema import MacronutrientsSchema
-from products.schema import ProductFormSchema
-from products.schema import ProductSchema
-from products.schema import product_schema_to_form_data
+from products.base_schema import MacronutrientsSchema
+from products.base_schema import ProductSchema
+from products.openfoodfacts.schema import OFFProductSchema
+from products.openfoodfacts.schema import ProductFormSchema
+from products.openfoodfacts.schema import product_schema_to_form_data
+from products.openfoodfacts.utils import fetch_local_product
+from products.openfoodfacts.utils import fetch_product
 
 
 @pytest.fixture
@@ -19,6 +21,7 @@ def sample_data(tmp_path: Path) -> Path:
     """Create a temporary local JSON file mimicking OFF data."""
     data = {
         "product": {
+            "_id": "123456",
             "product_name": "Test Product",
             "image_small_url": "https://example.com/image.jpg",
             "nutriments": {
@@ -39,12 +42,12 @@ def sample_data(tmp_path: Path) -> Path:
 def test_fetch_local_product_data(sample_data: Path):
     """Test reading a local JSON and transforming it into a ProductSchema."""
     base_dir = sample_data.parents[3]  # root of the tmp project structure
-    product: ProductSchema = fetch_local_product_data(
+    product: OFFProductSchema = fetch_local_product(
         barcode="123456",
         base_dir=base_dir,
     )
 
-    expected_product = ProductSchema(
+    expected_product: ProductSchema[MacronutrientsSchema, Any] = ProductSchema(
         barcode="123456",
         name="Test Product",
         image_url="https://example.com/image.jpg",
@@ -55,7 +58,7 @@ def test_fetch_local_product_data(sample_data: Path):
         ),
     )
 
-    assert isinstance(product, ProductSchema)
+    assert isinstance(product, OFFProductSchema)
     assert product.dict() == expected_product.dict()
 
 
@@ -63,6 +66,7 @@ def test_fetch_product_data():
     """Test that the function builds ProductSchema from mocked HTTP response."""
     mock_json = {
         "product": {
+            "_id": "999999",
             "product_name": "Remote Product",
             "image_small_url": None,
             "nutriments": {"fat_100g": 3.0, "proteins_100g": 1.5},
@@ -73,10 +77,10 @@ def test_fetch_product_data():
     mock_response.json.return_value = mock_json
     mock_response.raise_for_status.return_value = None
 
-    with patch("products.off_utils.requests.get", return_value=mock_response):
-        product: ProductSchema = fetch_product_data(barcode="999999")
+    with patch("products.openfoodfacts.utils.requests.get", return_value=mock_response):
+        product: OFFProductSchema = fetch_product(query_barcode="999999")
 
-    expected_product = ProductSchema(
+    expected_product: ProductSchema[MacronutrientsSchema, Any] = ProductSchema(
         # Only fields present in mock_json set in form of expected ProductSchema
         # The rest will have their value by default
         barcode="999999",
@@ -87,13 +91,13 @@ def test_fetch_product_data():
         ),
     )
 
-    assert isinstance(product, ProductSchema)
+    assert isinstance(product, OFFProductSchema)
     assert product.dict() == expected_product.dict()
 
 
 def test_product_schema_to_form_data():
     """Test conversion from ProductSchema to ProductFormSchema."""
-    product = ProductSchema(
+    product: ProductSchema[MacronutrientsSchema, Any] = ProductSchema(
         barcode="123456",
         name="Test Product",
         image_url="https://example.com/image.jpg",
