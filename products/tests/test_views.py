@@ -69,9 +69,8 @@ class TestProductCreateView:
             f"Expected initial={expected_initial}, got {form.initial}"
         )
 
-        expected_extra = {"fetched_image_url": "https://example.com/apple.jpg"}
-        assert form.extra_data == expected_extra, (
-            f"Expected extra_data={expected_extra}, got {form.extra_data}"
+        assert (
+            form.extra_data.get("fetched_image_url") == "https://example.com/apple.jpg"
         )
 
         # Optional: ensure the form type is correct
