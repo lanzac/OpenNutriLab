@@ -1,5 +1,6 @@
 import io
 from typing import TYPE_CHECKING
+from typing import Any
 
 import requests
 from crispy_bootstrap5.bootstrap5 import BS5Accordion
@@ -56,12 +57,12 @@ class ProductForm(forms.ModelForm):
     def __init__(
         self,
         *args,  # pyright: ignore[reportMissingParameterType, reportUnknownParameterType]
-        extra_data: dict[str, str | None] | None = None,
+        extra_data: dict[str, Any] | None = None,
         **kwargs,  # pyright: ignore[reportMissingParameterType, reportUnknownParameterType]
     ):
         # register extra_data variable before calling the super() method
         # https://djangoandy.com/2023/08/23/passing-custom-variables-into-django-forms/
-        self.extra_data: dict[str, str | None] | None = extra_data or {}
+        self.extra_data: dict[str, Any] = extra_data or {}
         super().__init__(*args, **kwargs)  # pyright: ignore[reportUnknownArgumentType]
 
         # TODO : TEST if image preview is correctly initialized when data is fetched

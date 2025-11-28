@@ -27,7 +27,7 @@ class ProductCreateView(CreateView):
         self,
         data=None,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
         files=None,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
-        extra_data: dict[str, str | None] | None = None,
+        extra_data: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> form_class:
         barcode: str | None = self.request.GET.get("barcode")
@@ -65,7 +65,7 @@ class ProductEditView(UpdateView):
         self,
         data=None,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
         files=None,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
-        extra_data: dict[str, str | None] | None = None,
+        extra_data: dict[str, Any] | None = None,
         **kwargs: Any,  # https://adamj.eu/tech/2021/05/11/python-type-hints-args-and-kwargs/
     ) -> form_class:
         reset: bool = self.request.GET.get("reset") == "1"
