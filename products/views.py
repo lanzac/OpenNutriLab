@@ -12,6 +12,7 @@ from .openfoodfacts.schema import OFFProductSchema
 from .openfoodfacts.schema import ProductFormSchema
 from .openfoodfacts.schema import product_schema_to_form_data
 from .openfoodfacts.utils import fetch_product
+from .openfoodfacts.utils import get_schema_from_ingredients
 
 
 class ProductListView(ListView):
@@ -39,6 +40,9 @@ class ProductCreateView(CreateView):
             # not sure here if I should do : product_form.dict(exclude_none=True)
             initial.update(product_form.dict())  # pyright: ignore[reportUnknownMemberType]
             extra_data = {"fetched_image_url": product_form.image_url}
+
+            # Add ingradients in extra_data
+            extra_data["ingredients"] = product.ingredients
 
         return self.form_class(
             data=data,
@@ -86,6 +90,14 @@ class ProductEditView(UpdateView):
             # not sure here if I should do : product_form.dict(exclude_none=True)
             initial.update(product_form.dict())  # pyright: ignore[reportUnknownMemberType]
             extra_data = {"fetched_image_url": product_form.image_url}
+
+            # Add ingradients in extra_data
+            extra_data["ingredients"] = product.ingredients
+
+        else:
+            if extra_data is None:
+                extra_data = {}
+            extra_data["ingredients"] = get_schema_from_ingredients(product_instance)
 
         return self.form_class(
             data=data,

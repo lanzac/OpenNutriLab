@@ -13,6 +13,7 @@ from products.base_schema import ProductSchema
 
 class OFFIngredientsSchema(IngredientsSchema["OFFIngredientsSchema"]):
     name: str = Field(default="", alias="text")
+    percentage: float | None = Field(default=None, alias="percent")
     # https://django-ninja.dev/guides/response/?h=self#self-referencing-schemes
     ingredients: list["OFFIngredientsSchema"] | None = Field(
         default=None, alias="ingredients"

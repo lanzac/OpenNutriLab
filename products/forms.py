@@ -23,10 +23,13 @@ from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from quantityfield.fields import QuantityFormField
 
 from opennutrilab.crispy_bootstrap_extended.layouts import AccordionGroupExtended
+from products.openfoodfacts.utils import render_ingredients_table
+from products.openfoodfacts.utils import save_ingredients_from_schema
 
 from .models import Macronutrient
 from .models import Product
@@ -36,6 +39,8 @@ if TYPE_CHECKING:
     from django.forms.widgets import Widget
     from django.utils.safestring import SafeText
     from pint import Quantity
+
+    from products.openfoodfacts.schema import OFFIngredientsSchema
 
 
 class ProductForm(forms.ModelForm):
@@ -69,6 +74,10 @@ class ProductForm(forms.ModelForm):
         # The next line is important for that !!
         self.fetched_image_url: str | None = (
             self.extra_data.get("fetched_image_url") if self.extra_data else None
+        )
+
+        ingredients: list[OFFIngredientsSchema] | None = (
+            self.extra_data.get("ingredients") if self.extra_data else None
         )
 
         # Configure Graph container template
@@ -140,6 +149,14 @@ class ProductForm(forms.ModelForm):
                     _("Nutritional values (per 100g)"),
                     *nutritional_values_fields_layout,
                     extra_data=graph_container_template,
+                ),
+                always_open=True,
+                css_class="mt-3",  # Add margin top
+            ),
+            BS5Accordion(
+                AccordionGroupExtended(
+                    _("Ingredients"),
+                    Layout(HTML(format_html(render_ingredients_table(ingredients)))),
                 ),
                 always_open=True,
                 css_class="mt-3",  # Add margin top
@@ -250,10 +267,10 @@ class ProductForm(forms.ModelForm):
                             )
 
     def save(self, commit: bool = True):  # noqa: FBT001, FBT002
-        # 1️⃣ Save Product object without committing
-        product = super().save(commit=False)
+        # Save Product object without committing
+        product: Product = super().save(commit=False)
 
-        # 2️⃣ Assign fetched image if needed
+        # Assign fetched image if needed
         fetched_image_url = getattr(self, "extra_data", {}).get("fetched_image_url")
         if fetched_image_url and not self.cleaned_data.get("image"):
             resp = requests.get(fetched_image_url, timeout=10)
@@ -263,7 +280,7 @@ class ProductForm(forms.ModelForm):
             if default_storage.exists(path):
                 default_storage.delete(path)
 
-            product.image = InMemoryUploadedFile(
+            product.image = InMemoryUploadedFile(  # pyright: ignore[reportAttributeAccessIssue]
                 io.BytesIO(resp.content),
                 field_name="image",
                 name=filename,
@@ -272,7 +289,7 @@ class ProductForm(forms.ModelForm):
                 charset=None,
             )
 
-        # 3️⃣ Handle macronutrients
+        # Handle macronutrients
         for macronutrient in Macronutrient.objects.all():
             field_name = macronutrient.name_in_form
             value: Quantity | None = self.cleaned_data.get(field_name)
@@ -288,7 +305,19 @@ class ProductForm(forms.ModelForm):
                     macronutrient=macronutrient,
                 ).delete()
 
-        # 4️⃣ Commit once
+        ingredients_schema: list[OFFIngredientsSchema] | None = (
+            self.extra_data.get("ingredients") if hasattr(self, "extra_data") else None
+        )
+
+        if ingredients_schema:
+            product.ingredients.all().delete()
+
+            save_ingredients_from_schema(
+                ingredients_schema,
+                product=product,
+                parent=None,
+            )
+
         if commit:
             product.save()
 

@@ -113,6 +113,50 @@ def render_ingredients_table(
     return Markup("{}").format("".join(html))
 
 
+def get_schema_from_ingredients(product: Product) -> list[OFFIngredientsSchema]:
+    """
+    Reconstructs the COMPLETE tree of a product's ingredients
+    WITHOUT recursion, in 2 passes.
+    """
+
+    # 1) Load ALL ingredients of the product
+    ingredients = (
+        product.ingredients.select_related("parent")
+        .order_by("id")  # GLOBAL SORT
+        .all()
+    )
+
+    # 2) Django → Schema mapping table
+    schema_map: dict[int, OFFIngredientsSchema] = {}
+
+    for ing in ingredients:
+        schema_map[ing.id] = OFFIngredientsSchema(
+            text=ing.name,
+            percent=ing.percentage,
+            ingredients=None,  # will be filled later
+        )
+
+    # 3) Building the tree (parent → children relations)
+    roots: list[OFFIngredientsSchema] = []
+
+    for ing in ingredients:
+        schema = schema_map[ing.id]
+
+        if ing.parent_id is None:
+            # root ingredient
+            roots.append(schema)
+        else:
+            # child ingredient
+            parent_schema = schema_map[ing.parent_id]
+
+            if parent_schema.ingredients is None:
+                parent_schema.ingredients = []
+
+            parent_schema.ingredients.append(schema)
+
+    return roots
+
+
 def save_ingredients_from_schema(
     ingredients_schema: list[OFFIngredientsSchema],
     product: Product,
