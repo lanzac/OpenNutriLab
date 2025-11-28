@@ -1,8 +1,11 @@
+from typing import TYPE_CHECKING
+from typing import Any
 from typing import final
 from typing import override
 
 from django.db import models
 from django.db.models import UniqueConstraint
+from django.db.models.fields.related import ForeignKey
 from django.db.models.functions import Lower
 from django.db.models.functions import Upper
 from quantityfield.fields import QuantityField
@@ -83,6 +86,59 @@ class Vitamin(models.Model):
         return label
 
 
+class IngredientRef(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+
+    # Example of nutritional values for this ingredient reference
+    # Will be changed later
+    fat = models.FloatField(null=True, blank=True)
+    saturated_fat = models.FloatField(null=True, blank=True)
+    monounsaturated_fat = models.FloatField(null=True, blank=True)
+    polyunsaturated_fat = models.FloatField(null=True, blank=True)
+
+    proteins = models.FloatField(null=True, blank=True)
+    carbohydrates = models.FloatField(null=True, blank=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Ingredient(models.Model):
+    id: int  # type hint
+    parent_id: int | None  # type hint
+
+    name = models.CharField(max_length=255)
+
+    # Opionnal link to a reference ingredient
+    reference = models.ForeignKey(
+        IngredientRef,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="usages",
+    )
+
+    product: ForeignKey[Any] = models.ForeignKey(
+        "Product",
+        on_delete=models.CASCADE,
+        related_name="ingredients",
+    )
+
+    parent = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="children",
+    )
+
+    # Percentage in the product
+    percentage = models.FloatField(null=True, blank=True)
+
+    def __str__(self):
+        return self.name
+
+
 @final
 class Product(models.Model):
     barcode = EAN13Field(primary_key=True)
@@ -115,6 +171,9 @@ class Product(models.Model):
         related_name="products",
     )
     # ------------------------------------------------------------------------
+
+    if TYPE_CHECKING:
+        ingredients: models.QuerySet["Ingredient"]
 
     @override
     def __str__(self) -> str:
