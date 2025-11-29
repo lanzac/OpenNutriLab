@@ -23,7 +23,6 @@ from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.template.loader import render_to_string
 from django.urls import reverse
-from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from quantityfield.fields import QuantityFormField
 
@@ -156,7 +155,7 @@ class ProductForm(forms.ModelForm):
             BS5Accordion(
                 AccordionGroupExtended(
                     _("Ingredients"),
-                    Layout(HTML(format_html(render_ingredients_table(ingredients)))),
+                    Layout(HTML(render_ingredients_table(ingredients))),
                 ),
                 always_open=True,
                 css_class="mt-3",  # Add margin top

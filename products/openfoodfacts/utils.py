@@ -3,7 +3,9 @@ from pathlib import Path
 
 import requests
 from django.conf import settings
-from markupsafe import Markup
+from django.utils.html import format_html
+from django.utils.html import format_html_join
+from django.utils.safestring import SafeText
 from ninja.errors import HttpError
 from pydantic import ValidationError
 
@@ -89,28 +91,48 @@ def fetch_product(query_barcode: str) -> OFFProductSchema:
 
 def render_ingredients_table(
     ingredients: list["OFFIngredientsSchema"] | None,
-) -> Markup:
-    """Recursively renders an HTML table of nested ingredients."""
+) -> SafeText:
+    """Recursively renders a SAFE HTML table of nested ingredients."""
     if not ingredients:
-        return Markup("<p><em>No ingredients listed.</em></p>")
+        return format_html("<p><em>No ingredients listed.</em></p>")
 
-    html = ['<table class="table table-striped table-bordered mb-0">']
-    html.append(
-        "<thead><tr><th>Name</th><th>Percent</th><th>Sub-Ingredients</th></tr></thead><tbody>"
-    )
+    rows: list[SafeText] = []
 
     for ing in ingredients:
-        sub_html = ""
         if ing.ingredients:
-            sub_html = render_ingredients_table(ing.ingredients)
-            sub_html = f'<td colspan="2">{sub_html}</td>'
+            sub_table = render_ingredients_table(ing.ingredients)
+            sub_cell = format_html("<td colspan='2'>{}</td>", sub_table)
         else:
-            sub_html = "<td colspan='2'><em>None</em></td>"
+            sub_cell = format_html("<td colspan='2'><em>None</em></td>")
 
-        html.append(f"<tr><td>{ing.name}</td><td>{ing.percentage}</td>{sub_html}</tr>")
+        row = format_html(
+            "<tr><td>{}</td><td>{}</td>{}</tr>",
+            ing.name,  # automatically escaped
+            ing.percentage,  # automatically escaped
+            sub_cell,  # already safe
+        )
 
-    html.append("</tbody></table>")
-    return Markup("{}").format("".join(html))
+        rows.append(row)
+
+    body = format_html_join("", "{}", ((row,) for row in rows))
+
+    return format_html(
+        """
+        <table class="table table-striped table-bordered mb-0">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Percent</th>
+                    <th>Sub-Ingredients</th>
+                </tr>
+            </thead>
+            <tbody>
+                {}
+            </tbody>
+        </table>
+        """,
+        body,
+    )
 
 
 def get_schema_from_ingredients(product: Product) -> list[OFFIngredientsSchema]:
