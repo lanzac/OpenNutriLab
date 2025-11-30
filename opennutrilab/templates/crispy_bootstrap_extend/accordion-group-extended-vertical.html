@@ -1,0 +1,10 @@
+{% extends "crispy_bootstrap_extend/accordion-group-extended-base.html" %}
+
+{% block accordion_content %}
+  <div class="row mb-3">
+    <div class="col-12">{{ fields|safe }}</div>
+  </div>
+  <div class="row">
+    <div class="col-12">{{ div.extra_data|safe }}</div>
+  </div>
+{% endblock accordion_content %}

@@ -4,7 +4,7 @@ from django.utils.safestring import SafeText
 
 
 class AccordionGroupExtended(AccordionGroup):
-    template = "crispy_bootstrap_extend/accordion-group-extended.html"
+    template = "crispy_bootstrap_extend/accordion-group-extended-base.html"
 
     def __init__(  # noqa: PLR0913
         self,
