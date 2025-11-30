@@ -46,6 +46,20 @@ manage +args:
 node-shell:
     @docker exec -it opennutrilab_local_node bash
 
+# node-reset: Reset node container and rebuild assets
+node-reset:
+    @echo "Stopping node container..."
+    @docker compose stop node
+    @echo "Removing node container..."
+    @docker compose rm -f node
+    @echo "Rebuilding node container..."
+    @docker compose build node
+    @echo "Starting node container..."
+    @docker compose up -d node
+    @echo "node container reset complete."
+
+
+
 # django-shell: Open the Django shell in the opennutrilab_local_django container.
 django-shell:
     @docker exec -it opennutrilab_local_django /entrypoint python manage.py shell
