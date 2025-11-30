@@ -1,7 +1,7 @@
 // Import the pre-built Plotly library ready for use in the browser.
 // This package avoids the need to bundle Plotly from source.
 // ES6 module
-import Plotly from 'plotly.js-dist-min';
+import Plotly from 'plotly.js-strict-dist-min';
 
 // Expose Plotly as a global variable so it can be accessed
 // from inline scripts, templates, or other modules (e.g., theme_switcher.js).
