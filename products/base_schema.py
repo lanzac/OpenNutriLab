@@ -22,10 +22,16 @@ class MacronutrientsSchema(Schema):
 T = TypeVar("T")
 
 
+class IngredientRef(Schema):
+    name: str
+
+
+# need to rename ingredients to ingredient
 class IngredientsSchema(Schema, Generic[T]):  # noqa: UP046
     name: str = Field(default="", alias="text")
     # https://django-ninja.dev/guides/response/?h=self#self-referencing-schemes
     ingredients: list[T] | None = Field(default=None, alias="ingredients")
+    reference: IngredientRef | None = Field(default=None)
 
 
 IngredientsSchema.model_rebuild()

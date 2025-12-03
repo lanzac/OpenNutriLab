@@ -1,7 +1,9 @@
 from ninja import Field
 from ninja import Schema
 from pydantic import AliasPath
+from pydantic import ConfigDict
 
+from products.base_schema import IngredientRef
 from products.base_schema import IngredientsSchema
 from products.base_schema import IngredientsType
 from products.base_schema import MacronutrientsSchema
@@ -12,12 +14,20 @@ from products.base_schema import ProductSchema
 
 
 class OFFIngredientsSchema(IngredientsSchema["OFFIngredientsSchema"]):
+    model_config = ConfigDict(
+        from_attributes=True,  # allows to create from Django objects
+        populate_by_name=True,  # allow us to use names even with alias defined
+        extra="ignore",  # ignore _state, id, product_id, etc
+    )
+
     name: str = Field(default="", alias="text")
     percentage: float | None = Field(default=None, alias="percent")
     # https://django-ninja.dev/guides/response/?h=self#self-referencing-schemes
     ingredients: list["OFFIngredientsSchema"] | None = Field(
         default=None, alias="ingredients"
     )
+    reference: IngredientRef | None = Field(default=None)
+    has_reference: bool = False
 
 
 OFFIngredientsSchema.model_rebuild()
