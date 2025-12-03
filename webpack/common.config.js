@@ -17,6 +17,10 @@ module.exports = {
       __dirname,
       '../opennutrilab/static/js/plotly_loader.js',
     ),
+    tabulator_loader: path.resolve(
+      __dirname,
+      '../opennutrilab/static/js/tabulator_loader.js',
+    ),
   },
   output: {
     path: path.resolve(__dirname, '../opennutrilab/static/webpack_bundles/'),
