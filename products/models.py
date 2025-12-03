@@ -5,7 +5,6 @@ from typing import override
 
 from django.db import models
 from django.db.models import UniqueConstraint
-from django.db.models.fields.related import ForeignKey
 from django.db.models.functions import Lower
 from django.db.models.functions import Upper
 from quantityfield.fields import QuantityField
@@ -118,7 +117,19 @@ class Ingredient(models.Model):
         related_name="usages",
     )
 
-    product: ForeignKey[Any] = models.ForeignKey(
+    # Type of "GeneratedField" is unknownbasedpyrightreportUnknownMemberType
+    # Check for new released since Dec 02 2025
+    # Oct 18 2025 : Add types for GeneratedField
+    # https://pypi.org/project/django-types/#history
+    # https://github.com/sbdchd/django-types/commits/main/django-stubs
+    # https://github.com/sbdchd/django-types/commit/4c797933800599c905a32bc16131aa7925e2390b
+    has_reference = models.GeneratedField(  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue, reportUnknownVariableType]
+        expression=models.Q(reference__isnull=False),
+        output_field=models.BooleanField(),
+        db_persist=True,
+    )
+
+    product: models.ForeignKey[Any] = models.ForeignKey(
         "Product",
         on_delete=models.CASCADE,
         related_name="ingredients",
@@ -134,6 +145,19 @@ class Ingredient(models.Model):
 
     # Percentage in the product
     percentage = models.FloatField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["product", "parent", "name"],
+                name="unique_ingredient_per_product_parent",
+            ),
+            models.UniqueConstraint(
+                fields=["product", "name"],
+                condition=models.Q(parent__isnull=True),
+                name="unique_root_ingredient_per_product",
+            ),
+        ]
 
     def __str__(self):
         return self.name
