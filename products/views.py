@@ -1,3 +1,5 @@
+import json
+from typing import TYPE_CHECKING
 from typing import Any
 
 from django.urls import reverse_lazy
@@ -7,12 +9,17 @@ from vanilla import ListView
 from vanilla import UpdateView
 
 from .forms import ProductForm
+from .models import IngredientRef
 from .models import Product
 from .openfoodfacts.schema import OFFProductSchema
 from .openfoodfacts.schema import ProductFormSchema
 from .openfoodfacts.schema import product_schema_to_form_data
+from .openfoodfacts.utils import build_ingredient_json_from_schema
 from .openfoodfacts.utils import fetch_product
 from .openfoodfacts.utils import get_schema_from_ingredients
+
+if TYPE_CHECKING:
+    from products.openfoodfacts.schema import OFFIngredientsSchema
 
 
 class ProductListView(ListView):
@@ -43,6 +50,21 @@ class ProductCreateView(CreateView):
 
             # Add ingradients in extra_data
             extra_data["ingredients"] = product.ingredients
+
+            if product.ingredients:
+                # Preload all reference ingredient names once (single DB query)
+                reference_names = {
+                    name.lower()
+                    for name in IngredientRef.objects.values_list("name", flat=True)
+                }
+
+                # Build the final JSON-ready list
+                extra_data["ingredients_json"] = json.dumps(
+                    [
+                        build_ingredient_json_from_schema(ingredient, reference_names)
+                        for ingredient in product.ingredients
+                    ]
+                )
 
         return self.form_class(
             data=data,
@@ -94,10 +116,31 @@ class ProductEditView(UpdateView):
             # Add ingradients in extra_data
             extra_data["ingredients"] = product.ingredients
 
+            if product.ingredients:
+                # Preload all reference ingredient names once (single DB query)
+                reference_names = {
+                    name.lower()
+                    for name in IngredientRef.objects.values_list("name", flat=True)
+                }
+
+                # Build the final JSON-ready list
+                extra_data["ingredients_json"] = json.dumps(
+                    [
+                        build_ingredient_json_from_schema(ingredient, reference_names)
+                        for ingredient in product.ingredients
+                    ]
+                )
+
         else:
             if extra_data is None:
                 extra_data = {}
-            extra_data["ingredients"] = get_schema_from_ingredients(product_instance)
+            ingredients: list[OFFIngredientsSchema] = get_schema_from_ingredients(
+                product=product_instance
+            )
+            extra_data["ingredients"] = ingredients
+            extra_data["ingredients_json"] = json.dumps(
+                [ingredient.model_dump(by_alias=False) for ingredient in ingredients]
+            )
 
         return self.form_class(
             data=data,

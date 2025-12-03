@@ -27,7 +27,6 @@ from django.utils.translation import gettext_lazy as _
 from quantityfield.fields import QuantityFormField
 
 from opennutrilab.crispy_bootstrap_extended.layouts import AccordionGroupExtended
-from products.openfoodfacts.utils import render_ingredients_table
 from products.openfoodfacts.utils import save_ingredients_from_schema
 
 from .models import Macronutrient
@@ -75,17 +74,22 @@ class ProductForm(forms.ModelForm):
             self.extra_data.get("fetched_image_url") if self.extra_data else None
         )
 
-        ingredients: list[OFFIngredientsSchema] | None = (
-            self.extra_data.get("ingredients") if self.extra_data else None
-        )
-
         # Configure Graph container template
-        graph_container_template: SafeText = render_to_string(
+        macronutrients_graph_container_template: SafeText = render_to_string(
             template_name="products/components/graph_container.html",
             context={
                 "loader_id": "macronutrients_graph_loader",
                 "graph_id": "macronutrients_graph",
                 "loader_text": _("Loading macronutrients graph..."),
+            },
+        )
+
+        ingredients_table_container_template: SafeText = render_to_string(
+            template_name="products/components/graph_container.html",
+            context={
+                "loader_id": "ingredients_graph_loader",
+                "graph_id": "ingredients_table",
+                "loader_text": _("Loading ingredients table..."),
             },
         )
 
@@ -147,7 +151,7 @@ class ProductForm(forms.ModelForm):
                 AccordionGroupExtended(
                     _("Nutritional values (per 100g)"),
                     *nutritional_values_fields_layout,
-                    extra_data=graph_container_template,
+                    extra_data=macronutrients_graph_container_template,
                 ),
                 always_open=True,
                 css_class="mt-3",  # Add margin top
@@ -155,7 +159,9 @@ class ProductForm(forms.ModelForm):
             BS5Accordion(
                 AccordionGroupExtended(
                     _("Ingredients"),
-                    Layout(HTML(render_ingredients_table(ingredients))),
+                    Layout(),
+                    template="crispy_bootstrap_extend/accordion-group-extended-vertical.html",
+                    extra_data=ingredients_table_container_template,
                 ),
                 always_open=True,
                 css_class="mt-3",  # Add margin top

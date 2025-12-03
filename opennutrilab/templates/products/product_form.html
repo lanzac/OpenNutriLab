@@ -8,7 +8,17 @@
   {{ block.super }}
   {% render_bundle 'fetch_barcode' 'js' attrs='defer' %}
   {% render_bundle 'plotly_loader' 'js' attrs='defer' %}
+  {% render_bundle 'tabulator_loader' 'js' attrs='defer' %}
 {% endblock javascript %}
+{% block css %}
+  {{ block.super }}
+  {% render_bundle 'tabulator_loader' 'css' attrs='defer' %}
+  <style>
+    .hidden-data {
+      display: none;
+    }
+  </style>
+{% endblock css %}
 {% block content %}
   <div class="container-md my-5">
     <div class="row justify-content-center">
@@ -37,10 +47,12 @@
       </div>
     </div>
   </div>
+  <div id="ingredients" class="hidden-data">{{ form.extra_data.ingredients_json|json_script:"ingredients-data" }}</div>
   <script type="text/javascript">
     window.CONFIG = {
       macronutrientsApiUrl: "{{ macronutrients_api_url }}",
     };
   </script>
   <script src="{% static 'products/js/product_form_macronutrients_graph.js' %}"></script>
+  <script src="{% static 'products/js/product_form_ingredients_table.js' %}"></script>
 {% endblock content %}

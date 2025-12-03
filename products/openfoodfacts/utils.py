@@ -1,5 +1,7 @@
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
+from typing import Any
 
 import requests
 from django.conf import settings
@@ -15,6 +17,9 @@ from products.models import Product
 
 from .schema import OFFIngredientsSchema
 from .schema import OFFProductSchema
+
+if TYPE_CHECKING:
+    from django.db.models.query import QuerySet
 
 
 def fetch_local_product(
@@ -142,7 +147,7 @@ def get_schema_from_ingredients(product: Product) -> list[OFFIngredientsSchema]:
     """
 
     # 1) Load ALL ingredients of the product
-    ingredients = (
+    ingredients: QuerySet[Ingredient] = (
         product.ingredients.select_related("parent")
         .order_by("id")  # GLOBAL SORT
         .all()
@@ -152,11 +157,8 @@ def get_schema_from_ingredients(product: Product) -> list[OFFIngredientsSchema]:
     schema_map: dict[int, OFFIngredientsSchema] = {}
 
     for ing in ingredients:
-        schema_map[ing.id] = OFFIngredientsSchema(
-            text=ing.name,
-            percent=ing.percentage,
-            ingredients=None,  # will be filled later
-        )
+        ingredient_schema = OFFIngredientsSchema.model_validate(ing)
+        schema_map[ing.id] = ingredient_schema
 
     # 3) Building the tree (parent → children relations)
     roots: list[OFFIngredientsSchema] = []
@@ -204,10 +206,46 @@ def save_ingredients_from_schema(
             percentage=getattr(ing, "percentage", None),  # if available
         )
 
+        ingredient, _is_created = Ingredient.objects.update_or_create(
+            product=product,
+            parent=parent,
+            name=ing.name,
+            defaults={"percentage": getattr(ing, "percentage", None)},
+        )
+
         # Recursive call on sub-ingredients
         if ing.ingredients:
             save_ingredients_from_schema(
-                ing.ingredients,
+                ingredients_schema=ing.ingredients,
                 product=product,
                 parent=ingredient,
             )
+
+
+def build_ingredient_json_from_schema(
+    ingredient: OFFIngredientsSchema, reference_names: set[str]
+) -> dict[str, Any]:
+    """
+    Build a JSON-serializable dictionary for a single ingredient,
+    and inject a computed boolean field `has_reference`.
+
+    The `has_reference` field is derived by checking if the ingredient name
+    exists in the preloaded set of reference ingredient names.
+
+    This avoids doing a database query inside a loop and greatly improves performance.
+
+    :param ingredient: Ingredient schema or object with a `name` attribute
+    :param reference_names: A set of normalized reference ingredient names
+    :return: A dictionary ready for JSON serialization
+    """
+
+    # Dump the ingredient data into a plain Python dictionary
+    data = ingredient.model_dump(by_alias=False)
+
+    # Normalize the ingredient name for a reliable comparison
+    normalized_name = ingredient.name.strip().lower()
+
+    # Compute whether this ingredient exists in the reference database
+    data["has_reference"] = normalized_name in reference_names
+
+    return data
