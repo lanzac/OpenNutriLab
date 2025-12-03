@@ -5,7 +5,7 @@ from ninja import Field
 from ninja import Schema
 
 MacronutrientsType = TypeVar("MacronutrientsType", bound="MacronutrientsSchema")
-IngredientsType = TypeVar("IngredientsType", bound="IngredientsSchema")  # pyright: ignore[reportMissingTypeArgument]
+IngredientType = TypeVar("IngredientType", bound="IngredientSchema")  # pyright: ignore[reportMissingTypeArgument]
 
 
 # More information on : Regulation (EU) No 1169/2011
@@ -27,21 +27,21 @@ class IngredientRef(Schema):
 
 
 # need to rename ingredients to ingredient
-class IngredientsSchema(Schema, Generic[T]):  # noqa: UP046
+class IngredientSchema(Schema, Generic[T]):  # noqa: UP046
     name: str = Field(default="", alias="text")
     # https://django-ninja.dev/guides/response/?h=self#self-referencing-schemes
     ingredients: list[T] | None = Field(default=None, alias="ingredients")
     reference: IngredientRef | None = Field(default=None)
 
 
-IngredientsSchema.model_rebuild()
+IngredientSchema.model_rebuild()
 
 
-class ProductSchema(Schema, Generic[MacronutrientsType, IngredientsType]):  # noqa: UP046
+class ProductSchema(Schema, Generic[MacronutrientsType, IngredientType]):  # noqa: UP046
     barcode: str
     name: str
     image_url: str | None = None
     description: str | None = None
     energy: int | None = None
     macronutrients: MacronutrientsType | None = None
-    ingredients: list[IngredientsType] | None = None
+    ingredients: list[IngredientType] | None = None

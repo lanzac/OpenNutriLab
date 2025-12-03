@@ -4,8 +4,8 @@ from pydantic import AliasPath
 from pydantic import ConfigDict
 
 from products.base_schema import IngredientRef
-from products.base_schema import IngredientsSchema
-from products.base_schema import IngredientsType
+from products.base_schema import IngredientSchema
+from products.base_schema import IngredientType
 from products.base_schema import MacronutrientsSchema
 from products.base_schema import MacronutrientsType
 from products.base_schema import ProductSchema
@@ -13,7 +13,7 @@ from products.base_schema import ProductSchema
 # OpenFoodFacts data mapping -------------------------------------------------
 
 
-class OFFIngredientsSchema(IngredientsSchema["OFFIngredientsSchema"]):
+class OFFIngredientSchema(IngredientSchema["OFFIngredientSchema"]):
     model_config = ConfigDict(
         from_attributes=True,  # allows to create from Django objects
         populate_by_name=True,  # allow us to use names even with alias defined
@@ -23,14 +23,14 @@ class OFFIngredientsSchema(IngredientsSchema["OFFIngredientsSchema"]):
     name: str = Field(default="", alias="text")
     percentage: float | None = Field(default=None, alias="percent")
     # https://django-ninja.dev/guides/response/?h=self#self-referencing-schemes
-    ingredients: list["OFFIngredientsSchema"] | None = Field(
+    ingredients: list["OFFIngredientSchema"] | None = Field(
         default=None, alias="ingredients"
     )
     reference: IngredientRef | None = Field(default=None)
     has_reference: bool = False
 
 
-OFFIngredientsSchema.model_rebuild()
+OFFIngredientSchema.model_rebuild()
 
 
 class OFFMacronutrientsSchema(MacronutrientsSchema):
@@ -46,7 +46,7 @@ class OFFMacronutrientsSchema(MacronutrientsSchema):
     proteins: float | None = Field(default=None, validation_alias="proteins_100g")
 
 
-class OFFProductSchema(ProductSchema[OFFMacronutrientsSchema, OFFIngredientsSchema]):
+class OFFProductSchema(ProductSchema[OFFMacronutrientsSchema, OFFIngredientSchema]):
     barcode: str = Field(validation_alias="_id")
     name: str = Field(default="", validation_alias="product_name")
     image_url: str | None = Field(default=None, validation_alias="image_small_url")
@@ -57,7 +57,7 @@ class OFFProductSchema(ProductSchema[OFFMacronutrientsSchema, OFFIngredientsSche
     macronutrients: OFFMacronutrientsSchema | None = Field(
         default=None, validation_alias="nutriments"
     )
-    ingredients: list[OFFIngredientsSchema] | None = Field(
+    ingredients: list[OFFIngredientSchema] | None = Field(
         default=None, validation_alias="ingredients"
     )
 
@@ -126,6 +126,6 @@ class ProductFormSchema(Schema):
 
 
 def product_schema_to_form_data(
-    product: ProductSchema[MacronutrientsType, IngredientsType] | OFFProductSchema,
+    product: ProductSchema[MacronutrientsType, IngredientType] | OFFProductSchema,
 ) -> ProductFormSchema:
     return ProductFormSchema.model_validate(product, by_alias=True)

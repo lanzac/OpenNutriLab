@@ -19,7 +19,7 @@ from .openfoodfacts.utils import fetch_product
 from .openfoodfacts.utils import get_schema_from_ingredients
 
 if TYPE_CHECKING:
-    from products.openfoodfacts.schema import OFFIngredientsSchema
+    from products.openfoodfacts.schema import OFFIngredientSchema
 
 
 class ProductListView(ListView):
@@ -134,7 +134,7 @@ class ProductEditView(UpdateView):
         else:
             if extra_data is None:
                 extra_data = {}
-            ingredients: list[OFFIngredientsSchema] = get_schema_from_ingredients(
+            ingredients: list[OFFIngredientSchema] = get_schema_from_ingredients(
                 product=product_instance
             )
             extra_data["ingredients"] = ingredients

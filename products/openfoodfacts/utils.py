@@ -15,7 +15,7 @@ from products.models import Ingredient
 from products.models import IngredientRef
 from products.models import Product
 
-from .schema import OFFIngredientsSchema
+from .schema import OFFIngredientSchema
 from .schema import OFFProductSchema
 
 if TYPE_CHECKING:
@@ -95,7 +95,7 @@ def fetch_product(query_barcode: str) -> OFFProductSchema:
 
 
 def render_ingredients_table(
-    ingredients: list["OFFIngredientsSchema"] | None,
+    ingredients: list["OFFIngredientSchema"] | None,
 ) -> SafeText:
     """Recursively renders a SAFE HTML table of nested ingredients."""
     if not ingredients:
@@ -140,7 +140,7 @@ def render_ingredients_table(
     )
 
 
-def get_schema_from_ingredients(product: Product) -> list[OFFIngredientsSchema]:
+def get_schema_from_ingredients(product: Product) -> list[OFFIngredientSchema]:
     """
     Reconstructs the COMPLETE tree of a product's ingredients
     WITHOUT recursion, in 2 passes.
@@ -154,14 +154,14 @@ def get_schema_from_ingredients(product: Product) -> list[OFFIngredientsSchema]:
     )
 
     # 2) Django → Schema mapping table
-    schema_map: dict[int, OFFIngredientsSchema] = {}
+    schema_map: dict[int, OFFIngredientSchema] = {}
 
     for ing in ingredients:
-        ingredient_schema = OFFIngredientsSchema.model_validate(ing)
+        ingredient_schema = OFFIngredientSchema.model_validate(ing)
         schema_map[ing.id] = ingredient_schema
 
     # 3) Building the tree (parent → children relations)
-    roots: list[OFFIngredientsSchema] = []
+    roots: list[OFFIngredientSchema] = []
 
     for ing in ingredients:
         schema = schema_map[ing.id]
@@ -182,7 +182,7 @@ def get_schema_from_ingredients(product: Product) -> list[OFFIngredientsSchema]:
 
 
 def save_ingredients_from_schema(
-    ingredients_schema: list[OFFIngredientsSchema],
+    ingredients_schema: list[OFFIngredientSchema],
     product: Product,
     parent: Ingredient | None = None,
 ) -> None:
@@ -223,7 +223,7 @@ def save_ingredients_from_schema(
 
 
 def build_ingredient_json_from_schema(
-    ingredient: OFFIngredientsSchema, reference_names: set[str]
+    ingredient: OFFIngredientSchema, reference_names: set[str]
 ) -> dict[str, Any]:
     """
     Build a JSON-serializable dictionary for a single ingredient,

@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from django.utils.safestring import SafeText
     from pint import Quantity
 
-    from products.openfoodfacts.schema import OFFIngredientsSchema
+    from products.openfoodfacts.schema import OFFIngredientSchema
 
 
 class ProductForm(forms.ModelForm):
@@ -310,7 +310,7 @@ class ProductForm(forms.ModelForm):
                     macronutrient=macronutrient,
                 ).delete()
 
-        ingredients_schema: list[OFFIngredientsSchema] | None = (
+        ingredients_schema: list[OFFIngredientSchema] | None = (
             self.extra_data.get("ingredients") if hasattr(self, "extra_data") else None
         )
 
