@@ -6,6 +6,9 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
+from ninja.errors import HttpError
+from requests import HTTPError
+from requests import RequestException
 
 from products.base_schema import MacronutrientsSchema
 from products.base_schema import ProductSchema
@@ -118,6 +121,229 @@ def test_fetch_product():
 
     assert isinstance(product, OFFProductSchema)
     assert product.dict() == expected_product.dict()
+
+
+def test_fetch_product_http_error():
+    mock_response = MagicMock()
+    mock_response.raise_for_status.side_effect = HTTPError("500 Server Error")
+
+    with (
+        patch("products.openfoodfacts.utils.requests.get", return_value=mock_response),
+        pytest.raises(HttpError) as exc,
+    ):
+        fetch_product(query_barcode="999999")
+
+    assert exc.value.status_code == 502  # noqa: PLR2004
+    assert "External API returned an error" in exc.value.message
+
+
+def test_fetch_product_request_exception():
+    with (
+        patch(
+            "products.openfoodfacts.utils.requests.get",
+            side_effect=RequestException("Connection timeout"),
+        ),
+        pytest.raises(HttpError) as exc,
+    ):
+        fetch_product("999999")
+
+    assert exc.value.status_code == 503  # noqa: PLR2004
+    assert "External API unreachable" in exc.value.message
+
+
+def test_fetch_product_invalid_json():
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_response.json.side_effect = ValueError("Invalid JSON")
+
+    with (
+        patch("products.openfoodfacts.utils.requests.get", return_value=mock_response),
+        pytest.raises(HttpError) as exc,
+    ):
+        fetch_product("999999")
+
+    assert exc.value.status_code == 502  # noqa: PLR2004
+    assert "Invalid JSON received" in exc.value.message
+
+
+def test_fetch_product_invalid_schema():
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_response.json.return_value = {"unexpected": "structure"}
+
+    with (
+        patch("products.openfoodfacts.utils.requests.get", return_value=mock_response),
+        pytest.raises(HttpError) as exc,
+    ):
+        fetch_product("999999")
+
+    assert exc.value.status_code == 500  # noqa: PLR2004
+    assert "Invalid API response format" in exc.value.message
+
+
+def test_fetch_product_not_found():
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_response.json.return_value = {
+        "code": "204504898888",
+        "errors": [
+            {
+                "field": {"id": "code", "value": "204504898888"},
+                "impact": {"id": "failure", "lc_name": "Failure", "name": "Failure"},
+                "message": {"id": "product_not_found", "lc_name": "", "name": ""},
+            }
+        ],
+        "result": {
+            "id": "product_found",
+            "lc_name": "Product found",
+            "name": "Product found",
+        },
+        "status": "failure",
+        "warnings": [],
+    }
+
+    with (
+        patch("products.openfoodfacts.utils.requests.get", return_value=mock_response),
+        pytest.raises(HttpError) as exc,
+    ):
+        fetch_product("999999")
+
+    assert exc.value.status_code == 404  # noqa: PLR2004
+
+
+def test_fetch_product_success_with_warnings():
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_response.json.return_value = {
+        "status": "success_with_warnings",
+        "code": "999999",
+        "product": {
+            "code": "999999",
+            "product_name": "Remote Product",
+        },
+        "errors": [],
+        "warnings": [
+            {
+                "message": {
+                    "id": "incomplete_data",
+                    "name": "Incomplete data",
+                },
+                "field": {
+                    "id": "ingredients",
+                    "value": "ingredients",
+                },
+                "impact": {
+                    "id": "info",
+                    "name": "Information",
+                },
+            }
+        ],
+        "result": {
+            "id": "product_found",
+            "lc_name": "Product found",
+            "name": "Product found",
+        },
+    }
+
+    with (
+        patch("products.openfoodfacts.utils.requests.get", return_value=mock_response),
+        pytest.raises(HttpError) as exc,
+    ):
+        fetch_product("999999")
+
+    assert exc.value.status_code == 400  # noqa: PLR2004
+    assert "Incomplete data" in exc.value.message
+
+
+def test_fetch_product_success_with_errors():
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_response.json.return_value = {
+        "status": "success_with_errors",
+        "code": "999999",
+        "product": {
+            "code": "999999",
+            "product_name": "Remote Product",
+        },
+        "errors": [
+            {
+                "message": {
+                    "id": "invalid_nutriments",
+                    "name": "Invalid nutriments",
+                },
+                "field": {
+                    "id": "nutriments",
+                    "value": "nutriments",
+                },
+                "impact": {
+                    "id": "warning",
+                    "name": "Warning",
+                },
+            }
+        ],
+        "warnings": [],
+        "result": {
+            "id": "product_found",
+            "name": "Product found",
+        },
+    }
+
+    with (
+        patch("products.openfoodfacts.utils.requests.get", return_value=mock_response),
+        pytest.raises(HttpError) as exc,
+    ):
+        fetch_product("999999")
+
+    assert exc.value.status_code == 400  # noqa: PLR2004
+    assert "Invalid nutriments" in exc.value.message
+
+
+def test_fetch_product_success_but_product_is_none():
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_response.json.return_value = {
+        "status": "success",
+        "product": None,
+        "errors": [],
+        "warnings": [],
+        "result": {
+            "id": "product_found",
+            "name": "Product found",
+        },
+    }
+
+    with (
+        patch("products.openfoodfacts.utils.requests.get", return_value=mock_response),
+        pytest.raises(HttpError) as exc,
+    ):
+        fetch_product("999999")
+
+    assert exc.value.status_code == 500  # noqa: PLR2004
+    assert "returned no product" in exc.value.message
+
+
+def test_fetch_product_barcode_mismatch():
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_response.json.return_value = {
+        "status": "success",
+        "product": {
+            "code": "111111",
+            "product_name": "Wrong Product",
+        },
+        "errors": [],
+        "warnings": [],
+        "result": {
+            "id": "product_found",
+            "name": "Product found",
+        },
+    }
+
+    with (
+        patch("products.openfoodfacts.utils.requests.get", return_value=mock_response),
+        pytest.raises(ValueError, match="Barcode mismatch"),
+    ):
+        fetch_product("999999")
 
 
 def test_product_schema_to_form_data():
