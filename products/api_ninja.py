@@ -1,21 +1,26 @@
+from typing import TYPE_CHECKING
+
+import requests
 from django.http import HttpRequest
 from django.http import HttpResponse
 from ninja import Query
 from ninja import Router
 
+from products.openfoodfacts.api_response_shema import OFFProductAPIResponseSchema
 from products.openfoodfacts.schema import MacronutrientsFormSchema
-from products.openfoodfacts.schema import OFFProductSchema
 
-from .openfoodfacts.utils import fetch_product
+if TYPE_CHECKING:
+    from requests.models import Response
 
 router = Router()
 
 
-@router.get(path="/off/{barcode}")
-def get_product(
-    request: HttpRequest, response: HttpResponse, barcode: str
-) -> OFFProductSchema:
-    return fetch_product(barcode)
+@router.get(path="/off/{barcode}", response=OFFProductAPIResponseSchema)
+def get_product(request: HttpRequest, response: HttpResponse, barcode: str):
+    r: Response = requests.get(
+        url=f"https://world.openfoodfacts.org/api/v3/product/{barcode}.json", timeout=10
+    )
+    return r.json()
 
 
 @router.get(path="macronutrients/form-data")
