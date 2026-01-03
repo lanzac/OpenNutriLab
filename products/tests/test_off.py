@@ -39,7 +39,7 @@ def sample_data(tmp_path: Path) -> Path:
     return file_path
 
 
-def test_fetch_local_product_data(sample_data: Path):
+def test_fetch_local_product_valid_data(sample_data: Path):
     """Test reading a local JSON and transforming it into a ProductSchema."""
     base_dir = sample_data.parents[3]  # root of the tmp project structure
     product: OFFProductSchema = fetch_local_product(
@@ -62,9 +62,34 @@ def test_fetch_local_product_data(sample_data: Path):
     assert product.dict() == expected_product.dict()
 
 
-def test_fetch_product_data():
+def test_fetch_local_product_invalid_data(sample_data: Path):
+    """Test that invalid product data raises a ValueError."""
+    # We volontarily corrupt the sample data
+    with Path.open(sample_data, "r+", encoding="utf-8") as f:
+        data = json.load(f)
+
+        del data["product"]["product_name"]  # mandatory field removed
+        data["product"]["nutriments"]["fat_100g"] = "not_a_number"
+
+        f.seek(0)
+        json.dump(data, f)
+        f.truncate()
+
+    base_dir = sample_data.parents[3]
+
+    with pytest.raises(ValueError, match="Invalid product data format for 123456"):
+        fetch_local_product("123456", base_dir)
+
+
+def test_fetch_product():
     """Test that the function builds ProductSchema from mocked HTTP response."""
     mock_json = {
+        "status": "success",
+        "result": {
+            "id": "product_found",
+            "name": "Product found",
+            "lc_name": "Product found",
+        },
         "product": {
             "code": "999999",
             "product_name": "Remote Product",
