@@ -14,6 +14,8 @@ from pydantic import ValidationError
 from products.models import Ingredient
 from products.models import IngredientRef
 from products.models import Product
+from products.openfoodfacts.api_response_shema import OFFProductAPIResponseSchema
+from products.openfoodfacts.api_response_shema import StatusEnum
 
 from .schema import OFFIngredientSchema
 from .schema import OFFProductSchema
@@ -47,42 +49,71 @@ def fetch_local_product(
     return product
 
 
-def fetch_product_data(query_barcode: str):
-    # https://openfoodfacts.github.io/openfoodfacts-server/api/#api-deployments
-    # Production: https://world.openfoodfacts.org
-    # Staging: https://world.openfoodfacts.net (but looks to have deprecated data?)
-    url = f"https://world.openfoodfacts.org/api/v2/product/{query_barcode}.json"
+def fetch_product(query_barcode: str):
+    """
+    Fetch product data from OpenFoodFacts API for a given barcode.
+    """
+    url = f"https://world.openfoodfacts.org/api/v3/product/{query_barcode}.json"
 
     try:
-        response = requests.get(url, timeout=5)
+        response = requests.get(url, timeout=5, allow_redirects=True)
         response.raise_for_status()
-        data = response.json()
-        if "product" not in data:
-            raise HttpError(
-                status_code=404, message=f"Product {query_barcode} not found"
-            )
-        return data["product"]
+    except requests.HTTPError as e:
+        raise HttpError(
+            status_code=502,  # Bad Gateway → API externe en erreur
+            message=f"External API returned an error: {e}",
+        ) from e
     except requests.RequestException as e:
-        raise HttpError(status_code=500, message=f"External API error: {e}") from e
+        raise HttpError(
+            status_code=503,  # Service Unavailable → connexion impossible
+            message=f"External API unreachable: {e}",
+        ) from e
 
+    # JSON parsing
+    try:
+        data = response.json()
+    except ValueError as e:
+        raise HttpError(
+            status_code=502,
+            message=f"Invalid JSON received from external API: {e}",
+        ) from e
 
-def fetch_product(query_barcode: str) -> OFFProductSchema:
-    product_data = fetch_product_data(query_barcode)
-
+    # Validation Pydantic
     try:
         # We keep it in case if we need later more than one alias for one field:
         # from .data_mapping import openfoodfacts_data_mapping as spec  # noqa: ERA001
         # result = cast("dict[str, Any]", glom(target=data, spec=spec))  # noqa: ERA001
         # Eventually use AliasChoices from pydantic lib
-        product = OFFProductSchema.model_validate(product_data)
+        api_product_response = OFFProductAPIResponseSchema.model_validate(data)
     except ValidationError as e:
-        msg = f"Invalid product data format for {query_barcode}: {e}"
-        raise ValueError(msg) from e
+        raise HttpError(
+            status_code=500,
+            message=f"Invalid API response format for {query_barcode}: {e}",
+        ) from e
 
-    # Check barcode consistency
-    if not product.barcode:
-        msg = f"Product {query_barcode} has no barcode in response"
-        raise ValueError(msg)
+    # API-level errors
+    if api_product_response.status == StatusEnum.failure:
+        raise HttpError(status_code=404, message="Product not found.")
+
+    if api_product_response.status in (
+        StatusEnum.success_with_errors,
+        StatusEnum.success_with_warnings,
+    ):
+        raise HttpError(
+            status_code=400,
+            message=str(api_product_response.errors or api_product_response.warnings),
+        )
+
+    product = api_product_response.product
+
+    if product is None:
+        raise HttpError(
+            status_code=500,
+            message=(
+                f"API response for {query_barcode} indicated success "
+                "but returned no product."
+            ),
+        )
 
     if query_barcode != product.barcode:
         msg = (
