@@ -1,3 +1,4 @@
+# https://world.openfoodfacts.org/files/redocly/api-v3.redoc-static.html#schema/shape
 from ninja import Field
 from ninja import Schema
 from pydantic import AliasPath
@@ -47,7 +48,7 @@ class OFFMacronutrientsSchema(MacronutrientsSchema):
 
 
 class OFFProductSchema(ProductSchema[OFFMacronutrientsSchema, OFFIngredientSchema]):
-    barcode: str = Field(validation_alias="_id")
+    barcode: str = Field(validation_alias="code")
     name: str = Field(default="", validation_alias="product_name")
     image_url: str | None = Field(default=None, validation_alias="image_small_url")
     description: str | None = Field(default=None, validation_alias="categories")

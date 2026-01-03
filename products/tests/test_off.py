@@ -21,7 +21,7 @@ def sample_data(tmp_path: Path) -> Path:
     """Create a temporary local JSON file mimicking OFF data."""
     data = {
         "product": {
-            "_id": "123456",
+            "code": "123456",
             "product_name": "Test Product",
             "image_small_url": "https://example.com/image.jpg",
             "nutriments": {
@@ -66,7 +66,7 @@ def test_fetch_product_data():
     """Test that the function builds ProductSchema from mocked HTTP response."""
     mock_json = {
         "product": {
-            "_id": "999999",
+            "code": "999999",
             "product_name": "Remote Product",
             "image_small_url": None,
             "nutriments": {"fat_100g": 3.0, "proteins_100g": 1.5},
