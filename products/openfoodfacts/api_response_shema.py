@@ -72,3 +72,8 @@ class OFFProductAPIResponseSchema(Schema):
     warnings: list[WarningOrError] | None = None
     errors: list[WarningOrError] | None = None
     product: OFFProductSchema | None = None
+
+
+# If API returns an error (e.g., 500), we return this schema
+class OFFAPIErrorSchema(Schema):
+    error: str
