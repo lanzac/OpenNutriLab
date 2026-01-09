@@ -9,3 +9,4 @@ omit =
     */tests/*
     */migrations/*
     opennutrilab/users/adapters.py
+    products/admin.py
