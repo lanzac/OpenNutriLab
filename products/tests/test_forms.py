@@ -8,9 +8,11 @@ from pint import Quantity
 from quantityfield.units import ureg
 
 from products.forms import ProductForm
+from products.models import Ingredient
 from products.models import Macronutrient
 from products.models import Product
 from products.models import ProductMacronutrient
+from products.openfoodfacts.schema import OFFIngredientSchema
 
 
 @pytest.mark.django_db
@@ -234,3 +236,50 @@ def test_save_with_fetched_image_and_delete():
         mock_delete.assert_called_once_with(path)  # check delete called
         mock_save.assert_called_once()  # file was saved
         assert product.image.name == path
+
+
+@pytest.mark.django_db
+def test_product_form_save_with_ingredients_schema():
+    # --- Setup product ---
+    product = Product.objects.create(name="Ingredient Test", barcode="3242272270157")
+
+    # --- Ingredients schema ---
+
+    ingredients_schema = [
+        OFFIngredientSchema(name="Sugar", percentage=50),
+        OFFIngredientSchema(
+            name="Salt", percentage=10, ingredients=[OFFIngredientSchema(name="Iodine")]
+        ),
+    ]
+
+    # --- Form with extra_data containing ingredients ---
+    form = ProductForm(
+        data={
+            "barcode": product.barcode,
+            "name": product.name,
+            "energy_0": 100,
+            "energy_1": "kJ",
+        },
+        instance=product,
+    )
+    form.full_clean()
+    form.extra_data = {"ingredients": ingredients_schema}
+
+    # --- Patch save_ingredients_from_schema to track calls ---
+    with patch("products.forms.save_ingredients_from_schema") as mock_save_ingredients:
+        saved_product = form.save()
+
+        # --- Assertions ---
+        # 1️⃣ Product returned correctly
+        assert saved_product == product
+
+        # 2️⃣ save_ingredients_from_schema called once with correct args
+        mock_save_ingredients.assert_called_once_with(
+            ingredients_schema, product=product, parent=None
+        )
+
+        # 3️⃣ Ensure existing ingredients deleted
+        # Here, we can pre-create an ingredient to test deletion
+        ing_to_delete = Ingredient.objects.create(name="OldIngredient", product=product)
+        form.save()
+        assert not Ingredient.objects.filter(pk=ing_to_delete.pk).exists()
