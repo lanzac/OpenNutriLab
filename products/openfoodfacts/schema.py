@@ -21,11 +21,11 @@ class OFFIngredientSchema(IngredientSchema["OFFIngredientSchema"]):
         extra="ignore",  # ignore _state, id, product_id, etc
     )
 
-    name: str = Field(default="", alias="text")
-    percentage: float | None = Field(default=None, alias="percent")
+    name: str = Field(default="", validation_alias="text")
+    percentage: float | None = Field(default=None, validation_alias="percent")
     # https://django-ninja.dev/guides/response/?h=self#self-referencing-schemes
     ingredients: list["OFFIngredientSchema"] | None = Field(
-        default=None, alias="ingredients"
+        default=None, validation_alias="ingredients"
     )
     reference: IngredientRef | None = Field(default=None)
     has_reference: bool = False
