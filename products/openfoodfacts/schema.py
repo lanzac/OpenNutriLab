@@ -48,6 +48,12 @@ class OFFMacronutrientsSchema(MacronutrientsSchema):
 
 
 class OFFProductSchema(ProductSchema[OFFMacronutrientsSchema, OFFIngredientSchema]):
+    model_config = ConfigDict(
+        from_attributes=True,  # allows to create from Django objects
+        populate_by_name=True,  # allow us to use names even with alias defined
+        extra="ignore",  # ignore _state, id, product_id, etc
+    )
+
     barcode: str = Field(validation_alias="code")
     name: str = Field(default="", validation_alias="product_name")
     image_url: str | None = Field(default=None, validation_alias="image_small_url")
