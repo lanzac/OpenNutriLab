@@ -39,32 +39,12 @@ class ProductCreateView(CreateView):
         **kwargs: Any,
     ) -> form_class:
         barcode: str | None = self.request.GET.get("barcode")
-        initial = {}
+        initial: dict[str, Any] = {}
         if barcode:
-            product: OFFProductSchema = fetch_product(barcode)
-            product_form: ProductFormSchema = product_schema_to_form_data(product)
-
-            # not sure here if I should do : product_form.dict(exclude_none=True)
-            initial.update(product_form.dict())  # pyright: ignore[reportUnknownMemberType]
-            extra_data = {"fetched_image_url": product_form.image_url}
-
-            # Add ingradients in extra_data
-            extra_data["ingredients"] = product.ingredients
-
-            if product.ingredients:
-                # Preload all reference ingredient names once (single DB query)
-                reference_names = {
-                    name.lower()
-                    for name in IngredientRef.objects.values_list("name", flat=True)
-                }
-
-                # Build the final JSON-ready list
-                extra_data["ingredients_json"] = json.dumps(
-                    [
-                        build_ingredient_json_from_schema(ingredient, reference_names)
-                        for ingredient in product.ingredients
-                    ]
-                )
+            fetched_product: OFFProductSchema = fetch_product(query_barcode=barcode)
+            initial, extra_data = prepare_product_form_data(
+                fetched_product=fetched_product, extra_data=extra_data
+            )
 
         return self.form_class(
             data=data,
@@ -95,52 +75,20 @@ class ProductEditView(UpdateView):
         **kwargs: Any,  # https://adamj.eu/tech/2021/05/11/python-type-hints-args-and-kwargs/
     ) -> form_class:
         reset: bool = self.request.GET.get("reset") == "1"
-        initial = {}
-
         product_instance: Product | None = kwargs.get("instance")
-
         if product_instance is None:
             msg = "Product instance is required to edit a product."
             raise ValueError(msg)
 
-        barcode: str = product_instance.barcode
+        fetched_product: OFFProductSchema | None = None
+        if reset:
+            fetched_product = fetch_product(query_barcode=product_instance.barcode)
 
-        if barcode and reset:
-            product: OFFProductSchema = fetch_product(barcode)
-            product_form: ProductFormSchema = product_schema_to_form_data(product)
-
-            # not sure here if I should do : product_form.dict(exclude_none=True)
-            initial.update(product_form.dict())  # pyright: ignore[reportUnknownMemberType]
-            extra_data = {"fetched_image_url": product_form.image_url}
-
-            # Add ingradients in extra_data
-            extra_data["ingredients"] = product.ingredients
-
-            if product.ingredients:
-                # Preload all reference ingredient names once (single DB query)
-                reference_names = {
-                    name.lower()
-                    for name in IngredientRef.objects.values_list("name", flat=True)
-                }
-
-                # Build the final JSON-ready list
-                extra_data["ingredients_json"] = json.dumps(
-                    [
-                        build_ingredient_json_from_schema(ingredient, reference_names)
-                        for ingredient in product.ingredients
-                    ]
-                )
-
-        else:
-            if extra_data is None:
-                extra_data = {}
-            ingredients: list[OFFIngredientSchema] = get_schema_from_ingredients(
-                product=product_instance
-            )
-            extra_data["ingredients"] = ingredients
-            extra_data["ingredients_json"] = json.dumps(
-                [ingredient.model_dump(by_alias=False) for ingredient in ingredients]
-            )
+        initial, extra_data = prepare_product_form_data(
+            product_instance=product_instance,
+            fetched_product=fetched_product,
+            extra_data=extra_data,
+        )
 
         return self.form_class(
             data=data,
@@ -161,3 +109,59 @@ class ProductEditView(UpdateView):
 class ProductDeleteView(DeleteView):
     model = Product
     success_url = reverse_lazy("list_products")
+
+
+# Utilities
+
+
+def prepare_product_form_data(
+    product_instance: Product | None = None,
+    fetched_product: OFFProductSchema | None = None,
+    extra_data: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """
+    Prepare `initial` and `extra_data` for Product form.
+
+    :param product_instance: Product from DB (for Edit)
+    :param fetched_product: OFFProductSchema from API (for Create or Edit reset)
+    :param reset: whether to force fetch_product even on Edit
+    :param extra_data: existing extra_data dict
+    :return: tuple(initial, extra_data)
+    """
+    initial: dict[str, Any] = {}
+    extra_data = extra_data or {}
+
+    # Use fetched_product if provided (Create or Edit reset)
+    if fetched_product is not None:
+        # convert to form schema
+        product_form: ProductFormSchema = product_schema_to_form_data(fetched_product)
+        initial.update(product_form.dict())
+        extra_data["fetched_image_url"] = product_form.image_url
+
+        # Ingredients from fetched_product
+        extra_data["ingredients"] = fetched_product.ingredients
+        if fetched_product.ingredients:
+            reference_names = {
+                name.lower()
+                for name in IngredientRef.objects.values_list("name", flat=True)
+            }
+            extra_data["ingredients_json"] = json.dumps(
+                [
+                    build_ingredient_json_from_schema(ingredient, reference_names)
+                    for ingredient in fetched_product.ingredients
+                ]
+            )
+    elif product_instance is not None:
+        # Edit normal (no reset) → ingredients from DB
+        ingredients: list[OFFIngredientSchema] = get_schema_from_ingredients(
+            product_instance
+        )
+        extra_data["ingredients"] = ingredients
+        extra_data["ingredients_json"] = json.dumps(
+            [ingredient.model_dump(by_alias=False) for ingredient in ingredients]
+        )
+    else:
+        msg = "Either product_instance or fetched_product must be provided"
+        raise ValueError(msg)
+
+    return initial, extra_data
