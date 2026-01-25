@@ -236,3 +236,26 @@ def test_productmacronutrient_str_representation() -> None:
     fm = ProductMacronutrient.objects.create(product=product, macronutrient=macro)
 
     assert str(fm) == "BananaTest ProteinsTest amount"
+
+
+# ----------------------------------------------------------------------------
+# IngredientRef model tests -----------------------------------------------------------
+# ----------------------------------------------------------------------------
+@pytest.mark.django_db
+def test_ingredientref_str() -> None:
+    from products.models import IngredientRef  # noqa: PLC0415
+
+    ingredientref = IngredientRef.objects.create(name="raisins secs")
+    assert str(ingredientref) == "Raisins Secs"
+
+
+# ----------------------------------------------------------------------------
+# Ingredient model tests -----------------------------------------------------------
+# ----------------------------------------------------------------------------
+@pytest.mark.django_db
+def test_ingredient_str() -> None:
+    from products.models import Ingredient  # noqa: PLC0415
+
+    parent_product = Product.objects.create(name="Fruit Mix")
+    ingredient = Ingredient.objects.create(name="raisins secs", product=parent_product)
+    assert str(ingredient) == "Raisins Secs"

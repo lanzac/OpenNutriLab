@@ -98,8 +98,10 @@ class IngredientRef(models.Model):
     proteins = models.FloatField(null=True, blank=True)
     carbohydrates = models.FloatField(null=True, blank=True)
 
-    def __str__(self):
-        return self.name
+    @override
+    def __str__(self) -> str:
+        label: str = self.name.replace("_", " ").title()
+        return label
 
 
 class Ingredient(models.Model):
@@ -159,8 +161,10 @@ class Ingredient(models.Model):
             ),
         ]
 
-    def __str__(self):
-        return self.name
+    @override
+    def __str__(self) -> str:
+        label: str = self.name.replace("_", " ").title()
+        return label
 
 
 @final
