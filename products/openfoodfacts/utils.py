@@ -174,25 +174,18 @@ def save_ingredients_from_schema(
 
     for ing in ingredients_schema or []:
         # Search or create reference ingredient
-        try:
-            ingredient_ref = IngredientRef.objects.get(name=ing.name.strip())
-        except IngredientRef.DoesNotExist:
-            ingredient_ref = None
-
-        # Create linked ingredient for the product
-        ingredient = Ingredient.objects.create(
-            name=ing.name,
-            product=product,
-            parent=parent,
-            reference=ingredient_ref,
-            percentage=getattr(ing, "percentage", None),  # if available
-        )
+        ingredient_ref: IngredientRef | None = IngredientRef.objects.filter(
+            name=ing.name.strip()
+        ).first()
 
         ingredient, _is_created = Ingredient.objects.update_or_create(
             product=product,
             parent=parent,
             name=ing.name,
-            defaults={"percentage": getattr(ing, "percentage", None)},
+            defaults={
+                "percentage": getattr(ing, "percentage", None),
+                "reference": ingredient_ref,
+            },
         )
 
         # Recursive call on sub-ingredients
@@ -225,7 +218,7 @@ def build_ingredient_json_from_schema(
     data = ingredient.model_dump(by_alias=False)
 
     # Normalize the ingredient name for a reliable comparison
-    normalized_name = ingredient.name.strip().lower()
+    normalized_name = (ingredient.name or "").strip().lower()
 
     # Compute whether this ingredient exists in the reference database
     data["has_reference"] = normalized_name in reference_names
