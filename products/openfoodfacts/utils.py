@@ -5,9 +5,6 @@ from typing import Any
 
 import requests
 from django.conf import settings
-from django.utils.html import format_html
-from django.utils.html import format_html_join
-from django.utils.safestring import SafeText
 from ninja.errors import HttpError
 from pydantic import ValidationError
 
@@ -123,52 +120,6 @@ def fetch_product(query_barcode: str):
         raise ValueError(msg)
 
     return product
-
-
-def render_ingredients_table(
-    ingredients: list["OFFIngredientSchema"] | None,
-) -> SafeText:
-    """Recursively renders a SAFE HTML table of nested ingredients."""
-    if not ingredients:
-        return format_html("<p><em>No ingredients listed.</em></p>")
-
-    rows: list[SafeText] = []
-
-    for ing in ingredients:
-        if ing.ingredients:
-            sub_table = render_ingredients_table(ing.ingredients)
-            sub_cell = format_html("<td colspan='2'>{}</td>", sub_table)
-        else:
-            sub_cell = format_html("<td colspan='2'><em>None</em></td>")
-
-        row = format_html(
-            "<tr><td>{}</td><td>{}</td>{}</tr>",
-            ing.name,  # automatically escaped
-            ing.percentage,  # automatically escaped
-            sub_cell,  # already safe
-        )
-
-        rows.append(row)
-
-    body = format_html_join("", "{}", ((row,) for row in rows))
-
-    return format_html(
-        """
-        <table class="table table-striped table-bordered mb-0">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Percent</th>
-                    <th>Sub-Ingredients</th>
-                </tr>
-            </thead>
-            <tbody>
-                {}
-            </tbody>
-        </table>
-        """,
-        body,
-    )
 
 
 def get_schema_from_ingredients(product: Product) -> list[OFFIngredientSchema]:
