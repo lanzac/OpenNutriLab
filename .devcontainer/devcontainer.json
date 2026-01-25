@@ -47,8 +47,6 @@
             "extensions": [
                 "davidanson.vscode-markdownlint",
                 "mrmlnc.vscode-duplicate",
-                "visualstudioexptteam.vscodeintellicode",
-                "visualstudioexptteam.intellicode-api-usage-examples",
                 "ms-python.python",
                 "charliermarsh.ruff",
                 "detachhead.basedpyright",
