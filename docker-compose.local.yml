@@ -1,9 +1,20 @@
+# =========================
+# Named volumes for persistence
+# =========================
 volumes:
   opennutrilab_local_postgres_data: {}
   opennutrilab_local_postgres_data_backups: {}
   opennutrilab_local_redis_data: {}
+  opennutrilab_local_django_venv: {} # persistent venv for dev
+  opennutrilab_local_node_modules: {} # persistent node_modules
 
+# =========================
+# Services
+# =========================
 services:
+  # -------------------------
+  # Django application
+  # -------------------------
   django: &django
     build:
       context: .
@@ -11,17 +22,20 @@ services:
     image: opennutrilab_local_django
     container_name: opennutrilab_local_django
     volumes:
-      - /app/.venv
-      - .:/app:z
-    depends_on:
-      - postgres
+      - opennutrilab_local_django_venv:/app/.venv # persistent virtualenv
+      - ./:/app:z # bind project code
     env_file:
       - ./.envs/.local/.django
       - ./.envs/.local/.postgres
+    depends_on:
+      - postgres
     ports:
       - '8000:8000'
     command: /start
 
+  # -------------------------
+  # PostgreSQL
+  # -------------------------
   postgres:
     build:
       context: .
@@ -34,18 +48,27 @@ services:
     env_file:
       - ./.envs/.local/.postgres
 
-  mailpit:
-    image: docker.io/axllent/mailpit:latest
-    container_name: opennutrilab_local_mailpit
-    ports:
-      - '8025:8025'
-
+  # -------------------------
+  # Redis
+  # -------------------------
   redis:
-    image: docker.io/redis:6
+    image: redis:6
     container_name: opennutrilab_local_redis
     volumes:
       - opennutrilab_local_redis_data:/data
 
+  # -------------------------
+  # Mail testing
+  # -------------------------
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: opennutrilab_local_mailpit
+    ports:
+      - '8025:8025'
+
+  # -------------------------
+  # Celery worker
+  # -------------------------
   celeryworker:
     <<: *django
     image: opennutrilab_local_celeryworker
@@ -57,6 +80,9 @@ services:
     ports: []
     command: /start-celeryworker
 
+  # -------------------------
+  # Celery beat
+  # -------------------------
   celerybeat:
     <<: *django
     image: opennutrilab_local_celerybeat
@@ -66,7 +92,11 @@ services:
       - postgres
       - mailpit
     ports: []
+    command: /start-celerybeat
 
+  # -------------------------
+  # Node (frontend)
+  # -------------------------
   node:
     build:
       context: .
@@ -76,9 +106,8 @@ services:
     depends_on:
       - django
     volumes:
-      - .:/app:z
-      # http://jdlm.info/articles/2016/03/06/lessons-building-node-app-docker.html
-      - /app/node_modules
+      - ./:/app:z
+      - opennutrilab_local_node_modules:/app/node_modules
     command: npm run dev
     ports:
       - '3000:3000'
