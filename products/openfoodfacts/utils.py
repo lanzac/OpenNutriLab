@@ -53,7 +53,7 @@ def fetch_product(query_barcode: str):
     url = f"https://world.openfoodfacts.org/api/v3/product/{query_barcode}.json"
 
     try:
-        response = requests.get(url, timeout=5, allow_redirects=True)
+        response = requests.get(url, timeout=30, allow_redirects=True)
         response.raise_for_status()
     except requests.HTTPError as e:
         raise HttpError(
