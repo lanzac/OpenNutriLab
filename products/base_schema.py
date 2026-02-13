@@ -45,3 +45,5 @@ class ProductSchema(Schema, Generic[MacronutrientsType, IngredientType]):  # noq
     energy: int | None = None
     macronutrients: MacronutrientsType | None = None
     ingredients: list[IngredientType] | None = None
+    group_level_1: str | None = None
+    group_level_2: str | None = None

@@ -46,9 +46,19 @@ class ProductForm(forms.ModelForm):
         model = Product
         # Fields from the Product model, extended with those from the Macronutrient
         # model. Nutritional values defined in this form : energy + macronutrients
-        fields: list[str] = ["barcode", "name", "image", "description", "energy"]
+        fields: list[str] = [
+            "barcode",
+            "name",
+            "image",
+            "description",
+            "energy",
+            "group_level_1",
+            "group_level_2",
+        ]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 3}),
+            "group_level_1": forms.HiddenInput(),
+            "group_level_2": forms.HiddenInput(),
         }
         labels: dict[str, str] = {
             "barcode": _("Barcode"),
@@ -146,6 +156,8 @@ class ProductForm(forms.ModelForm):
                     HTML("{% include 'products/components/image_preview.html' %}"),
                     css_class="col-md-4 d-flex align-items-center justify-content-center",  # noqa: E501
                 ),
+                Field("group_level_1", value="Unknown"),
+                Field("group_level_2", value="Unknown"),
             ),
             BS5Accordion(
                 AccordionGroupExtended(

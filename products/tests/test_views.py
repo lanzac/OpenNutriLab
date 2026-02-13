@@ -123,6 +123,8 @@ class TestProductEditView:
             "energy": Quantity(10.0, "kilojoule"),
             "image": None,
             "name": "Test Product",
+            "group_level_1": "",
+            "group_level_2": "",
         }
         assert form.initial == expected_form
 

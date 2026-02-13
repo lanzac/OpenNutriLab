@@ -174,6 +174,8 @@ class Product(models.Model):
     image = models.ImageField(upload_to="images/products/", null=True, blank=True)
     description = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
+    group_level_1 = models.CharField(max_length=100, blank=True)
+    group_level_2 = models.CharField(max_length=100, blank=True)
 
     # ------------------------------------------------------------------------
     # Nutritional values -----------------------------------------------------

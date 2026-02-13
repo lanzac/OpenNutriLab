@@ -67,6 +67,8 @@ class OFFProductSchema(ProductSchema[OFFMacronutrientsSchema, OFFIngredientSchem
     ingredients: list[OFFIngredientSchema] | None = Field(
         default=None, validation_alias="ingredients"
     )
+    group_level_1: str | None = Field(default=None, validation_alias="pnns_groups_1")
+    group_level_2: str | None = Field(default=None, validation_alias="pnns_groups_2")
 
 
 # Form -----------------------------------------------------------------------
@@ -123,6 +125,8 @@ class ProductFormSchema(Schema):
         default=None,
         alias="macronutrients.proteins",
     )
+    group_level_1: str | None = None
+    group_level_2: str | None = None
 
     model_config = {
         # Allow validating only by alias names
