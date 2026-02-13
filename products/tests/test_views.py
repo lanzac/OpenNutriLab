@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
+from django.http.response import HttpResponse
 from django.test import Client
 from django.test import RequestFactory
 from django.urls import reverse
@@ -18,12 +19,85 @@ from products.models import Product
 from products.openfoodfacts.schema import OFFIngredientSchema
 from products.openfoodfacts.schema import OFFProductSchema
 from products.openfoodfacts.schema import product_schema_to_form_data
+from products.views import PRODUCT_LIST_FIELDS
 from products.views import ProductCreateView  # adapte à ton module
 from products.views import ProductEditView  # adapte à ton module
 from products.views import prepare_product_form_data  # adapte à ton module
 
 if TYPE_CHECKING:
     from django.http.response import HttpResponse
+
+
+@pytest.mark.django_db
+class TestProductListView:
+    def test_context_data_contains_product_list_json(self, client: Client):
+        """
+        Test that ProductListView adds 'product_list_json' to the context
+        with the specific fields requested for the JS table.
+        """
+        # --- Setup: Create test data ---
+        Product.objects.create(
+            barcode="1111111111111",
+            name="Apple",
+            group_level_1="Fruits",
+            group_level_2="Fresh",
+            description="A beautiful apple",
+        )
+        Product.objects.create(
+            barcode="2222222222222",
+            name="Bread",
+            group_level_1="Bakery",
+            group_level_2="White bread",
+            description="Traditional baguette",
+        )
+
+        # --- Action: Call the view via its URL ---
+        url: str = reverse("list_products")
+        response: HttpResponse = client.get(url)
+
+        # --- Assertions ---
+        assert response.status_code == 200  # noqa: PLR2004
+
+        # Verify the custom key is present
+        assert "product_list_json" in response.context
+
+        json_data = response.context["product_list_json"]
+
+        # Verify it is a list and contains the correct number of elements
+        assert isinstance(json_data, list)
+        assert len(json_data) == 2  # noqa: PLR2004  # pyright: ignore[reportUnknownArgumentType]
+
+        # Verify fields of the first item
+        # We expect .values() to return a dict
+        item = json_data[0]  # pyright: ignore[reportUnknownVariableType]
+
+        expected_fields = set(PRODUCT_LIST_FIELDS)
+
+        # Verify that dictionary keys correspond exactly to requested fields
+        # Note: .values() does not return ID if not explicitly requested
+        assert set(item.keys()) == expected_fields  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+
+        # Verify that NOT requested fields (like 'description' or 'barcode') are absent
+        assert "description" not in item
+        assert "barcode" not in item
+
+        # Verify content (sort by name to ensure order)
+        sorted_data = sorted(json_data, key=lambda x: x["name"])  # pyright: ignore[reportUnknownVariableType, reportUnknownArgumentType, reportUnknownLambdaType]
+
+        assert sorted_data[0]["name"] == "Apple"
+        assert sorted_data[0]["group_level_1"] == "Fruits"
+
+        assert sorted_data[1]["name"] == "Bread"
+        assert sorted_data[1]["group_level_1"] == "Bakery"
+
+    def test_context_data_empty_list(self, client: Client):
+        """Test behavior when there are no products."""
+        url: str = reverse("list_products")
+        response: HttpResponse = client.get(url)
+
+        assert response.status_code == 200  # noqa: PLR2004
+        assert "product_list_json" in response.context
+        assert response.context["product_list_json"] == []
 
 
 @pytest.mark.django_db
