@@ -29,18 +29,31 @@
         "vscode": {
             "settings": {
                 "editor.formatOnSave": true,
+                // Set the global interpreter for the project
+                "python.defaultInterpreterPath": "/app/.venv/bin/python",
+                // Ruff configuration (system binary)
+                "ruff.path": [
+                    "/usr/local/bin/ruff"
+                ],
+                "ruff.importStrategy": "fromEnvironment",
+                // Basedpyright configuration (system binary)
+                "basedpyright.importStrategy": "fromEnvironment",
+                "basedpyright.executablePath": "/usr/local/bin/basedpyright",
+                "python.analysis.typeCheckingMode": "off", // Handled by basedpyright
+                // djLint configuration (system binary)
+                "djlint.executablePath": "/usr/local/bin/djlint",
                 "[python]": {
-                    "analysis.autoImportCompletions": true,
-                    "analysis.typeCheckingMode": "basic",
-                    "defaultInterpreterPath": "/usr/local/bin/python",
                     "editor.codeActionsOnSave": {
                         "source.organizeImports": "always"
                     },
-                    "editor.defaultFormatter": "charliermarsh.ruff",
-                    "linting.enabled": true,
-                    "linting.pyrightEnabled": true,
-                    "linting.mypyEnabled": false
-                }
+                    "editor.defaultFormatter": "charliermarsh.ruff"
+                },
+                "[html]": {
+                    "editor.defaultFormatter": "monosans.djlint"
+                },
+                // Disable old flags that slow down initialization
+                "python.linting.enabled": false,
+                "python.linting.pyrightEnabled": false
             },
             // https://code.visualstudio.com/docs/remote/devcontainerjson-reference#_vs-code-specific-properties
             // Add the IDs of extensions you want installed when the container is created.

@@ -7,6 +7,12 @@
 .pre-commit-config.yaml
 .readthedocs.yml
 .travis.yml
+.venv
+node_modules
+__pycache__
+*.pyc
+.pytest_cache
+.mypy_cache
 venv
 .git
 .envs/

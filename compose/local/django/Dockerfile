@@ -3,16 +3,11 @@
 # =========================
 FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS base
 
-# =========================
-# Stage 2: Build dependencies
-# =========================
-FROM base AS builder
-
 # Define working directory
 ARG APP_HOME=/app
 WORKDIR ${APP_HOME}
 
-# UV environment settings for build
+# UV environment settings
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never
@@ -37,22 +32,12 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     && rm -rf /var/lib/apt/lists/*
 
 # -------------------------
-# Install Python dependencies (cacheable)
+# Install dev tools globally
 # -------------------------
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    uv sync --locked --no-install-project --no-editable
+RUN uv pip install --system ruff djlint basedpyright
 
 # -------------------------
-# Copy project source and install project
-# -------------------------
-COPY . ${APP_HOME}
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-editable
-
-# -------------------------
-# Create dev user for non-root execution
+# Create dev user
 # -------------------------
 RUN groupadd --gid 1000 dev-user \
     && useradd --uid 1000 --gid dev-user --shell /bin/bash --create-home dev-user \
@@ -60,30 +45,47 @@ RUN groupadd --gid 1000 dev-user \
     && chmod 0440 /etc/sudoers.d/dev-user
 
 # -------------------------
-# Prepare entrypoints
+# 1. System Scripts (Root actions)
 # -------------------------
+# Copy scripts as root to allow 'sed' and 'chmod' to work without permission errors
 COPY ./compose/production/django/entrypoint /entrypoint
-RUN sed -i 's/\r$//g' /entrypoint && chmod +x /entrypoint
-
 COPY ./compose/local/django/start /start
-RUN sed -i 's/\r$//g' /start && chmod +x /start
-
 COPY ./compose/local/django/celery/worker/start /start-celeryworker
-RUN sed -i 's/\r$//g' /start-celeryworker && chmod +x /start-celeryworker
-
 COPY ./compose/local/django/celery/beat/start /start-celerybeat
-RUN sed -i 's/\r$//g' /start-celerybeat && chmod +x /start-celerybeat
-
 COPY ./compose/local/django/celery/flower/start /start-flower
-RUN sed -i 's/\r$//g' /start-flower && chmod +x /start-flower
+
+# Fix line endings, set execution rights, and transfer ownership (instant operation)
+RUN sed -i 's/\r$//g' /entrypoint /start /start-celeryworker /start-celerybeat /start-flower \
+    && chmod +x /entrypoint /start /start-celeryworker /start-celerybeat /start-flower \
+    && chown dev-user:dev-user /entrypoint /start /start-celeryworker /start-celerybeat /start-flower
+
+# Ensure the cache directory exists and is owned by dev-user
+RUN mkdir -p /home/dev-user/.cache/pre-commit && \
+    chown -R dev-user:dev-user /home/dev-user/.cache
 
 # -------------------------
-# Environment paths
+# 2. Dependencies and Code (Dev-user actions)
 # -------------------------
+# Prepare the application folder for the non-root user
+RUN chown dev-user:dev-user ${APP_HOME}
+
+USER dev-user
+
+# Install Python dependencies
+# Running as dev-user ensures the .venv is owned by the correct user from the start
+RUN --mount=type=cache,target=/home/dev-user/.cache/uv,uid=1000 \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    uv sync --frozen --no-install-project
+
+# Copy project source code
+# Using --chown avoids a slow recursive 'chown -R' step
+COPY --chown=dev-user:dev-user . ${APP_HOME}
+
+# -------------------------
+# Environment
+# -------------------------
+# Ensure the virtualenv is prioritized in the PATH
 ENV PATH="${APP_HOME}/.venv/bin:$PATH"
-ENV PYTHONPATH="${APP_HOME}/.venv/lib/python3.13/site-packages:$PYTHONPATH"
 
-# -------------------------
-# Entrypoint
-# -------------------------
 ENTRYPOINT ["/entrypoint"]

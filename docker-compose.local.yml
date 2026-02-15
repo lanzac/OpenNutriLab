@@ -7,6 +7,7 @@ volumes:
   opennutrilab_local_redis_data: {}
   opennutrilab_local_django_venv: {} # persistent venv for dev
   opennutrilab_local_node_modules: {} # persistent node_modules
+  opennutrilab_pre_commit_cache: {} # persistent pre-commit cache
 
 # =========================
 # Services
@@ -24,6 +25,7 @@ services:
     volumes:
       - opennutrilab_local_django_venv:/app/.venv # persistent virtualenv
       - ./:/app:z # bind project code
+      - opennutrilab_pre_commit_cache:/home/dev-user/.cache/pre-commit # persistent pre-commit cache
     env_file:
       - ./.envs/.local/.django
       - ./.envs/.local/.postgres
