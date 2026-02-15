@@ -14,6 +14,11 @@ build:
     @echo "Building python image..."
     @docker compose build
 
+# rebuild: Force build from scratch (no cache)
+rebuild:
+    @echo "Hard rebuilding images..."
+    @docker compose build --no-cache
+
 # up: Start up containers.
 up:
     @echo "Starting up containers..."
