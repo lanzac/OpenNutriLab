@@ -12,7 +12,8 @@
     "dependencies",
     "config",
     "test",
-    "forms"
+    "forms",
+    "models"
   ],
   "pytestrunner.usePoetry": false,
   "pytestrunner.virtualEnvPath": "/app/.venv",
