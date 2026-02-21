@@ -250,6 +250,24 @@ def test_ingredientref_str() -> None:
 
 
 # ----------------------------------------------------------------------------
+# IngredientRefMacronutrient model tests -------------------------------------
+# ----------------------------------------------------------------------------
+@pytest.mark.django_db
+def test_ingredientrefmacronutrient_str_representation() -> None:
+    from products.models import IngredientRef  # noqa: PLC0415
+    from products.models import IngredientRefMacronutrient  # noqa: PLC0415
+    from products.models import Macronutrient  # noqa: PLC0415
+
+    ingredientref = IngredientRef.objects.create(name="raisins secs")
+    macro = Macronutrient.objects.create(name="ProteinsTest")
+    fm = IngredientRefMacronutrient.objects.create(
+        ingredient_ref=ingredientref, macronutrient=macro
+    )
+
+    assert str(fm) == "Raisins Secs Proteinstest amount"
+
+
+# ----------------------------------------------------------------------------
 # Ingredient model tests -----------------------------------------------------------
 # ----------------------------------------------------------------------------
 @pytest.mark.django_db
