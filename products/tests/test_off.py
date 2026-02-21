@@ -10,20 +10,19 @@ from ninja.errors import HttpError
 from requests import HTTPError
 from requests import RequestException
 
-from products.base_schema import MacronutrientsSchema
-from products.base_schema import ProductSchema
+from products.api.openfoodfacts.schemas import OFFIngredientSchema
+from products.api.openfoodfacts.schemas import OFFMacronutrientsSchema
+from products.api.openfoodfacts.schemas import OFFProductSchema
+from products.api.openfoodfacts.schemas import ProductFormSchema
+from products.api.openfoodfacts.schemas import product_schema_to_form_data
+from products.api.openfoodfacts.services import build_ingredient_json_from_schema
+from products.api.openfoodfacts.services import fetch_from_off
+from products.api.openfoodfacts.services import fetch_local_product
+from products.api.openfoodfacts.services import get_schema_from_ingredients
+from products.api.openfoodfacts.services import save_ingredients_from_schema
 from products.models import Ingredient
 from products.models import IngredientRef
 from products.models import Product
-from products.openfoodfacts.schema import OFFIngredientSchema
-from products.openfoodfacts.schema import OFFProductSchema
-from products.openfoodfacts.schema import ProductFormSchema
-from products.openfoodfacts.schema import product_schema_to_form_data
-from products.openfoodfacts.utils import build_ingredient_json_from_schema
-from products.openfoodfacts.utils import fetch_local_product
-from products.openfoodfacts.utils import fetch_product
-from products.openfoodfacts.utils import get_schema_from_ingredients
-from products.openfoodfacts.utils import save_ingredients_from_schema
 
 
 @pytest.fixture
@@ -57,11 +56,11 @@ def test_fetch_local_product_valid_data(sample_data: Path):
         base_dir=base_dir,
     )
 
-    expected_product: ProductSchema[MacronutrientsSchema, Any] = ProductSchema(
+    expected_product = OFFProductSchema(
         barcode="123456",
         name="Test Product",
         image_url="https://example.com/image.jpg",
-        macronutrients=MacronutrientsSchema(
+        macronutrients=OFFMacronutrientsSchema(
             fat=10.0,
             carbohydrates=20.0,
             proteins=5.0,
@@ -112,15 +111,17 @@ def test_fetch_product():
     mock_response.json.return_value = mock_json
     mock_response.raise_for_status.return_value = None
 
-    with patch("products.openfoodfacts.utils.requests.get", return_value=mock_response):
-        product: OFFProductSchema = fetch_product(query_barcode="999999")
+    with patch(
+        "products.api.openfoodfacts.services.requests.get", return_value=mock_response
+    ):
+        product: OFFProductSchema = fetch_from_off(query_barcode="999999")
 
-    expected_product: ProductSchema[MacronutrientsSchema, Any] = ProductSchema(
+    expected_product = OFFProductSchema(
         # Only fields present in mock_json set in form of expected ProductSchema
         # The rest will have their value by default
         barcode="999999",
         name="Remote Product",
-        macronutrients=MacronutrientsSchema(
+        macronutrients=OFFMacronutrientsSchema(
             fat=3.0,
             proteins=1.5,
         ),
@@ -135,10 +136,13 @@ def test_fetch_product_http_error():
     mock_response.raise_for_status.side_effect = HTTPError("500 Server Error")
 
     with (
-        patch("products.openfoodfacts.utils.requests.get", return_value=mock_response),
+        patch(
+            "products.api.openfoodfacts.services.requests.get",
+            return_value=mock_response,
+        ),
         pytest.raises(HttpError) as exc,
     ):
-        fetch_product(query_barcode="999999")
+        fetch_from_off(query_barcode="999999")
 
     assert exc.value.status_code == 502  # noqa: PLR2004
     assert "External API returned an error" in exc.value.message
@@ -147,12 +151,12 @@ def test_fetch_product_http_error():
 def test_fetch_product_request_exception():
     with (
         patch(
-            "products.openfoodfacts.utils.requests.get",
+            "products.api.openfoodfacts.services.requests.get",
             side_effect=RequestException("Connection timeout"),
         ),
         pytest.raises(HttpError) as exc,
     ):
-        fetch_product("999999")
+        fetch_from_off("999999")
 
     assert exc.value.status_code == 503  # noqa: PLR2004
     assert "External API unreachable" in exc.value.message
@@ -164,10 +168,13 @@ def test_fetch_product_invalid_json():
     mock_response.json.side_effect = ValueError("Invalid JSON")
 
     with (
-        patch("products.openfoodfacts.utils.requests.get", return_value=mock_response),
+        patch(
+            "products.api.openfoodfacts.services.requests.get",
+            return_value=mock_response,
+        ),
         pytest.raises(HttpError) as exc,
     ):
-        fetch_product("999999")
+        fetch_from_off("999999")
 
     assert exc.value.status_code == 502  # noqa: PLR2004
     assert "Invalid JSON received" in exc.value.message
@@ -179,10 +186,13 @@ def test_fetch_product_invalid_schema():
     mock_response.json.return_value = {"unexpected": "structure"}
 
     with (
-        patch("products.openfoodfacts.utils.requests.get", return_value=mock_response),
+        patch(
+            "products.api.openfoodfacts.services.requests.get",
+            return_value=mock_response,
+        ),
         pytest.raises(HttpError) as exc,
     ):
-        fetch_product("999999")
+        fetch_from_off("999999")
 
     assert exc.value.status_code == 500  # noqa: PLR2004
     assert "Invalid API response format" in exc.value.message
@@ -210,10 +220,13 @@ def test_fetch_product_not_found():
     }
 
     with (
-        patch("products.openfoodfacts.utils.requests.get", return_value=mock_response),
+        patch(
+            "products.api.openfoodfacts.services.requests.get",
+            return_value=mock_response,
+        ),
         pytest.raises(HttpError) as exc,
     ):
-        fetch_product("999999")
+        fetch_from_off("999999")
 
     assert exc.value.status_code == 404  # noqa: PLR2004
 
@@ -253,10 +266,13 @@ def test_fetch_product_success_with_warnings():
     }
 
     with (
-        patch("products.openfoodfacts.utils.requests.get", return_value=mock_response),
+        patch(
+            "products.api.openfoodfacts.services.requests.get",
+            return_value=mock_response,
+        ),
         pytest.raises(HttpError) as exc,
     ):
-        fetch_product("999999")
+        fetch_from_off("999999")
 
     assert exc.value.status_code == 400  # noqa: PLR2004
     assert "Incomplete data" in exc.value.message
@@ -296,10 +312,13 @@ def test_fetch_product_success_with_errors():
     }
 
     with (
-        patch("products.openfoodfacts.utils.requests.get", return_value=mock_response),
+        patch(
+            "products.api.openfoodfacts.services.requests.get",
+            return_value=mock_response,
+        ),
         pytest.raises(HttpError) as exc,
     ):
-        fetch_product("999999")
+        fetch_from_off("999999")
 
     assert exc.value.status_code == 400  # noqa: PLR2004
     assert "Invalid nutriments" in exc.value.message
@@ -320,10 +339,13 @@ def test_fetch_product_success_but_product_is_none():
     }
 
     with (
-        patch("products.openfoodfacts.utils.requests.get", return_value=mock_response),
+        patch(
+            "products.api.openfoodfacts.services.requests.get",
+            return_value=mock_response,
+        ),
         pytest.raises(HttpError) as exc,
     ):
-        fetch_product("999999")
+        fetch_from_off("999999")
 
     assert exc.value.status_code == 500  # noqa: PLR2004
     assert "returned no product" in exc.value.message
@@ -347,19 +369,22 @@ def test_fetch_product_barcode_mismatch():
     }
 
     with (
-        patch("products.openfoodfacts.utils.requests.get", return_value=mock_response),
+        patch(
+            "products.api.openfoodfacts.services.requests.get",
+            return_value=mock_response,
+        ),
         pytest.raises(ValueError, match="Barcode mismatch"),
     ):
-        fetch_product("999999")
+        fetch_from_off("999999")
 
 
 def test_product_schema_to_form_data():
     """Test conversion from ProductSchema to ProductFormSchema."""
-    product: ProductSchema[MacronutrientsSchema, Any] = ProductSchema(
+    product = OFFProductSchema(
         barcode="123456",
         name="Test Product",
         image_url="https://example.com/image.jpg",
-        macronutrients=MacronutrientsSchema(
+        macronutrients=OFFMacronutrientsSchema(
             fat=10.0,
             carbohydrates=20.0,
             proteins=5.0,

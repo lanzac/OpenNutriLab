@@ -8,14 +8,13 @@ from django.conf import settings
 from ninja.errors import HttpError
 from pydantic import ValidationError
 
+from products.api.openfoodfacts.schemas import OFFIngredientSchema
+from products.api.openfoodfacts.schemas import OFFProductAPIResponseSchema
+from products.api.openfoodfacts.schemas import OFFProductSchema
+from products.api.openfoodfacts.schemas import StatusEnum
 from products.models import Ingredient
 from products.models import IngredientRef
 from products.models import Product
-from products.openfoodfacts.api_response_shema import OFFProductAPIResponseSchema
-from products.openfoodfacts.api_response_shema import StatusEnum
-
-from .schema import OFFIngredientSchema
-from .schema import OFFProductSchema
 
 if TYPE_CHECKING:
     from django.db.models.query import QuerySet
@@ -46,7 +45,9 @@ def fetch_local_product(
     return product
 
 
-def fetch_product(query_barcode: str):
+def fetch_from_off(
+    query_barcode: str,
+) -> OFFProductSchema:
     """
     Fetch product data from OpenFoodFacts API for a given barcode.
     """

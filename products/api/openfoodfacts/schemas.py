@@ -1,20 +1,14 @@
 # https://world.openfoodfacts.org/files/redocly/api-v3.redoc-static.html#schema/shape
+# https://world.openfoodfacts.org/files/redocly/api-v3.redoc-static.html#schema/shape
+from enum import Enum
+
 from ninja import Field
 from ninja import Schema
 from pydantic import AliasPath
 from pydantic import ConfigDict
 
-from products.base_schema import IngredientRef
-from products.base_schema import IngredientSchema
-from products.base_schema import IngredientType
-from products.base_schema import MacronutrientsSchema
-from products.base_schema import MacronutrientsType
-from products.base_schema import ProductSchema
 
-# OpenFoodFacts data mapping -------------------------------------------------
-
-
-class OFFIngredientSchema(IngredientSchema["OFFIngredientSchema"]):
+class OFFIngredientSchema(Schema):
     model_config = ConfigDict(
         from_attributes=True,  # allows to create from Django objects
         populate_by_name=True,  # allow us to use names even with alias defined
@@ -27,14 +21,18 @@ class OFFIngredientSchema(IngredientSchema["OFFIngredientSchema"]):
     ingredients: list["OFFIngredientSchema"] | None = Field(
         default=None, validation_alias="ingredients"
     )
-    reference: IngredientRef | None = Field(default=None)
-    has_reference: bool = False
 
 
 OFFIngredientSchema.model_rebuild()
 
 
-class OFFMacronutrientsSchema(MacronutrientsSchema):
+class OFFMacronutrientsSchema(Schema):
+    model_config = ConfigDict(
+        from_attributes=True,  # allows to create from Django objects
+        populate_by_name=True,  # allow us to use names even with alias defined
+        extra="ignore",  # ignore _state, id, product_id, etc
+    )
+
     fat: float | None = Field(default=None, validation_alias="fat_100g")
     saturated_fat: float | None = Field(
         default=None, validation_alias="saturated-fat_100g"
@@ -47,7 +45,7 @@ class OFFMacronutrientsSchema(MacronutrientsSchema):
     proteins: float | None = Field(default=None, validation_alias="proteins_100g")
 
 
-class OFFProductSchema(ProductSchema[OFFMacronutrientsSchema, OFFIngredientSchema]):
+class OFFProductSchema(Schema):
     model_config = ConfigDict(
         from_attributes=True,  # allows to create from Django objects
         populate_by_name=True,  # allow us to use names even with alias defined
@@ -71,8 +69,82 @@ class OFFProductSchema(ProductSchema[OFFMacronutrientsSchema, OFFIngredientSchem
     group_level_2: str | None = Field(default=None, validation_alias="pnns_groups_2")
 
 
+# ---- ENUMS ----
+
+
+class StatusEnum(str, Enum):
+    success = "success"
+    success_with_warnings = "success_with_warnings"
+    success_with_errors = "success_with_errors"
+    failure = "failure"
+
+
+# ---- BLOCK: message ----
+
+
+class Message(Schema):
+    id: str
+    name: str
+    lc_name: str | None = None
+    description: str | None = None
+    lc_description: str | None = None
+
+
+# ---- BLOCK: field ----
+
+
+class FieldInfo(Schema):
+    id: str
+    value: str
+
+
+# ---- BLOCK: impact ----
+
+
+class Impact(Schema):
+    id: str
+    name: str
+    lc_name: str | None = None
+    description: str | None = None
+    lc_description: str | None = None
+
+
+# ---- BLOCK: warning/error entry ----
+
+
+class WarningOrError(Schema):
+    message: Message
+    field: FieldInfo
+    impact: Impact
+
+
+# ---- BLOCK: result ----
+
+
+class Result(Schema):
+    id: str
+    name: str
+    lc_name: str | None = None
+
+
+# ---- ROOT RESPONSE ----
+
+
+class OFFProductAPIResponseSchema(Schema):
+    status: StatusEnum
+    result: Result
+    warnings: list[WarningOrError] | None = None
+    errors: list[WarningOrError] | None = None
+    product: OFFProductSchema | None = None
+
+
+# If API returns an error (e.g., 500), we return this schema
+class OFFAPIErrorSchema(Schema):
+    error: str
+
+
 # Form -----------------------------------------------------------------------
-class MacronutrientsFormSchema(MacronutrientsSchema):
+class MacronutrientsFormSchema(Schema):
     fat: float | None = Field(default=None, alias="macronutrients_fat_0")
     saturated_fat: float | None = Field(
         default=None,
@@ -137,6 +209,6 @@ class ProductFormSchema(Schema):
 
 
 def product_schema_to_form_data(
-    product: ProductSchema[MacronutrientsType, IngredientType] | OFFProductSchema,
+    product: OFFProductSchema,
 ) -> ProductFormSchema:
     return ProductFormSchema.model_validate(product, by_alias=True)

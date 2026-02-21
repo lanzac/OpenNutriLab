@@ -27,7 +27,7 @@ from django.utils.translation import gettext_lazy as _
 from quantityfield.fields import QuantityFormField
 
 from opennutrilab.crispy_bootstrap_extended.layouts import AccordionGroupExtended
-from products.openfoodfacts.utils import save_ingredients_from_schema
+from products.api.openfoodfacts.services import save_ingredients_from_schema
 
 from .models import Macronutrient
 from .models import Product
@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from django.utils.safestring import SafeText
     from pint import Quantity
 
-    from products.openfoodfacts.schema import OFFIngredientSchema
+    from products.api.openfoodfacts.schemas import OFFIngredientSchema
 
 
 class ProductForm(forms.ModelForm):

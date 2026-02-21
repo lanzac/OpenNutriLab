@@ -7,12 +7,12 @@ from crispy_forms.bootstrap import FieldWithButtons
 from pint import Quantity
 from quantityfield.units import ureg
 
+from products.api.openfoodfacts.schemas import OFFIngredientSchema
 from products.forms import ProductForm
 from products.models import Ingredient
 from products.models import Macronutrient
 from products.models import Product
 from products.models import ProductMacronutrient
-from products.openfoodfacts.schema import OFFIngredientSchema
 
 
 @pytest.mark.django_db

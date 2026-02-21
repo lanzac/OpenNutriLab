@@ -11,14 +11,13 @@ from django.test import RequestFactory
 from django.urls import reverse
 from pint import Quantity
 
-from products.base_schema import MacronutrientsSchema
-from products.base_schema import ProductSchema
+from products.api.openfoodfacts.schemas import OFFIngredientSchema
+from products.api.openfoodfacts.schemas import OFFMacronutrientsSchema
+from products.api.openfoodfacts.schemas import OFFProductSchema
+from products.api.openfoodfacts.schemas import product_schema_to_form_data
 from products.forms import ProductForm
 from products.models import IngredientRef
 from products.models import Product
-from products.openfoodfacts.schema import OFFIngredientSchema
-from products.openfoodfacts.schema import OFFProductSchema
-from products.openfoodfacts.schema import product_schema_to_form_data
 from products.views import PRODUCT_LIST_FIELDS
 from products.views import ProductCreateView  # adapte à ton module
 from products.views import ProductEditView  # adapte à ton module
@@ -120,16 +119,16 @@ class TestProductCreateView:
             f"Le formulaire initial n'est pas vide : {form.initial}"
         )
 
-    @patch("products.views.fetch_product")
+    @patch("products.views.fetch_from_off")
     def test_get_form_with_barcode(self, mock_fetch_product_data: MagicMock):
         """The form should be pre-filled when a barcode is provided."""
 
         # --- Create a realistic ProductSchema instance ---
-        mock_product_schema: ProductSchema[MacronutrientsSchema, Any] = ProductSchema(
+        mock_product_schema: OFFProductSchema = OFFProductSchema(
             barcode="123456",
             name="Apple",
             image_url="https://example.com/apple.jpg",
-            macronutrients=MacronutrientsSchema(
+            macronutrients=OFFMacronutrientsSchema(
                 fat=3.0,
                 proteins=1.5,
             ),
@@ -203,7 +202,7 @@ class TestProductEditView:
         assert form.initial == expected_form
 
     @pytest.mark.django_db
-    @patch("products.views.fetch_product")
+    @patch("products.views.fetch_from_off")
     def test_get_form_with_reset(self, mock_fetch_product_data: MagicMock):
         product = Product.objects.create(
             barcode="1234567890123",
@@ -214,11 +213,11 @@ class TestProductEditView:
 
         # --------------------------------------------------------------------
         # --- Create a realistic ProductSchema instance ---
-        mock_product_schema: ProductSchema[MacronutrientsSchema, Any] = ProductSchema(
+        mock_product_schema: OFFProductSchema = OFFProductSchema(
             barcode="1234567890123",
             name="Test",
             image_url="https://example.com/apple.jpg",
-            macronutrients=MacronutrientsSchema(
+            macronutrients=OFFMacronutrientsSchema(
                 fat=3.0,
                 proteins=1.5,
             ),

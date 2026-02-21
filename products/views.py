@@ -8,18 +8,18 @@ from vanilla import DeleteView
 from vanilla import ListView
 from vanilla import UpdateView
 
+from .api.openfoodfacts.schemas import OFFProductSchema
+from .api.openfoodfacts.schemas import ProductFormSchema
+from .api.openfoodfacts.schemas import product_schema_to_form_data
+from .api.openfoodfacts.services import build_ingredient_json_from_schema
+from .api.openfoodfacts.services import fetch_from_off
+from .api.openfoodfacts.services import get_schema_from_ingredients
 from .forms import ProductForm
 from .models import IngredientRef
 from .models import Product
-from .openfoodfacts.schema import OFFProductSchema
-from .openfoodfacts.schema import ProductFormSchema
-from .openfoodfacts.schema import product_schema_to_form_data
-from .openfoodfacts.utils import build_ingredient_json_from_schema
-from .openfoodfacts.utils import fetch_product
-from .openfoodfacts.utils import get_schema_from_ingredients
 
 if TYPE_CHECKING:
-    from products.openfoodfacts.schema import OFFIngredientSchema
+    from products.api.openfoodfacts.schemas import OFFIngredientSchema
 
 
 PRODUCT_LIST_FIELDS: list[str] = [
@@ -64,7 +64,7 @@ class ProductCreateView(CreateView):
         barcode: str | None = self.request.GET.get("barcode")
         initial: dict[str, Any] = {}
         if barcode:
-            fetched_product: OFFProductSchema = fetch_product(query_barcode=barcode)
+            fetched_product: OFFProductSchema = fetch_from_off(query_barcode=barcode)
             initial, extra_data = prepare_product_form_data(
                 fetched_product=fetched_product, extra_data=extra_data
             )
@@ -105,7 +105,7 @@ class ProductEditView(UpdateView):
 
         fetched_product: OFFProductSchema | None = None
         if reset:
-            fetched_product = fetch_product(query_barcode=product_instance.barcode)
+            fetched_product = fetch_from_off(query_barcode=product_instance.barcode)
 
         initial, extra_data = prepare_product_form_data(
             product_instance=product_instance,
