@@ -10,4 +10,4 @@ omit =
     */migrations/*
     opennutrilab/users/adapters.py
     products/admin.py
-    products/openfoodfacts/data_mapping.py
+    products/api/openfoodfacts/data_mapping.py
