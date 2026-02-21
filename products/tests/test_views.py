@@ -332,6 +332,7 @@ def test_prepare_product_form_data_with_fetched_product_and_refs():
     assert payload[1]["has_reference"] is False
 
 
+@pytest.mark.django_db
 def test_prepare_product_form_data_raises_without_arguments():
     # --- Act & Assert ---
     with pytest.raises(
