@@ -154,6 +154,10 @@ def prepare_product_form_data(
     initial: dict[str, Any] = {}
     extra_data = extra_data or {}
 
+    reference_names = {
+        name.lower() for name in IngredientRef.objects.values_list("name", flat=True)
+    }
+
     # Use fetched_product if provided (Create or Edit reset)
     if fetched_product is not None:
         # convert to form schema
@@ -164,10 +168,6 @@ def prepare_product_form_data(
         # Ingredients from fetched_product
         extra_data["ingredients"] = fetched_product.ingredients
         if fetched_product.ingredients:
-            reference_names = {
-                name.lower()
-                for name in IngredientRef.objects.values_list("name", flat=True)
-            }
             extra_data["ingredients_json"] = json.dumps(
                 [
                     build_ingredient_json_from_schema(ingredient, reference_names)
@@ -181,7 +181,10 @@ def prepare_product_form_data(
         )
         extra_data["ingredients"] = ingredients
         extra_data["ingredients_json"] = json.dumps(
-            [ingredient.model_dump(by_alias=False) for ingredient in ingredients]
+            [
+                build_ingredient_json_from_schema(ingredient, reference_names)
+                for ingredient in ingredients
+            ]
         )
     else:
         msg = "Either product_instance or fetched_product must be provided"
