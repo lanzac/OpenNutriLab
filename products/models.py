@@ -5,6 +5,7 @@ from typing import override
 
 from django.db import models
 from django.db.models import UniqueConstraint
+from django.db.models.fields.related import ForeignKey
 from django.db.models.functions import Lower
 from django.db.models.functions import Upper
 from quantityfield.fields import QuantityField
@@ -17,6 +18,9 @@ from products.units import VITAMIN_UNIT_CHOICES
 from products.units import VITAMIN_UNIT_CHOICES_VALUES
 
 from .fields import EAN13Field
+
+if TYPE_CHECKING:
+    from django.db.models.manager import RelatedManager
 
 
 @final
@@ -85,18 +89,36 @@ class Vitamin(models.Model):
         return label
 
 
+class IngredientRefMacronutrient(models.Model):
+    ingredient_ref: ForeignKey[Any] = models.ForeignKey(
+        "IngredientRef", on_delete=models.CASCADE
+    )
+    macronutrient = models.ForeignKey(Macronutrient, on_delete=models.CASCADE)
+    amount = QuantityField(base_units=DEFAULT_MACRONUTRIENT_UNIT, null=True)  # pyright: ignore[reportCallIssue]
+
+    @final
+    class Meta:
+        verbose_name = "IngredientRef Macronutrient"
+        verbose_name_plural = "IngredientRef Macronutrients"
+        ordering = ["ingredient_ref", "macronutrient"]
+
+    @override
+    def __str__(self) -> str:
+        return f"{self.ingredient_ref.name} {self.macronutrient.name} amount"
+
+
 class IngredientRef(models.Model):
     name = models.CharField(max_length=255, unique=True)
 
-    # Example of nutritional values for this ingredient reference
-    # Will be changed later
-    fat = models.FloatField(null=True, blank=True)
-    saturated_fat = models.FloatField(null=True, blank=True)
-    monounsaturated_fat = models.FloatField(null=True, blank=True)
-    polyunsaturated_fat = models.FloatField(null=True, blank=True)
+    macronutrients = models.ManyToManyField(  # pyright: ignore[reportUnknownVariableType]
+        Macronutrient, through="IngredientRefMacronutrient"
+    )
 
-    proteins = models.FloatField(null=True, blank=True)
-    carbohydrates = models.FloatField(null=True, blank=True)
+    if TYPE_CHECKING:
+        # Static type hint for Pyright
+        ingredientrefmacronutrient_set: models.manager.RelatedManager[
+            "IngredientRefMacronutrient"
+        ]
 
     @override
     def __str__(self) -> str:
@@ -142,8 +164,13 @@ class Ingredient(models.Model):
         null=True,
         blank=True,
         on_delete=models.CASCADE,
-        related_name="children",
+        related_name="sub_ingredients",
     )
+
+    # Static type hint for Pyright/Mypy to recognize the reverse relation manager
+    # This allows obj.children.all() to be correctly typed
+    if TYPE_CHECKING:
+        sub_ingredients: RelatedManager["Ingredient"]
 
     # Percentage in the product
     percentage = models.FloatField(null=True, blank=True)
@@ -194,6 +221,12 @@ class Product(models.Model):
         related_name="products",
     )
 
+    # Type hint for the reverse relation manager created by the ManyToMany 'through'
+    # table. This is purely for static analysis (Pyright/Mypy) as Django populates this
+    # attribute at runtime.
+    if TYPE_CHECKING:
+        productmacronutrient_set: RelatedManager["ProductMacronutrient"]
+
     # 🔹 Vitamins
     vitamins = models.ManyToManyField(  # pyright: ignore[reportUnknownVariableType]
         to=Vitamin,
@@ -204,6 +237,7 @@ class Product(models.Model):
 
     if TYPE_CHECKING:
         ingredients: models.QuerySet["Ingredient"]
+        product_ingredients_set: RelatedManager["Ingredient"]
 
     @override
     def __str__(self) -> str:
