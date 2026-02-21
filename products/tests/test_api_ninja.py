@@ -25,11 +25,11 @@ def test_get_product_success():
     mock_response.json.return_value = mock_json
 
     with patch(
-        "products.api_ninja.requests.get",
+        "products.api.openfoodfacts.api_ninja_fetch_product.requests.get",
         return_value=mock_response,
     ):
         client = Client()
-        response = client.get("/api-ninja/products/off/1234567890")
+        response = client.get("/api-ninja/products/off/fetch-product/1234567890")
 
     assert response.status_code == 200  # noqa: PLR2004
     assert response.json()["product"]["name"] == "Test Product"
@@ -42,11 +42,11 @@ def test_get_product_off_api_error():
     mock_response.json.return_value = {"detail": "server error"}
 
     with patch(
-        "products.api_ninja.requests.get",
+        "products.api.openfoodfacts.api_ninja_fetch_product.requests.get",
         return_value=mock_response,
     ):
         client = Client()
-        response = client.get("/api-ninja/products/off/1234567890")
+        response = client.get("/api-ninja/products/off/fetch-product/1234567890")
 
     assert response.status_code == 502  # noqa: PLR2004
     assert response.json() == {"error": "OFF API unavailable"}
@@ -65,7 +65,7 @@ def test_get_macronutrients_form_data():
         "macronutrients_proteins_0": 15.0,
     }
 
-    response = client.get("/api-ninja/products/macronutrients/form-data", params)
+    response = client.get("/api-ninja/products/off/macronutrients/form-data", params)
 
     assert response.status_code == 200  # noqa: PLR2004
     data = response.json()

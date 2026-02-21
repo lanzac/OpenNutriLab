@@ -1,24 +1,22 @@
 import requests
 from django.http import HttpRequest
 from django.http import HttpResponse
-from ninja import Query
 from ninja import Router
 
-from products.openfoodfacts.api_response_shema import OFFAPIErrorSchema
-from products.openfoodfacts.api_response_shema import OFFProductAPIResponseSchema
-from products.openfoodfacts.schema import MacronutrientsFormSchema
+from .schemas import OFFAPIErrorSchema
+from .schemas import OFFProductAPIResponseSchema
 
-router = Router()
+router = Router(tags=["OpenFoodFacts"])
 
 
 @router.get(
-    path="/off/{barcode}",
+    path="/fetch-product/{barcode}",
     response={
         200: OFFProductAPIResponseSchema,
         502: OFFAPIErrorSchema,
     },
 )
-def get_product(request: HttpRequest, response: HttpResponse, barcode: str):
+def fetch_product(request: HttpRequest, response: HttpResponse, barcode: str):
     r = requests.get(
         f"https://world.openfoodfacts.org/api/v3/product/{barcode}.json",
         timeout=10,
@@ -31,11 +29,3 @@ def get_product(request: HttpRequest, response: HttpResponse, barcode: str):
     # Return the JSON response from the OFF API with HTTP 200 (success) status.
     # Django Ninja will automatically validate it against OFFProductAPIResponseSchema.
     return r.json()
-
-
-@router.get(path="macronutrients/form-data")
-def get_macronutrients_form_data(
-    request: HttpRequest, macronutrients: Query[MacronutrientsFormSchema]
-):
-    """Return parsed macronutrient data from form input."""
-    return {"macronutrients": macronutrients.dict()}
