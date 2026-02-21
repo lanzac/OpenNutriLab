@@ -104,7 +104,7 @@ class IngredientRefMacronutrient(models.Model):
 
     @override
     def __str__(self) -> str:
-        return f"{self.ingredient_ref.name} {self.macronutrient.name} amount"
+        return f"{self.ingredient_ref} {self.macronutrient} amount"
 
 
 class IngredientRef(models.Model):
