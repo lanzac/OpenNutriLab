@@ -5,6 +5,7 @@ from ninja import Router
 
 from products.api import services
 from products.api.schemas.inbound import ProductCreate
+from products.api.schemas.inbound import ProductUpdate
 from products.api.schemas.outbound import ProductOut
 from products.models import Product
 
@@ -26,6 +27,19 @@ def get_product(request: HttpRequest, product_id: str) -> Product:
 @router.post(path="/", response=ProductOut)
 def create_product(request: HttpRequest, data: ProductCreate) -> Product:
     return services.create_product(data)
+
+
+@router.patch("/{product_id}", response=ProductOut)
+def update_product(
+    request: HttpRequest, product_id: str, payload: ProductUpdate
+) -> Product:
+    product = get_object_or_404(Product, barcode=product_id)
+
+    for attr, value in payload.dict(exclude_unset=True).items():
+        setattr(product, attr, value)
+
+    product.save()
+    return product
 
 
 @router.delete(path="/{product_id}")
