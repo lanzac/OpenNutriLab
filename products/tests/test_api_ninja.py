@@ -1,8 +1,11 @@
+from typing import Any
 from unittest.mock import Mock
 from unittest.mock import patch
 
 import pytest
 from django.test import Client
+
+from products.api.types import QuantityType
 
 
 @pytest.mark.django_db
@@ -76,3 +79,29 @@ def test_get_macronutrients_form_data():
     assert data["macronutrients"]["sugars"] == 20.0  # noqa: PLR2004
     assert data["macronutrients"]["fiber"] == 5.0  # noqa: PLR2004
     assert data["macronutrients"]["proteins"] == 15.0  # noqa: PLR2004
+
+
+# Mock d'un objet type Django-Pint Quantity
+class MockQuantity:
+    def __init__(self, magnitude: float, units: str):
+        self.magnitude = magnitude
+        self.units = units
+
+
+@pytest.mark.parametrize(
+    ("input_value", "expected"),
+    [
+        (None, None),  # cas None
+        ({"value": 3.14159, "unit": "m"}, {"value": 3.14, "unit": "m"}),  # dict
+        (MockQuantity(2.71828, "kg"), {"value": 2.72, "unit": "kg"}),  # quantity
+        (1.9876, 1.99),  # float simple
+        ("4.567", 4.57),  # string convertible en float
+        ("not_a_number", None),  # string non convertible
+        (
+            {"value": None, "unit": "s"},
+            {"value": None, "unit": "s"},
+        ),  # dict sans valeur
+    ],
+)
+def test_validate(input_value: Any, expected: Any):
+    assert QuantityType.validate(input_value) == expected
