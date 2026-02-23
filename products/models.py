@@ -94,7 +94,7 @@ class IngredientRefMacronutrient(models.Model):
         "IngredientRef", on_delete=models.CASCADE
     )
     macronutrient = models.ForeignKey(Macronutrient, on_delete=models.CASCADE)
-    amount = QuantityField(base_units=DEFAULT_MACRONUTRIENT_UNIT, null=True)  # pyright: ignore[reportCallIssue]
+    amount = QuantityField(base_units=DEFAULT_MACRONUTRIENT_UNIT)  # pyright: ignore[reportCallIssue]
 
     @final
     class Meta:
@@ -136,7 +136,6 @@ class Ingredient(models.Model):
     reference = models.ForeignKey(
         IngredientRef,
         null=True,
-        blank=True,
         on_delete=models.SET_NULL,
         related_name="usages",
     )
@@ -211,7 +210,6 @@ class Product(models.Model):
     energy: QuantityField = QuantityField(
         base_units=DEFAULT_ENERGY_UNIT,
         unit_choices=ENERGY_UNIT_CHOICES_VALUES,
-        null=True,
     )  # pyright: ignore[reportCallIssue]
 
     # 🔹 Macronutrients
@@ -255,7 +253,6 @@ class ProductVitamin(models.Model):
     amount = QuantityField(
         base_units=DEFAULT_VITAMIN_UNIT,
         unit_choices=VITAMIN_UNIT_CHOICES_VALUES,
-        null=True,
     )  # pyright: ignore[reportCallIssue]
 
     # For this manually created intermediate table (with "through") I need to add
@@ -281,7 +278,7 @@ class ProductVitamin(models.Model):
 class ProductMacronutrient(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     macronutrient = models.ForeignKey(Macronutrient, on_delete=models.CASCADE)
-    amount = QuantityField(base_units=DEFAULT_MACRONUTRIENT_UNIT, null=True)  # pyright: ignore[reportCallIssue]
+    amount = QuantityField(base_units=DEFAULT_MACRONUTRIENT_UNIT)  # pyright: ignore[reportCallIssue]
 
     # For this manually created intermediate table (with "through") I need to add
     # the unicity constraint because Django not doing it :(
