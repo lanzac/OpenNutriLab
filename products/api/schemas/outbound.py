@@ -46,6 +46,9 @@ class IngredientOut(ModelSchema):
         fields: list[str] = ["name", "percentage", "reference", "has_reference"]
 
 
+IngredientOut.model_rebuild()  # Important for self-referencing schemas
+
+
 class ProductMacronutrientOut(ModelSchema):
     # We tell Pydantic to look deep into the related 'macronutrient' object
     name: str = Field(validation_alias=AliasPath("macronutrient", "name"))

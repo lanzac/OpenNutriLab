@@ -19,15 +19,27 @@ class NutritionalValuesInput(Schema):
     macronutrients: list[MacronutrientInput] = []
 
 
+class IngredientInput(Schema):
+    name: str
+    percentage: float | None = None
+
+    # https://django-ninja.dev/guides/response/?h=self#self-referencing-schemes
+    sub_ingredients: list["IngredientInput"] = []
+
+
+IngredientInput.model_rebuild()
+
+
 class ProductCreate(Schema):
     """The main schema received when the user clicks 'Save'."""
 
     barcode: str
     name: str
-    description: str
-    group_level_1: str
-    group_level_2: str
+    description: str = ""
+    group_level_1: str = ""
+    group_level_2: str = ""
     nutritional_values: NutritionalValuesInput
+    ingredients: list[IngredientInput] = []
 
     @field_validator("barcode")
     @classmethod
@@ -65,3 +77,4 @@ class ProductUpdate(Schema):
     group_level_1: str | None = None
     group_level_2: str | None = None
     nutritional_values: NutritionalValuesUpdate | None = None
+    ingredients: list[IngredientInput] | None = None
