@@ -1,66 +1,84 @@
 from typing import Any
 from typing import cast
 
+from django.conf import settings
 from ninja.orm import register_field
+from pint.registry import Quantity
 from pydantic import GetCoreSchemaHandler
 from pydantic_core import core_schema
+from quantityfield.units import ureg
+
+DEFAULT_UNIT = getattr(settings, "DEFAULT_QUANTITY_UNIT", "kcal")
 
 
 class QuantityType:
-    __precision__ = 2  # rounded to 1 decimal place by default
+    """
+    Pydantic-compatible type that accepts:
+        - float
+        - {"value": float, "unit": str}
+        - pint.Quantity
+
+    And always returns:
+        pint.Quantity (rounded)
+    """
+
+    __precision__ = 2  # number of decimal places
 
     @classmethod
     def __get_pydantic_core_schema__(cls, source: Any, handler: GetCoreSchemaHandler):
-        float_schema = core_schema.float_schema()
+        def validate(value: Any) -> Quantity | None:
+            """
+            Convert various inputs into a pint.Quantity.
 
-        dict_schema = core_schema.typed_dict_schema(
-            fields={
-                "value": core_schema.typed_dict_field(core_schema.float_schema()),
-                "unit": core_schema.typed_dict_field(core_schema.str_schema()),
-            }
-        )
+            Always returns:
+                pint.Quantity | None
+            """
+            if value is None:
+                return None
 
-        union = core_schema.union_schema([float_schema, dict_schema])
+            # Already a pint.Quantity (e.g., coming from ORM)
+            if isinstance(value, ureg.Quantity):
+                magnitude: float = cls._round_value(float(value.magnitude))
+                return cast("Quantity", magnitude * value.units)
 
-        return core_schema.no_info_before_validator_function(
-            function=cls.validate,
-            schema=union,
-        )
+            # Dictionary input: {"value": float, "unit": str}
+            if isinstance(value, dict):
+                typed_value = cast("dict[str, Any]", value)
+                magnitude = cls._round_value(float(typed_value["value"]))
+                unit: str = typed_value["unit"]
+                return magnitude * ureg(input_string=unit)
 
-    @classmethod
-    def validate(cls, value: Any) -> dict[str, float | str] | float | None:
-        """
-        Converts various inputs (Quantity, float, dict) into dict {value, unit} and
-        rounds value.
-        """
-        if value is None:
-            return None
+            # Float input: use default unit
+            try:
+                magnitude = cls._round_value(float(value))
+                return magnitude * ureg(DEFAULT_UNIT)
+            except (TypeError, ValueError) as err:
+                msg = f"Invalid quantity format: {err}"
+                raise ValueError(msg) from err
 
-        # if it's already a dict, we round value if present
-        if isinstance(value, dict):
-            typed_value = cast("dict[str, Any]", value)
-            val: Any | None = typed_value.get("value")
-            if val is not None:
-                typed_value["value"] = cls._round_value(val)
-            return typed_value
-
-        # Django-Pint Quantity object
-        if hasattr(value, "magnitude"):
+        def serialize(value: Quantity | None) -> dict[str, Any] | None:
+            if value is None:
+                return None
             return {
                 "value": cls._round_value(float(value.magnitude)),
                 "unit": str(value.units),
             }
 
-        # Simple FloatField
-        try:
-            return cls._round_value(float(value))
-        except (TypeError, ValueError):
-            return None
+        return core_schema.json_or_python_schema(
+            python_schema=core_schema.no_info_plain_validator_function(validate),
+            json_schema=core_schema.typed_dict_schema(
+                fields={
+                    "value": core_schema.typed_dict_field(core_schema.float_schema()),
+                    "unit": core_schema.typed_dict_field(core_schema.str_schema()),
+                }
+            ),
+            serialization=core_schema.plain_serializer_function_ser_schema(serialize),
+        )
 
     @classmethod
     def _round_value(cls, val: float) -> float:
         return round(val, cls.__precision__)
 
 
-# >>> Product._meta.get_field("energy").get_internal_type() -> 'FloatField'
+# Register mapping for Django FloatField (used internally by QuantityField)
 register_field(django_field="FloatField", python_type=QuantityType)
