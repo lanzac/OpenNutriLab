@@ -3,11 +3,11 @@ from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from ninja import Router
 
-from products.api import services
 from products.api.schemas.inbound import ProductCreate
 from products.api.schemas.inbound import ProductUpdate
 from products.api.schemas.outbound import ProductOut
 from products.models import Product
+from products.services import product_services
 
 router = Router(tags=["Products CRUD"])
 
@@ -26,20 +26,15 @@ def get_product(request: HttpRequest, product_id: str) -> Product:
 
 @router.post(path="/", response=ProductOut)
 def create_product(request: HttpRequest, data: ProductCreate) -> Product:
-    return services.create_product(data)
+    return product_services.create_product(data)
 
 
 @router.patch("/{product_id}", response=ProductOut)
 def update_product(
-    request: HttpRequest, product_id: str, payload: ProductUpdate
+    request: HttpRequest, product_id: str, data: ProductUpdate
 ) -> Product:
     product = get_object_or_404(Product, barcode=product_id)
-
-    for attr, value in payload.dict(exclude_unset=True).items():
-        setattr(product, attr, value)
-
-    product.save()
-    return product
+    return product_services.update_product(product, data)
 
 
 @router.delete(path="/{product_id}")
