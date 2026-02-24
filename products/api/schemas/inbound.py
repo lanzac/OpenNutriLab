@@ -2,6 +2,7 @@ from ninja import Schema
 from ninja.errors import ValidationError
 from pydantic import field_validator
 
+from products.api.types import QuantityType
 from products.fields import validate_ean13
 
 
@@ -9,13 +10,13 @@ class MacronutrientInput(Schema):
     """Data for a single macronutrient line in the form."""
 
     name: str
-    amount: float  # Simple float for the user input
+    amount: QuantityType
 
 
 class NutritionalValuesInput(Schema):
     """The grouped nutritional block in the form."""
 
-    energy: float
+    energy: QuantityType
     macronutrients: list[MacronutrientInput] = []
 
 
@@ -35,6 +36,7 @@ class ProductCreate(Schema):
 
     barcode: str
     name: str
+    image_url: str = ""
     description: str = ""
     group_level_1: str = ""
     group_level_2: str = ""
@@ -74,6 +76,7 @@ class ProductUpdate(Schema):
     # On ne met pas le barcode ici car il ne change pas
     name: str | None = None
     description: str | None = None
+    image_url: str | None = None
     group_level_1: str | None = None
     group_level_2: str | None = None
     nutritional_values: NutritionalValuesUpdate | None = None
