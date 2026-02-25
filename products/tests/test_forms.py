@@ -24,7 +24,9 @@ class TestBuildBarcodeField:
         assert isinstance(field, FieldWithButtons)
 
     def test_edit_mode_returns_readonly_field(self):
-        product = Product.objects.create(name="Apple", barcode="1234567890123")
+        product = Product.objects.create(
+            name="Apple", barcode="1234567890123", energy=Quantity(100, ureg.kJ)
+        )
         form = ProductForm(instance=product)
         field: FieldWithButtons = form._get_barcode_field_layout()  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
 
@@ -39,7 +41,9 @@ class TestBuildBarcodeField:
 @pytest.mark.django_db
 def test_macronutrient_field_initialized_with_existing_amount():
     # Arrange
-    product = Product.objects.create(name="Test Product", barcode="1234567890123")
+    product = Product.objects.create(
+        name="Test Product", barcode="1234567890123", energy=Quantity(100, ureg.kJ)
+    )
     macronutrient, _ = Macronutrient.objects.get_or_create(name="proteins")
 
     # Créons une entrée ProductMacronutrient avec un certain amount
@@ -66,7 +70,9 @@ def test_macronutrient_field_initialized_with_existing_amount():
 @pytest.mark.django_db
 def test_macronutrient_field_not_initialized_without_existing_amount():
     # Arrange
-    product = Product.objects.create(name="Test Product 2", barcode="9876543210987")
+    product = Product.objects.create(
+        name="Test Product 2", barcode="9876543210987", energy=Quantity(200, ureg.kJ)
+    )
     macronutrient, _ = Macronutrient.objects.get_or_create(name="fat")
 
     # Pas de ProductMacronutrient créé
@@ -140,7 +146,9 @@ def test_product_form_save_updates_existing_productmacronutrient():
     protein = Macronutrient.objects.create(name="protein_test")
     protein.name_in_form = f"macronutrients_{protein.name.lower()}"
     protein.save(update_fields=["name_in_form"])
-    product = Product.objects.create(name="Update Test", barcode="3229820794556")
+    product = Product.objects.create(
+        name="Update Test", barcode="3229820794556", energy=Quantity(150, ureg.kJ)
+    )
 
     ProductMacronutrient.objects.create(
         product=product, macronutrient=protein, amount=5.0
@@ -167,7 +175,9 @@ def test_product_form_save_updates_existing_productmacronutrient():
 @pytest.mark.django_db
 def test_product_form_save_removes_macronutrient_if_value_missing():
     protein = Macronutrient.objects.create(name="protein_test")
-    product = Product.objects.create(name="Delete Test", barcode="3229820794556")
+    product = Product.objects.create(
+        name="Delete Test", barcode="3229820794556", energy=Quantity(150, ureg.kJ)
+    )
 
     ProductMacronutrient.objects.create(
         product=product, macronutrient=protein, amount=5.0
@@ -241,7 +251,9 @@ def test_save_with_fetched_image_and_delete():
 @pytest.mark.django_db
 def test_product_form_save_with_ingredients_schema():
     # --- Setup product ---
-    product = Product.objects.create(name="Ingredient Test", barcode="3242272270157")
+    product = Product.objects.create(
+        name="Ingredient Test", barcode="3242272270157", energy=Quantity(100, ureg.kJ)
+    )
 
     # --- Ingredients schema ---
 

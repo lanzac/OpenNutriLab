@@ -10,6 +10,7 @@ from django.test import Client
 from django.test import RequestFactory
 from django.urls import reverse
 from pint import Quantity
+from quantityfield.units import ureg
 
 from products.api.openfoodfacts.schemas import OFFIngredientSchema
 from products.api.openfoodfacts.schemas import OFFMacronutrientsSchema
@@ -41,6 +42,7 @@ class TestProductListView:
             group_level_1="Fruits",
             group_level_2="Fresh",
             description="A beautiful apple",
+            energy=Quantity(100, ureg.kJ),
         )
         Product.objects.create(
             barcode="2222222222222",
@@ -48,6 +50,7 @@ class TestProductListView:
             group_level_1="Bakery",
             group_level_2="White bread",
             description="Traditional baguette",
+            energy=Quantity(100, ureg.kJ),
         )
 
         # --- Action: Call the view via its URL ---
@@ -273,6 +276,7 @@ def test_product_views_context_contains_macronutrients_url(
         product = Product.objects.create(
             barcode="1234567890123",
             name="Test Product",
+            energy=Quantity(100, ureg.kJ),
         )
 
     url: str = build_view_url(viewname, product)

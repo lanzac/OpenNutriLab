@@ -1,6 +1,8 @@
 import pytest
 from django.db import IntegrityError
 from django.db import transaction
+from pint import Quantity
+from quantityfield.units import ureg
 
 from products.models import Macronutrient
 from products.models import Product
@@ -205,7 +207,9 @@ def test_vitamin_common_name_optional():
 def test_product_str() -> None:
     from products.models import Product  # noqa: PLC0415
 
-    product = Product.objects.create(barcode="3229820794556", name="muesli protéines")
+    product = Product.objects.create(
+        barcode="3229820794556", name="muesli protéines", energy=Quantity(100, ureg.kJ)
+    )
     assert str(product) == "Muesli Protéines"
 
 
@@ -214,14 +218,18 @@ def test_product_str() -> None:
 # ----------------------------------------------------------------------------
 @pytest.mark.django_db
 def test_productvitamin_str_representation() -> None:
-    product = Product.objects.create(name="Apple")
+    product = Product.objects.create(
+        barcode="3229820794556", name="Apple", energy=Quantity(100, ureg.kJ)
+    )
     vitamin = Vitamin.objects.create(
         name="Ascorbic acid",
         common_name="Vitamin C",
         atc_code="A11GA01",
         chembl_id="CHEMBL196",
     )
-    fv = ProductVitamin.objects.create(product=product, vitamin=vitamin)
+    fv = ProductVitamin.objects.create(
+        product=product, vitamin=vitamin, amount=Quantity(50, ureg.mg)
+    )
 
     assert str(fv) == "Apple Ascorbic Acid (Vitamin C) amount"
 
@@ -231,9 +239,13 @@ def test_productvitamin_str_representation() -> None:
 # ----------------------------------------------------------------------------
 @pytest.mark.django_db
 def test_productmacronutrient_str_representation() -> None:
-    product = Product.objects.create(name="BananaTest")
+    product = Product.objects.create(
+        barcode="3229820794557", name="BananaTest", energy=Quantity(100, ureg.kJ)
+    )
     macro = Macronutrient.objects.create(name="ProteinsTest")
-    fm = ProductMacronutrient.objects.create(product=product, macronutrient=macro)
+    fm = ProductMacronutrient.objects.create(
+        product=product, macronutrient=macro, amount=Quantity(2, ureg.g)
+    )
 
     assert str(fm) == "BananaTest ProteinsTest amount"
 
@@ -261,7 +273,7 @@ def test_ingredientrefmacronutrient_str_representation() -> None:
     ingredientref = IngredientRef.objects.create(name="raisins secs")
     macro = Macronutrient.objects.create(name="ProteinsTest")
     fm = IngredientRefMacronutrient.objects.create(
-        ingredient_ref=ingredientref, macronutrient=macro
+        ingredient_ref=ingredientref, macronutrient=macro, amount=Quantity(2, ureg.g)
     )
 
     assert str(fm) == "Raisins Secs Proteinstest amount"
@@ -274,6 +286,8 @@ def test_ingredientrefmacronutrient_str_representation() -> None:
 def test_ingredient_str() -> None:
     from products.models import Ingredient  # noqa: PLC0415
 
-    parent_product = Product.objects.create(name="Fruit Mix")
+    parent_product = Product.objects.create(
+        barcode="3242272270157", name="Fruit Mix", energy=Quantity(100, ureg.kJ)
+    )
     ingredient = Ingredient.objects.create(name="raisins secs", product=parent_product)
     assert str(ingredient) == "Raisins Secs"

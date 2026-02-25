@@ -1,10 +1,16 @@
 from typing import Any
+from typing import cast
 from unittest.mock import Mock
 from unittest.mock import patch
 
 import pytest
 from django.test import Client
+from pint import Quantity
+from pydantic import BaseModel
+from pydantic import ValidationError
+from quantityfield.units import ureg
 
+from products.api.types import DEFAULT_UNIT
 from products.api.types import QuantityType
 
 
@@ -81,27 +87,58 @@ def test_get_macronutrients_form_data():
     assert data["macronutrients"]["proteins"] == 15.0  # noqa: PLR2004
 
 
-# Mock d'un objet type Django-Pint Quantity
-class MockQuantity:
-    def __init__(self, magnitude: float, units: str):
-        self.magnitude = magnitude
-        self.units = units
+class ModelWithQuantity(BaseModel):
+    q: QuantityType
 
 
 @pytest.mark.parametrize(
-    ("input_value", "expected"),
+    ("input_value", "expected_value", "expected_unit"),
     [
-        (None, None),  # cas None
-        ({"value": 3.14159, "unit": "m"}, {"value": 3.14, "unit": "m"}),  # dict
-        (MockQuantity(2.71828, "kg"), {"value": 2.72, "unit": "kg"}),  # quantity
-        (1.9876, 1.99),  # float simple
-        ("4.567", 4.57),  # string convertible en float
-        ("not_a_number", None),  # string non convertible
-        (
-            {"value": None, "unit": "s"},
-            {"value": None, "unit": "s"},
-        ),  # dict sans valeur
+        (None, None, None),
+        ({"value": 3.14159, "unit": "m"}, 3.14, "meter"),
+        # pint-like object (has .magnitude and .units)
+        (ureg.Quantity(2.71828, ureg.kg), 2.72, "kilogram"),
+        # float -> converted using DEFAULT_UNIT
+        (1.9876, 1.99, DEFAULT_UNIT),
+        # string convertible
+        ("4.567", 4.57, DEFAULT_UNIT),
     ],
 )
-def test_validate(input_value: Any, expected: Any):
-    assert QuantityType.validate(input_value) == expected
+def test_quantitytype_validation_success(
+    input_value: Any, expected_value: Any, expected_unit: Any
+):
+    """
+    Validate that QuantityType accepts various input shapes and returns a pint.Quantity
+    (or None) with expected rounded magnitude and unit.
+    """
+    if input_value is None:
+        m = ModelWithQuantity.model_validate({"q": None})
+        assert m.q is None
+        # also check model dump serializes to None
+        assert ModelWithQuantity.model_validate({"q": None}).model_dump()["q"] is None
+        return
+
+    m = ModelWithQuantity.model_validate({"q": input_value})
+    # result must be a pint.Quantity-like
+    assert m.q is not None
+
+    assert isinstance(m.q, Quantity)
+    # check rounding (compare rounded values to avoid floating noise)
+    assert round(float(m.q.magnitude), 2) == expected_value
+    assert m.q.units == ureg(expected_unit).units
+
+    # also check serialization (model_dump) returns dict {"value": ..., "unit": ...}
+    dumped = ModelWithQuantity.model_validate({"q": input_value}).model_dump()
+    assert isinstance(dumped, dict)
+    assert isinstance(dumped["q"], dict)
+    value = cast("float", dumped["q"]["value"])
+    unit = cast("str", dumped["q"]["unit"])
+    assert round(value, 2) == expected_value
+    assert unit == format(ureg.parse_units(expected_unit), "~P")
+
+
+@pytest.mark.parametrize("bad_input", ["not_a_number", object()])
+def test_quantitytype_validation_error(bad_input: Any):
+    """Non-convertible inputs should raise a Pydantic ValidationError."""
+    with pytest.raises(ValidationError):
+        ModelWithQuantity.model_validate({"q": bad_input})

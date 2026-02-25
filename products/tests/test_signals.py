@@ -2,6 +2,8 @@ from unittest.mock import patch
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from pint import Quantity
+from quantityfield.units import ureg
 
 from products.models import Product
 
@@ -23,7 +25,10 @@ def test_delete_product_image_signal():
         mock_save.return_value = "images/products/test.jpg"
 
         product = Product.objects.create(
-            barcode="123456", name="Apple", image=uploaded_file
+            barcode="123456",
+            name="Apple",
+            image=uploaded_file,
+            energy=Quantity(100, ureg.kJ),
         )
 
         # Delete the instance (triggers post_delete signal)

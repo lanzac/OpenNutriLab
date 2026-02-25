@@ -7,6 +7,8 @@ from unittest.mock import patch
 
 import pytest
 from ninja.errors import HttpError
+from pint import Quantity
+from quantityfield.units import ureg
 from requests import HTTPError
 from requests import RequestException
 
@@ -403,7 +405,9 @@ def test_product_schema_to_form_data():
 
 @pytest.mark.django_db
 def test_get_schema_from_ingredients_builds_tree_correctly():
-    product = Product.objects.create(barcode="1234567890123", name="Test Product")
+    product = Product.objects.create(
+        barcode="1234567890123", name="Test Product", energy=Quantity(100, ureg.kJ)
+    )
 
     # Roots
     salt = Ingredient.objects.create(product=product, name="Salt", percentage=1)  # noqa: F841
@@ -446,7 +450,9 @@ def test_get_schema_from_ingredients_builds_tree_correctly():
 
 @pytest.mark.django_db
 def test_get_schema_from_ingredients_empty_product():
-    product = Product.objects.create(barcode="0000000000000", name="Empty Product")
+    product = Product.objects.create(
+        barcode="0000000000000", name="Empty Product", energy=Quantity(100, ureg.kJ)
+    )
 
     roots = get_schema_from_ingredients(product)
 
@@ -455,7 +461,9 @@ def test_get_schema_from_ingredients_empty_product():
 
 @pytest.mark.django_db
 def test_get_schema_from_ingredients_flat_list():
-    product = Product.objects.create(barcode="9999999999999", name="Flat Product")
+    product = Product.objects.create(
+        barcode="9999999999999", name="Flat Product", energy=Quantity(100, ureg.kJ)
+    )
 
     Ingredient.objects.create(product=product, name="A")
     Ingredient.objects.create(product=product, name="B")
@@ -470,7 +478,9 @@ def test_get_schema_from_ingredients_flat_list():
 @pytest.mark.django_db
 def test_no_duplicate_nodes_in_tree():
     product = Product.objects.create(
-        barcode="1111111111111", name="No Duplicate Product"
+        barcode="1111111111111",
+        name="No Duplicate Product",
+        energy=Quantity(100, ureg.kJ),
     )
 
     parent = Ingredient.objects.create(product=product, name="Parent")
@@ -497,7 +507,9 @@ def test_no_duplicate_nodes_in_tree():
 
 @pytest.mark.django_db
 def test_save_ingredients_creates_tree():
-    product = Product.objects.create(barcode="1234567890123", name="Test Product")
+    product = Product.objects.create(
+        barcode="1234567890123", name="Test Product", energy=Quantity(100, ureg.kJ)
+    )
 
     schema_tree = [
         OFFIngredientSchema(
@@ -532,7 +544,9 @@ def test_save_ingredients_creates_tree():
 
 @pytest.mark.django_db
 def test_save_ingredients_links_reference():
-    product = Product.objects.create(barcode="1111111111111", name="Ref Product")
+    product = Product.objects.create(
+        barcode="1111111111111", name="Ref Product", energy=Quantity(100, ureg.kJ)
+    )
 
     ref = IngredientRef.objects.create(name="Sugar")
 
@@ -546,7 +560,9 @@ def test_save_ingredients_links_reference():
 
 @pytest.mark.django_db
 def test_save_ingredients_does_not_duplicate():
-    product = Product.objects.create(barcode="2222222222222", name="Duplicate Product")
+    product = Product.objects.create(
+        barcode="2222222222222", name="Duplicate Product", energy=Quantity(100, ureg.kJ)
+    )
 
     schema_tree = [OFFIngredientSchema(name="Salt", percentage=1)]
 
@@ -558,7 +574,9 @@ def test_save_ingredients_does_not_duplicate():
 
 @pytest.mark.django_db
 def test_save_ingredients_updates_percentage():
-    product = Product.objects.create(barcode="3333333333333", name="Update Product")
+    product = Product.objects.create(
+        barcode="3333333333333", name="Update Product", energy=Quantity(100, ureg.kJ)
+    )
 
     save_ingredients_from_schema(
         [OFFIngredientSchema(name="Salt", percentage=1)], product
@@ -574,7 +592,9 @@ def test_save_ingredients_updates_percentage():
 
 @pytest.mark.django_db
 def test_save_ingredients_empty_list():
-    product = Product.objects.create(barcode="4444444444444", name="Empty Product")
+    product = Product.objects.create(
+        barcode="4444444444444", name="Empty Product", energy=Quantity(100, ureg.kJ)
+    )
 
     save_ingredients_from_schema([], product)
 
@@ -583,7 +603,9 @@ def test_save_ingredients_empty_list():
 
 @pytest.mark.django_db
 def test_save_ingredients_deep_tree():
-    product = Product.objects.create(barcode="5555555555555", name="Deep Product")
+    product = Product.objects.create(
+        barcode="5555555555555", name="Deep Product", energy=Quantity(100, ureg.kJ)
+    )
 
     node = OFFIngredientSchema(name="Level 0")
     current = node
