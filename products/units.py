@@ -5,6 +5,7 @@ from quantityfield.units import ureg
 
 # Default Pint units definition file
 # https://github.com/hgrecco/pint/blob/master/pint/default_en.txt
+DEFAULT_UNIT: Final[str] = f"{ureg.percent:~P}"
 DEFAULT_ENERGY_UNIT: Final = f"{ureg.kJ:~P}"
 ENERGY_UNIT_CHOICES_VALUES = [DEFAULT_ENERGY_UNIT, f"{ureg.kcal:~P}"]
 

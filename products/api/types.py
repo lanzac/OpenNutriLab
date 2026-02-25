@@ -1,14 +1,13 @@
 from typing import Any
 from typing import cast
 
-from django.conf import settings
 from ninja.orm import register_field
 from pint.registry import Quantity
 from pydantic import GetCoreSchemaHandler
 from pydantic_core import core_schema
 from quantityfield.units import ureg
 
-DEFAULT_UNIT = getattr(settings, "DEFAULT_QUANTITY_UNIT", "kcal")
+from products.units import DEFAULT_UNIT
 
 
 class QuantityType:
@@ -61,7 +60,7 @@ class QuantityType:
                 return None
             return {
                 "value": cls._round_value(float(value.magnitude)),
-                "unit": str(value.units),
+                "unit": f"{value.units:~P}",
             }
 
         return core_schema.json_or_python_schema(
