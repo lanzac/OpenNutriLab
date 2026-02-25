@@ -1,5 +1,6 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
 from ninja import Schema
-from ninja.errors import ValidationError
+from ninja.errors import ValidationError as NinjaValidationError
 from pydantic import field_validator
 
 from products.api.types import QuantityType
@@ -49,9 +50,11 @@ class ProductCreate(Schema):
         # On réutilise ta fonction de validation existante
         try:
             validate_ean13(value=barcode)
-        except ValidationError as e:
+        except DjangoValidationError as e:
             msg = f"Invalid product data format for {barcode}: {e}"
-            raise ValueError(msg) from e
+            raise NinjaValidationError(
+                errors=[{"loc": ("barcode",), "msg": msg}]
+            ) from e
         return barcode
 
 
