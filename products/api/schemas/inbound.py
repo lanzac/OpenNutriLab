@@ -66,12 +66,12 @@ class ProductCreate(Schema):
 # On réutilise MacronutrientIn ou on en crée un spécifique
 class MacronutrientUpdate(Schema):
     name: str
-    amount: float
+    amount: QuantityType
 
 
 class NutritionalValuesUpdate(Schema):
     # Tout est Optionnel ici pour permettre une mise à jour partielle
-    energy: float | None = None
+    energy: QuantityType
     macronutrients: list[MacronutrientUpdate] | None = None
 
 
