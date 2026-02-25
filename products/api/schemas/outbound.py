@@ -9,19 +9,11 @@ from pydantic import AliasPath
 from products.api.types import QuantityType
 from products.models import Ingredient
 from products.models import IngredientRef
-from products.models import Macronutrient
 from products.models import Product
 from products.models import ProductMacronutrient
 
 # More information on : Regulation (EU) No 1169/2011
 # https://eur-lex.europa.eu/eli/reg/2011/1169/oj?locale=fr
-
-
-class MacronutrientOut(ModelSchema):
-    class Meta:
-        model = Macronutrient
-        # Adaptez les champs selon votre modèle Macronutrient
-        fields = ["name", "description"]
 
 
 # --- Ingredient Reference Schemas ---
@@ -106,11 +98,6 @@ class ProductOut(ModelSchema):
     @staticmethod
     def resolve_ingredients(obj: Product) -> QuerySet[Ingredient]:
         return obj.ingredients.filter(parent__isnull=True).all()
-
-    @staticmethod
-    def resolve_macronutrients(obj: Product):
-        # On renvoie les objets ProductMacronutrient liés
-        return obj.productmacronutrient_set.all()
 
     @staticmethod
     def resolve_nutritional_values(obj: Product) -> NutritionalValuesOut:
