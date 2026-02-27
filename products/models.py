@@ -10,14 +10,9 @@ from django.db.models import UniqueConstraint
 from django.db.models.fields.related import ForeignKey
 from django.db.models.functions import Lower
 from django.db.models.functions import Upper
-from quantityfield.fields import QuantityField
 
-from products.units import DEFAULT_ENERGY_UNIT
-from products.units import DEFAULT_MACRONUTRIENT_UNIT
 from products.units import DEFAULT_VITAMIN_UNIT
-from products.units import ENERGY_UNIT_CHOICES_VALUES
 from products.units import VITAMIN_UNIT_CHOICES
-from products.units import VITAMIN_UNIT_CHOICES_VALUES
 
 from .fields import EAN13Field
 
@@ -96,7 +91,6 @@ class IngredientRefMacronutrient(models.Model):
         "IngredientRef", on_delete=models.CASCADE
     )
     macronutrient = models.ForeignKey(Macronutrient, on_delete=models.CASCADE)
-    amount = QuantityField(base_units=DEFAULT_MACRONUTRIENT_UNIT)  # pyright: ignore[reportCallIssue]
     amount_g = models.DecimalField(
         max_digits=5,
         decimal_places=2,
@@ -183,7 +177,16 @@ class Ingredient(models.Model):
         sub_ingredients: RelatedManager["Ingredient"]
 
     # Percentage in the product
-    percentage = models.FloatField(null=True, blank=True)
+    percentage = models.DecimalField(
+        null=True,
+        max_digits=5,
+        decimal_places=2,
+        validators=[
+            MinValueValidator(limit_value=0, message="Percentage cannot be negative"),
+            MaxValueValidator(limit_value=100, message="Percentage too large"),
+        ],
+        help_text="Percentage of the ingredient in the product",
+    )
 
     class Meta:
         constraints = [
@@ -218,10 +221,6 @@ class Product(models.Model):
     # Nutritional values -----------------------------------------------------
     # ------------------------------------------------------------------------
     # 🔹 Energy
-    energy: QuantityField = QuantityField(  # pyright: ignore[reportCallIssue]
-        base_units=DEFAULT_ENERGY_UNIT,
-        unit_choices=ENERGY_UNIT_CHOICES_VALUES,
-    )
     energy_kj = models.IntegerField(
         validators=[
             MinValueValidator(limit_value=0, message="Energy cannot be negative"),
@@ -270,10 +269,6 @@ class ProductVitamin(models.Model):
     # QuantityField unit_choices does not show the human-readable representation
     # in the form, so I use a custom unit_choices, tell me if I'm wrong or if
     # there is a better way to do it :)
-    amount = QuantityField(
-        base_units=DEFAULT_VITAMIN_UNIT,
-        unit_choices=VITAMIN_UNIT_CHOICES_VALUES,
-    )  # pyright: ignore[reportCallIssue]
     usual_unit = models.CharField(
         max_length=5,
         choices=VITAMIN_UNIT_CHOICES,
@@ -313,7 +308,6 @@ class ProductVitamin(models.Model):
 class ProductMacronutrient(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     macronutrient = models.ForeignKey(Macronutrient, on_delete=models.CASCADE)
-    amount = QuantityField(base_units=DEFAULT_MACRONUTRIENT_UNIT)  # pyright: ignore[reportCallIssue]
     amount_g = models.DecimalField(
         max_digits=5,
         decimal_places=2,

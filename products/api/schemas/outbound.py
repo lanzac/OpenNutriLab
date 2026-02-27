@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 
 from django.db.models import QuerySet
 from ninja import Field
@@ -6,7 +7,6 @@ from ninja import ModelSchema
 from ninja import Schema
 from pydantic import AliasPath
 
-from products.api.types import QuantityType
 from products.models import Ingredient
 from products.models import IngredientRef
 from products.models import Product
@@ -27,7 +27,7 @@ class IngredientRefOut(ModelSchema):
 
 class IngredientOut(ModelSchema):
     name: str
-    percentage: QuantityType | None = None
+    percentage: Decimal | None = None
 
     # https://django-ninja.dev/guides/response/?h=self#self-referencing-schemes
     sub_ingredients: list["IngredientOut"] = []
@@ -48,20 +48,19 @@ class ProductMacronutrientOut(ModelSchema):
         default=None, validation_alias=AliasPath("macronutrient", "description")
     )
 
-    # Ici, amount est bien présent dans le modèle ProductMacronutrient
-    amount: QuantityType | None = None
+    amount_g: Decimal | None
 
     class Meta:
         model = ProductMacronutrient
-        fields = ["amount"]  # amount vient de ProductMacronutrient
+        fields = ["amount_g"]
 
 
 class NutritionalValuesOut(Schema):
     """
-    A simple wrapper schema to group energy and macronutrients together.
+    A simple wrapper schema to group energy_kj and macronutrients together.
     """
 
-    energy: QuantityType
+    energy_kj: int
     macronutrients: list[ProductMacronutrientOut] = []
 
 
@@ -102,10 +101,10 @@ class ProductOut(ModelSchema):
     @staticmethod
     def resolve_nutritional_values(obj: Product) -> NutritionalValuesOut:
         """
-        Combines the energy field from Product and the prefetched macronutrients.
+        Combines the energy_kj field from Product and the prefetched macronutrients.
         """
         return {  # pyright: ignore[reportUnknownVariableType, reportReturnType]
-            "energy": obj.energy,  # pyright: ignore[reportUnknownMemberType]
+            "energy_kj": obj.energy_kj,  # pyright: ignore[reportUnknownMemberType]
             "macronutrients": list[ProductMacronutrient](
                 obj.productmacronutrient_set.all()
             ),

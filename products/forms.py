@@ -45,13 +45,13 @@ class ProductForm(forms.ModelForm):
     class Meta:
         model = Product
         # Fields from the Product model, extended with those from the Macronutrient
-        # model. Nutritional values defined in this form : energy + macronutrients
+        # model. Nutritional values defined in this form : energy_kj + macronutrients
         fields: list[str] = [
             "barcode",
             "name",
             "image",
             "description",
-            "energy",
+            "energy_kj",
             "group_level_1",
             "group_level_2",
         ]
@@ -64,7 +64,7 @@ class ProductForm(forms.ModelForm):
             "barcode": _("Barcode"),
             "name": _("Name"),
             "description": _("Description"),
-            "energy": _("Energy"),
+            "energy_kj": _("Energy"),
         }
 
     def __init__(
@@ -217,7 +217,7 @@ class ProductForm(forms.ModelForm):
         )
 
     def _add_nutritional_value_fields(self) -> None:
-        """Add energy + macronutrient fields to self.fields."""
+        """Add energy_kj + macronutrient fields to self.fields."""
         # Energy field is already in the form, so no need to clone here
 
         _("Fat")
@@ -229,30 +229,30 @@ class ProductForm(forms.ModelForm):
 
         for macronutrient in Macronutrient.objects.all():
             form_field: QuantityFormField = ProductMacronutrient._meta.get_field(  # noqa: SLF001
-                field_name="amount",
+                field_name="amount_g",
             ).formfield(
                 required=False,
             )
             form_field.label = _(str(macronutrient))
 
             if self.instance and self.instance.pk:
-                amount_value: Quantity | None = (
+                amount_g_value: Quantity | None = (
                     ProductMacronutrient.objects.filter(
                         product=self.instance,
                         macronutrient=macronutrient,
                     )
-                    .values_list("amount", flat=True)
+                    .values_list("amount_g", flat=True)
                     .first()
                 )
-                if amount_value is not None:
-                    form_field.initial = amount_value
+                if amount_g_value is not None:
+                    form_field.initial = amount_g_value
 
             self.fields[macronutrient.name_in_form] = form_field
 
     def _get_nutritional_values_layout(self) -> list[Field]:
-        """Return crispy-forms layout for energy + macronutrients."""
+        """Return crispy-forms layout for energy_kj + macronutrients."""
         layout_fields: list[Field] = [
-            PrependedText(field="energy", text="", css_class="plot-input")
+            PrependedText(field="energy_kj", text="", css_class="plot-input")
         ]
         layout_fields += [
             PrependedText(
@@ -314,7 +314,7 @@ class ProductForm(forms.ModelForm):
                 ProductMacronutrient.objects.update_or_create(
                     product=product,
                     macronutrient=macronutrient,
-                    defaults={"amount": value},
+                    defaults={"amount_g": value},
                 )
             else:
                 ProductMacronutrient.objects.filter(

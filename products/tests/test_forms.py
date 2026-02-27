@@ -1,11 +1,9 @@
-from typing import cast
+from decimal import Decimal
 from unittest.mock import Mock
 from unittest.mock import patch
 
 import pytest
 from crispy_forms.bootstrap import FieldWithButtons
-from pint import Quantity
-from quantityfield.units import ureg
 
 from products.api.openfoodfacts.schemas import OFFIngredientSchema
 from products.forms import ProductForm
@@ -25,7 +23,7 @@ class TestBuildBarcodeField:
 
     def test_edit_mode_returns_readonly_field(self):
         product = Product.objects.create(
-            name="Apple", barcode="1234567890123", energy=Quantity(100, ureg.kJ)
+            name="Apple", barcode="1234567890123", energy_kj=100
         )
         form = ProductForm(instance=product)
         field: FieldWithButtons = form._get_barcode_field_layout()  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
@@ -39,21 +37,18 @@ class TestBuildBarcodeField:
 
 
 @pytest.mark.django_db
-def test_macronutrient_field_initialized_with_existing_amount():
+def test_macronutrient_field_initialized_with_existing_amount_g():
     # Arrange
     product = Product.objects.create(
-        name="Test Product", barcode="1234567890123", energy=Quantity(100, ureg.kJ)
+        name="Test Product", barcode="1234567890123", energy_kj=100
     )
     macronutrient, _ = Macronutrient.objects.get_or_create(name="proteins")
 
-    # Créons une entrée ProductMacronutrient avec un certain amount
+    # Créons une entrée ProductMacronutrient avec un certain amount_g
     ProductMacronutrient.objects.create(
         product=product,
         macronutrient=macronutrient,
-        amount=Quantity(
-            value=12.0,
-            units=ureg.g,
-        ),
+        amount_g=12.0,
     )
 
     form = ProductForm(instance=product)
@@ -64,14 +59,14 @@ def test_macronutrient_field_initialized_with_existing_amount():
     # Assert
     field_name = f"macronutrients_{macronutrient.name.lower()}"
     assert field_name in form.fields
-    assert form.fields[field_name].initial == Quantity(value=12, units="g")
+    assert form.fields[field_name].initial == 12.0  # noqa: PLR2004
 
 
 @pytest.mark.django_db
-def test_macronutrient_field_not_initialized_without_existing_amount():
+def test_macronutrient_field_not_initialized_without_existing_amount_g():
     # Arrange
     product = Product.objects.create(
-        name="Test Product 2", barcode="9876543210987", energy=Quantity(200, ureg.kJ)
+        name="Test Product 2", barcode="9876543210987", energy_kj=200
     )
     macronutrient, _ = Macronutrient.objects.get_or_create(name="fat")
 
@@ -101,12 +96,9 @@ def test_product_form_save_creates_product_and_macronutrient_relations():
     form_data = {
         "barcode": "3229820794556",
         "name": "Test Product",
-        "energy_0": 150,
-        "energy_1": "kJ",
-        f"{protein.name_in_form}_0": 10.5,
-        f"{protein.name_in_form}_1": "g",
-        f"{fat.name_in_form}_0": "",  # empty field
-        f"{fat.name_in_form}_1": "g",
+        "energy_kj": 150,
+        f"{protein.name_in_form}": 10.5,
+        f"{fat.name_in_form}": 0.0,  # empty field
     }
 
     form = ProductForm(data=form_data)
@@ -126,14 +118,10 @@ def test_product_form_save_creates_product_and_macronutrient_relations():
     rel: ProductMacronutrient | None = fm_relations.first()
     assert rel is not None
     assert rel.macronutrient == protein
-    # NOTE:
-    # `amount` is a QuantityField (a subclass of FloatField) that automatically
-    # converts the stored float value into a `pint.Quantity` instance when
-    # retrieved from the database.
-    amount = cast("Quantity", rel.amount)
+    amount_g: Decimal = rel.amount_g
 
     # Verify both the numeric value and the unit
-    assert amount == Quantity(10.5, ureg.g)
+    assert amount_g == Decimal("10.5")
 
     # 3️⃣ No relation for "fat"
     assert not ProductMacronutrient.objects.filter(
@@ -147,20 +135,18 @@ def test_product_form_save_updates_existing_productmacronutrient():
     protein.name_in_form = f"macronutrients_{protein.name.lower()}"
     protein.save(update_fields=["name_in_form"])
     product = Product.objects.create(
-        name="Update Test", barcode="3229820794556", energy=Quantity(150, ureg.kJ)
+        name="Update Test", barcode="3229820794556", energy_kj=150
     )
 
     ProductMacronutrient.objects.create(
-        product=product, macronutrient=protein, amount=5.0
+        product=product, macronutrient=protein, amount_g=5.0
     )
 
     form_data = {
         "barcode": "3229820794556",
         "name": "Update Test",
-        "energy_0": 150,
-        "energy_1": "kJ",
-        f"{protein.name_in_form}_0": 9.0,
-        f"{protein.name_in_form}_1": "g",
+        "energy_kj": 150,
+        f"{protein.name_in_form}": 9.0,
     }
 
     form = ProductForm(data=form_data, instance=product)
@@ -168,27 +154,26 @@ def test_product_form_save_updates_existing_productmacronutrient():
     form.save()
 
     rel = ProductMacronutrient.objects.get(product=product, macronutrient=protein)
-    amount = cast("Quantity", rel.amount)
-    assert amount == Quantity(9.0, ureg.g)
+    amount_g: Decimal = rel.amount_g
+    assert amount_g == Decimal("9.0")
 
 
 @pytest.mark.django_db
 def test_product_form_save_removes_macronutrient_if_value_missing():
     protein = Macronutrient.objects.create(name="protein_test")
     product = Product.objects.create(
-        name="Delete Test", barcode="3229820794556", energy=Quantity(150, ureg.kJ)
+        name="Delete Test", barcode="3229820794556", energy_kj=150
     )
 
     ProductMacronutrient.objects.create(
-        product=product, macronutrient=protein, amount=5.0
+        product=product, macronutrient=protein, amount_g=5.0
     )
 
     form_data = {
         "barcode": "3229820794556",
         "name": "Delete Test",
-        "energy_0": 150,
-        "energy_1": "kJ",
-        f"macronutrients_{protein.name.lower()}_0": "",  # empty value = remove relation
+        "energy_kj": 150,
+        f"macronutrients_{protein.name.lower()}": "",  # empty value = remove relation
     }
 
     form = ProductForm(data=form_data, instance=product)
@@ -228,8 +213,7 @@ def test_save_with_fetched_image_and_delete():
             data={
                 "barcode": "3242272270157",
                 "name": "Apple",
-                "energy_0": 100,
-                "energy_1": "kJ",
+                "energy_kj": 100,
             }
         )
         form.extra_data = {"fetched_image_url": "https://example.com/apple.jpg"}
@@ -252,7 +236,7 @@ def test_save_with_fetched_image_and_delete():
 def test_product_form_save_with_ingredients_schema():
     # --- Setup product ---
     product = Product.objects.create(
-        name="Ingredient Test", barcode="3242272270157", energy=Quantity(100, ureg.kJ)
+        name="Ingredient Test", barcode="3242272270157", energy_kj=100
     )
 
     # --- Ingredients schema ---
@@ -269,8 +253,7 @@ def test_product_form_save_with_ingredients_schema():
         data={
             "barcode": product.barcode,
             "name": product.name,
-            "energy_0": 100,
-            "energy_1": "kJ",
+            "energy_kj": 100,
         },
         instance=product,
     )

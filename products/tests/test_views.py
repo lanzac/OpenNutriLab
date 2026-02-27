@@ -9,8 +9,6 @@ from django.http.response import HttpResponse
 from django.test import Client
 from django.test import RequestFactory
 from django.urls import reverse
-from pint import Quantity
-from quantityfield.units import ureg
 
 from products.api.openfoodfacts.schemas import OFFIngredientSchema
 from products.api.openfoodfacts.schemas import OFFMacronutrientsSchema
@@ -42,7 +40,7 @@ class TestProductListView:
             group_level_1="Fruits",
             group_level_2="Fresh",
             description="A beautiful apple",
-            energy=Quantity(100, ureg.kJ),
+            energy_kj=100,
         )
         Product.objects.create(
             barcode="2222222222222",
@@ -50,7 +48,7 @@ class TestProductListView:
             group_level_1="Bakery",
             group_level_2="White bread",
             description="Traditional baguette",
-            energy=Quantity(100, ureg.kJ),
+            energy_kj=100,
         )
 
         # --- Action: Call the view via its URL ---
@@ -184,7 +182,7 @@ class TestProductEditView:
             barcode="1234567890123",
             name="Test Product",
             description="obsolete description",
-            energy=Quantity(10.0, "kJ"),
+            energy_kj=10.0,
         )
 
         view = ProductEditView()
@@ -196,7 +194,7 @@ class TestProductEditView:
         expected_form = {
             "barcode": "1234567890123",
             "description": "obsolete description",
-            "energy": Quantity(10.0, "kilojoule"),
+            "energy_kj": 10.0,
             "image": None,
             "name": "Test Product",
             "group_level_1": "",
@@ -211,7 +209,7 @@ class TestProductEditView:
             barcode="1234567890123",
             name="Test Product",
             description="obsolete description",
-            energy=Quantity(10.0, "kJ"),
+            energy_kj=10.0,
         )
 
         # --------------------------------------------------------------------
@@ -276,7 +274,7 @@ def test_product_views_context_contains_macronutrients_url(
         product = Product.objects.create(
             barcode="1234567890123",
             name="Test Product",
-            energy=Quantity(100, ureg.kJ),
+            energy_kj=100,
         )
 
     url: str = build_view_url(viewname, product)

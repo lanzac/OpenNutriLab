@@ -2,7 +2,6 @@ from typing import Any
 
 import pytest
 from ninja.errors import ValidationError as NinjaValidationError
-from quantityfield.units import ureg
 
 from products.api.schemas.inbound import ProductCreate
 
@@ -15,7 +14,7 @@ def _minimal_payload(barcode: str, name: str) -> dict[str, Any]:
         "group_level_1": "",
         "group_level_2": "",
         "nutritional_values": {
-            "energy": {"value": 100, "unit": str(ureg.kJ)},
+            "energy_kj": 100,
             "macronutrients": [],
         },
     }

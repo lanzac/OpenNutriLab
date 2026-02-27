@@ -3,7 +3,6 @@ from typing import Any
 
 import pytest
 from ninja.testing import TestClient
-from quantityfield.units import ureg
 
 from products.api.api_ninja_crud import router
 from products.api.schemas.inbound import ProductCreate
@@ -29,7 +28,7 @@ def _minimal_payload(barcode: str, name: str) -> dict[str, Any]:
         "group_level_1": "",
         "group_level_2": "",
         "nutritional_values": {
-            "energy": {"value": 100, "unit": str(ureg.kJ)},
+            "energy_kj": 100,
             "macronutrients": [],
         },
     }
@@ -77,7 +76,7 @@ def test_update_product(api_client: TestClient, products_two: tuple[Product, Pro
     p1, _ = products_two
     update_payload: dict[str, str | dict[str, list[Any] | None]] = {
         "name": "Updated Name",
-        "nutritional_values": {"energy": None, "macronutrients": []},
+        "nutritional_values": {"energy_kj": None, "macronutrients": []},
     }
     # send through API (which will call product_services.update_product internally)
     resp = api_client.patch(f"/{p1.barcode}", json=update_payload)  # pyright: ignore[reportUnknownMemberType]

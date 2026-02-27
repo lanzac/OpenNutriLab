@@ -56,7 +56,7 @@ class OFFProductSchema(Schema):
     name: str = Field(default="", validation_alias="product_name")
     image_url: str | None = Field(default=None, validation_alias="image_small_url")
     description: str | None = Field(default=None, validation_alias="categories")
-    energy: int | None = Field(
+    energy_kj: int | None = Field(
         default=None, validation_alias=AliasPath("nutriments", "energy_100g")
     )
     macronutrients: OFFMacronutrientsSchema | None = Field(
@@ -145,26 +145,26 @@ class OFFAPIErrorSchema(Schema):
 
 # Form -----------------------------------------------------------------------
 class MacronutrientsFormSchema(Schema):
-    fat: float | None = Field(default=None, alias="macronutrients_fat_0")
+    fat: float | None = Field(default=None, alias="macronutrients_fat")
     saturated_fat: float | None = Field(
         default=None,
-        alias="macronutrients_saturated_fat_0",
+        alias="macronutrients_saturated_fat",
     )
     carbohydrates: float | None = Field(
         default=None,
-        alias="macronutrients_carbohydrates_0",
+        alias="macronutrients_carbohydrates",
     )
     sugars: float | None = Field(
         default=None,
-        alias="macronutrients_sugars_0",
+        alias="macronutrients_sugars",
     )
     fiber: float | None = Field(
         default=None,
-        alias="macronutrients_fiber_0",
+        alias="macronutrients_fiber",
     )
     proteins: float | None = Field(
         default=None,
-        alias="macronutrients_proteins_0",
+        alias="macronutrients_proteins",
     )
 
 
@@ -175,7 +175,7 @@ class ProductFormSchema(Schema):
     name: str
     image_url: str | None = None
     description: str | None = None
-    energy: int | None = None
+    energy_kj: int | None = None
     macronutrients_fat: float | None = Field(default=None, alias="macronutrients.fat")
     macronutrients_saturated_fat: float | None = Field(
         default=None,

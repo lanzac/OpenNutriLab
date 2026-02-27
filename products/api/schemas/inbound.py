@@ -1,9 +1,10 @@
+from decimal import Decimal
+
 from django.core.exceptions import ValidationError as DjangoValidationError
 from ninja import Schema
 from ninja.errors import ValidationError as NinjaValidationError
 from pydantic import field_validator
 
-from products.api.types import QuantityType
 from products.fields import validate_ean13
 
 
@@ -11,13 +12,13 @@ class MacronutrientInput(Schema):
     """Data for a single macronutrient line in the form."""
 
     name: str
-    amount: QuantityType
+    amount_g: Decimal
 
 
 class NutritionalValuesInput(Schema):
     """The grouped nutritional block in the form."""
 
-    energy: QuantityType
+    energy_kj: int
     macronutrients: list[MacronutrientInput] = []
 
 
@@ -66,12 +67,12 @@ class ProductCreate(Schema):
 # On réutilise MacronutrientIn ou on en crée un spécifique
 class MacronutrientUpdate(Schema):
     name: str
-    amount: QuantityType
+    amount_g: Decimal
 
 
 class NutritionalValuesUpdate(Schema):
     # Tout est Optionnel ici pour permettre une mise à jour partielle
-    energy: QuantityType
+    energy_kj: int | None = None
     macronutrients: list[MacronutrientUpdate] | None = None
 
 

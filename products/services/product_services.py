@@ -43,9 +43,9 @@ def apply_product_update_fields(product: Product, data: ProductUpdate) -> None:
             update_fields.append(field)
 
     # Handle nested nutritional values separately
-    if data.nutritional_values and data.nutritional_values.energy is not None:
-        product.energy = data.nutritional_values.energy
-        update_fields.append("energy")
+    if data.nutritional_values and data.nutritional_values.energy_kj is not None:
+        product.energy_kj = data.nutritional_values.energy_kj
+        update_fields.append("energy_kj")
 
     if update_fields:
         product.save(update_fields=update_fields)
@@ -61,7 +61,9 @@ def upsert_product_macronutrients(
     for item in macronutrients_list:
         macro_obj = Macronutrient.objects.get(name=item.name)
         ProductMacronutrient.objects.update_or_create(
-            product=product, macronutrient=macro_obj, defaults={"amount": item.amount}
+            product=product,
+            macronutrient=macro_obj,
+            defaults={"amount_g": item.amount_g},
         )
 
 
@@ -189,7 +191,7 @@ def create_product(data: ProductCreate) -> Product:
             description=data.description,
             group_level_1=data.group_level_1,
             group_level_2=data.group_level_2,
-            energy=data.nutritional_values.energy,
+            energy_kj=data.nutritional_values.energy_kj,
         )
 
         product.save()
