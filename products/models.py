@@ -3,6 +3,8 @@ from typing import Any
 from typing import final
 from typing import override
 
+from django.core.validators import MaxValueValidator
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import UniqueConstraint
 from django.db.models.fields.related import ForeignKey
@@ -95,6 +97,15 @@ class IngredientRefMacronutrient(models.Model):
     )
     macronutrient = models.ForeignKey(Macronutrient, on_delete=models.CASCADE)
     amount = QuantityField(base_units=DEFAULT_MACRONUTRIENT_UNIT)  # pyright: ignore[reportCallIssue]
+    amount_g = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[
+            MinValueValidator(limit_value=0, message="Amount cannot be negative"),
+            MaxValueValidator(limit_value=100, message="Amount too large"),
+        ],
+        help_text="Amount in g/100g of the macronutrient in the reference ingredient",
+    )
 
     @final
     class Meta:
@@ -207,10 +218,19 @@ class Product(models.Model):
     # Nutritional values -----------------------------------------------------
     # ------------------------------------------------------------------------
     # 🔹 Energy
-    energy: QuantityField = QuantityField(
+    energy: QuantityField = QuantityField(  # pyright: ignore[reportCallIssue]
         base_units=DEFAULT_ENERGY_UNIT,
         unit_choices=ENERGY_UNIT_CHOICES_VALUES,
-    )  # pyright: ignore[reportCallIssue]
+    )
+    energy_kj = models.IntegerField(
+        validators=[
+            MinValueValidator(limit_value=0, message="Energy cannot be negative"),
+            MaxValueValidator(
+                limit_value=100_000, message="Energy seems too high"
+            ),  # ajuster selon contexte
+        ],
+        help_text="Energy in kJ/100g of the product",
+    )
 
     # 🔹 Macronutrients
     macronutrients = models.ManyToManyField(  # pyright: ignore[reportUnknownVariableType]
@@ -254,6 +274,21 @@ class ProductVitamin(models.Model):
         base_units=DEFAULT_VITAMIN_UNIT,
         unit_choices=VITAMIN_UNIT_CHOICES_VALUES,
     )  # pyright: ignore[reportCallIssue]
+    usual_unit = models.CharField(
+        max_length=5,
+        choices=VITAMIN_UNIT_CHOICES,
+        default=DEFAULT_VITAMIN_UNIT,
+        help_text="Unit used for this vitamin",
+    )
+    amount_ug = models.DecimalField(
+        max_digits=10,
+        decimal_places=3,  # Precision until 0.001 µg, should be enough for vitamins
+        validators=[
+            MinValueValidator(limit_value=0, message="Amount cannot be negative"),
+            MaxValueValidator(limit_value=1_000_000, message="Amount too large"),
+        ],
+        help_text="Amount in µg/100g (canonical unit µg) of the vitamin in the product",
+    )
 
     # For this manually created intermediate table (with "through") I need to add
     # the unicity constraint because Django not doing it :(
@@ -279,6 +314,17 @@ class ProductMacronutrient(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     macronutrient = models.ForeignKey(Macronutrient, on_delete=models.CASCADE)
     amount = QuantityField(base_units=DEFAULT_MACRONUTRIENT_UNIT)  # pyright: ignore[reportCallIssue]
+    amount_g = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[
+            MinValueValidator(limit_value=0, message="Amount cannot be negative"),
+            MaxValueValidator(limit_value=100, message="Amount too large"),
+        ],
+        help_text=(
+            "Amount in g/100g (canonical unit g) of the macronutrient in the product"
+        ),
+    )
 
     # For this manually created intermediate table (with "through") I need to add
     # the unicity constraint because Django not doing it :(
