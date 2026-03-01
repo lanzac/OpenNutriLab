@@ -28,6 +28,7 @@ from quantityfield.fields import QuantityFormField
 
 from opennutrilab.crispy_bootstrap_extended.layouts import AccordionGroupExtended
 from products.api.openfoodfacts.services import save_ingredients_from_schema
+from products.services.product_services import save_image_overwrite
 
 from .models import Macronutrient
 from .models import Product
@@ -289,7 +290,7 @@ class ProductForm(forms.ModelForm):
 
         # Assign fetched image if needed
         fetched_image_url = getattr(self, "extra_data", {}).get("fetched_image_url")
-        if fetched_image_url and not self.cleaned_data.get("image"):
+        if fetched_image_url:
             resp = requests.get(fetched_image_url, timeout=10)
             resp.raise_for_status()
             filename = f"{self.cleaned_data['barcode']}.jpg"
@@ -297,7 +298,7 @@ class ProductForm(forms.ModelForm):
             if default_storage.exists(path):
                 default_storage.delete(path)
 
-            product.image = InMemoryUploadedFile(  # pyright: ignore[reportAttributeAccessIssue]
+            new_image = InMemoryUploadedFile(  # pyright: ignore[reportAttributeAccessIssue]
                 io.BytesIO(resp.content),
                 field_name="image",
                 name=filename,
@@ -305,6 +306,7 @@ class ProductForm(forms.ModelForm):
                 size=len(resp.content),
                 charset=None,
             )
+            save_image_overwrite(product, new_image)
 
         # Handle macronutrients
         for macronutrient in Macronutrient.objects.all():
