@@ -156,3 +156,8 @@ Temporary Items
 
 # PyBuilder
 target/
+
+# Graphify personnal usage for the moment
+.claude/
+CLAUDE.md
+graphify-out/

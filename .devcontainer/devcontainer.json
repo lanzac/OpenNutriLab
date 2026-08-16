@@ -10,11 +10,6 @@
             "source": "./.devcontainer/bash_history",
             "target": "/home/dev-user/.bash_history",
             "type": "bind"
-        },
-        {
-            "source": "~/.ssh",
-            "target": "/home/dev-user/.ssh",
-            "type": "bind"
         }
     ],
     // Tells devcontainer.json supporting services / tools whether they should run
@@ -69,7 +64,14 @@
                 "waderyan.gitblame",
                 "monosans.djlint",
                 "vivaxy.vscode-conventional-commits",
-                "syntaf.vscode-pytest-runner"
+                "syntaf.vscode-pytest-runner",
+                "mikestead.dotenv",
+                "anthropic.claude-code",
+                "usernamehw.errorlens",
+                "donjayamanne.githistory",
+                "eamodio.gitlens",
+                "yzhang.markdown-all-in-one",
+                "zakhariimelnyk.claude-git-commit"
             ]
         }
     },
@@ -78,5 +80,8 @@
     // Uncomment the next line if you want to keep your containers running after VS Code shuts down.
     // "shutdownAction": "none",
     // Uncomment the next line to run commands after the container is created.
-    "postCreateCommand": "cat .devcontainer/bashrc.override.sh >> ~/.bashrc && pre-commit install-hooks"
+    "postCreateCommand": {
+        "installPythonTools": "uv tool install --python 3.13 graphifyy && graphify install",
+        "setupShell": "cat .devcontainer/bashrc.override.sh >> ~/.bashrc && pre-commit install-hooks"
+    }
 }
