@@ -13,12 +13,12 @@ export default defineConfig({
   base: '/static/vite/',
   build: {
     manifest: true,
-    outDir: resolve(__dirname, '../opennutrilab/static/vite'),
+    outDir: resolve(import.meta.dirname, '../opennutrilab/static/vite'),
     emptyOutDir: true,
     rollupOptions: {
       input: {
         'products-list': resolve(
-          __dirname,
+          import.meta.dirname,
           'src/apps/products/list-entry.jsx',
         ),
       },
