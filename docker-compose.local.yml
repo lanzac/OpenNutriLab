@@ -9,6 +9,7 @@ volumes:
   opennutrilab_local_node_modules: {} # persistent node_modules
   opennutrilab_local_vite_node_modules: {} # persistent node_modules (frontend/)
   opennutrilab_pre_commit_cache: {} # persistent pre-commit cache
+  opennutrilab_local_claude_config: {} # persistent ~/.claude (Claude Code session history/settings)
 
 # =========================
 # Services
@@ -27,6 +28,7 @@ services:
       - opennutrilab_local_django_venv:/app/.venv # persistent virtualenv
       - ./:/app:z # bind project code
       - opennutrilab_pre_commit_cache:/home/dev-user/.cache/pre-commit # persistent pre-commit cache
+      - opennutrilab_local_claude_config:/home/dev-user/.claude # persistent Claude Code sessions (survives rebuilds)
     env_file:
       - ./.envs/.local/.django
       - ./.envs/.local/.postgres
