@@ -113,7 +113,10 @@ services:
     volumes:
       - ./:/app:z
       - opennutrilab_local_node_modules:/app/node_modules
-    command: npm run dev
+    # The named volume shadows the image's node_modules and outlives rebuilds,
+    # so new dependencies would never reach the container. Installing on start
+    # keeps the volume in step; it is a no-op when already satisfied.
+    command: sh -c "npm install && npm run dev"
     ports:
       - '3000:3000'
 
@@ -131,6 +134,8 @@ services:
     volumes:
       - ./frontend:/app:z
       - opennutrilab_local_vite_node_modules:/app/node_modules
-    command: npm run dev -- --host 0.0.0.0
+    # Same as the node service: the named volume hides whatever the image
+    # installed, so dependencies are installed on start instead.
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
     ports:
       - '5173:5173'

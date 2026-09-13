@@ -7,8 +7,10 @@ RUN groupmod -g 1000 node \
 USER node
 WORKDIR /app
 
-COPY ./frontend/package.json /app
+COPY ./frontend/package.json ./frontend/package-lock.json /app/
 
-RUN npm install && npm cache clean --force
+# ci rather than install: the lockfile is authoritative, and the image
+# should not silently drift from what the compose service installs.
+RUN npm ci && npm cache clean --force
 
 ENV PATH=./node_modules/.bin/:$PATH
