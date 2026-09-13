@@ -11,6 +11,11 @@ webpack-stats.json
 local_settings.py
 staticfiles/
 
+# Vite frontend (see frontend/) #
+node_modules/
+frontend/.vite/
+opennutrilab/static/vite/
+
 # Backup files #
 *.bak
 
