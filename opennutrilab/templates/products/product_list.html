@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% load static i18n %}
+{% load django_vite %}
 
 {% block title %}
   {% translate "Inventory" %}
@@ -8,46 +9,17 @@
 {% block content %}
   <h1 class="page-title">{% translate "Inventory" %}</h1>
   <div class="content-container">
-    {% if product_list %}
-      <table class="table table-striped">
-        <tr>
-          <th>{% translate "Product name" %}</th>
-          <th>{% translate "Created at" %}</th>
-          <th>{% translate "Actions" %}</th>
-        </tr>
-        {% for product in product_list %}
-          <tr>
-            <td>{{ product.name }}</td>
-            <td>{{ product.created_at }}</td>
-            <td>
-              <div class="btn-toolbar"
-                   role="toolbar"
-                   aria-label="{% translate "Edit and Delete product" %}">
-                <a class="btn btn-warning me-2"
-                   href="{% url 'edit_product' product.pk %}"
-                   role="button">
-                  <i class="fa-regular fa-pen-to-square"></i> {% translate "Edit" %}
-                </a>
-                <form method="post"
-                      action="{% url 'delete_product' product.pk %}"
-                      class="d-inline">
-                  {% csrf_token %}
-                  <button type="submit" class="btn btn-danger">
-                    <i class="fa-regular fa-trash-can"></i> {% translate "Delete" %}
-                  </button>
-                </form>
-              </div>
-            </td>
-          </tr>
-        {% endfor %}
-      </table>
-    {% endif %}
+    {# Rendered by React (frontend/src/apps/products/ProductListApp.jsx), #}
+    {# fetching live from /api-ninja/products/. #}
+    <div id="product-list-root"></div>
     <div class="d-grid gap-2 col-6 mx-auto">
       <a class="btn btn-primary"
          href="{% url 'create_product' %}"
          role="button">{% translate "Add a new product" %}</a>
     </div>
   </div>
+  {% vite_hmr_client %}
+  {% vite_asset 'src/apps/products/list-entry.jsx' %}
   <style>
     .page-title {
       margin: 30px;
