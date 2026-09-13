@@ -91,6 +91,12 @@ class TestProductListView:
         assert response.status_code == 200  # noqa: PLR2004
         assert 'id="product-list-root"' in html
         assert 'id="product-list-props"' in html
+        # @vitejs/plugin-react aborts with "can't detect preamble" unless the
+        # React Refresh runtime is injected ahead of the entry point, and React
+        # then never mounts at all. Invisible to jsdom, which does not run the
+        # plugin's browser-side check.
+        assert "@react-refresh" in html
+        assert html.index("@react-refresh") < html.index("list-entry.jsx")
         # The table is no longer server-rendered.
         assert "Apple" not in html
 
