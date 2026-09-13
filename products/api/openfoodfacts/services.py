@@ -45,6 +45,14 @@ def fetch_local_product(
     return product
 
 
+# OpenFoodFacts rejects generic clients: without a User-Agent naming the
+# application, the API answers 403 Forbidden. See
+# https://openfoodfacts.github.io/openfoodfacts-server/api/#authentication
+OFF_HEADERS = {
+    "User-Agent": "OpenNutriLab/0.1.0 (https://github.com/lanzac/OpenNutriLab)",
+}
+
+
 def fetch_from_off(
     query_barcode: str,
 ) -> OFFProductSchema:
@@ -54,7 +62,12 @@ def fetch_from_off(
     url = f"https://world.openfoodfacts.org/api/v3/product/{query_barcode}.json"
 
     try:
-        response = requests.get(url, timeout=30, allow_redirects=True)
+        response = requests.get(
+            url,
+            timeout=30,
+            allow_redirects=True,
+            headers=OFF_HEADERS,
+        )
         response.raise_for_status()
     except requests.HTTPError as e:
         raise HttpError(

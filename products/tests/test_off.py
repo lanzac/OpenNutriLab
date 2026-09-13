@@ -731,3 +731,35 @@ def test_build_ingredient_json_is_json_serializable():
     )
 
     json.dumps(obj=data)  # must not raise
+
+
+def test_fetch_from_off_identifies_the_client():
+    """
+    OpenFoodFacts answers 403 Forbidden to clients that do not name
+    themselves, which is what requests sends by default. Without this header
+    every barcode lookup fails and the product form 500s.
+    """
+    mock_response = MagicMock()
+    mock_response.json.return_value = {
+        "status": "success",
+        "result": {
+            "id": "product_found",
+            "name": "Product found",
+            "lc_name": "Product found",
+        },
+        "product": {
+            "code": "999999",
+            "product_name": "Remote Product",
+            "image_small_url": None,
+            "nutriments": {"fat_100g": 3.0, "proteins_100g": 1.5},
+        },
+    }
+    mock_response.raise_for_status.return_value = None
+
+    with patch(
+        "products.api.openfoodfacts.services.requests.get", return_value=mock_response
+    ) as mock_get:
+        fetch_from_off(query_barcode="999999")
+
+    headers = mock_get.call_args.kwargs["headers"]
+    assert "OpenNutriLab" in headers["User-Agent"]
