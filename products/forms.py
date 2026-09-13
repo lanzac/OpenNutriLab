@@ -19,7 +19,6 @@ from crispy_forms.layout import Layout
 from crispy_forms.layout import Row
 from crispy_forms.layout import Submit
 from django import forms
-from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -294,9 +293,6 @@ class ProductForm(forms.ModelForm):
             resp = requests.get(fetched_image_url, timeout=10)
             resp.raise_for_status()
             filename = f"{self.cleaned_data['barcode']}.jpg"
-            path = f"images/products/{filename}"
-            if default_storage.exists(path):
-                default_storage.delete(path)
 
             new_image = InMemoryUploadedFile(  # pyright: ignore[reportAttributeAccessIssue]
                 io.BytesIO(resp.content),
