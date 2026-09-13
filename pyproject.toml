@@ -21,6 +21,7 @@ dependencies = [
     "uvicorn>=0.35.0",
     "whitenoise>=6.9.0",
     "django-webpack-loader>=3.2.1",
+    "django-vite>=3.0.0",
     "django-cors-headers>=4.7.0",
     "django-allauth[mfa]>=65.11.1",
     "argon2-cffi>=25.1.0",
