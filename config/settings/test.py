@@ -37,5 +37,12 @@ MEDIA_URL = "http://media.testserver/"
 # django-webpack-loader
 # ------------------------------------------------------------------------------
 WEBPACK_LOADER["DEFAULT"]["LOADER_CLASS"] = "webpack_loader.loaders.FakeWebpackLoader"  # noqa: F405
+
+# django-vite
+# ------------------------------------------------------------------------------
+# Force dev_mode so templates render a <script type="module"> tag pointing at
+# the (not necessarily running) Vite dev server instead of requiring a built
+# manifest.json - tests never execute that script, they just render the HTML.
+DJANGO_VITE["default"]["dev_mode"] = True  # noqa: F405
 # Your stuff...
 # ------------------------------------------------------------------------------

@@ -88,6 +88,7 @@ THIRD_PARTY_APPS = [
     "corsheaders",
     "drf_spectacular",
     "webpack_loader",
+    "django_vite",
 ]
 
 LOCAL_APPS = [
@@ -356,12 +357,28 @@ SPECTACULAR_SETTINGS = {
 }
 # django-webpack-loader
 # ------------------------------------------------------------------------------
+# TODO(migration/vite-react): remove once the React migration reaches its
+# cutover step and no template still calls {% render_bundle %}.
 WEBPACK_LOADER = {
     "DEFAULT": {
         "CACHE": not DEBUG,
         "STATS_FILE": BASE_DIR / "webpack-stats.json",
         "POLL_INTERVAL": 0.1,
         "IGNORE": [r".+\.hot-update.js", r".+\.map"],
+    },
+}
+
+# django-vite
+# ------------------------------------------------------------------------------
+# Runs alongside django-webpack-loader during the React migration: new pages
+# are served by Vite (frontend/), everything not migrated yet keeps using the
+# Webpack bundles above. See frontend/vite.config.js for the matching build
+# config (same STATIC_URL-relative output layout).
+DJANGO_VITE = {
+    "default": {
+        "dev_mode": DEBUG,
+        "manifest_path": APPS_DIR / "static" / "vite" / ".vite" / "manifest.json",
+        "static_url_prefix": "vite",
     },
 }
 # Your stuff...
