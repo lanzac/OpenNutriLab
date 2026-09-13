@@ -2,17 +2,10 @@
 
 {% load crispy_forms_tags %}
 {% load static i18n %}
-{% load render_bundle from webpack_loader %}
+{% load django_vite %}
 
-{% block javascript %}
-  {{ block.super }}
-  {% render_bundle 'fetch_barcode' 'js' attrs='defer' %}
-  {% render_bundle 'plotly_loader' 'js' attrs='defer' %}
-  {% render_bundle 'tabulator_loader' 'js' attrs='defer' %}
-{% endblock javascript %}
 {% block css %}
   {{ block.super }}
-  {% render_bundle 'tabulator_loader' 'css' attrs='defer' %}
   <style>
     .hidden-data {
       display: none;
@@ -53,6 +46,8 @@
       macronutrientsApiUrl: "{{ macronutrients_api_url }}",
     };
   </script>
-  <script src="{% static 'products/js/product_form_macronutrients_graph.js' %}"></script>
-  <script src="{% static 'products/js/product_form_ingredients_table.js' %}"></script>
+  {# Replaces the fetch_barcode / plotly_loader / tabulator_loader webpack #}
+  {# bundles and the two scripts formerly served raw through {% templatetag openblock %} static {% templatetag closeblock %}. #}
+  {% vite_hmr_client %}
+  {% vite_asset 'src/apps/products/form-entry.js' %}
 {% endblock content %}

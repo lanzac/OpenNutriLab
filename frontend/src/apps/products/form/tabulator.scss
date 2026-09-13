@@ -1,5 +1,5 @@
-/* Import Tabulator CSS */
-@import '~tabulator-tables/dist/css/tabulator_bootstrap5.min.css';
+// The base Tabulator stylesheet is imported from ingredients-table.js:
+// the webpack '~' prefix for node_modules is not a thing in Vite.
 
 // Bug fixed and merged on Apr 14 2025 not realeased yet
 // So I have copied the fixed CSS here

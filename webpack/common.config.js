@@ -8,19 +8,6 @@ module.exports = {
   entry: {
     project: path.resolve(__dirname, '../opennutrilab/static/js/project'),
     vendors: path.resolve(__dirname, '../opennutrilab/static/js/vendors'),
-
-    fetch_barcode: path.resolve(
-      __dirname,
-      '../opennutrilab/static/js/fetch_barcode.js',
-    ),
-    plotly_loader: path.resolve(
-      __dirname,
-      '../opennutrilab/static/js/plotly_loader.js',
-    ),
-    tabulator_loader: path.resolve(
-      __dirname,
-      '../opennutrilab/static/js/tabulator_loader.js',
-    ),
   },
   output: {
     path: path.resolve(__dirname, '../opennutrilab/static/webpack_bundles/'),

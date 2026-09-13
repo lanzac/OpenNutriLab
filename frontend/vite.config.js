@@ -3,10 +3,10 @@ import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-// This config is intentionally scoped to the products/inventory area for now.
-// Entries are added incrementally as more of the app is ported to React
-// (see the migration plan). The global site bundle (nav, Bootstrap, theme
-// switcher) stays on the existing Webpack pipeline until the final cutover.
+// This config is intentionally scoped to the products area for now. Entries
+// are added incrementally as pages move over (see the migration plan). The
+// global site bundle (nav, Bootstrap, theme switcher) stays on the existing
+// Webpack pipeline until the final cutover.
 export default defineConfig({
   plugins: [react()],
   // Matches STATIC_URL + DJANGO_VITE.static_url_prefix in config/settings/base.py
@@ -20,6 +20,10 @@ export default defineConfig({
         'products-list': resolve(
           import.meta.dirname,
           'src/apps/products/list-entry.jsx',
+        ),
+        'products-form': resolve(
+          import.meta.dirname,
+          'src/apps/products/form-entry.js',
         ),
       },
     },
