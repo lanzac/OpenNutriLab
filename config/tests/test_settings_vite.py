@@ -48,8 +48,7 @@ def test_dev_mode_tracks_debug(settings_module: str):
     config = json.loads(result.stdout.strip().splitlines()[-1])
     assert config["dev_mode"] == config["debug"], (
         f"{settings_module} leaves DJANGO_VITE dev_mode ({config['dev_mode']}) out "
-        f"of sync with DEBUG ({config['debug']}); re-derive it after setting DEBUG, "
-        f"the way WEBPACK_LOADER does."
+        f"of sync with DEBUG ({config['debug']}); re-derive it after setting DEBUG."
     )
 
 

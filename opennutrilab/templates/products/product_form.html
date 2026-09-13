@@ -48,6 +48,5 @@
   </script>
   {# Replaces the fetch_barcode / plotly_loader / tabulator_loader webpack #}
   {# bundles and the two scripts formerly served raw through {% templatetag openblock %} static {% templatetag closeblock %}. #}
-  {% vite_hmr_client %}
   {% vite_asset 'src/apps/products/form-entry.js' %}
 {% endblock content %}

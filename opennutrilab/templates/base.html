@@ -1,5 +1,5 @@
 {% load static i18n %}
-{% load render_bundle from webpack_loader %}
+{% load django_vite %}
 
 <!DOCTYPE html>
 {% get_current_language as LANGUAGE_CODE %}
@@ -19,22 +19,21 @@
     <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}" />
     {% block css %}
       <!-- Your stuff: Third-party CSS libraries go here -->
-      <!-- This file stores project-specific CSS -->
-      {% render_bundle 'project' 'css' %}
     {% endblock css %}
     <!-- Le javascript
     ================================================== -->
     {# Placed at the top of the document so pages load faster with defer #}
     {% block javascript %}
-      <!-- Vendor dependencies bundled as one file -->
-      {% render_bundle 'vendors' 'js' attrs='defer' %}
-      <!-- place project specific Javascript in this file -->
-      {% render_bundle 'project' 'js' attrs='defer' %}
+      {# Site-wide bundle: Bootstrap, theme switcher, FOUC helper and the #}
+      {# project stylesheet. Module scripts are deferred by default. #}
+      {% vite_hmr_client %}
+      {% vite_react_refresh %}
+      {% vite_asset 'src/site/site-entry.js' %}
     {% endblock javascript %}
   </head>
-  {% comment %} Next line with style="visibility: hidden;" (in class fouc-hidden) -> See fouc_helper.js for more details. {% endcomment %}
+  {% comment %} Next line with style="visibility: hidden;" (in class fouc-hidden) -> See frontend/src/site/fouc.js for more details. {% endcomment %}
   <body class="fouc-hidden {% block bodyclass %}{% endblock bodyclass %}">
-    {% comment %} Next line (script 0) : See fouc_helper.js for more details. {% endcomment %}
+    {% comment %} Next line (script 0) : See frontend/src/site/fouc.js for more details. {% endcomment %}
     <script>
       0
     </script>
@@ -126,7 +125,7 @@
     </script>
       {% endcomment %}
     {% endblock inline_javascript %}
-    {% comment %} Next line : See fouc_helper.js for more details. {% endcomment %}
+    {% comment %} Next line : See frontend/src/site/fouc.js for more details. {% endcomment %}
     <noscript><style>
   body {
     visibility: visible;

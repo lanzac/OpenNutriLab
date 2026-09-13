@@ -2,7 +2,6 @@ from .base import *  # noqa: F403
 from .base import DJANGO_VITE
 from .base import INSTALLED_APPS
 from .base import MIDDLEWARE
-from .base import WEBPACK_LOADER
 from .base import env
 
 # GENERAL
@@ -79,16 +78,12 @@ INSTALLED_APPS += ["django_extensions"]
 
 # https://docs.celeryq.dev/en/stable/userguide/configuration.html#task-eager-propagates
 CELERY_TASK_EAGER_PROPAGATES = True
-# django-webpack-loader
-# ------------------------------------------------------------------------------
-WEBPACK_LOADER["DEFAULT"]["CACHE"] = not DEBUG
-
 # django-vite
 # ------------------------------------------------------------------------------
 # base.py builds DJANGO_VITE while DEBUG is still the env-driven default, so the
-# DEBUG = True above lands too late to reach it. Re-derive it here, the same way
-# WEBPACK_LOADER does, otherwise dev_mode stays False and every {% vite_asset %}
-# demands a production manifest that local development never builds.
+# DEBUG = True above lands too late to reach it. Re-derive it here, otherwise
+# dev_mode stays False and every {% vite_asset %} demands a production manifest
+# that local development never builds.
 DJANGO_VITE["default"]["dev_mode"] = DEBUG
 # Your stuff...
 # ------------------------------------------------------------------------------

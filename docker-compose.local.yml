@@ -6,7 +6,6 @@ volumes:
   opennutrilab_local_postgres_data_backups: {}
   opennutrilab_local_redis_data: {}
   opennutrilab_local_django_venv: {} # persistent venv for dev
-  opennutrilab_local_node_modules: {} # persistent node_modules
   opennutrilab_local_vite_node_modules: {} # persistent node_modules (frontend/)
   opennutrilab_pre_commit_cache: {} # persistent pre-commit cache
   opennutrilab_local_claude_config: {} # persistent ~/.claude (Claude Code session history/settings)
@@ -102,24 +101,6 @@ services:
   # -------------------------
   # Node (frontend)
   # -------------------------
-  node:
-    build:
-      context: .
-      dockerfile: ./compose/local/node/Dockerfile
-    image: opennutrilab_local_node
-    container_name: opennutrilab_local_node
-    depends_on:
-      - django
-    volumes:
-      - ./:/app:z
-      - opennutrilab_local_node_modules:/app/node_modules
-    # The named volume shadows the image's node_modules and outlives rebuilds,
-    # so new dependencies would never reach the container. Installing on start
-    # keeps the volume in step; it is a no-op when already satisfied.
-    command: sh -c "npm install && npm run dev"
-    ports:
-      - '3000:3000'
-
   # -------------------------
   # Vite (React frontend, migration in progress - see frontend/)
   # -------------------------

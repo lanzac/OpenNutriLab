@@ -1,16 +1,10 @@
-// Import Flag Icons
-@use 'flag-icons/sass/flag-icons' with (
-  $flag-icons-path: '~flag-icons/flags'
-);
-
+// Bootstrap, with the project's variable overrides applied first.
+// The '~' node_modules prefix the webpack build used is a webpack convention;
+// Vite resolves bare specifiers directly. The vendor stylesheets that used to
+// be pulled in here (Font Awesome, Bootstrap Icons, flag-icons) are imported
+// from site-entry.js instead, so Vite rewrites their asset URLs.
 @import 'custom_bootstrap_vars';
-@import '~bootstrap/scss/bootstrap';
-
-// Import Font Awesome
-@import '~@fortawesome/fontawesome-free/css/all.css';
-
-/* Import Bootstrap Icons CSS */
-@import '~bootstrap-icons/font/bootstrap-icons.css';
+@import 'bootstrap/scss/bootstrap';
 
 // project specific CSS goes here
 

@@ -47,21 +47,21 @@ logs *args:
 manage +args:
     @docker compose run --rm django python ./manage.py {{args}}
 
-# node-shell: Open a bash shell in the opennutrilab_local_node container.
-node-shell:
-    @docker exec -it opennutrilab_local_node bash
+# vite-shell: Open a bash shell in the opennutrilab_local_vite container.
+vite-shell:
+    @docker exec -it opennutrilab_local_vite bash
 
-# node-reset: Reset node container and rebuild assets
-node-reset:
-    @echo "Stopping node container..."
-    @docker compose stop node
-    @echo "Removing node container..."
-    @docker compose rm -f node
-    @echo "Rebuilding node container..."
-    @docker compose build node
-    @echo "Starting node container..."
-    @docker compose up -d node
-    @echo "node container reset complete."
+# vite-reset: Reset the vite container and reinstall frontend dependencies
+vite-reset:
+    @echo "Stopping vite container..."
+    @docker compose stop vite
+    @echo "Removing vite container..."
+    @docker compose rm -f vite
+    @echo "Rebuilding vite container..."
+    @docker compose build vite
+    @echo "Starting vite container..."
+    @docker compose up -d vite
+    @echo "vite container reset complete."
 
 
 

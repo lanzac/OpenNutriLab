@@ -22,10 +22,6 @@
          role="button">{% translate "Add a new product" %}</a>
     </div>
   </div>
-  {% vite_hmr_client %}
-  {# @vitejs/plugin-react refuses to run without its React Refresh preamble, #}
-  {# so this must come before the entry point. Renders nothing in production. #}
-  {% vite_react_refresh %}
   {% vite_asset 'src/apps/products/list-entry.jsx' %}
   <style>
     .page-title {

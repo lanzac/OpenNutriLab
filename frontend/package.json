@@ -10,6 +10,11 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.0.0",
+    "@popperjs/core": "^2.10.2",
+    "bootstrap": "^5.2.3",
+    "bootstrap-icons": "^1.13.1",
+    "flag-icons": "^7.5.0",
     "plotly.js-strict-dist-min": "^3.3.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

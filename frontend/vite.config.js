@@ -17,6 +17,8 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
+        // Site-wide shell: loaded by base.html on every page.
+        site: resolve(import.meta.dirname, 'src/site/site-entry.js'),
         'products-list': resolve(
           import.meta.dirname,
           'src/apps/products/list-entry.jsx',
