@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-11-07 16:57+0000\n"
+"POT-Creation-Date: 2026-09-13 18:43+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -52,24 +52,6 @@ msgstr "Ajouter un nouveau produit"
 msgid "Invalid form"
 msgstr "Formulaire Invalide"
 
-msgid "Product name"
-msgstr "Nom du produit"
-
-msgid "Created at"
-msgstr "Créé le"
-
-msgid "Actions"
-msgstr ""
-
-msgid "Edit and Delete product"
-msgstr "Éditer et Supprimer un produit"
-
-msgid "Edit"
-msgstr "Éditer"
-
-msgid "Delete"
-msgstr "Supprimer"
-
 msgid "Personal info"
 msgstr "Personal info"
 
@@ -106,11 +88,17 @@ msgstr "Énergie"
 msgid "Loading macronutrients graph..."
 msgstr "Chargement du graphe des macronutriments..."
 
+msgid "Loading ingredients table..."
+msgstr "Chargement du tableau des ingrédients..."
+
 msgid "Enter the 13-digit EAN code from the packaging."
 msgstr "Entrez le code EAN à 13 chiffres figurant sur l'emballage."
 
 msgid "Nutritional values (per 100g)"
 msgstr "Valeurs nutritionnelles (pour 100g)"
+
+msgid "Ingredients"
+msgstr "Ingrédients"
 
 msgid "save"
 msgstr ""
@@ -147,3 +135,31 @@ msgstr "Protéines"
 
 msgid "No data found"
 msgstr "Aucune donnée"
+
+msgid "Product name"
+msgstr "Nom du produit"
+
+msgid "Created at"
+msgstr "Créé le"
+
+msgid "Actions"
+msgstr "Actions"
+
+msgid "Edit"
+msgstr "Éditer"
+
+msgid "Delete"
+msgstr "Supprimer"
+
+msgid "Edit and Delete product"
+msgstr "Éditer et Supprimer un produit"
+
+msgid "Loading…"
+msgstr "Chargement…"
+
+msgid "Failed to load products."
+msgstr "Échec du chargement des produits."
+
+#, python-format
+msgid "Delete \"%(name)s\"?"
+msgstr "Supprimer « %(name)s » ?"

@@ -9,6 +9,7 @@ from django.http.response import HttpResponse
 from django.test import Client
 from django.test import RequestFactory
 from django.urls import reverse
+from django.utils import translation
 
 from products.api.openfoodfacts.schemas import OFFIngredientSchema
 from products.api.openfoodfacts.schemas import OFFMacronutrientsSchema
@@ -28,6 +29,29 @@ if TYPE_CHECKING:
 
 @pytest.mark.django_db
 class TestProductListView:
+    def test_context_data_contains_translated_labels(self, client: Client):
+        """
+        The React inventory table gets its user-facing strings from the
+        context (see frontend/src/apps/products/ProductListApp.jsx), so the
+        .po catalogue stays the single source of truth. Guards against the
+        labels drifting back to hardcoded English in the JSX.
+        """
+        url: str = reverse("list_products")
+
+        with translation.override("fr-fr"):
+            response: HttpResponse = client.get(url, headers={"accept-language": "fr"})
+
+        assert response.status_code == 200  # noqa: PLR2004
+
+        labels: dict[str, str] = response.context["product_list_labels"]
+        assert labels["productName"] == "Nom du produit"
+        assert labels["createdAt"] == "Créé le"
+        assert labels["edit"] == "Éditer"
+        assert labels["delete"] == "Supprimer"
+        assert labels["loading"] == "Chargement…"
+        # The name is interpolated client-side, so the placeholder must survive.
+        assert "%(name)s" in labels["confirmDelete"]
+
     def test_context_data_contains_product_list_json(self, client: Client):
         """
         Test that ProductListView adds 'product_list_json' to the context

@@ -26,7 +26,11 @@ export async function fetchProducts() {
     headers: { Accept: 'application/json' },
   });
   if (!response.ok) {
-    throw new Error(`Failed to load products (HTTP ${response.status})`);
+    // Technical message: callers show a translated one to the user (the
+    // catalogue lives in Django, see ProductListView).
+    throw new Error(
+      `GET ${PRODUCTS_API_BASE} failed (HTTP ${response.status})`,
+    );
   }
   return response.json();
 }

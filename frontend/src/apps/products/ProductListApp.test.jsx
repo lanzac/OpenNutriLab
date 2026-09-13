@@ -3,44 +3,109 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ProductListApp } from './ProductListApp.jsx';
 
+// Stands in for the |json_script blob rendered by ProductListView. Values are
+// the real French catalogue entries, so a regression back to hardcoded English
+// in the JSX fails these tests.
+const labels = {
+  productName: 'Nom du produit',
+  createdAt: 'Créé le',
+  actions: 'Actions',
+  edit: 'Éditer',
+  delete: 'Supprimer',
+  editAndDelete: 'Éditer et Supprimer un produit',
+  loading: 'Chargement…',
+  loadError: 'Échec du chargement des produits.',
+  confirmDelete: 'Supprimer « %(name)s » ?',
+};
+
+const RICE = {
+  barcode: '1234567890123',
+  name: 'Rice',
+  created_at: '2026-01-01T00:00:00Z',
+};
+
+function stubFetchSuccess(products = [RICE]) {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({ ok: true, json: async () => products }),
+  );
+}
+
+function renderList() {
+  return render(<ProductListApp labels={labels} />);
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe('ProductListApp', () => {
   it('renders products fetched from the API', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => [
-          {
-            barcode: '1234567890123',
-            name: 'Rice',
-            created_at: '2026-01-01T00:00:00Z',
-          },
-        ],
-      }),
-    );
-
-    render(<ProductListApp />);
+    stubFetchSuccess();
+    renderList();
 
     await waitFor(() => expect(screen.getByText('Rice')).toBeInTheDocument());
-    expect(
-      screen.getByRole('link', { name: /edit/i }),
-    ).toHaveAttribute('href', '/products/1234567890123/edit/');
+    expect(screen.getByRole('link', { name: /Éditer/ })).toHaveAttribute(
+      'href',
+      '/products/1234567890123/edit/',
+    );
   });
 
-  it('shows an error message when the fetch fails', async () => {
+  it('labels the table from the supplied translations', async () => {
+    stubFetchSuccess();
+    renderList();
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('columnheader', { name: 'Nom du produit' }),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole('columnheader', { name: 'Créé le' }),
+    ).toBeInTheDocument();
+    // Restores the aria-label the first React port dropped.
+    expect(
+      screen.getByRole('toolbar', { name: 'Éditer et Supprimer un produit' }),
+    ).toBeInTheDocument();
+  });
+
+  it('interpolates the product name into the delete confirmation', async () => {
+    stubFetchSuccess();
+    // Returning false keeps jsdom from attempting a real form submission.
+    const confirm = vi.fn().mockReturnValue(false);
+    vi.stubGlobal('confirm', confirm);
+    renderList();
+
+    await waitFor(() => expect(screen.getByText('Rice')).toBeInTheDocument());
+    screen.getByRole('button', { name: /Supprimer/ }).click();
+
+    expect(confirm).toHaveBeenCalledWith('Supprimer « Rice » ?');
+  });
+
+  it('renders nothing when the inventory is empty', async () => {
+    stubFetchSuccess([]);
+    renderList();
+
+    await waitFor(() => expect(screen.queryByRole('table')).toBeNull());
+  });
+
+  it('shows a translated error message when the fetch fails', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({ ok: false, status: 500 }),
     );
-
-    render(<ProductListApp />);
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    renderList();
 
     await waitFor(() =>
-      expect(screen.getByText(/failed to load products/i)).toBeInTheDocument(),
+      expect(
+        screen.getByText('Échec du chargement des produits.'),
+      ).toBeInTheDocument(),
     );
+    // The HTTP status stays in the console, out of the user's face.
+    expect(consoleError).toHaveBeenCalled();
   });
 });

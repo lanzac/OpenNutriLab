@@ -10,7 +10,10 @@
   <h1 class="page-title">{% translate "Inventory" %}</h1>
   <div class="content-container">
     {# Rendered by React (frontend/src/apps/products/ProductListApp.jsx), #}
-    {# fetching live from /api-ninja/products/. #}
+    {# fetching live from /api-ninja/products/. Labels are translated #}
+    {# server-side (see ProductListView) so the .po catalogue stays the #}
+    {# single source of truth. #}
+    {{ product_list_labels|json_script:"product-list-labels" }}
     <div id="product-list-root"></div>
     <div class="d-grid gap-2 col-6 mx-auto">
       <a class="btn btn-primary"

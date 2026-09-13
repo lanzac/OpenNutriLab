@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 from typing import Any
 
 from django.urls import reverse_lazy
+from django.utils.translation import gettext as _
 from vanilla import CreateView
 from vanilla import DeleteView
 from vanilla import ListView
@@ -46,6 +47,25 @@ class ProductListView(ListView):
         # We add this list to the context
         # Django will handle serialization via |json_script in the template
         context["product_list_json"] = products_data
+
+        # User-facing strings for the React list (see
+        # frontend/src/apps/products/ProductListApp.jsx). They are translated
+        # here rather than in JS so that the .po catalogue stays the single
+        # source of truth while the migration is in progress.
+        # TODO(migration/vite-react): drop this in favour of a JS-side
+        # catalogue once Django no longer renders the page shell.
+        context["product_list_labels"] = {
+            "productName": _("Product name"),
+            "createdAt": _("Created at"),
+            "actions": _("Actions"),
+            "edit": _("Edit"),
+            "delete": _("Delete"),
+            "editAndDelete": _("Edit and Delete product"),
+            "loading": _("Loading…"),
+            "loadError": _("Failed to load products."),
+            # %(name)s is interpolated client-side with the product name.
+            "confirmDelete": _('Delete "%(name)s"?'),
+        }
         return context
 
 
