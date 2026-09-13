@@ -16,7 +16,14 @@
     // /bin/sh -c "while sleep 1000; do :; done" when starting the container instead of the container’s default command
     "overrideCommand": false,
     "service": "django",
-    "remoteEnv": {"PATH": "/home/dev-user/.local/bin:${containerEnv:PATH}"},
+    "remoteEnv": {
+        "PATH": "/home/dev-user/.local/bin:${containerEnv:PATH}",
+        // Point Claude Code's whole config home at the persisted volume. By default
+        // .claude.json sits next to ~/.claude, in the container's writable layer, and
+        // is lost on rebuild; this pulls it inside the volume with the credentials
+        // and session transcripts.
+        "CLAUDE_CONFIG_DIR": "/home/dev-user/.claude"
+    },
     "remoteUser": "dev-user",
     "workspaceFolder": "/app",
     // Set *default* container specific settings.json values on container create.
