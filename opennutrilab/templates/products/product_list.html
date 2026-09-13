@@ -10,10 +10,11 @@
   <h1 class="page-title">{% translate "Inventory" %}</h1>
   <div class="content-container">
     {# Rendered by React (frontend/src/apps/products/ProductListApp.jsx), #}
-    {# fetching live from /api-ninja/products/. Labels are translated #}
-    {# server-side (see ProductListView) so the .po catalogue stays the #}
-    {# single source of truth. #}
-    {{ product_list_labels|json_script:"product-list-labels" }}
+    {# fetching live from /api-ninja/products/. Labels, the CSRF token and #}
+    {# the active language all come from ProductListView: the .po catalogue #}
+    {# stays the single source of truth, and CSRF_COOKIE_HTTPONLY means the #}
+    {# token cannot be read client-side. #}
+    {{ product_list_props|json_script:"product-list-props" }}
     <div id="product-list-root"></div>
     <div class="d-grid gap-2 col-6 mx-auto">
       <a class="btn btn-primary"

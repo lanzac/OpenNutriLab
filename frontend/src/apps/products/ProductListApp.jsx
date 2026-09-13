@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { fetchProducts, getCsrfToken } from './api/client.js';
+import { fetchProducts } from './api/client.js';
 
 // Django's edit/delete class-based views still own these URLs (see
 // /app/products/urls.py) - React only needs to build links to them.
@@ -12,12 +12,14 @@ const productDeleteUrl = (barcode) => `/products/${barcode}/delete/`;
 /**
  * Renders the inventory table.
  *
- * `labels` holds the already-translated user-facing strings, handed over by
- * the Django template through a |json_script blob (see ProductListView).
- * Keeping the strings server-side means the .po catalogue stays the single
- * source of truth for as long as Django renders the page shell.
+ * Everything the server owes this component arrives through a |json_script
+ * blob (see ProductListView): `labels` already translated, so the .po
+ * catalogue stays the single source of truth; `csrfToken`, which cannot come
+ * from the cookie because CSRF_COOKIE_HTTPONLY hides it from JS; and
+ * `languageCode`, so dates follow the language Django is serving rather than
+ * the browser's own locale.
  */
-export function ProductListApp({ labels }) {
+export function ProductListApp({ labels, csrfToken, languageCode }) {
   const [products, setProducts] = useState(null);
   const [error, setError] = useState(null);
 
@@ -65,7 +67,9 @@ export function ProductListApp({ labels }) {
         {products.map((product) => (
           <tr key={product.barcode}>
             <td>{product.name}</td>
-            <td>{new Date(product.created_at).toLocaleDateString()}</td>
+            <td>
+              {new Date(product.created_at).toLocaleDateString(languageCode)}
+            </td>
             <td>
               <div
                 className="btn-toolbar"
@@ -95,7 +99,7 @@ export function ProductListApp({ labels }) {
                   <input
                     type="hidden"
                     name="csrfmiddlewaretoken"
-                    value={getCsrfToken()}
+                    value={csrfToken}
                   />
                   <button type="submit" className="btn btn-danger">
                     <i className="fa-regular fa-trash-can" /> {labels.delete}

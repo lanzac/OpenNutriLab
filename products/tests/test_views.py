@@ -42,7 +42,8 @@ class TestProductListView:
 
         assert response.status_code == 200  # noqa: PLR2004
 
-        labels: dict[str, str] = response.context["product_list_labels"]
+        props: dict[str, object] = response.context["product_list_props"]
+        labels: dict[str, str] = props["labels"]
         assert labels["productName"] == "Nom du produit"
         assert labels["createdAt"] == "Créé le"
         assert labels["edit"] == "Éditer"
@@ -50,6 +51,22 @@ class TestProductListView:
         assert labels["loading"] == "Chargement…"
         # The name is interpolated client-side, so the placeholder must survive.
         assert "%(name)s" in labels["confirmDelete"]
+
+        # Intl needs the negotiated language or it falls back to the browser's.
+        assert props["languageCode"].startswith("fr")
+
+    def test_context_data_carries_the_csrf_token(self, client: Client):
+        """
+        CSRF_COOKIE_HTTPONLY keeps the token out of document.cookie, so the
+        React delete form cannot read it client-side and has to be handed it.
+        Without this, every delete POST is rejected with a 403.
+        """
+        url: str = reverse("list_products")
+        response: HttpResponse = client.get(url)
+
+        token = response.context["product_list_props"]["csrfToken"]
+        assert token
+        assert token in response.content.decode()
 
     def test_renders_the_react_mount_point(self, client: Client):
         """
@@ -73,7 +90,7 @@ class TestProductListView:
 
         assert response.status_code == 200  # noqa: PLR2004
         assert 'id="product-list-root"' in html
-        assert 'id="product-list-labels"' in html
+        assert 'id="product-list-props"' in html
         # The table is no longer server-rendered.
         assert "Apple" not in html
 

@@ -2,7 +2,9 @@ import json
 from typing import TYPE_CHECKING
 from typing import Any
 
+from django.middleware.csrf import get_token
 from django.urls import reverse_lazy
+from django.utils.translation import get_language
 from django.utils.translation import gettext as _
 from vanilla import CreateView
 from vanilla import DeleteView
@@ -29,23 +31,37 @@ class ProductListView(ListView):
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         context: dict[str, Any] = super().get_context_data(**kwargs)  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
 
-        # User-facing strings for the React list (see
-        # frontend/src/apps/products/ProductListApp.jsx). They are translated
-        # here rather than in JS so that the .po catalogue stays the single
-        # source of truth while the migration is in progress.
+        # Everything the React list needs from the server, handed over as one
+        # |json_script blob (see frontend/src/apps/products/list-entry.jsx).
+        #
+        # csrfToken cannot be read from the cookie: CSRF_COOKIE_HTTPONLY is on,
+        # so document.cookie never exposes it. The delete form is a plain POST
+        # to Django, so it needs the token the way {% csrf_token %} used to
+        # provide it before this page moved to React.
+        #
+        # languageCode drives Intl date formatting client-side, which otherwise
+        # follows the browser's locale rather than the one Django is serving.
+        #
+        # Labels are translated here rather than in JS so that the .po
+        # catalogue stays the single source of truth while the migration is in
+        # progress.
         # TODO(migration/vite-react): drop this in favour of a JS-side
         # catalogue once Django no longer renders the page shell.
-        context["product_list_labels"] = {
-            "productName": _("Product name"),
-            "createdAt": _("Created at"),
-            "actions": _("Actions"),
-            "edit": _("Edit"),
-            "delete": _("Delete"),
-            "editAndDelete": _("Edit and Delete product"),
-            "loading": _("Loading…"),
-            "loadError": _("Failed to load products."),
-            # %(name)s is interpolated client-side with the product name.
-            "confirmDelete": _('Delete "%(name)s"?'),
+        context["product_list_props"] = {
+            "csrfToken": get_token(self.request),
+            "languageCode": get_language(),
+            "labels": {
+                "productName": _("Product name"),
+                "createdAt": _("Created at"),
+                "actions": _("Actions"),
+                "edit": _("Edit"),
+                "delete": _("Delete"),
+                "editAndDelete": _("Edit and Delete product"),
+                "loading": _("Loading…"),
+                "loadError": _("Failed to load products."),
+                # %(name)s is interpolated client-side with the product name.
+                "confirmDelete": _('Delete "%(name)s"?'),
+            },
         }
         return context
 

@@ -31,8 +31,16 @@ function stubFetchSuccess(products = [RICE]) {
   );
 }
 
+const CSRF_TOKEN = 'test-csrf-token';
+
 function renderList() {
-  return render(<ProductListApp labels={labels} />);
+  return render(
+    <ProductListApp
+      labels={labels}
+      csrfToken={CSRF_TOKEN}
+      languageCode="fr-fr"
+    />,
+  );
 }
 
 afterEach(() => {
@@ -81,6 +89,28 @@ describe('ProductListApp', () => {
     screen.getByRole('button', { name: /Supprimer/ }).click();
 
     expect(confirm).toHaveBeenCalledWith('Supprimer « Rice » ?');
+  });
+
+  it('puts the server-supplied CSRF token on the delete form', async () => {
+    // CSRF_COOKIE_HTTPONLY hides the token from document.cookie, so reading it
+    // client-side yields an empty string and every delete POST 403s.
+    stubFetchSuccess();
+    renderList();
+
+    await waitFor(() => expect(screen.getByText('Rice')).toBeInTheDocument());
+    const field = document.querySelector('[name="csrfmiddlewaretoken"]');
+    expect(field).not.toBeNull();
+    expect(field.value).toBe(CSRF_TOKEN);
+  });
+
+  it('formats dates with the language Django is serving', async () => {
+    // Without an explicit locale, Intl falls back to the runtime's, which is
+    // unrelated to the language Django negotiated for the page.
+    stubFetchSuccess();
+    renderList();
+
+    await waitFor(() => expect(screen.getByText('Rice')).toBeInTheDocument());
+    expect(screen.getByText('01/01/2026')).toBeInTheDocument();
   });
 
   it('renders nothing when the inventory is empty', async () => {
