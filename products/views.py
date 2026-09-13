@@ -23,30 +23,11 @@ if TYPE_CHECKING:
     from products.api.openfoodfacts.schemas import OFFIngredientSchema
 
 
-PRODUCT_LIST_FIELDS: list[str] = [
-    "name",
-    "image",
-    "created_at",
-    "group_level_1",
-    "group_level_2",
-]
-
-
 class ProductListView(ListView):
     model = Product
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         context: dict[str, Any] = super().get_context_data(**kwargs)  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
-
-        # We extract the data from the queryset into a list of dictionaries
-        # .values() allows us to take only what we need
-        products_data = list[dict[str, Any]](
-            self.object_list.values(*PRODUCT_LIST_FIELDS)
-        )
-
-        # We add this list to the context
-        # Django will handle serialization via |json_script in the template
-        context["product_list_json"] = products_data
 
         # User-facing strings for the React list (see
         # frontend/src/apps/products/ProductListApp.jsx). They are translated

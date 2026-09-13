@@ -18,7 +18,6 @@ from products.api.openfoodfacts.schemas import product_schema_to_form_data
 from products.forms import ProductForm
 from products.models import IngredientRef
 from products.models import Product
-from products.views import PRODUCT_LIST_FIELDS
 from products.views import ProductCreateView  # adapte à ton module
 from products.views import ProductEditView  # adapte à ton module
 from products.views import prepare_product_form_data  # adapte à ton module
@@ -52,12 +51,13 @@ class TestProductListView:
         # The name is interpolated client-side, so the placeholder must survive.
         assert "%(name)s" in labels["confirmDelete"]
 
-    def test_context_data_contains_product_list_json(self, client: Client):
+    def test_renders_the_react_mount_point(self, client: Client):
         """
-        Test that ProductListView adds 'product_list_json' to the context
-        with the specific fields requested for the JS table.
+        The React table replaces the server-rendered one, so what the template
+        owes it is a mount point and the labels blob. Products exist here only
+        to prove the page still renders once the queryset is non-empty - the
+        rows themselves now come from /api-ninja/products/.
         """
-        # --- Setup: Create test data ---
         Product.objects.create(
             barcode="1111111111111",
             name="Apple",
@@ -66,62 +66,16 @@ class TestProductListView:
             description="A beautiful apple",
             energy_kj=100,
         )
-        Product.objects.create(
-            barcode="2222222222222",
-            name="Bread",
-            group_level_1="Bakery",
-            group_level_2="White bread",
-            description="Traditional baguette",
-            energy_kj=100,
-        )
 
-        # --- Action: Call the view via its URL ---
         url: str = reverse("list_products")
         response: HttpResponse = client.get(url)
-
-        # --- Assertions ---
-        assert response.status_code == 200  # noqa: PLR2004
-
-        # Verify the custom key is present
-        assert "product_list_json" in response.context
-
-        json_data = response.context["product_list_json"]
-
-        # Verify it is a list and contains the correct number of elements
-        assert isinstance(json_data, list)
-        assert len(json_data) == 2  # noqa: PLR2004  # pyright: ignore[reportUnknownArgumentType]
-
-        # Verify fields of the first item
-        # We expect .values() to return a dict
-        item = json_data[0]  # pyright: ignore[reportUnknownVariableType]
-
-        expected_fields = set(PRODUCT_LIST_FIELDS)
-
-        # Verify that dictionary keys correspond exactly to requested fields
-        # Note: .values() does not return ID if not explicitly requested
-        assert set(item.keys()) == expected_fields  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
-
-        # Verify that NOT requested fields (like 'description' or 'barcode') are absent
-        assert "description" not in item
-        assert "barcode" not in item
-
-        # Verify content (sort by name to ensure order)
-        sorted_data = sorted(json_data, key=lambda x: x["name"])  # pyright: ignore[reportUnknownVariableType, reportUnknownArgumentType, reportUnknownLambdaType]
-
-        assert sorted_data[0]["name"] == "Apple"
-        assert sorted_data[0]["group_level_1"] == "Fruits"
-
-        assert sorted_data[1]["name"] == "Bread"
-        assert sorted_data[1]["group_level_1"] == "Bakery"
-
-    def test_context_data_empty_list(self, client: Client):
-        """Test behavior when there are no products."""
-        url: str = reverse("list_products")
-        response: HttpResponse = client.get(url)
+        html: str = response.content.decode()
 
         assert response.status_code == 200  # noqa: PLR2004
-        assert "product_list_json" in response.context
-        assert response.context["product_list_json"] == []
+        assert 'id="product-list-root"' in html
+        assert 'id="product-list-labels"' in html
+        # The table is no longer server-rendered.
+        assert "Apple" not in html
 
 
 @pytest.mark.django_db
