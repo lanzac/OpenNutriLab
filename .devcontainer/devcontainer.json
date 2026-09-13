@@ -5,13 +5,6 @@
         "../docker-compose.local.yml"
     ],
     "init": true,
-    "mounts": [
-        {
-            "source": "./.devcontainer/bash_history",
-            "target": "/home/dev-user/.bash_history",
-            "type": "bind"
-        }
-    ],
     // Tells devcontainer.json supporting services / tools whether they should run
     // /bin/sh -c "while sleep 1000; do :; done" when starting the container instead of the container’s default command
     "overrideCommand": false,
