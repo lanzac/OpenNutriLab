@@ -82,6 +82,14 @@
     // Uncomment the next line to run commands after the container is created.
     "postCreateCommand": {
         "installPythonTools": "UV_TOOL_BIN_DIR=$HOME/.local/bin uv tool install --python 3.13 graphifyy && $HOME/.local/bin/graphify install",
-        "setupShell": "cat .devcontainer/bashrc.override.sh >> ~/.bashrc && pre-commit install-hooks"
+        "setupShell": "cat .devcontainer/bashrc.override.sh >> ~/.bashrc && pre-commit install-hooks",
+        // The playwright package is a dev dependency, but the browser it drives
+        // is not: it is a ~115 MB download into ~/.cache/ms-playwright, which
+        // compose keeps on a named volume, so this is a no-op after the first
+        // time. uv sync first because /app/.venv is itself a named volume and
+        // can outlive the image that filled it. The two playwright steps cannot
+        // be merged into `install --with-deps`: the apt packages need root,
+        // while the browser must land in dev-user's cache, not root's.
+        "installBrowsers": "uv sync --frozen && sudo .venv/bin/python -m playwright install-deps chromium && .venv/bin/python -m playwright install chromium"
     }
 }

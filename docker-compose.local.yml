@@ -9,6 +9,7 @@ volumes:
   opennutrilab_local_vite_node_modules: {} # persistent node_modules (frontend/)
   opennutrilab_pre_commit_cache: {} # persistent pre-commit cache
   opennutrilab_local_claude_config: {} # persistent ~/.claude (Claude Code session history/settings)
+  opennutrilab_local_playwright_cache: {} # persistent ~/.cache/ms-playwright (~115 MB of browser binaries)
 
 # =========================
 # Services
@@ -28,6 +29,9 @@ services:
       - ./:/app:z # bind project code
       - opennutrilab_pre_commit_cache:/home/dev-user/.cache/pre-commit # persistent pre-commit cache
       - opennutrilab_local_claude_config:/home/dev-user/.claude # persistent Claude Code sessions (survives rebuilds)
+      # Without this the Chromium download survives uv sync but not a rebuild,
+      # and 115 MB comes back down every time the image changes.
+      - opennutrilab_local_playwright_cache:/home/dev-user/.cache/ms-playwright
     env_file:
       - ./.envs/.local/.django
       - ./.envs/.local/.postgres

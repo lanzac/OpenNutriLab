@@ -62,7 +62,7 @@ RUN sed -i 's/\r$//g' /entrypoint /start /start-celeryworker /start-celerybeat /
 # Ensure the directories backed by named volumes exist and are owned by dev-user.
 # Docker creates a missing mount target as root:root, which would leave them
 # unwritable for dev-user (Claude Code could then not store its credentials).
-RUN mkdir -p /home/dev-user/.cache/pre-commit /home/dev-user/.claude && \
+RUN mkdir -p /home/dev-user/.cache/pre-commit /home/dev-user/.cache/ms-playwright /home/dev-user/.claude && \
     chown -R dev-user:dev-user /home/dev-user/.cache /home/dev-user/.claude
 
 # -------------------------

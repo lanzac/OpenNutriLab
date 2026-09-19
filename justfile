@@ -72,6 +72,16 @@ django-shell:
 django-container-shell:
     @docker exec -it opennutrilab_local_django /entrypoint bash
 
+# playwright: Install or repair the browser Playwright drives.
+#
+# devcontainer.json already runs this on container create; this is the manual
+# way back when the cache is cleared or the install is broken. The download is
+# ~115 MB and lands on a named volume, so it is a no-op once it is there.
+playwright:
+    @uv sync --frozen
+    @sudo .venv/bin/python -m playwright install-deps chromium
+    @.venv/bin/python -m playwright install chromium
+
 
 # =============================================================================
 # Production

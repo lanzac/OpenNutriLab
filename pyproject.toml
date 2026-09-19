@@ -58,6 +58,14 @@ dev = [
     "psycopg[binary]>=3.2.10",
     "factory-boy>=3.3.3",
     "djangorestframework-types>=0.9.0",
+    # Browser-driven verification. Not used by the pytest suite: it is the only
+    # way to see console output, uncaught JS errors and what actually renders,
+    # which is how the "@vitejs/plugin-react can't detect preamble" failure that
+    # kept React from mounting was found. Declared here because it was silently
+    # removed three times in one session - once by a container rebuild, twice by
+    # uv sync. The browser binaries are not a Python dependency; see
+    # .devcontainer/devcontainer.json and `just playwright`.
+    "playwright>=1.55.0",
 ]
 
 # ==== pytest ====
