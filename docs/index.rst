@@ -12,6 +12,7 @@ Welcome to OpenNutriLab's documentation!
 
    howto
    users
+   deployment
 
 
 
