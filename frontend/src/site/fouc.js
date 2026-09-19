@@ -5,7 +5,10 @@
 // this reveals it once the DOM is ready.
 
 function domReady(cb) {
-  if (document.readyState === 'interactive' || document.readyState === 'complete') {
+  if (
+    document.readyState === 'interactive' ||
+    document.readyState === 'complete'
+  ) {
     cb();
   } else {
     document.addEventListener('DOMContentLoaded', cb);

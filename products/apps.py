@@ -6,4 +6,4 @@ class ProductsConfig(AppConfig):
     name = "products"
 
     def ready(self):
-        import products.signals  # noqa: F401, PLC0415
+        import products.signals  # noqa: F401

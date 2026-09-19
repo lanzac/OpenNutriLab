@@ -34,8 +34,8 @@ if settings.DEBUG:
         logging.info("✅ debugpy is listening on 127.0.0.1:5678 (from asgi.py)")
         # Uncomment if you want Django to wait for VSCode debugger before continuing:
         # debugpy.wait_for_client()
-    except Exception as e:
-        logging.error(f"❌ Failed to start debugpy: {e}")
+    except Exception:
+        logging.exception("❌ Failed to start debugpy")
 # --- End debugger hook ---
 
 # This application object is used by any ASGI server configured to use this file.

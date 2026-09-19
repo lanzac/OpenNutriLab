@@ -152,7 +152,7 @@ def test_vitamin_chembl_id_case_insensitive_uniqueness():
 
 @pytest.mark.django_db
 def test_vitamin_default_unit_in_form_applied():
-    from products.models import DEFAULT_VITAMIN_UNIT  # noqa: PLC0415
+    from products.models import DEFAULT_VITAMIN_UNIT
 
     vitamin = Vitamin.objects.create(
         name="thiamine",
@@ -165,7 +165,7 @@ def test_vitamin_default_unit_in_form_applied():
 @pytest.mark.django_db
 def test_vitamin_default_unit_in_form_with_custom_choice():
     # choose a different unit from the choices
-    from products.models import VITAMIN_UNIT_CHOICES  # noqa: PLC0415
+    from products.models import VITAMIN_UNIT_CHOICES
 
     custom_unit = VITAMIN_UNIT_CHOICES[0][0]
     vitamin = Vitamin.objects.create(
@@ -203,7 +203,7 @@ def test_vitamin_common_name_optional():
 # ----------------------------------------------------------------------------
 @pytest.mark.django_db
 def test_product_str() -> None:
-    from products.models import Product  # noqa: PLC0415
+    from products.models import Product
 
     product = Product.objects.create(
         barcode="3229820794556", name="muesli protéines", energy_kj=100
@@ -253,7 +253,7 @@ def test_productmacronutrient_str_representation() -> None:
 # ----------------------------------------------------------------------------
 @pytest.mark.django_db
 def test_ingredientref_str() -> None:
-    from products.models import IngredientRef  # noqa: PLC0415
+    from products.models import IngredientRef
 
     ingredientref = IngredientRef.objects.create(name="raisins secs")
     assert str(ingredientref) == "Raisins Secs"
@@ -264,9 +264,9 @@ def test_ingredientref_str() -> None:
 # ----------------------------------------------------------------------------
 @pytest.mark.django_db
 def test_ingredientrefmacronutrient_str_representation() -> None:
-    from products.models import IngredientRef  # noqa: PLC0415
-    from products.models import IngredientRefMacronutrient  # noqa: PLC0415
-    from products.models import Macronutrient  # noqa: PLC0415
+    from products.models import IngredientRef
+    from products.models import IngredientRefMacronutrient
+    from products.models import Macronutrient
 
     ingredientref = IngredientRef.objects.create(name="raisins secs")
     macro = Macronutrient.objects.create(name="ProteinsTest")
@@ -282,7 +282,7 @@ def test_ingredientrefmacronutrient_str_representation() -> None:
 # ----------------------------------------------------------------------------
 @pytest.mark.django_db
 def test_ingredient_str() -> None:
-    from products.models import Ingredient  # noqa: PLC0415
+    from products.models import Ingredient
 
     parent_product = Product.objects.create(
         barcode="3242272270157", name="Fruit Mix", energy_kj=100

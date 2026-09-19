@@ -1,6 +1,6 @@
 # https://world.openfoodfacts.org/files/redocly/api-v3.redoc-static.html#schema/shape
 # https://world.openfoodfacts.org/files/redocly/api-v3.redoc-static.html#schema/shape
-from enum import Enum
+from enum import StrEnum
 
 from ninja import Field
 from ninja import Schema
@@ -72,7 +72,7 @@ class OFFProductSchema(Schema):
 # ---- ENUMS ----
 
 
-class StatusEnum(str, Enum):
+class StatusEnum(StrEnum):
     success = "success"
     success_with_warnings = "success_with_warnings"
     success_with_errors = "success_with_errors"
