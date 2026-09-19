@@ -105,3 +105,120 @@ jobs:
       # production is actually produced.
       - name: Build
         run: npm run build
+
+  production:
+    name: Production path
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: opennutrilab
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/opennutrilab
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # The frontend has to be built first: under DEBUG=False django-vite reads
+      # the manifest from disk instead of talking to a dev server, and both the
+      # deployment checks and collectstatic fail without it.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build the frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      # Generated rather than written down, so nothing in this file resembles a
+      # real key. It only has to satisfy the length and entropy that
+      # check --deploy enforces.
+      - name: Generate a throwaway secret key
+        run: echo "DJANGO_SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(64))')" >> "$GITHUB_ENV"
+
+      - name: Django deployment checks
+        run: uv run python manage.py check --deploy --fail-level WARNING
+
+      - name: Migrate
+        run: uv run python manage.py migrate --noinput
+
+      # Hashes and pre-compresses the bundle through WhiteNoise's manifest
+      # storage, which fails loudly when a stylesheet references a file that
+      # was never collected - breakage invisible under DEBUG=True.
+      - name: Collect static files
+        run: uv run python manage.py collectstatic --noinput
+
+      # The checks above are static. This one boots the real ASGI application
+      # and asks it for a page.
+      - name: Serve the app and fetch the home page
+        env:
+          # The only step that turns this off: there is no TLS in front of the
+          # server here, so the redirect would make every request a 301.
+          DJANGO_SECURE_SSL_REDIRECT: 'False'
+        run: |
+          uv run uvicorn config.asgi:application --host 127.0.0.1 --port 8000 &
+          server_pid=$!
+          trap 'kill "${server_pid}" 2>/dev/null || true' EXIT
+
+          for _ in $(seq 1 30); do
+            if curl -fsS -o /dev/null http://127.0.0.1:8000/; then
+              break
+            fi
+            sleep 1
+          done
+
+          body=$(curl -fsS http://127.0.0.1:8000/)
+
+          # A served page proves little on its own: the point is that it links
+          # the hashed bundle, which means the manifest was found and read.
+          if ! printf '%s' "${body}" | grep -q '/static/vite/'; then
+            echo 'The home page does not reference the built Vite bundle.' >&2
+            printf '%s' "${body}" | head -40 >&2
+            exit 1
+          fi
+
+  image:
+    name: Production image
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Built but never pushed. The build runs the frontend bundle,
+      # compilemessages and collectstatic inside the image, so a broken
+      # production path fails here rather than on the server.
+      - name: Build the production image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./compose/production/django/Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
