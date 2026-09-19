@@ -1,3 +1,4 @@
+# Tooling and editor config
 .editorconfig
 .gitattributes
 .github
@@ -7,12 +8,37 @@
 .pre-commit-config.yaml
 .readthedocs.yml
 .travis.yml
+
+# Version control
+.git
+
+# Secrets. They reach the container through the environment at run time, never
+# by being baked into an image layer.
+.envs/
+
+# Python environments and caches
 .venv
-node_modules
+venv
 __pycache__
 *.pyc
 .pytest_cache
 .mypy_cache
-venv
-.git
-.envs/
+.ruff_cache
+
+# Node dependencies. Plain "node_modules" only matches the repository root;
+# the one that matters lives in frontend/, and the image installs its own from
+# the lockfile.
+node_modules
+**/node_modules
+
+# Build output produced on a developer machine. The production image builds the
+# frontend in its own stage and runs collectstatic itself; copying a local build
+# in would silently ship whatever was last built here.
+opennutrilab/static/vite/
+staticfiles/
+docs/_build/
+
+# Local-only material
+graphify-out/
+notes/
+*.sqlite3

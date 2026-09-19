@@ -4,14 +4,20 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-if [ -z "${POSTGRES_USER}" ]; then
-    base_postgres_image_default_user='postgres'
-    export POSTGRES_USER="${base_postgres_image_default_user}"
+# A managed database hands you a single connection string. The bundled postgres
+# container instead supplies POSTGRES_* and expects the URL to be assembled
+# here. Only build it when it is not already set, and only wait for a host we
+# actually know about.
+if [ -z "${DATABASE_URL:-}" ]; then
+    if [ -z "${POSTGRES_USER:-}" ]; then
+        base_postgres_image_default_user='postgres'
+        export POSTGRES_USER="${base_postgres_image_default_user}"
+    fi
+    export DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
+
+    wait-for-it "${POSTGRES_HOST}:${POSTGRES_PORT}" -t 30
+
+    >&2 echo 'PostgreSQL is available'
 fi
-export DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
-
-wait-for-it "${POSTGRES_HOST}:${POSTGRES_PORT}" -t 30
-
->&2 echo 'PostgreSQL is available'
 
 exec "$@"

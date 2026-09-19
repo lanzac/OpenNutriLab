@@ -1,0 +1,32 @@
+{
+	# Where Let's Encrypt sends expiry warnings.
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN_NAME} {
+	# Caddy obtains and renews the certificate on its own for the domain above.
+	# Nothing to schedule, nothing to renew by hand.
+
+	encode zstd gzip
+
+	# User uploads live on a volume shared with the django container.
+	# django.conf.urls.static.static() returns an empty list under DEBUG=False,
+	# so without this every /media/ URL is a 404 in production - product images
+	# included. Serving them here also keeps image traffic out of Python.
+	handle_path /media/* {
+		root * /srv/media
+		file_server
+	}
+
+	handle {
+		reverse_proxy django:8000
+	}
+
+	# WhiteNoise sets Cache-Control on everything under /static/ itself:
+	# immutable for a year on the hashed Vite bundle, short-lived on the rest.
+	# Overriding it here would only get it wrong.
+
+	log {
+		output stdout
+	}
+}

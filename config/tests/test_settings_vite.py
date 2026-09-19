@@ -33,7 +33,10 @@ print(json.dumps({
 """
 
 
-@pytest.mark.parametrize("settings_module", ["config.settings.local"])
+@pytest.mark.parametrize(
+    "settings_module",
+    ["config.settings.local", "config.settings.production"],
+)
 def test_dev_mode_tracks_debug(settings_module: str):
     result = subprocess.run(  # noqa: S603
         [sys.executable, "-c", PROBE],
@@ -59,4 +62,37 @@ def _inherited_env() -> dict[str, str]:
     # "no" simply skips the docker-specific INTERNAL_IPS block, which has no
     # bearing on the setting under test.
     env["USE_DOCKER"] = "no"
+    # production.py reads these with no default, deliberately: a production
+    # process that starts with a guessable key or an open host list is worse
+    # than one that refuses to start. The probe has to supply them.
+    env.setdefault("DJANGO_SECRET_KEY", "probe-only-never-signs-anything")
+    env.setdefault("DJANGO_ALLOWED_HOSTS", "localhost")
     return env
+
+
+def test_production_refuses_to_start_without_a_secret_key():
+    """The missing-key path has to fail, not fall back to a default.
+
+    Both local.py and test.py carry a hardcoded SECRET_KEY default, so the
+    obvious way to write production.py is to copy that line. This asserts the
+    deliberate absence of a default.
+    """
+    env = {k: v for k, v in _inherited_env().items() if k != "DJANGO_SECRET_KEY"}
+    env["DJANGO_SETTINGS_MODULE"] = "config.settings.production"
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", PROBE],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        env=env,
+        check=False,
+    )
+
+    assert result.returncode != 0, (
+        "config.settings.production loaded without DJANGO_SECRET_KEY; it must "
+        "not carry a default."
+    )
+    assert "DJANGO_SECRET_KEY" in result.stderr, (
+        f"production settings failed for some other reason:\n{result.stderr}"
+    )

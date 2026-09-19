@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -o errexit
+set -o pipefail
+set -o nounset
+
+# The local equivalent wraps this in watchfiles to reload on edit. Production
+# has no source to watch.
+exec celery -A config.celery_app worker -l INFO

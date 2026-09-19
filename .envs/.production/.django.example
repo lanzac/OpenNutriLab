@@ -1,0 +1,59 @@
+# Production environment for the django, celeryworker and celerybeat services.
+#
+# Copy this file to `.envs/.production/.django` and fill it in. That copy is
+# git-ignored and never enters the image (.dockerignore excludes .envs/):
+# values reach the container through docker compose at run time.
+
+# General
+# ------------------------------------------------------------------------------
+# The image already sets DJANGO_SETTINGS_MODULE=config.settings.production.
+
+# No default in the settings: the process refuses to start without it.
+# Generate one with:
+#   python -c "import secrets; print(secrets.token_urlsafe(64))"
+DJANGO_SECRET_KEY=
+
+# Comma-separated. A leading dot matches every subdomain.
+DJANGO_ALLOWED_HOSTS=opennutrilab.example,www.opennutrilab.example
+
+# Defaults to the https:// origin of each allowed host. Only set this when the
+# site is reached through an origin that is not in the list above.
+# DJANGO_CSRF_TRUSTED_ORIGINS=
+
+# Bots hammer /admin/ constantly. Any other path spares you the noise.
+# Must keep the trailing slash.
+DJANGO_ADMIN_URL=admin/
+
+# Security
+# ------------------------------------------------------------------------------
+# HSTS is not revocable: a browser that has seen this header refuses plain HTTP
+# for the whole duration. Raise it in steps once HTTPS is stable:
+# 60 -> 3600 -> 86400 -> 31536000.
+DJANGO_SECURE_HSTS_SECONDS=60
+
+# Redis
+# ------------------------------------------------------------------------------
+# Cache, Celery broker and Celery results. rediss:// switches on TLS.
+REDIS_URL=redis://redis:6379/0
+
+# Email
+# ------------------------------------------------------------------------------
+# ACCOUNT_EMAIL_VERIFICATION is "mandatory", so no one can finish a signup
+# until these point at a working SMTP server.
+DJANGO_DEFAULT_FROM_EMAIL=OpenNutriLab <noreply@opennutrilab.example>
+EMAIL_HOST=
+EMAIL_PORT=587
+EMAIL_HOST_USER=
+EMAIL_HOST_PASSWORD=
+EMAIL_USE_TLS=True
+
+# API clients (web SPA, mobile app)
+# ------------------------------------------------------------------------------
+# Only browsers and web views enforce CORS; a native HTTP client sends no Origin
+# header and needs nothing here. Scoped to /api/ by CORS_URLS_REGEX.
+# DJANGO_CORS_ALLOWED_ORIGINS=https://app.opennutrilab.example,capacitor://localhost
+
+# Media
+# ------------------------------------------------------------------------------
+# Matches the volume mounted in docker-compose.production.yml.
+DJANGO_MEDIA_ROOT=/app/opennutrilab/media

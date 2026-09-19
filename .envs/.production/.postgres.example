@@ -1,0 +1,18 @@
+# Production database credentials, shared by the postgres service and by the
+# entrypoint that builds DATABASE_URL from them.
+#
+# Copy this file to `.envs/.production/.postgres` and fill it in.
+#
+# To use a managed database instead of the bundled container, set DATABASE_URL
+# directly and drop the postgres service: the entrypoint leaves an existing
+# DATABASE_URL alone.
+#   DATABASE_URL=postgres://user:password@host:5432/dbname
+#   DJANGO_DATABASE_SSL_REQUIRE=True
+
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=opennutrilab
+POSTGRES_USER=
+# Generate one with:
+#   python -c "import secrets; print(secrets.token_urlsafe(32))"
+POSTGRES_PASSWORD=

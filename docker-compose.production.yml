@@ -1,0 +1,127 @@
+# Production stack for a single Docker host (a VPS at OVHcloud, Hostinger,
+# Scaleway or anywhere else that gives you a Linux machine and a public IP).
+#
+# Prerequisites, all of them git-ignored:
+#   .envs/.production/.django    - from .django.example
+#   .envs/.production/.postgres  - from .postgres.example
+#   .env                         - DOMAIN_NAME and ACME_EMAIL, read by compose
+#                                  to substitute the values below
+#
+# See docs/deployment.rst.
+
+# =========================
+# Named volumes for persistence
+# =========================
+volumes:
+  opennutrilab_production_postgres_data: {}
+  opennutrilab_production_postgres_data_backups: {}
+  opennutrilab_production_redis_data: {}
+  opennutrilab_production_django_media: {} # user uploads; outlives every deploy
+  opennutrilab_production_caddy_data: {} # certificates - losing this re-issues them
+  opennutrilab_production_caddy_config: {}
+
+# =========================
+# Services
+# =========================
+services:
+  # -------------------------
+  # Django application
+  # -------------------------
+  django: &django
+    build:
+      context: .
+      dockerfile: ./compose/production/django/Dockerfile
+    image: opennutrilab_production_django
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ./.envs/.production/.django
+      - ./.envs/.production/.postgres
+    volumes:
+      - opennutrilab_production_django_media:/app/opennutrilab/media
+    # Deliberately no published port: Caddy is the only route in, which is what
+    # makes uvicorn's --forwarded-allow-ips '*' safe.
+    expose:
+      - '8000'
+    command: /start
+
+  # -------------------------
+  # PostgreSQL
+  # -------------------------
+  postgres:
+    build:
+      context: .
+      dockerfile: ./compose/production/postgres/Dockerfile
+    image: opennutrilab_production_postgres
+    restart: unless-stopped
+    volumes:
+      - opennutrilab_production_postgres_data:/var/lib/postgresql/data
+      # Where compose/production/postgres/maintenance/backup writes.
+      - opennutrilab_production_postgres_data_backups:/backups
+    env_file:
+      - ./.envs/.production/.postgres
+    healthcheck:
+      test:
+        ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # -------------------------
+  # Redis (cache + Celery broker)
+  # -------------------------
+  redis:
+    # Newer than the local stack's redis:6, which is end of life. Nothing here
+    # depends on version-specific behaviour.
+    image: docker.io/redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - opennutrilab_production_redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # -------------------------
+  # Celery worker
+  # -------------------------
+  celeryworker:
+    <<: *django
+    image: opennutrilab_production_celeryworker
+    expose: []
+    command: /start-celeryworker
+
+  # -------------------------
+  # Celery beat
+  # -------------------------
+  celerybeat:
+    <<: *django
+    image: opennutrilab_production_celerybeat
+    expose: []
+    command: /start-celerybeat
+
+  # -------------------------
+  # Caddy (TLS termination + media)
+  # -------------------------
+  caddy:
+    image: docker.io/caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - django
+    environment:
+      DOMAIN_NAME: ${DOMAIN_NAME:?set DOMAIN_NAME in .env, e.g. opennutrilab.example}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env, the address for certificate expiry warnings}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp' # HTTP/3
+    volumes:
+      - ./compose/production/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - opennutrilab_production_django_media:/srv/media:ro
+      - opennutrilab_production_caddy_data:/data
+      - opennutrilab_production_caddy_config:/config

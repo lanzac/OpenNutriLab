@@ -96,6 +96,11 @@ celerybeat-schedule.*
 # Environments
 .env
 .venv
+
+# Production secrets. The .local ones are committed on purpose (throwaway
+# development credentials); these are not. Only the templates are tracked.
+.envs/.production/*
+!.envs/.production/*.example
 env/
 venv/
 ENV/

@@ -71,3 +71,50 @@ django-shell:
 
 django-container-shell:
     @docker exec -it opennutrilab_local_django /entrypoint bash
+
+
+# =============================================================================
+# Production
+#
+# These drive docker-compose.production.yml and are meant to be run on the
+# server, from a checkout of the repository. They need .envs/.production/.django,
+# .envs/.production/.postgres and a .env holding DOMAIN_NAME and ACME_EMAIL.
+# See docs/deployment.rst.
+# =============================================================================
+
+# prod-build: Build the production image (frontend bundle, deps, collectstatic).
+prod-build:
+    @echo "Building production image..."
+    @COMPOSE_FILE=docker-compose.production.yml docker compose build
+
+# prod-up: Start the production stack.
+prod-up:
+    @echo "Starting production stack..."
+    @COMPOSE_FILE=docker-compose.production.yml docker compose up -d --remove-orphans
+
+# prod-down: Stop the production stack.
+prod-down:
+    @echo "Stopping production stack..."
+    @COMPOSE_FILE=docker-compose.production.yml docker compose down
+
+# prod-logs: Follow production logs.
+prod-logs *args:
+    @COMPOSE_FILE=docker-compose.production.yml docker compose logs -f {{args}}
+
+# prod-manage: Execute a `manage.py` command against production.
+prod-manage +args:
+    @COMPOSE_FILE=docker-compose.production.yml docker compose run --rm django python ./manage.py {{args}}
+
+# prod-deploy: Pull, rebuild and restart. Migrations run from /start on boot.
+prod-deploy:
+    @git pull --ff-only
+    @COMPOSE_FILE=docker-compose.production.yml docker compose build
+    @COMPOSE_FILE=docker-compose.production.yml docker compose up -d --remove-orphans
+
+# prod-backup: Dump the database into the backups volume.
+prod-backup:
+    @COMPOSE_FILE=docker-compose.production.yml docker compose exec postgres backup
+
+# prod-backups: List the dumps held in the backups volume.
+prod-backups:
+    @COMPOSE_FILE=docker-compose.production.yml docker compose exec postgres backups

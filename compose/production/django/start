@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Exit immediately if a command exits with a non-zero status
+set -o errexit
+# Return value of a pipeline is the status of the last command to exit non-zero
+set -o pipefail
+# Treat unset variables as an error when substituting
+set -o nounset
+
+# Safe while a single container serves the app. Two replicas starting at once
+# would race here; move this to a one-off job before scaling out.
+python manage.py migrate --noinput
+
+# --proxy-headers makes uvicorn trust X-Forwarded-Proto, which is what tells
+# Django the original request was HTTPS; without it SECURE_SSL_REDIRECT sends
+# the client into a redirect loop. Trusting every forwarder is only safe
+# because the container publishes no port: the reverse proxy is the sole way in.
+exec uvicorn config.asgi:application \
+    --host 0.0.0.0 \
+    --port "${UVICORN_PORT:-8000}" \
+    --workers "${UVICORN_WORKERS:-2}" \
+    --proxy-headers \
+    --forwarded-allow-ips '*'
