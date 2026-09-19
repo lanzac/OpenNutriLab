@@ -1,0 +1,39 @@
+{% comment %}
+  Blocking, inline, and as early in <head> as possible, all three on purpose:
+  this has to run before the browser's first paint.
+
+  The site bundle sets data-bs-theme too, but vite_asset emits a module script,
+  and module scripts are deferred. By the time it runs the browser has already
+  painted the canvas in Bootstrap's default light background, so anyone using
+  the dark theme gets a white flash on every page load - measured at ~170 ms in
+  a production build.
+
+  body.fouc-hidden does not cover that: visibility:hidden hides the body's
+  contents, but the background propagated from body to the canvas is painted
+  regardless of it.
+
+  If a Content-Security-Policy is ever added, this script needs a nonce or a
+  hash in script-src. Without one it is silently dropped and the flash returns.
+
+  The resolution below mirrors setTheme() in frontend/src/site/theme-switcher.js.
+  It cannot import from it - this runs before any bundle exists - so the
+  duplication is deliberate, and frontend/src/site/theme-boot.test.js runs both
+  over every case and fails when they disagree.
+{% endcomment %}
+<script>
+  (function() {
+    var stored = null;
+    try {
+      stored = localStorage.getItem('bs-theme');
+    } catch (e) {
+      // Reading storage throws outright when cookies are blocked. Fall through
+      // to the system preference rather than leave the attribute unset.
+    }
+    var theme =
+      stored ||
+      (window.matchMedia('(prefers-color-scheme: light)').matches ?
+        'light' :
+        'dark');
+    document.documentElement.setAttribute('data-bs-theme', theme);
+  })();
+</script>

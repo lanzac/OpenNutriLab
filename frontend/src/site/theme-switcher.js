@@ -4,7 +4,11 @@
 // through a MutationObserver (see apps/products/form/plotly-theme.js): the two
 // stay decoupled, communicating only through the DOM.
 
-const STORAGE_KEY = 'bs-theme';
+// Also read by the inline boot script in
+// opennutrilab/templates/components/theme_boot.html, which sets the attribute
+// before the first paint. Exported so theme-boot.test.js can hold the two to
+// the same key.
+export const STORAGE_KEY = 'bs-theme';
 
 function setTheme(mode = 'auto') {
   const userMode = localStorage.getItem(STORAGE_KEY);

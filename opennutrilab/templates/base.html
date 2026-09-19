@@ -6,6 +6,8 @@
 <html lang="{{ LANGUAGE_CODE }}">
   <head>
     <meta charset="utf-8" />
+    {% comment %} Must stay ahead of the stylesheet and the bundle. See the partial. {% endcomment %}
+    {% include "components/theme_boot.html" %}
     <meta http-equiv="x-ua-compatible" content="ie=edge" />
     <title>
       {% block title %}
