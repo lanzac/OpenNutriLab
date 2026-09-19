@@ -53,4 +53,10 @@ def test_dev_mode_tracks_debug(settings_module: str):
 
 
 def _inherited_env() -> dict[str, str]:
-    return {k: v for k, v in os.environ.items() if k != "DJANGO_SETTINGS_MODULE"}
+    env = {k: v for k, v in os.environ.items() if k != "DJANGO_SETTINGS_MODULE"}
+    # local.py reads USE_DOCKER with no default and blows up when it is unset,
+    # so the probe must not depend on the ambient devcontainer environment.
+    # "no" simply skips the docker-specific INTERNAL_IPS block, which has no
+    # bearing on the setting under test.
+    env["USE_DOCKER"] = "no"
+    return env
