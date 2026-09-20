@@ -19,6 +19,14 @@ export default defineConfig({
       input: {
         // Site-wide shell: loaded by base.html on every page.
         site: resolve(import.meta.dirname, 'src/site/site-entry.js'),
+        // CSS-only entry, loaded through its own <link> tag rather than the
+        // 'site' entry above. See src/site/styles/site-styles.scss for why:
+        // it is what keeps the dev server from injecting this CSS via JS,
+        // which is what caused the load flash.
+        'site-styles': resolve(
+          import.meta.dirname,
+          'src/site/styles/site-styles.scss',
+        ),
         'products-list': resolve(
           import.meta.dirname,
           'src/apps/products/list-entry.jsx',

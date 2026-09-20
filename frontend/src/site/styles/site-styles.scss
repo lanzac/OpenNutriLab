@@ -1,0 +1,22 @@
+// CSS-only Vite entry point, separate from site-entry.js on purpose.
+//
+// A JS entry can only deliver CSS by executing first: Vite injects imported
+// CSS via a <style> tag written by the module's own JS. In development that
+// leaves the page briefly unstyled (a FOUC) while the deferred module runs
+// (measured at ~110ms). A CSS file used as a build entry point instead
+// becomes a real stylesheet resource, which base.html loads through a plain
+// <link rel="stylesheet"> - the browser blocks the first paint on it exactly
+// as it always has, in dev and in production alike. See notes/RESTE-A-FAIRE.md
+// point 3 for how this was measured.
+//
+// The three vendor stylesheets used to live in site-entry.js instead of here,
+// specifically so Vite would rewrite their font and flag asset URLs (see the
+// blame on that file). That rewriting happens regardless of whether the CSS
+// is reached through a JS import or through this file being a build entry:
+// verified by inspecting the built output, where fa-solid-900....woff2 comes
+// out correctly hashed under assets/ and no @import survives unresolved.
+@import '@fortawesome/fontawesome-free/css/all.css';
+@import 'bootstrap-icons/font/bootstrap-icons.css';
+@import 'flag-icons/css/flag-icons.min.css';
+
+@import './project.scss';

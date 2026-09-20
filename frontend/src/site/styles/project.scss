@@ -1,8 +1,8 @@
 // Bootstrap, with the project's variable overrides applied first.
 // The '~' node_modules prefix the webpack build used is a webpack convention;
-// Vite resolves bare specifiers directly. The vendor stylesheets that used to
-// be pulled in here (Font Awesome, Bootstrap Icons, flag-icons) are imported
-// from site-entry.js instead, so Vite rewrites their asset URLs.
+// Vite resolves bare specifiers directly. This file is itself imported from
+// site-styles.scss, which is what pulls in the vendor stylesheets (Font
+// Awesome, Bootstrap Icons, flag-icons) alongside it.
 @import 'custom_bootstrap_vars';
 @import 'bootstrap/scss/bootstrap';
 

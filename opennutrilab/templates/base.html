@@ -20,14 +20,20 @@
     <meta name="keywords" content="nutrition, open source" />
     <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}" />
     {% block css %}
-      <!-- Your stuff: Third-party CSS libraries go here -->
+      {# A real stylesheet link rather than vite_asset, on purpose: vite_asset #}
+      {# only emits a script tag, and CSS reached through a JS import is #}
+      {# injected by that script once it runs, unstyled until then. A #}
+      {# stylesheet link blocks the first paint on it the same way in dev #}
+      {# and in production. See frontend/src/site/styles/site-styles.scss. #}
+      <link rel="stylesheet"
+            href="{% vite_asset_url 'src/site/styles/site-styles.scss' %}" />
     {% endblock css %}
     <!-- Le javascript
     ================================================== -->
     {# Placed at the top of the document so pages load faster with defer #}
     {% block javascript %}
-      {# Site-wide bundle: Bootstrap, theme switcher, FOUC helper and the #}
-      {# project stylesheet. Module scripts are deferred by default. #}
+      {# Site-wide bundle: Bootstrap, theme switcher and the FOUC helper. #}
+      {# Module scripts are deferred by default. #}
       {% vite_hmr_client %}
       {% vite_react_refresh %}
       {% vite_asset 'src/site/site-entry.js' %}
