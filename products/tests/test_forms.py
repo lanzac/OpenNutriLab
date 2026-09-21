@@ -3,6 +3,7 @@ from unittest.mock import Mock
 from unittest.mock import patch
 
 import pytest
+import requests
 from crispy_forms.bootstrap import FieldWithButtons
 
 from products.api.openfoodfacts.schemas import OFFIngredientSchema
@@ -230,6 +231,34 @@ def test_save_with_fetched_image_and_delete():
         mock_delete.assert_called_once_with(path)  # check delete called
         mock_save.assert_called_once()  # file was saved
         assert product.image.name == path
+
+
+@pytest.mark.django_db
+def test_save_with_unreachable_image_host_keeps_product():
+    """
+    OFF's image CDN is a separate host from its API and can time out even
+    when the API answered fine (e.g. a stricter egress allowlist). This must
+    not crash the whole save: the product is kept, without an image, and the
+    form flags the failure for the view to report.
+    """
+    with patch("products.forms.requests.get") as mock_requests_get:
+        mock_requests_get.side_effect = requests.ConnectTimeout("timed out")
+
+        form = ProductForm(
+            data={
+                "barcode": "3242272270157",
+                "name": "Apple",
+                "energy_kj": 100,
+            }
+        )
+        form.extra_data = {"fetched_image_url": "https://example.com/apple.jpg"}
+        form.full_clean()
+
+        product: Product = form.save(commit=True)
+
+        assert form.image_fetch_failed is True
+        assert not product.image
+        assert Product.objects.filter(barcode="3242272270157").exists()
 
 
 @pytest.mark.django_db

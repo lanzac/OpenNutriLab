@@ -1,4 +1,5 @@
 import io
+import logging
 from typing import TYPE_CHECKING
 from typing import Any
 
@@ -39,6 +40,8 @@ if TYPE_CHECKING:
     from pint import Quantity
 
     from products.api.openfoodfacts.schemas import OFFIngredientSchema
+
+logger = logging.getLogger(__name__)
 
 
 class ProductForm(forms.ModelForm):
@@ -288,21 +291,35 @@ class ProductForm(forms.ModelForm):
         product: Product = super().save(commit=False)
 
         # Assign fetched image if needed
+        self.image_fetch_failed = False
         fetched_image_url = getattr(self, "extra_data", {}).get("fetched_image_url")
         if fetched_image_url:
-            resp = requests.get(fetched_image_url, timeout=10)
-            resp.raise_for_status()
-            filename = f"{self.cleaned_data['barcode']}.jpg"
+            try:
+                resp = requests.get(fetched_image_url, timeout=10)
+                resp.raise_for_status()
+            except requests.RequestException as e:
+                # OFF's image CDN is a separate host from its API and can be
+                # unreachable even when the API isn't (e.g. a stricter
+                # egress allowlist). This must not lose the rest of the form:
+                # save the product without the image and let the view warn.
+                logger.warning(
+                    "Failed to download product image from %s: %s",
+                    fetched_image_url,
+                    e,
+                )
+                self.image_fetch_failed = True
+            else:
+                filename = f"{self.cleaned_data['barcode']}.jpg"
 
-            new_image = InMemoryUploadedFile(  # pyright: ignore[reportAttributeAccessIssue]
-                io.BytesIO(resp.content),
-                field_name="image",
-                name=filename,
-                content_type="image/jpeg",
-                size=len(resp.content),
-                charset=None,
-            )
-            save_image_overwrite(product, new_image)
+                new_image = InMemoryUploadedFile(  # pyright: ignore[reportAttributeAccessIssue]
+                    io.BytesIO(resp.content),
+                    field_name="image",
+                    name=filename,
+                    content_type="image/jpeg",
+                    size=len(resp.content),
+                    charset=None,
+                )
+                save_image_overwrite(product, new_image)
 
         # Handle macronutrients
         for macronutrient in Macronutrient.objects.all():

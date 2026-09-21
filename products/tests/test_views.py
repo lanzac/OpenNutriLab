@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
+import requests
 from django.http.response import HttpResponse
 from django.test import Client
 from django.test import RequestFactory
@@ -167,6 +168,48 @@ class TestProductCreateView:
 class TestProductEditView:
     def setup_method(self):
         self.factory = RequestFactory()
+
+    @patch("products.forms.requests.get")
+    @patch("products.views.fetch_from_off")
+    def test_save_after_reset_warns_when_image_host_is_unreachable(
+        self,
+        mock_fetch_from_off: MagicMock,
+        mock_forms_requests_get: MagicMock,
+        client: Client,
+    ):
+        """
+        The image lives on a separate OFF host from the product API and can
+        time out on its own (e.g. a stricter egress allowlist than the API's).
+        This used to crash the save with an unhandled ConnectTimeout; it must
+        instead save the product and tell the user to add the photo by hand.
+        """
+        product = Product.objects.create(
+            barcode="3229820794556",
+            name="Stored Product",
+            energy_kj=10,
+        )
+        mock_fetch_from_off.return_value = OFFProductSchema(
+            barcode="3229820794556",
+            name="Stored Product",
+            image_url="https://images.openfoodfacts.org/apple.jpg",
+        )
+        mock_forms_requests_get.side_effect = requests.ConnectTimeout("timed out")
+
+        response: HttpResponse = client.post(
+            f"{reverse('edit_product', args=[product.pk])}?reset=1",
+            {
+                "barcode": "3229820794556",
+                "name": "Stored Product",
+                "energy_kj": 10,
+            },
+            follow=True,
+        )
+
+        assert response.status_code == 200  # noqa: PLR2004
+        product.refresh_from_db()
+        assert not product.image
+        notices = [str(m) for m in response.context["messages"]]
+        assert any("could not be downloaded" in n for n in notices), notices
 
     def test_get_form_raises_without_instance(self):
         view = ProductEditView()

@@ -2,6 +2,8 @@ import json
 from typing import TYPE_CHECKING
 from typing import Any
 
+from django.contrib import messages
+from django.http import HttpRequest
 from django.middleware.csrf import get_token
 from django.urls import reverse_lazy
 from django.utils.translation import get_language
@@ -94,6 +96,14 @@ class ProductCreateView(CreateView):
             **kwargs,
         )
 
+    def form_valid(self, form: form_class):
+        response = super().form_valid(form)
+        if getattr(form, "image_fetch_failed", False):
+            report_image_fetch_failure(
+                self.request, barcode=form.cleaned_data["barcode"]
+            )
+        return response
+
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         context: dict[str, Any] = super().get_context_data(**kwargs)  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
         context["macronutrients_api_url"] = reverse_lazy(
@@ -138,6 +148,14 @@ class ProductEditView(UpdateView):
             extra_data=extra_data,
             **kwargs,
         )
+
+    def form_valid(self, form: form_class):
+        response = super().form_valid(form)
+        if getattr(form, "image_fetch_failed", False):
+            report_image_fetch_failure(
+                self.request, barcode=form.cleaned_data["barcode"]
+            )
+        return response
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         context: dict[str, Any] = super().get_context_data(**kwargs)  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
@@ -198,6 +216,21 @@ def product_form_labels() -> dict[str, Any]:
             "enterBarcode": _("Please enter a barcode."),
         },
     }
+
+
+def report_image_fetch_failure(request: HttpRequest, barcode: str) -> None:
+    """
+    Tell the user the product was saved but its OpenFoodFacts image was not.
+
+    ProductForm.save() already logs the download error itself; this only
+    needs to stop the user from assuming the save failed, and point them at
+    a manual upload.
+    """
+    text = _(
+        "Product %(barcode)s was saved, but its photo could not be "
+        "downloaded from OpenFoodFacts. Please try again, or upload one by hand."
+    )
+    messages.warning(request, text % {"barcode": barcode})
 
 
 def prepare_product_form_data(
