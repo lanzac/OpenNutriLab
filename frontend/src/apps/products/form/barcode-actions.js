@@ -9,7 +9,11 @@ function reloadWith(param, value) {
   window.location.href = url.toString();
 }
 
-export function initBarcodeActions() {
+/**
+ * @param {{ enterBarcode: string }} labels Translated server-side (see
+ *   product_form_labels in products/views.py).
+ */
+export function initBarcodeActions(labels) {
   const fetchButton = document.getElementById('fetch-product-data');
   const resetButton = document.getElementById('reset-product-data');
   const barcodeField = document.getElementById('id_barcode');
@@ -20,8 +24,7 @@ export function initBarcodeActions() {
       if (barcode) {
         reloadWith('barcode', barcode);
       } else {
-        // TODO(i18n): hardcoded French, unlike the rest of the frontend.
-        alert('Veuillez entrer un code-barres.');
+        alert(labels.enterBarcode);
       }
     });
   }

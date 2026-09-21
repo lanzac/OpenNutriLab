@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-13 18:43+0000\n"
+"POT-Creation-Date: 2026-09-21 18:29+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -136,6 +136,9 @@ msgstr "Protéines"
 msgid "No data found"
 msgstr "Aucune donnée"
 
+msgid "Energy in kJ/100g of the product"
+msgstr "Énergie en kJ/100g du produit"
+
 msgid "Product name"
 msgstr "Nom du produit"
 
@@ -163,3 +166,27 @@ msgstr "Échec du chargement des produits."
 #, python-format
 msgid "Delete \"%(name)s\"?"
 msgstr "Supprimer « %(name)s » ?"
+
+msgid "Percentage"
+msgstr "Pourcentage"
+
+msgid "Recognized"
+msgstr "Reconnu"
+
+msgid "Others"
+msgstr "Autres"
+
+msgid "Please enter a barcode."
+msgstr "Veuillez entrer un code-barres."
+
+#, python-format
+msgid ""
+"Barcode %(barcode)s was not found in OpenFoodFacts. Please fill in the "
+"details by hand."
+msgstr ""
+
+#, python-format
+msgid ""
+"OpenFoodFacts could not be reached for barcode %(barcode)s. Please try "
+"again, or fill in the details by hand."
+msgstr ""

@@ -9,7 +9,12 @@ import { TabulatorFull as Tabulator } from 'tabulator-tables';
 import 'tabulator-tables/dist/css/tabulator_bootstrap5.min.css';
 import './tabulator.scss';
 
-export function initIngredientsTable() {
+/**
+ * @param {{ name: string, percentage: string, recognized: string }} labels
+ *   Column titles, translated server-side (see product_form_labels in
+ *   products/views.py) so the .po catalogue stays the single source of truth.
+ */
+export function initIngredientsTable(labels) {
   const tableDiv = document.getElementById('ingredients_table');
   if (!tableDiv) return;
 
@@ -26,10 +31,9 @@ export function initIngredientsTable() {
     dataTreeExpandElement: "<i class='fas fa-plus-square'></i>", //fontawesome toggle icon
     dataTreeStartExpanded: false,
     columns: [
-      // TODO(i18n): column titles reach the user untranslated.
-      { title: 'Name', field: 'name', responsive: 0 }, //never hide this column
+      { title: labels.name, field: 'name', responsive: 0 }, //never hide this column
       {
-        title: 'Percentage',
+        title: labels.percentage,
         field: 'percentage',
         responsive: 2,
         formatter: function (cell) {
@@ -40,7 +44,7 @@ export function initIngredientsTable() {
         },
       },
       {
-        title: 'Recognized',
+        title: labels.recognized,
         field: 'has_reference',
         hozAlign: 'center',
         formatter: 'tickCross',

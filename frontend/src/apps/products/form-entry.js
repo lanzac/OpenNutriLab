@@ -20,8 +20,14 @@ function ready(callback) {
 }
 
 ready(() => {
-  initBarcodeActions();
+  // Translated server-side (see product_form_labels in products/views.py),
+  // handed over the same way ProductListView does for the React list.
+  const labels = JSON.parse(
+    document.getElementById('product-form-labels').textContent,
+  );
+
+  initBarcodeActions(labels.barcodeActions);
   initPlotlyTheme();
-  initMacronutrientsGraph();
-  initIngredientsTable();
+  initMacronutrientsGraph(labels.macronutrientsGraph);
+  initIngredientsTable(labels.ingredientsTable);
 });

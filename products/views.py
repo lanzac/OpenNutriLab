@@ -99,6 +99,7 @@ class ProductCreateView(CreateView):
         context["macronutrients_api_url"] = reverse_lazy(
             "api-1.0.0:get_macronutrients_form_data"
         )
+        context["product_form_labels"] = product_form_labels()
         return context
 
 
@@ -143,6 +144,7 @@ class ProductEditView(UpdateView):
         context["macronutrients_api_url"] = reverse_lazy(
             "api-1.0.0:get_macronutrients_form_data"
         )
+        context["product_form_labels"] = product_form_labels()
         return context
 
 
@@ -152,6 +154,50 @@ class ProductDeleteView(DeleteView):
 
 
 # Utilities
+
+
+def product_form_labels() -> dict[str, Any]:
+    """
+    Translated strings for the vanilla-JS parts of the product form.
+
+    Handed to the page as one |json_script blob (see product_form.html),
+    consumed by frontend/src/apps/products/form-entry.js and passed down to
+    the ingredients table, the macronutrients chart and the barcode actions.
+    Same reasoning as ProductListView.product_list_props: translating here
+    keeps the .po catalogue the single source of truth instead of growing a
+    parallel JS-side one.
+
+    Several keys reuse the exact English text already translated elsewhere
+    on this page (the "Fat" / "of which Saturates" family from
+    ProductForm._add_nutritional_value_fields, "Name" from ProductForm.Meta.
+    labels): gettext matches by literal string, so no new .po entries are
+    needed for those, and the chart's wording for saturated fat and sugars
+    stays consistent with the input fields right next to it.
+    """
+    return {
+        "ingredientsTable": {
+            "name": _("Name"),
+            "percentage": _("Percentage"),
+            "recognized": _("Recognized"),
+        },
+        # Keyed like Macronutrient.name (see the migration that seeds it:
+        # products/migrations/0006_alter_macronutrient_labels_and_more.py),
+        # not like the display label, so the chart's structure survives
+        # translation. "others" has no corresponding row: it is the chart's
+        # own synthetic remainder slice.
+        "macronutrientsGraph": {
+            "fat": _("Fat"),
+            "saturatedFat": _("of which Saturates"),
+            "carbohydrates": _("Carbohydrates"),
+            "sugars": _("of which Sugars"),
+            "fiber": _("Fiber"),
+            "proteins": _("Proteins"),
+            "others": _("Others"),
+        },
+        "barcodeActions": {
+            "enterBarcode": _("Please enter a barcode."),
+        },
+    }
 
 
 def prepare_product_form_data(

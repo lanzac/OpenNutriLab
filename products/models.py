@@ -10,6 +10,7 @@ from django.db.models import UniqueConstraint
 from django.db.models.fields.related import ForeignKey
 from django.db.models.functions import Lower
 from django.db.models.functions import Upper
+from django.utils.translation import gettext_lazy as _
 
 from products.units import DEFAULT_VITAMIN_UNIT
 from products.units import VITAMIN_UNIT_CHOICES
@@ -228,7 +229,7 @@ class Product(models.Model):
                 limit_value=100_000, message="Energy seems too high"
             ),  # ajuster selon contexte
         ],
-        help_text="Energy in kJ/100g of the product",
+        help_text=_("Energy in kJ/100g of the product"),
     )
 
     # 🔹 Macronutrients

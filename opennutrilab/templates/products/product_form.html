@@ -41,6 +41,7 @@
     </div>
   </div>
   <div id="ingredients" class="hidden-data">{{ form.extra_data.ingredients_json|json_script:"ingredients-data" }}</div>
+  {{ product_form_labels|json_script:"product-form-labels" }}
   <script type="text/javascript">
     window.CONFIG = {
       macronutrientsApiUrl: "{{ macronutrients_api_url }}",

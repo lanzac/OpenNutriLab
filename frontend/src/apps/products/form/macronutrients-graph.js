@@ -11,29 +11,23 @@ import Plotly from 'plotly.js-strict-dist-min';
 const GRAPH_ID = 'macronutrients_graph';
 const TOTAL_PERCENTAGE = 100;
 
-const LABEL_COLORS = {
-  Total: '#ffffffff',
-  Fat: '#FF4136',
-  'Saturated Fat (of which)': '#FF725C',
-  Carbohydrates: '#FFDC00',
-  'Sugars (of which)': '#FFD700',
-  Fiber: '#2ECC40',
-  Proteins: '#0074D9',
-  Others: '#6d6d6dff',
-};
-
-// TODO(i18n): these labels reach the user untranslated; the .po catalogue
-// already carries most of them.
-const LABELS = [
-  'Fat',
-  'Saturated Fat',
-  'Carbohydrates',
-  'Sugars',
-  'Fiber',
-  'Proteins',
-  'Others',
+// One row per chart slice, in the order updatePlot() below fills `values`.
+// `key` matches Macronutrient.name in the database (see the migration that
+// seeds it: products/migrations/0006_alter_macronutrient_labels_and_more.py)
+// - except 'others', the chart's own synthetic remainder slice, with no row
+// of its own. `parent` is a key from this same list, not display text: the
+// displayed label is translated (see initMacronutrientsGraph), so Plotly's
+// parent/child structure has to be built from something that stays constant
+// across languages.
+const SLICES = [
+  { key: 'fat', parent: null, color: '#FF4136' },
+  { key: 'saturatedFat', parent: 'fat', color: '#FF725C' },
+  { key: 'carbohydrates', parent: null, color: '#FFDC00' },
+  { key: 'sugars', parent: 'carbohydrates', color: '#FFD700' },
+  { key: 'fiber', parent: null, color: '#2ECC40' },
+  { key: 'proteins', parent: null, color: '#0074D9' },
+  { key: 'others', parent: null, color: '#6d6d6dff' },
 ];
-const PARENTS = ['', 'Fat', '', 'Carbohydrates', '', '', ''];
 
 const plotLayout = {
   margin: { l: 0, r: 0, b: 0, t: 0 },
@@ -41,33 +35,42 @@ const plotLayout = {
   plot_bgcolor: 'rgba(0,0,0,0)',
 };
 
-function buildPlotData() {
+/**
+ * @param {Record<string, string>} labels Translated display text keyed like
+ *   SLICES (see product_form_labels in products/views.py).
+ */
+export function buildPlotData(labels) {
   return [
     {
       type: 'sunburst',
-      labels: LABELS,
-      parents: PARENTS,
-      values: [0, 0, 0, 0, 0, 0],
+      ids: SLICES.map((s) => s.key),
+      labels: SLICES.map((s) => labels[s.key]),
+      parents: SLICES.map((s) => s.parent ?? ''),
+      values: SLICES.map(() => 0),
       texttemplate: '%{label} (%{value:.2f}%)',
       textinfo: 'text',
       hovertemplate: '%{label}: %{value:.2f}%',
       name: '', // Remove default trace name
       marker: {
         line: { width: 2 },
-        colors: LABELS.map((l) => LABEL_COLORS[l]),
+        colors: SLICES.map((s) => s.color),
       },
       branchvalues: 'total',
     },
   ];
 }
 
-export function initMacronutrientsGraph() {
+/**
+ * @param {Record<string, string>} labels Translated slice labels, see
+ *   buildPlotData.
+ */
+export function initMacronutrientsGraph(labels) {
   const graphDiv = document.getElementById(GRAPH_ID);
   if (!graphDiv) return;
 
   const loader = document.getElementById('macronutrients_graph_loader');
   const plotInputs = document.querySelectorAll('#product-form .plot-input');
-  const plotData = buildPlotData();
+  const plotData = buildPlotData(labels);
 
   async function updatePlot() {
     const formData = new FormData();
