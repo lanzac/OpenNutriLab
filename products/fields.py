@@ -2,13 +2,14 @@ from typing import final
 
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 
 # EuropeanArticleNumber13
 def validate_ean13(value: str) -> None:
     ean13_len = 13
     if len(value) != ean13_len or not value.isdigit():
-        raise ValidationError(message="EAN-13 must be 13 digits.")
+        raise ValidationError(message=_("EAN-13 must be 13 digits."))
     checksum = (
         10
         - sum(
@@ -18,7 +19,7 @@ def validate_ean13(value: str) -> None:
         % 10
     ) % 10
     if checksum != int(value[-1]):
-        raise ValidationError(message="Invalid EAN-13 checksum.")
+        raise ValidationError(message=_("Invalid EAN-13 checksum."))
 
 
 @final

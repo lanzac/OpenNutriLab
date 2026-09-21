@@ -96,10 +96,12 @@ class IngredientRefMacronutrient(models.Model):
         max_digits=5,
         decimal_places=2,
         validators=[
-            MinValueValidator(limit_value=0, message="Amount cannot be negative"),
-            MaxValueValidator(limit_value=100, message="Amount too large"),
+            MinValueValidator(limit_value=0, message=_("Amount cannot be negative")),
+            MaxValueValidator(limit_value=100, message=_("Amount too large")),
         ],
-        help_text="Amount in g/100g of the macronutrient in the reference ingredient",
+        help_text=_(
+            "Amount in g/100g of the macronutrient in the reference ingredient"
+        ),
     )
 
     @final
@@ -183,10 +185,12 @@ class Ingredient(models.Model):
         max_digits=5,
         decimal_places=2,
         validators=[
-            MinValueValidator(limit_value=0, message="Percentage cannot be negative"),
-            MaxValueValidator(limit_value=100, message="Percentage too large"),
+            MinValueValidator(
+                limit_value=0, message=_("Percentage cannot be negative")
+            ),
+            MaxValueValidator(limit_value=100, message=_("Percentage too large")),
         ],
-        help_text="Percentage of the ingredient in the product",
+        help_text=_("Percentage of the ingredient in the product"),
     )
 
     class Meta:
@@ -224,9 +228,9 @@ class Product(models.Model):
     # 🔹 Energy
     energy_kj = models.IntegerField(
         validators=[
-            MinValueValidator(limit_value=0, message="Energy cannot be negative"),
+            MinValueValidator(limit_value=0, message=_("Energy cannot be negative")),
             MaxValueValidator(
-                limit_value=100_000, message="Energy seems too high"
+                limit_value=100_000, message=_("Energy seems too high")
             ),  # ajuster selon contexte
         ],
         help_text=_("Energy in kJ/100g of the product"),
@@ -274,16 +278,18 @@ class ProductVitamin(models.Model):
         max_length=5,
         choices=VITAMIN_UNIT_CHOICES,
         default=DEFAULT_VITAMIN_UNIT,
-        help_text="Unit used for this vitamin",
+        help_text=_("Unit used for this vitamin"),
     )
     amount_ug = models.DecimalField(
         max_digits=10,
         decimal_places=3,  # Precision until 0.001 µg, should be enough for vitamins
         validators=[
-            MinValueValidator(limit_value=0, message="Amount cannot be negative"),
-            MaxValueValidator(limit_value=1_000_000, message="Amount too large"),
+            MinValueValidator(limit_value=0, message=_("Amount cannot be negative")),
+            MaxValueValidator(limit_value=1_000_000, message=_("Amount too large")),
         ],
-        help_text="Amount in µg/100g (canonical unit µg) of the vitamin in the product",
+        help_text=_(
+            "Amount in µg/100g (canonical unit µg) of the vitamin in the product"
+        ),
     )
 
     # For this manually created intermediate table (with "through") I need to add
@@ -313,10 +319,10 @@ class ProductMacronutrient(models.Model):
         max_digits=5,
         decimal_places=2,
         validators=[
-            MinValueValidator(limit_value=0, message="Amount cannot be negative"),
-            MaxValueValidator(limit_value=100, message="Amount too large"),
+            MinValueValidator(limit_value=0, message=_("Amount cannot be negative")),
+            MaxValueValidator(limit_value=100, message=_("Amount too large")),
         ],
-        help_text=(
+        help_text=_(
             "Amount in g/100g (canonical unit g) of the macronutrient in the product"
         ),
     )

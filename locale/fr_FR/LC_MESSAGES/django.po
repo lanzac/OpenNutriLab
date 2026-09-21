@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-21 18:29+0000\n"
+"POT-Creation-Date: 2026-09-21 18:48+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -73,6 +73,12 @@ msgstr "Nom de l'utilisateur"
 msgid "Information successfully updated"
 msgstr "Informations mises à jour avec succès"
 
+msgid "EAN-13 must be 13 digits."
+msgstr "Le code EAN-13 doit comporter 13 chiffres."
+
+msgid "Invalid EAN-13 checksum."
+msgstr "Somme de contrôle EAN-13 invalide."
+
 msgid "Barcode"
 msgstr "Code barre"
 
@@ -136,8 +142,41 @@ msgstr "Protéines"
 msgid "No data found"
 msgstr "Aucune donnée"
 
+msgid "Amount cannot be negative"
+msgstr "La quantité ne peut pas être négative"
+
+msgid "Amount too large"
+msgstr "La quantité est trop élevée"
+
+msgid "Amount in g/100g of the macronutrient in the reference ingredient"
+msgstr "Quantité en g/100g du macronutriment dans l’ingrédient de référence"
+
+msgid "Percentage cannot be negative"
+msgstr "Le pourcentage ne peut pas être négatif"
+
+msgid "Percentage too large"
+msgstr "Le pourcentage est trop élevé"
+
+msgid "Percentage of the ingredient in the product"
+msgstr "Pourcentage de l’ingrédient dans le produit"
+
+msgid "Energy cannot be negative"
+msgstr "L’énergie ne peut pas être négative"
+
+msgid "Energy seems too high"
+msgstr "L’énergie semble trop élevée"
+
 msgid "Energy in kJ/100g of the product"
 msgstr "Énergie en kJ/100g du produit"
+
+msgid "Unit used for this vitamin"
+msgstr "Unité utilisée pour cette vitamine"
+
+msgid "Amount in µg/100g (canonical unit µg) of the vitamin in the product"
+msgstr "Quantité en µg/100g (unité canonique µg) de la vitamine dans le produit"
+
+msgid "Amount in g/100g (canonical unit g) of the macronutrient in the product"
+msgstr "Quantité en g/100g (unité canonique g) du macronutriment dans le produit"
 
 msgid "Product name"
 msgstr "Nom du produit"
