@@ -194,6 +194,9 @@ class ProductEditView(UpdateView):
 class ProductDeleteView(DeleteView):
     model = Product
     success_url = reverse_lazy("list_products")
+    # The product list POSTs here after its own confirm() prompt. A GET would
+    # render a confirmation template that does not exist, so refuse it.
+    http_method_names = ["post"]
 
 
 # Utilities

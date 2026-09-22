@@ -1,4 +1,5 @@
 import json
+from http import HTTPStatus
 from typing import TYPE_CHECKING
 from typing import Any
 from unittest.mock import MagicMock
@@ -355,6 +356,37 @@ class TestProductEditView:
 
         # Optional: ensure the form type is correct
         assert isinstance(form, ProductForm)
+
+
+@pytest.mark.django_db
+class TestProductDeleteView:
+    def test_get_is_not_allowed(self, client: Client):
+        """
+        Deleting is a POST from the product list, which asks for confirmation
+        client-side; there is no confirmation page to GET. Rendering one used
+        to crash with TemplateDoesNotExist.
+        """
+        product = Product.objects.create(
+            barcode="3229820794556", name="Apple", energy_kj=100
+        )
+        url = reverse("delete_product", kwargs={"pk": product.pk})
+
+        response: HttpResponse = client.get(url)
+
+        assert response.status_code == HTTPStatus.METHOD_NOT_ALLOWED
+        assert Product.objects.filter(pk=product.pk).exists()
+
+    def test_post_deletes_and_redirects_to_the_list(self, client: Client):
+        product = Product.objects.create(
+            barcode="3229820794556", name="Apple", energy_kj=100
+        )
+        url = reverse("delete_product", kwargs={"pk": product.pk})
+
+        response: HttpResponse = client.post(url)
+
+        assert response.status_code == HTTPStatus.FOUND
+        assert response["Location"] == reverse("list_products")
+        assert not Product.objects.filter(pk=product.pk).exists()
 
 
 def build_view_url(viewname: str, product: Product | None = None) -> str:
