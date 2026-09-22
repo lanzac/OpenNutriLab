@@ -8,10 +8,6 @@
   the dark theme gets a white flash on every page load - measured at ~170 ms in
   a production build.
 
-  body.fouc-hidden does not cover that: visibility:hidden hides the body's
-  contents, but the background propagated from body to the canvas is painted
-  regardless of it.
-
   If a Content-Security-Policy is ever added, this script needs a nonce or a
   hash in script-src. Without one it is silently dropped and the flash returns.
 

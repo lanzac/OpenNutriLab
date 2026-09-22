@@ -32,16 +32,20 @@
     ================================================== -->
     {# Placed at the top of the document so pages load faster with defer #}
     {% block javascript %}
-      {# Site-wide bundle: Bootstrap, theme switcher and the FOUC helper. #}
+      {# Site-wide bundle: Bootstrap's interactive parts and the theme switcher. #}
       {# Module scripts are deferred by default. #}
       {% vite_hmr_client %}
       {% vite_react_refresh %}
       {% vite_asset 'src/site/site-entry.js' %}
     {% endblock javascript %}
   </head>
-  {% comment %} Next line with style="visibility: hidden;" (in class fouc-hidden) -> See frontend/src/site/fouc.js for more details. {% endcomment %}
-  <body class="fouc-hidden {% block bodyclass %}{% endblock bodyclass %}">
-    {% comment %} Next line (script 0) : See frontend/src/site/fouc.js for more details. {% endcomment %}
+  <body class="{% block bodyclass %}{% endblock bodyclass %}">
+    {% comment %}
+      Firefox workaround: a script at the very top of the body makes Firefox
+      wait for the stylesheets in the head before its first paint. Without it
+      Firefox can paint the page unstyled for a moment. Chromium does not
+      need it, and it costs nothing.
+    {% endcomment %}
     <script>
       0
     </script>
@@ -133,12 +137,5 @@
     </script>
       {% endcomment %}
     {% endblock inline_javascript %}
-    {% comment %} Next line : See frontend/src/site/fouc.js for more details. {% endcomment %}
-    <noscript><style>
-  body {
-    visibility: visible;
-  }
-</style>
-  </noscript>
-</body>
+  </body>
 </html>
