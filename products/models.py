@@ -292,19 +292,18 @@ class ProductVitamin(models.Model):
         ),
     )
 
-    # For this manually created intermediate table (with "through") I need to add
-    # the unicity constraint because Django not doing it :(
-    constraints = [
-        models.UniqueConstraint(
-            fields=["product", "vitamin"], name="unique_product_vitamin"
-        ),
-    ]
-
     @final
     class Meta:
         verbose_name = "Product Vitamin"
         verbose_name_plural = "Product Vitamins"
         ordering = ["product", "vitamin"]
+        # A custom "through" table gets no uniqueness from Django, and the
+        # constraint only exists if it is declared here, inside Meta.
+        constraints = [
+            models.UniqueConstraint(
+                fields=["product", "vitamin"], name="unique_product_vitamin"
+            ),
+        ]
 
     @override
     def __str__(self) -> str:
@@ -327,20 +326,18 @@ class ProductMacronutrient(models.Model):
         ),
     )
 
-    # For this manually created intermediate table (with "through") I need to add
-    # the unicity constraint because Django not doing it :(
-    constraints = [
-        models.UniqueConstraint(
-            fields=["product", "macronutrient"],
-            name="unique_product_macronutrient",
-        ),
-    ]
-
     @final
     class Meta:
         verbose_name = "Product Macronutrient"
         verbose_name_plural = "Product Macronutrients"
         ordering = ["product", "macronutrient"]
+        # See ProductVitamin.Meta.
+        constraints = [
+            models.UniqueConstraint(
+                fields=["product", "macronutrient"],
+                name="unique_product_macronutrient",
+            ),
+        ]
 
     @override
     def __str__(self) -> str:

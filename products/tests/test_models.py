@@ -232,6 +232,20 @@ def test_productvitamin_str_representation() -> None:
     assert str(fv) == "Apple Ascorbic Acid (Vitamin C) amount"
 
 
+@pytest.mark.django_db
+def test_productvitamin_unique_per_product() -> None:
+    product = Product.objects.create(
+        barcode="3229820794556", name="Apple", energy_kj=100
+    )
+    vitamin = Vitamin.objects.create(
+        name="Ascorbic acid", atc_code="A11GA01", chembl_id="CHEMBL196"
+    )
+    ProductVitamin.objects.create(product=product, vitamin=vitamin, amount_ug=1)
+
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        ProductVitamin.objects.create(product=product, vitamin=vitamin, amount_ug=2)
+
+
 # ----------------------------------------------------------------------------
 # ProductMacronutrient model tests ----------------------------------------------
 # ----------------------------------------------------------------------------
@@ -246,6 +260,20 @@ def test_productmacronutrient_str_representation() -> None:
     )
 
     assert str(fm) == "BananaTest ProteinsTest amount"
+
+
+@pytest.mark.django_db
+def test_productmacronutrient_unique_per_product() -> None:
+    product = Product.objects.create(
+        barcode="3229820794556", name="Apple", energy_kj=100
+    )
+    fat = Macronutrient.objects.get(name="fat")
+    ProductMacronutrient.objects.create(product=product, macronutrient=fat, amount_g=1)
+
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        ProductMacronutrient.objects.create(
+            product=product, macronutrient=fat, amount_g=2
+        )
 
 
 # ----------------------------------------------------------------------------
