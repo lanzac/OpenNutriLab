@@ -428,7 +428,7 @@ def build_view_url(viewname: str, product: Product | None = None) -> str:
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("viewname", ["create_product", "edit_product"])
-def test_product_views_context_contains_macronutrients_url(
+def test_product_form_pages_hand_labels_to_the_scripts(
     client: Client,
     viewname: str,
 ) -> None:
@@ -445,11 +445,9 @@ def test_product_views_context_contains_macronutrients_url(
     response: HttpResponse = client.get(path=url)
 
     assert response.status_code == 200  # noqa: PLR2004
-    assert response.context is not None
-    assert "macronutrients_api_url" in response.context
-
-    expected_url: str = reverse(viewname="api-1.0.0:get_macronutrients_form_data")
-    assert response.context["macronutrients_api_url"] == expected_url
+    # form-entry.js reads its translated strings from this json_script blob
+    # and has no other configuration to receive from the server.
+    assert 'id="product-form-labels"' in response.content.decode()
 
 
 @pytest.mark.django_db

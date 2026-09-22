@@ -19,14 +19,43 @@ const TOTAL_PERCENTAGE = 100;
 // displayed label is translated (see initMacronutrientsGraph), so Plotly's
 // parent/child structure has to be built from something that stays constant
 // across languages.
+//
+// `field` is the name of the form input holding that slice's amount, as
+// ProductForm names it (Macronutrient.name_in_form). 'others' has none: it is
+// whatever the top-level slices leave of 100 g.
 const SLICES = [
-  { key: 'fat', parent: null, color: '#FF4136' },
-  { key: 'saturatedFat', parent: 'fat', color: '#FF725C' },
-  { key: 'carbohydrates', parent: null, color: '#FFDC00' },
-  { key: 'sugars', parent: 'carbohydrates', color: '#FFD700' },
-  { key: 'fiber', parent: null, color: '#2ECC40' },
-  { key: 'proteins', parent: null, color: '#0074D9' },
-  { key: 'others', parent: null, color: '#6d6d6dff' },
+  { key: 'fat', field: 'macronutrients_fat', parent: null, color: '#FF4136' },
+  {
+    key: 'saturatedFat',
+    field: 'macronutrients_saturated_fat',
+    parent: 'fat',
+    color: '#FF725C',
+  },
+  {
+    key: 'carbohydrates',
+    field: 'macronutrients_carbohydrates',
+    parent: null,
+    color: '#FFDC00',
+  },
+  {
+    key: 'sugars',
+    field: 'macronutrients_sugars',
+    parent: 'carbohydrates',
+    color: '#FFD700',
+  },
+  {
+    key: 'fiber',
+    field: 'macronutrients_fiber',
+    parent: null,
+    color: '#2ECC40',
+  },
+  {
+    key: 'proteins',
+    field: 'macronutrients_proteins',
+    parent: null,
+    color: '#0074D9',
+  },
+  { key: 'others', field: null, parent: null, color: '#6d6d6dff' },
 ];
 
 const plotLayout = {
@@ -61,6 +90,35 @@ export function buildPlotData(labels) {
 }
 
 /**
+ * Slice values, in SLICES order, for the amounts currently typed in.
+ *
+ * @param {(field: string) => string | undefined} readField Returns the raw
+ *   value of the form input with that name.
+ */
+export function sliceValues(readField) {
+  const amounts = {};
+  for (const slice of SLICES) {
+    if (slice.field) {
+      const amount = Number.parseFloat(readField(slice.field));
+      // An empty or unparsable field counts as 0, as it did when the server
+      // parsed these values.
+      amounts[slice.key] = Number.isFinite(amount) ? amount : 0;
+    }
+  }
+
+  // Children are part of their parent (saturates are fat), so only the
+  // top-level slices count towards the 100 g.
+  const used = SLICES.filter((s) => s.field && !s.parent).reduce(
+    (sum, s) => sum + amounts[s.key],
+    0,
+  );
+
+  return SLICES.map((s) =>
+    s.field ? amounts[s.key] : Math.max(TOTAL_PERCENTAGE - used, 0),
+  );
+}
+
+/**
  * @param {Record<string, string>} labels Translated slice labels, see
  *   buildPlotData.
  */
@@ -68,55 +126,16 @@ export function initMacronutrientsGraph(labels) {
   const graphDiv = document.getElementById(GRAPH_ID);
   if (!graphDiv) return;
 
+  const form = document.getElementById('product-form');
   const loader = document.getElementById('macronutrients_graph_loader');
-  const plotInputs = document.querySelectorAll('#product-form .plot-input');
+  const plotInputs = form.querySelectorAll('.plot-input');
   const plotData = buildPlotData(labels);
 
-  async function updatePlot() {
-    const formData = new FormData();
-    plotInputs.forEach((input) => {
-      const value = input.value?.trim();
-      formData.append(input.name, value === '' || value == null ? 0 : value);
-    });
-
-    const apiUrl = window.CONFIG?.macronutrientsApiUrl;
-    if (!apiUrl) {
-      console.error('API URL not found in window.CONFIG');
-      return;
-    }
-
-    try {
-      const params = new URLSearchParams(formData);
-      const response = await fetch(`${apiUrl}?${params.toString()}`);
-      if (!response.ok) throw new Error('network error');
-
-      const macronutrients = (await response.json())?.macronutrients;
-      if (!macronutrients) return;
-
-      const {
-        fat = 0,
-        saturated_fat = 0,
-        carbohydrates = 0,
-        sugars = 0,
-        fiber = 0,
-        proteins = 0,
-      } = macronutrients;
-      const used = fat + carbohydrates + fiber + proteins;
-
-      plotData[0].values = [
-        fat,
-        saturated_fat,
-        carbohydrates,
-        sugars,
-        fiber,
-        proteins,
-        Math.max(TOTAL_PERCENTAGE - used, 0),
-      ];
-
-      Plotly.react(GRAPH_ID, plotData, plotLayout);
-    } catch (error) {
-      console.error('Failed to update macronutrients graph:', error);
-    }
+  function updatePlot() {
+    plotData[0].values = sliceValues(
+      (field) => form.querySelector(`[name="${field}"]`)?.value,
+    );
+    Plotly.react(GRAPH_ID, plotData, plotLayout);
   }
 
   Plotly.newPlot(GRAPH_ID, plotData, plotLayout, {

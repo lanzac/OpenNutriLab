@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildPlotData } from './macronutrients-graph.js';
+import { buildPlotData, sliceValues } from './macronutrients-graph.js';
 
 // Stands in for product_form_labels()["macronutrientsGraph"] in
 // products/views.py - real French text, so a regression back to the
@@ -71,5 +71,42 @@ describe('buildPlotData', () => {
     // intended one.
     expect(trace.marker.colors).toHaveLength(trace.ids.length);
     trace.marker.colors.forEach((color) => expect(color).toBeTruthy());
+  });
+});
+
+describe('sliceValues', () => {
+  const read = (values) => (field) => values[field];
+
+  it('reads each slice from its form field, in SLICES order', () => {
+    const values = sliceValues(
+      read({
+        macronutrients_fat: '10.5',
+        macronutrients_saturated_fat: '3',
+        macronutrients_carbohydrates: '50',
+        macronutrients_sugars: '20',
+        macronutrients_fiber: '5',
+        macronutrients_proteins: '15',
+      }),
+    );
+
+    // others = 100 - (fat + carbohydrates + fiber + proteins): children are
+    // already inside their parent and must not be counted twice.
+    expect(values).toEqual([10.5, 3, 50, 20, 5, 15, 19.5]);
+  });
+
+  it('counts empty, missing and unparsable fields as 0', () => {
+    const values = sliceValues(
+      read({ macronutrients_fat: '', macronutrients_proteins: 'abc' }),
+    );
+
+    expect(values).toEqual([0, 0, 0, 0, 0, 0, 100]);
+  });
+
+  it('never makes the remainder negative', () => {
+    const values = sliceValues(
+      read({ macronutrients_fat: '80', macronutrients_proteins: '40' }),
+    );
+
+    expect(values.at(-1)).toBe(0);
   });
 });

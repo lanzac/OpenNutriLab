@@ -123,9 +123,6 @@ class ProductCreateView(CreateView):
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         context: dict[str, Any] = super().get_context_data(**kwargs)  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
-        context["macronutrients_api_url"] = reverse_lazy(
-            "api-1.0.0:get_macronutrients_form_data"
-        )
         context["product_form_labels"] = product_form_labels()
         return context
 
@@ -184,9 +181,6 @@ class ProductEditView(UpdateView):
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         context: dict[str, Any] = super().get_context_data(**kwargs)  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
-        context["macronutrients_api_url"] = reverse_lazy(
-            "api-1.0.0:get_macronutrients_form_data"
-        )
         context["product_form_labels"] = product_form_labels()
         return context
 

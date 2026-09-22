@@ -151,31 +151,6 @@ class OFFProductAPIResponseSchema(Schema):
     product: OFFProductSchema | None = None
 
 
-# Form -----------------------------------------------------------------------
-class MacronutrientsFormSchema(Schema):
-    fat: float | None = Field(default=None, alias="macronutrients_fat")
-    saturated_fat: float | None = Field(
-        default=None,
-        alias="macronutrients_saturated_fat",
-    )
-    carbohydrates: float | None = Field(
-        default=None,
-        alias="macronutrients_carbohydrates",
-    )
-    sugars: float | None = Field(
-        default=None,
-        alias="macronutrients_sugars",
-    )
-    fiber: float | None = Field(
-        default=None,
-        alias="macronutrients_fiber",
-    )
-    proteins: float | None = Field(
-        default=None,
-        alias="macronutrients_proteins",
-    )
-
-
 class ProductFormSchema(Schema):
     """Schema used to map product data into ProductForm initial data."""
 
