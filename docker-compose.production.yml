@@ -7,7 +7,7 @@
 #   .env                         - DOMAIN_NAME and ACME_EMAIL, read by compose
 #                                  to substitute the values below
 #
-# See docs/deployment.rst.
+# See docs/deployment.md.
 
 # =========================
 # Named volumes for persistence

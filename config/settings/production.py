@@ -3,7 +3,7 @@
 
 Nothing here is specific to a hosting provider: every value that changes from
 one machine to the next is read from the environment, so the same image runs on
-a VPS, on a managed container platform, or in CI. See docs/deployment.rst.
+a VPS, on a managed container platform, or in CI. See docs/deployment.md.
 """
 
 from .base import *  # noqa: F403

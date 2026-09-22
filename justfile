@@ -89,7 +89,7 @@ playwright:
 # These drive docker-compose.production.yml and are meant to be run on the
 # server, from a checkout of the repository. They need .envs/.production/.django,
 # .envs/.production/.postgres and a .env holding DOMAIN_NAME and ACME_EMAIL.
-# See docs/deployment.rst.
+# See docs/deployment.md.
 # =============================================================================
 
 # prod-build: Build the production image (frontend bundle, deps, collectstatic).
