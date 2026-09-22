@@ -1,4 +1,3 @@
-import json
 from http import HTTPStatus
 from typing import TYPE_CHECKING
 from typing import Any
@@ -485,9 +484,11 @@ def test_prepare_product_form_data_with_fetched_product_and_refs():
     # --- Assert ---
     assert "fetched_image_url" in extra_data
     assert "ingredients" in extra_data
-    assert "ingredients_json" in extra_data
+    assert "ingredients_table_data" in extra_data
 
-    payload = json.loads(extra_data["ingredients_json"])
+    # Plain Python data: the template's json_script is the only serialiser.
+    payload = extra_data["ingredients_table_data"]
+    assert isinstance(payload, list)
     assert len(payload) == 2  # noqa: PLR2004
     assert payload[0]["name"] == "Sugar"
     assert payload[0]["has_reference"] is True

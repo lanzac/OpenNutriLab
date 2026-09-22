@@ -19,9 +19,12 @@ export function initIngredientsTable(labels) {
   if (!tableDiv) return;
 
   const loader = document.getElementById('ingredients_graph_loader');
-  const ingredientsData = JSON.parse(
+  // An array of rows, or nothing at all when the form has no ingredients yet
+  // (a new product that was not fetched from OpenFoodFacts).
+  const rows = JSON.parse(
     document.getElementById('ingredients-data').textContent,
   );
+  const ingredientsData = Array.isArray(rows) ? rows : [];
 
   new Tabulator('#ingredients_table', {
     height: '311px',

@@ -1,4 +1,3 @@
-import json
 import logging
 from http import HTTPStatus
 from typing import TYPE_CHECKING
@@ -313,24 +312,20 @@ def prepare_product_form_data(
         # Ingredients from fetched_product
         extra_data["ingredients"] = fetched_product.ingredients
         if fetched_product.ingredients:
-            extra_data["ingredients_json"] = json.dumps(
-                [
-                    build_ingredient_json_from_schema(ingredient, reference_names)
-                    for ingredient in fetched_product.ingredients
-                ]
-            )
+            extra_data["ingredients_table_data"] = [
+                build_ingredient_json_from_schema(ingredient, reference_names)
+                for ingredient in fetched_product.ingredients
+            ]
     elif product_instance is not None:
         # Edit normal (no reset) → ingredients from DB
         ingredients: list[OFFIngredientSchema] = get_schema_from_ingredients(
             product_instance
         )
         extra_data["ingredients"] = ingredients
-        extra_data["ingredients_json"] = json.dumps(
-            [
-                build_ingredient_json_from_schema(ingredient, reference_names)
-                for ingredient in ingredients
-            ]
-        )
+        extra_data["ingredients_table_data"] = [
+            build_ingredient_json_from_schema(ingredient, reference_names)
+            for ingredient in ingredients
+        ]
     else:
         msg = "Either product_instance or fetched_product must be provided"
         raise ValueError(msg)
