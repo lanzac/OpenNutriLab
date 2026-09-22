@@ -1,1 +1,31 @@
 {% extends "base.html" %}
+
+{% load i18n %}
+
+{% block title %}
+  {% translate "About" %}
+{% endblock title %}
+{% block content %}
+  <div class="py-5 col-lg-8 mx-auto">
+    <h1 class="mb-4">{% translate "About" %}</h1>
+    <p>
+      {% blocktranslate trimmed %}
+        OpenNutriLab is a web application that aims to provide interactive tools
+        for nutrition tracking and meal planning.
+      {% endblocktranslate %}
+    </p>
+    <p>
+      {% blocktranslate trimmed %}
+        It is in its MVP phase: a simplified version with only the essential
+        features, to validate ideas and gather feedback. Features, data and the
+        API may change frequently as the project evolves.
+      {% endblocktranslate %}
+    </p>
+    <p>
+      {% blocktranslate trimmed %}
+        OpenNutriLab is free software, released under the GNU General Public
+        License, version 3 or later.
+      {% endblocktranslate %}
+    </p>
+  </div>
+{% endblock content %}

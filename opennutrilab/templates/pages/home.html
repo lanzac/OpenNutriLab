@@ -1,1 +1,11 @@
 {% extends "base.html" %}
+
+{% load i18n %}
+
+{% block content %}
+  <div class="py-5 text-center">
+    <h1 class="display-5 fw-bold">OpenNutriLab</h1>
+    <p class="lead mb-4">{% translate "An open-source app for precise food and meal analysis." %}</p>
+    <a class="btn btn-primary btn-lg" href="{% url 'list_products' %}">{% translate "Browse the inventory" %}</a>
+  </div>
+{% endblock content %}

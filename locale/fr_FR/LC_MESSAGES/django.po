@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-21 18:48+0000\n"
+"POT-Creation-Date: 2026-09-22 21:47+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -42,6 +42,28 @@ msgstr "Se déconnecter"
 
 msgid "Sign Up"
 msgstr "S'inscrire"
+
+msgid ""
+"OpenNutriLab is a web application that aims to provide interactive tools for "
+"nutrition tracking and meal planning."
+msgstr "OpenNutriLab est une application web qui vise à fournir des outils interactifs de suivi nutritionnel et de planification des repas."
+
+msgid ""
+"It is in its MVP phase: a simplified version with only the essential "
+"features, to validate ideas and gather feedback. Features, data and the API "
+"may change frequently as the project evolves."
+msgstr "Le projet est en phase de MVP : une version simplifiée, limitée aux fonctionnalités essentielles, pour valider les idées et recueillir des retours. Les fonctionnalités, les données et l'API peuvent changer fréquemment au fil de son évolution."
+
+msgid ""
+"OpenNutriLab is free software, released under the GNU General Public "
+"License, version 3 or later."
+msgstr "OpenNutriLab est un logiciel libre, distribué sous la licence publique générale GNU, version 3 ou ultérieure."
+
+msgid "An open-source app for precise food and meal analysis."
+msgstr "Une application open source pour analyser précisément aliments et repas."
+
+msgid "Browse the inventory"
+msgstr "Parcourir l'inventaire"
 
 msgid "Edit product"
 msgstr "Éditer un produit"
@@ -139,9 +161,6 @@ msgstr "Fibres"
 msgid "Proteins"
 msgstr "Protéines"
 
-msgid "No data found"
-msgstr "Aucune donnée"
-
 msgid "Amount cannot be negative"
 msgstr "La quantité ne peut pas être négative"
 
@@ -173,10 +192,12 @@ msgid "Unit used for this vitamin"
 msgstr "Unité utilisée pour cette vitamine"
 
 msgid "Amount in µg/100g (canonical unit µg) of the vitamin in the product"
-msgstr "Quantité en µg/100g (unité canonique µg) de la vitamine dans le produit"
+msgstr ""
+"Quantité en µg/100g (unité canonique µg) de la vitamine dans le produit"
 
 msgid "Amount in g/100g (canonical unit g) of the macronutrient in the product"
-msgstr "Quantité en g/100g (unité canonique g) du macronutriment dans le produit"
+msgstr ""
+"Quantité en g/100g (unité canonique g) du macronutriment dans le produit"
 
 msgid "Product name"
 msgstr "Nom du produit"
@@ -229,3 +250,12 @@ msgid ""
 "OpenFoodFacts could not be reached for barcode %(barcode)s. Please try "
 "again, or fill in the details by hand."
 msgstr ""
+
+#, python-format
+msgid ""
+"Product %(barcode)s was saved, but its photo could not be downloaded from "
+"OpenFoodFacts. Please try again, or upload one by hand."
+msgstr ""
+
+#~ msgid "No data found"
+#~ msgstr "Aucune donnée"
