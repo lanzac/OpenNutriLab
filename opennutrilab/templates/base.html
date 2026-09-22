@@ -15,7 +15,8 @@
       {% endblock title %}
     </title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Behold OpenNutriLab!" />
+    <meta name="description"
+          content="An open-source app for precise food and meal analysis." />
     <meta name="author" content="André Lanrezac" />
     <meta name="keywords" content="nutrition, open source" />
     <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}" />
@@ -53,7 +54,7 @@
       <div class="mb-1">
         <nav class="navbar navbar-expand-md bg-body-tertiary">
           <div class="container-fluid">
-            <button class="navbar-toggler navbar-toggler-right"
+            <button class="navbar-toggler"
                     type="button"
                     data-bs-toggle="collapse"
                     data-bs-target="#navbarSupportedContent"
@@ -64,7 +65,7 @@
             </button>
             <a class="navbar-brand" href="{% url 'home' %}">OpenNutriLab</a>
             <div class="collapse navbar-collapse" id="navbarSupportedContent">
-              <ul class="navbar-nav mr-auto">
+              <ul class="navbar-nav">
                 <li class="nav-item active">
                   <a class="nav-link" href="{% url 'home' %}">{% translate "Home" %} <span class="visually-hidden">(current)</span></a>
                 </li>
