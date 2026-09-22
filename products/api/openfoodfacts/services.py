@@ -108,10 +108,6 @@ def fetch_from_off(
 
     # Validation Pydantic
     try:
-        # We keep it in case if we need later more than one alias for one field:
-        # from .data_mapping import openfoodfacts_data_mapping as spec  # noqa: ERA001
-        # result = cast("dict[str, Any]", glom(target=data, spec=spec))  # noqa: ERA001
-        # Eventually use AliasChoices from pydantic lib
         api_product_response = OFFProductAPIResponseSchema.model_validate(data)
     except ValidationError as e:
         raise HttpError(

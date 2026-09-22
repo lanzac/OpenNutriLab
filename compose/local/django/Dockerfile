@@ -75,12 +75,11 @@ COPY ./compose/production/django/entrypoint /entrypoint
 COPY ./compose/local/django/start /start
 COPY ./compose/local/django/celery/worker/start /start-celeryworker
 COPY ./compose/local/django/celery/beat/start /start-celerybeat
-COPY ./compose/local/django/celery/flower/start /start-flower
 
 # Fix line endings, set execution rights, and transfer ownership (instant operation)
-RUN sed -i 's/\r$//g' /entrypoint /start /start-celeryworker /start-celerybeat /start-flower \
-    && chmod +x /entrypoint /start /start-celeryworker /start-celerybeat /start-flower \
-    && chown dev-user:dev-user /entrypoint /start /start-celeryworker /start-celerybeat /start-flower
+RUN sed -i 's/\r$//g' /entrypoint /start /start-celeryworker /start-celerybeat \
+    && chmod +x /entrypoint /start /start-celeryworker /start-celerybeat \
+    && chown dev-user:dev-user /entrypoint /start /start-celeryworker /start-celerybeat
 
 # Ensure the directories backed by named volumes exist and are owned by dev-user.
 # Docker creates a missing mount target as root:root, which would leave them
