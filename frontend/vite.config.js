@@ -3,10 +3,9 @@ import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-// This config is intentionally scoped to the products area for now. Entries
-// are added incrementally as pages move over (see the migration plan). The
-// global site bundle (nav, Bootstrap, theme switcher) stays on the existing
-// Webpack pipeline until the final cutover.
+// One build entry per page bundle, plus the site-wide shell and its separate
+// stylesheet entry. base.html and the page templates load them through
+// django-vite's {% vite_asset %} / {% vite_asset_url %} tags.
 export default defineConfig({
   plugins: [react()],
   // Matches STATIC_URL + DJANGO_VITE.static_url_prefix in config/settings/base.py

@@ -1,9 +1,5 @@
 // Keeps Plotly charts in step with the Bootstrap 5 theme switcher, which
-// flips <html data-bs-theme="...">. Ported from
-// opennutrilab/static/js/plotly_loader.js (webpack entry 'plotly_loader').
-//
-// That module also did `window.Plotly = Plotly` so other scripts could reach
-// it; with Vite every consumer imports Plotly directly instead.
+// flips <html data-bs-theme="...">.
 import Plotly from 'plotly.js-strict-dist-min';
 
 const DARK_PAPER_BG = 'rgb(17,17,17)';

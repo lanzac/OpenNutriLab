@@ -127,10 +127,7 @@ services:
     command: /start-celerybeat
 
   # -------------------------
-  # Node (frontend)
-  # -------------------------
-  # -------------------------
-  # Vite (React frontend, migration in progress - see frontend/)
+  # Vite dev server (frontend/)
   # -------------------------
   vite:
     build:
@@ -143,8 +140,8 @@ services:
     volumes:
       - ./frontend:/app:z
       - opennutrilab_local_vite_node_modules:/app/node_modules
-    # Same as the node service: the named volume hides whatever the image
-    # installed, so dependencies are installed on start instead.
+    # The named volume hides whatever the image installed, so dependencies
+    # are installed on start instead.
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
     ports:
       - '5173:5173'

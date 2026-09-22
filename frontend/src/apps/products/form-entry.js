@@ -1,10 +1,8 @@
 // Entry point for the product create/edit form (see
 // opennutrilab/templates/products/product_form.html).
 //
-// Replaces three webpack bundles - fetch_barcode, plotly_loader,
-// tabulator_loader - plus the two scripts that used to be served raw through
-// {% static %}. Vanilla DOM code for now: this is a build-pipeline move, not
-// a React port.
+// Vanilla DOM code driving the server-rendered (crispy-forms) form: the
+// barcode buttons, the macronutrient chart and the ingredients tree.
 import { initBarcodeActions } from './form/barcode-actions.js';
 import { initIngredientsTable } from './form/ingredients-table.js';
 import { initMacronutrientsGraph } from './form/macronutrients-graph.js';

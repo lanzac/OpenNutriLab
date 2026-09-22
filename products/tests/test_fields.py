@@ -18,9 +18,9 @@ def test_valid_ean13(ean13_field: EAN13Field) -> None:
 @pytest.mark.parametrize(
     "value",
     [
-        "3560071429501",  # mauvais checksum
-        "356007142950",  # trop court
-        "abcdefghijklm",  # non numérique
+        "3560071429501",  # wrong checksum
+        "356007142950",  # too short
+        "abcdefghijklm",  # not numeric
     ],
 )
 def test_invalid_ean13_values(ean13_field: EAN13Field, value: str) -> None:

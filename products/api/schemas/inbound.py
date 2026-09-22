@@ -48,7 +48,7 @@ class ProductCreate(Schema):
     @field_validator("barcode")
     @classmethod
     def validate_barcode_format(cls, barcode: str) -> str:
-        # On réutilise ta fonction de validation existante
+        # Same rule as the model field (products.fields.EAN13Field).
         try:
             validate_ean13(value=barcode)
         except DjangoValidationError as e:
@@ -60,24 +60,22 @@ class ProductCreate(Schema):
 
 
 # -------------------------------------------------------------
-# UPDATE SCHEMAS (PATCH) - Tout est optionnel pour permettre une mise à jour partielle
+# UPDATE SCHEMAS (PATCH) - every field is optional, for partial updates
 # -------------------------------------------------------------
 
 
-# On réutilise MacronutrientIn ou on en crée un spécifique
 class MacronutrientUpdate(Schema):
     name: str
     amount_g: Decimal
 
 
 class NutritionalValuesUpdate(Schema):
-    # Tout est Optionnel ici pour permettre une mise à jour partielle
     energy_kj: int | None = None
     macronutrients: list[MacronutrientUpdate] | None = None
 
 
 class ProductUpdate(Schema):
-    # On ne met pas le barcode ici car il ne change pas
+    # No barcode: it is the primary key and never changes.
     name: str | None = None
     description: str | None = None
     image_url: str | None = None

@@ -1,7 +1,6 @@
 // Barcode fetch / reset buttons on the product form. Both reload the page
-// with a query parameter that ProductCreateView reads server-side.
-// Ported from opennutrilab/static/js/fetch_barcode.js (webpack entry
-// 'fetch_barcode') without behaviour changes.
+// with a query parameter the create and edit views read server-side
+// (?barcode= and ?reset=1).
 
 function reloadWith(param, value) {
   const url = new URL(window.location.href);

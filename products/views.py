@@ -291,7 +291,6 @@ def prepare_product_form_data(
 
     :param product_instance: Product from DB (for Edit)
     :param fetched_product: OFFProductSchema from API (for Create or Edit reset)
-    :param reset: whether to force fetch_product even on Edit
     :param extra_data: existing extra_data dict
     :return: tuple(initial, extra_data)
     """

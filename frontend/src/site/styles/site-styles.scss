@@ -6,15 +6,12 @@
 // (measured at ~110ms). A CSS file used as a build entry point instead
 // becomes a real stylesheet resource, which base.html loads through a plain
 // <link rel="stylesheet"> - the browser blocks the first paint on it exactly
-// as it always has, in dev and in production alike. See notes/RESTE-A-FAIRE.md
-// point 3 for how this was measured.
+// as it always has, in dev and in production alike.
 //
-// The three vendor stylesheets used to live in site-entry.js instead of here,
-// specifically so Vite would rewrite their font and flag asset URLs (see the
-// blame on that file). That rewriting happens regardless of whether the CSS
-// is reached through a JS import or through this file being a build entry:
-// verified by inspecting the built output, where fa-solid-900....woff2 comes
-// out correctly hashed under assets/ and no @import survives unresolved.
+// Vite still rewrites the vendor stylesheets' font and flag URLs when the CSS
+// is a build entry rather than a JS import: in the built output the Font
+// Awesome .woff2 files come out hashed under assets/ and no @import survives
+// unresolved.
 @import '@fortawesome/fontawesome-free/css/all.css';
 @import 'bootstrap-icons/font/bootstrap-icons.css';
 @import 'flag-icons/css/flag-icons.min.css';

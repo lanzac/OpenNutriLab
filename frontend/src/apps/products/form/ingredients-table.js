@@ -1,9 +1,5 @@
-// Collapsible ingredients tree on the product form. Ported from
-// products/static/products/js/product_form_ingredients_table.js, previously
-// served raw through {% static %}.
-//
-// Tabulator used to arrive as a global set by tabulator_loader.js; it is
-// imported directly now, along with its stylesheet.
+// Collapsible ingredients tree on the product form, rendered by Tabulator
+// from the rows the view serialises into the page (#ingredients-data).
 import { TabulatorFull as Tabulator } from 'tabulator-tables';
 
 import 'tabulator-tables/dist/css/tabulator_bootstrap5.min.css';

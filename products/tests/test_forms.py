@@ -17,7 +17,7 @@ from products.models import ProductMacronutrient
 @pytest.mark.django_db
 class TestBuildBarcodeField:
     def test_create_mode_returns_fieldwithbuttons(self):
-        form = ProductForm(instance=Product())  # pas de pk
+        form = ProductForm(instance=Product())  # no pk
         field: FieldWithButtons = form._get_barcode_field_layout()  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
 
         assert isinstance(field, FieldWithButtons)
@@ -29,10 +29,9 @@ class TestBuildBarcodeField:
         form = ProductForm(instance=product)
         field: FieldWithButtons = form._get_barcode_field_layout()  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
 
-        # Doit être un Field simple
         assert isinstance(field, FieldWithButtons)
 
-        # Le widget doit être readonly et avec la classe bg-light
+        # The barcode is the primary key: it is read-only once saved.
         widget_attrs = form.fields["barcode"].widget.attrs
         assert widget_attrs["readonly"] is True
 
@@ -45,7 +44,7 @@ def test_macronutrient_field_initialized_with_existing_amount_g():
     )
     macronutrient, _ = Macronutrient.objects.get_or_create(name="proteins")
 
-    # Créons une entrée ProductMacronutrient avec un certain amount_g
+    # An existing ProductMacronutrient with some amount_g
     ProductMacronutrient.objects.create(
         product=product,
         macronutrient=macronutrient,
@@ -71,7 +70,7 @@ def test_macronutrient_field_not_initialized_without_existing_amount_g():
     )
     macronutrient, _ = Macronutrient.objects.get_or_create(name="fat")
 
-    # Pas de ProductMacronutrient créé
+    # No ProductMacronutrient created
     form = ProductForm(instance=product)
 
     # Act

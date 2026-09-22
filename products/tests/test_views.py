@@ -20,9 +20,9 @@ from products.api.openfoodfacts.schemas import product_schema_to_form_data
 from products.forms import ProductForm
 from products.models import IngredientRef
 from products.models import Product
-from products.views import ProductCreateView  # adapte à ton module
-from products.views import ProductEditView  # adapte à ton module
-from products.views import prepare_product_form_data  # adapte à ton module
+from products.views import ProductCreateView
+from products.views import ProductEditView
+from products.views import prepare_product_form_data
 
 if TYPE_CHECKING:
     from django.http.response import HttpResponse
@@ -171,19 +171,15 @@ class TestProductCreateView:
         assert any("could not be reached" in n for n in notices), notices
 
     def test_get_form_without_barcode(self):
-        """Le formulaire doit être vide si aucun code-barres n'est fourni."""
+        """The form is empty when no barcode is given."""
         request = self.factory.get("/products/new/")
         view = ProductCreateView()
         view.request = request
 
         form = view.get_form()  # pyright: ignore[reportUnknownMemberType]
 
-        assert isinstance(form, ProductForm), (
-            "Le formulaire retourné n'est pas une instance de ProductForm"
-        )
-        assert form.initial == {}, (
-            f"Le formulaire initial n'est pas vide : {form.initial}"
-        )
+        assert isinstance(form, ProductForm), "The returned form is not a ProductForm"
+        assert form.initial == {}, f"The initial data is not empty: {form.initial}"
 
     @patch("products.views.fetch_from_off")
     def test_get_form_with_barcode(self, mock_fetch_product_data: MagicMock):
@@ -467,7 +463,7 @@ def test_prepare_product_form_data_with_fetched_product_and_refs():
     IngredientRef.objects.create(name="Sugar")
     IngredientRef.objects.create(name="Salt")
 
-    # OFFProductSchema avec ingredients
+    # OFFProductSchema with ingredients
     ingredients = [
         OFFIngredientSchema(name="Sugar"),
         OFFIngredientSchema(name="Flour"),

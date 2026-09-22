@@ -1,5 +1,4 @@
-// Site-wide bundle: what every page needs. Replaces the webpack 'project' and
-// 'vendors' entries that base.html used to pull in through {% render_bundle %}.
+// Site-wide bundle: what every page needs, loaded by base.html.
 //
 // JS only. The stylesheet is a separate Vite entry (./styles/site-styles.scss),
 // loaded by base.html through its own <link> tag rather than an import here -

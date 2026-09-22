@@ -1,17 +1,11 @@
-// Sunburst chart of the macronutrient breakdown, refreshed as the form is
-// typed into. Ported from products/static/products/js/
-// product_form_macronutrients_graph.js, which was served raw through
-// {% static %} and so never went through any build step - hence the comment
-// it carried wondering why it was not transpiled.
-//
-// Plotly used to arrive as a global set by plotly_loader.js; it is imported
-// directly now.
+// Sunburst chart of the macronutrient breakdown, redrawn from the form's
+// inputs as they are typed into.
 import Plotly from 'plotly.js-strict-dist-min';
 
 const GRAPH_ID = 'macronutrients_graph';
 const TOTAL_PERCENTAGE = 100;
 
-// One row per chart slice, in the order updatePlot() below fills `values`.
+// One row per chart slice, in the order sliceValues() below returns them.
 // `key` matches Macronutrient.name in the database (see the migration that
 // seeds it: products/migrations/0006_alter_macronutrient_labels_and_more.py)
 // - except 'others', the chart's own synthetic remainder slice, with no row

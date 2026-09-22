@@ -1,6 +1,7 @@
 FROM docker.io/node:24.6.0-bookworm-slim
 
-# Ajuster UID/GID de l’utilisateur node existant
+# Match the node user's UID/GID to dev-user's, so files written to the
+# bind-mounted frontend/ keep the host user's ownership.
 RUN groupmod -g 1000 node \
   && usermod -u 1000 -g 1000 node
 

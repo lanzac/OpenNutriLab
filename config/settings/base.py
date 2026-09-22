@@ -347,7 +347,7 @@ SPECTACULAR_SETTINGS = {
 }
 # django-vite
 # ------------------------------------------------------------------------------
-# Sole frontend pipeline since the webpack cutover. See frontend/vite.config.js
+# The frontend build pipeline. See frontend/vite.config.js
 # for the matching build config (same STATIC_URL-relative output layout).
 DJANGO_VITE = {
     "default": {

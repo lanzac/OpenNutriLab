@@ -36,7 +36,5 @@
   {# here: extra_data holds plain Python lists, not JSON text. #}
   {{ form.extra_data.ingredients_table_data|json_script:"ingredients-data" }}
   {{ product_form_labels|json_script:"product-form-labels" }}
-  {# Replaces the fetch_barcode / plotly_loader / tabulator_loader webpack #}
-  {# bundles and the two scripts formerly served raw through {% templatetag openblock %} static {% templatetag closeblock %}. #}
   {% vite_asset 'src/apps/products/form-entry.js' %}
 {% endblock content %}
