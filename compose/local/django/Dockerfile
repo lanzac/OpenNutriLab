@@ -24,6 +24,8 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
       gettext \
       # for waiting for other services
       wait-for-it \
+      # to fetch the act release below (and generally useful in the container)
+      curl ca-certificates \
       sudo git bash-completion nano ssh locales \
     && sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen \
     && locale-gen \
@@ -35,6 +37,27 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 # Install dev tools globally
 # -------------------------
 RUN uv pip install --system ruff djlint basedpyright
+
+# -------------------------
+# Install act (nektos/act)
+# -------------------------
+# Runs the workflows in .github/workflows/ locally, against the host's Docker
+# daemon (docker-compose.local.yml bind-mounts /var/run/docker.sock into this
+# service). Pinned version + checksum, verified against the release's
+# checksums.txt, rather than piping the project's install script into bash.
+ARG ACT_VERSION=0.2.89
+RUN ARCH="$(dpkg --print-architecture)" \
+    && case "${ARCH}" in \
+         amd64) ACT_ARCHIVE=act_Linux_x86_64.tar.gz \
+                ACT_SHA256=0191d6f1f3b716b5c55820032605d05fc3c1cdbf581ebeff655019e5dd1524c0 ;; \
+         arm64) ACT_ARCHIVE=act_Linux_arm64.tar.gz \
+                ACT_SHA256=daa8679ba9615a74d2d0cec321dc593f21948a2a11bb65862b063d8b930f4bcb ;; \
+         *) echo "Unsupported architecture for act: ${ARCH}" >&2 && exit 1 ;; \
+       esac \
+    && curl -fsSLo /tmp/act.tar.gz "https://github.com/nektos/act/releases/download/v${ACT_VERSION}/${ACT_ARCHIVE}" \
+    && echo "${ACT_SHA256}  /tmp/act.tar.gz" | sha256sum -c - \
+    && tar -xzf /tmp/act.tar.gz -C /usr/local/bin act \
+    && rm /tmp/act.tar.gz
 
 # -------------------------
 # Create dev user

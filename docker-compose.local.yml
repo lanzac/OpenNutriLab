@@ -32,6 +32,12 @@ services:
       # Without this the Chromium download survives uv sync but not a rebuild,
       # and 115 MB comes back down every time the image changes.
       - opennutrilab_local_playwright_cache:/home/dev-user/.cache/ms-playwright
+      # Docker-outside-of-Docker: lets act (installed in the Dockerfile) spin
+      # up the GitHub Actions runner containers via the host's own daemon,
+      # so local workflow runs are siblings of this container, not nested
+      # inside it. Trade-off: this container can now control every container
+      # on the host, not just its own.
+      - /var/run/docker.sock:/var/run/docker.sock
     env_file:
       - ./.envs/.local/.django
       - ./.envs/.local/.postgres
@@ -81,6 +87,14 @@ services:
     <<: *django
     image: opennutrilab_local_celeryworker
     container_name: opennutrilab_local_celeryworker
+    # Re-declared without the docker.sock mount: unlike django, this service
+    # has no business talking to the host's Docker daemon.
+    volumes:
+      - opennutrilab_local_django_venv:/app/.venv
+      - ./:/app:z
+      - opennutrilab_pre_commit_cache:/home/dev-user/.cache/pre-commit
+      - opennutrilab_local_claude_config:/home/dev-user/.claude
+      - opennutrilab_local_playwright_cache:/home/dev-user/.cache/ms-playwright
     depends_on:
       - redis
       - postgres
@@ -95,6 +109,14 @@ services:
     <<: *django
     image: opennutrilab_local_celerybeat
     container_name: opennutrilab_local_celerybeat
+    # Re-declared without the docker.sock mount: unlike django, this service
+    # has no business talking to the host's Docker daemon.
+    volumes:
+      - opennutrilab_local_django_venv:/app/.venv
+      - ./:/app:z
+      - opennutrilab_pre_commit_cache:/home/dev-user/.cache/pre-commit
+      - opennutrilab_local_claude_config:/home/dev-user/.claude
+      - opennutrilab_local_playwright_cache:/home/dev-user/.cache/ms-playwright
     depends_on:
       - redis
       - postgres

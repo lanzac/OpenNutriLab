@@ -1,0 +1,5 @@
+# act's default runner images are stripped down and miss most of the tools
+# GitHub's real ubuntu-latest provides, which breaks several actions in
+# .github/workflows/ci.yml. catthehacker/ubuntu:act-latest is the closest
+# match (~500MB pull the first time).
+-P ubuntu-latest=catthehacker/ubuntu:act-latest

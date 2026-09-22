@@ -71,7 +71,10 @@
                 "donjayamanne.githistory",
                 "eamodio.gitlens",
                 "yzhang.markdown-all-in-one",
-                "zakhariimelnyk.claude-git-commit"
+                "zakhariimelnyk.claude-git-commit",
+                // GUI for act: run/inspect .github/workflows jobs locally. See
+                // https://sanjulaganepola.github.io/github-local-actions-docs/
+                "sanjulaganepola.github-local-actions"
             ]
         }
     },
@@ -91,5 +94,10 @@
         // be merged into `install --with-deps`: the apt packages need root,
         // while the browser must land in dev-user's cache, not root's.
         "installBrowsers": "uv sync --frozen && sudo .venv/bin/python -m playwright install-deps chromium && .venv/bin/python -m playwright install chromium"
-    }
+    },
+    // The mounted host docker.sock belongs to the host's docker group, whose
+    // gid varies per host and isn't known at image build time, so dev-user
+    // can't be added to it ahead of time. Runs on every start (not just
+    // create) since that gid can differ across hosts/rebuilds.
+    "postStartCommand": "sudo chmod 666 /var/run/docker.sock"
 }
