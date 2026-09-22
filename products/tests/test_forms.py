@@ -99,7 +99,7 @@ def test_product_form_save_creates_product_and_macronutrient_relations():
         "name": "Test Product",
         "energy_kj": 150,
         f"{protein.name_in_form}": 10.5,
-        f"{fat.name_in_form}": 0.0,  # empty field
+        f"{fat.name_in_form}": "",  # empty field
     }
 
     form = ProductForm(data=form_data)
@@ -185,6 +185,33 @@ def test_product_form_save_removes_macronutrient_if_value_missing():
         product=product,
         macronutrient=protein,
     ).exists()
+
+
+@pytest.mark.django_db
+def test_product_form_save_keeps_a_zero_amount():
+    # 0 g is a measured value ("no sugar"), unlike an empty field ("unknown"),
+    # so it has to be stored rather than treated as missing.
+    sugars = Macronutrient.objects.get(name="sugars")
+    product = Product.objects.create(
+        name="Zero Test", barcode="3229820794556", energy_kj=150
+    )
+    ProductMacronutrient.objects.create(
+        product=product, macronutrient=sugars, amount_g=5.0
+    )
+
+    form_data = {
+        "barcode": "3229820794556",
+        "name": "Zero Test",
+        "energy_kj": 150,
+        sugars.name_in_form: "0",
+    }
+
+    form = ProductForm(data=form_data, instance=product)
+    assert form.is_valid(), form.errors
+    form.save()
+
+    stored = ProductMacronutrient.objects.get(product=product, macronutrient=sugars)
+    assert stored.amount_g == Decimal(0)
 
 
 @pytest.mark.django_db

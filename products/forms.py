@@ -325,7 +325,9 @@ class ProductForm(forms.ModelForm):
         for macronutrient in Macronutrient.objects.all():
             field_name = macronutrient.name_in_form
             value: Quantity | None = self.cleaned_data.get(field_name)
-            if value:
+            # An empty field means "unknown" and removes the row; 0 is a real
+            # measurement and must be kept, so no truthiness test here.
+            if value is not None:
                 ProductMacronutrient.objects.update_or_create(
                     product=product,
                     macronutrient=macronutrient,
