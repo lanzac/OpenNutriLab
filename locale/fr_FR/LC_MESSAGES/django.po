@@ -17,10 +17,10 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 
 msgid "English"
-msgstr ""
+msgstr "Anglais"
 
 msgid "French"
-msgstr ""
+msgstr "Français"
 
 msgid "Sign In"
 msgstr "S'identifier"
@@ -108,7 +108,7 @@ msgid "Name"
 msgstr "Nom"
 
 msgid "Description"
-msgstr ""
+msgstr "Description"
 
 msgid "Energy"
 msgstr "Énergie"
@@ -243,19 +243,19 @@ msgstr "Veuillez entrer un code-barres."
 msgid ""
 "Barcode %(barcode)s was not found in OpenFoodFacts. Please fill in the "
 "details by hand."
-msgstr ""
+msgstr "Le code-barres %(barcode)s est introuvable dans OpenFoodFacts. Veuillez saisir les informations à la main."
 
 #, python-format
 msgid ""
 "OpenFoodFacts could not be reached for barcode %(barcode)s. Please try "
 "again, or fill in the details by hand."
-msgstr ""
+msgstr "OpenFoodFacts n'a pas pu être joint pour le code-barres %(barcode)s. Veuillez réessayer, ou saisir les informations à la main."
 
 #, python-format
 msgid ""
 "Product %(barcode)s was saved, but its photo could not be downloaded from "
 "OpenFoodFacts. Please try again, or upload one by hand."
-msgstr ""
+msgstr "Le produit %(barcode)s a été enregistré, mais sa photo n'a pas pu être téléchargée depuis OpenFoodFacts. Veuillez réessayer, ou en téléverser une à la main."
 
 #~ msgid "No data found"
 #~ msgstr "Aucune donnée"

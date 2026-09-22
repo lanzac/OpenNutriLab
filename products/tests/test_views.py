@@ -129,6 +129,26 @@ class TestProductCreateView:
         notices = [str(m) for m in response.context["messages"]]
         assert any("was not found in OpenFoodFacts" in n for n in notices), notices
 
+    @patch("products.views.fetch_from_off")
+    def test_off_failure_notice_is_translated(
+        self, mock_fetch_from_off: MagicMock, client: Client
+    ):
+        """
+        The notices were added without running makemessages, so French users
+        got them in English. Guards against a notice missing from the .po.
+        """
+        mock_fetch_from_off.side_effect = HttpError(404, "Product not found.")
+
+        with translation.override("fr-fr"):
+            response: HttpResponse = client.get(
+                reverse("create_product"),
+                {"barcode": "322982079455"},
+                headers={"accept-language": "fr"},
+            )
+
+        notices = [str(m) for m in response.context["messages"]]
+        assert any("est introuvable dans OpenFoodFacts" in n for n in notices), notices
+
     @patch("products.api.openfoodfacts.services.requests.get")
     def test_off_answering_another_barcode_keeps_the_form_usable(
         self, mock_get: MagicMock, client: Client
