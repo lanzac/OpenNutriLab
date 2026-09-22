@@ -6,6 +6,7 @@ from ninja import Field
 from ninja import Schema
 from pydantic import AliasPath
 from pydantic import ConfigDict
+from pydantic import field_validator
 
 
 class OFFIngredientSchema(Schema):
@@ -67,6 +68,18 @@ class OFFProductSchema(Schema):
     )
     group_level_1: str | None = Field(default=None, validation_alias="pnns_groups_1")
     group_level_2: str | None = Field(default=None, validation_alias="pnns_groups_2")
+
+    @field_validator("energy_kj", mode="before")
+    @classmethod
+    def round_energy(cls, value: object) -> object:
+        """
+        OFF reports `energy_100g` as a float, while `Product.energy_kj` is an
+        IntegerField. Rounding here keeps a fractional value from failing
+        validation; sub-joule precision is meaningless for a 100 g serving.
+        """
+        if isinstance(value, float):
+            return round(value)
+        return value
 
 
 # ---- ENUMS ----

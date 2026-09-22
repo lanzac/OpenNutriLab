@@ -1,4 +1,5 @@
 import json
+from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
@@ -53,6 +54,16 @@ OFF_HEADERS = {
 }
 
 
+def normalize_barcode(barcode: str) -> str:
+    """
+    Drop the leading zeros OFF adds when padding a short code to 13 digits.
+
+    A 12-digit UPC-A queried as `322982079455` is stored as `0322982079455`,
+    so the two spellings have to compare equal.
+    """
+    return barcode.strip().lstrip("0")
+
+
 def fetch_from_off(
     query_barcode: str,
 ) -> OFFProductSchema:
@@ -68,17 +79,23 @@ def fetch_from_off(
             allow_redirects=True,
             headers=OFF_HEADERS,
         )
-        response.raise_for_status()
-    except requests.HTTPError as e:
-        raise HttpError(
-            status_code=502,  # Bad Gateway → API externe en erreur
-            message=f"External API returned an error: {e}",
-        ) from e
     except requests.RequestException as e:
         raise HttpError(
             status_code=503,  # Service Unavailable → connexion impossible
             message=f"External API unreachable: {e}",
         ) from e
+
+    # OFF answers an unknown barcode with 404 *and* a well-formed failure body,
+    # so the status line alone cannot tell "no such product" from a broken
+    # gateway. Let 404 fall through to the body checks below, which turn
+    # `status: failure` into a 404; anything else is a genuine upstream error.
+    if response.status_code not in (HTTPStatus.OK, HTTPStatus.NOT_FOUND):
+        raise HttpError(
+            status_code=502,  # Bad Gateway → API externe en erreur
+            message=(
+                f"External API returned an error: {response.status_code} for url: {url}"
+            ),
+        )
 
     # JSON parsing
     try:
@@ -106,13 +123,13 @@ def fetch_from_off(
     if api_product_response.status == StatusEnum.failure:
         raise HttpError(status_code=404, message="Product not found.")
 
-    if api_product_response.status in (
-        StatusEnum.success_with_errors,
-        StatusEnum.success_with_warnings,
-    ):
+    # `success_with_warnings` is the ordinary answer for a short barcode: OFF
+    # pads codes to 13 digits and reports the padding as a
+    # `different_normalized_product_code` warning. Only errors are fatal.
+    if api_product_response.status == StatusEnum.success_with_errors:
         raise HttpError(
             status_code=400,
-            message=str(api_product_response.errors or api_product_response.warnings),
+            message=str(api_product_response.errors),
         )
 
     product = api_product_response.product
@@ -126,7 +143,7 @@ def fetch_from_off(
             ),
         )
 
-    if query_barcode != product.barcode:
+    if normalize_barcode(query_barcode) != normalize_barcode(product.barcode):
         msg = (
             f"Barcode mismatch: requested {query_barcode}, "
             f"but got {product.barcode} from OpenFoodFacts"

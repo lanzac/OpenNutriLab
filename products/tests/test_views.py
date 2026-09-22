@@ -11,6 +11,7 @@ from django.test import Client
 from django.test import RequestFactory
 from django.urls import reverse
 from django.utils import translation
+from ninja.errors import HttpError
 
 from products.api.openfoodfacts.schemas import OFFIngredientSchema
 from products.api.openfoodfacts.schemas import OFFMacronutrientsSchema
@@ -107,6 +108,42 @@ class TestProductCreateView:
     def setup_method(self):
         self.factory = RequestFactory()
 
+    @patch("products.views.fetch_from_off")
+    def test_unknown_barcode_keeps_the_form_usable(
+        self, mock_fetch_from_off: MagicMock, client: Client
+    ):
+        """
+        A barcode OpenFoodFacts does not know used to 500: fetch_from_off
+        raises django-ninja's HttpError, which only becomes a response inside
+        an API route. The page must instead come back with the barcode filled
+        in and a notice telling the user to enter the rest by hand.
+        """
+        mock_fetch_from_off.side_effect = HttpError(404, "Product not found.")
+
+        response: HttpResponse = client.get(
+            reverse("create_product"), {"barcode": "322982079455"}
+        )
+
+        assert response.status_code == 200  # noqa: PLR2004
+        assert response.context["form"].initial == {"barcode": "322982079455"}
+        notices = [str(m) for m in response.context["messages"]]
+        assert any("was not found in OpenFoodFacts" in n for n in notices), notices
+
+    @patch("products.views.fetch_from_off")
+    def test_unreachable_api_keeps_the_form_usable(
+        self, mock_fetch_from_off: MagicMock, client: Client
+    ):
+        """An upstream outage is reported differently from a missing product."""
+        mock_fetch_from_off.side_effect = HttpError(503, "External API unreachable")
+
+        response: HttpResponse = client.get(
+            reverse("create_product"), {"barcode": "322982079455"}
+        )
+
+        assert response.status_code == 200  # noqa: PLR2004
+        notices = [str(m) for m in response.context["messages"]]
+        assert any("could not be reached" in n for n in notices), notices
+
     def test_get_form_without_barcode(self):
         """Le formulaire doit être vide si aucun code-barres n'est fourni."""
         request = self.factory.get("/products/new/")
@@ -168,6 +205,30 @@ class TestProductCreateView:
 class TestProductEditView:
     def setup_method(self):
         self.factory = RequestFactory()
+
+    @patch("products.views.fetch_from_off")
+    def test_failed_reset_falls_back_to_stored_values(
+        self, mock_fetch_from_off: MagicMock, client: Client
+    ):
+        """
+        `?reset=1` on a product OFF has since dropped must not 500. The form
+        keeps the values already in the database and says why nothing changed.
+        """
+        product = Product.objects.create(
+            barcode="1234567890123",
+            name="Stored Product",
+            energy_kj=10,
+        )
+        mock_fetch_from_off.side_effect = HttpError(404, "Product not found.")
+
+        response: HttpResponse = client.get(
+            reverse("edit_product", args=[product.pk]), {"reset": "1"}
+        )
+
+        assert response.status_code == 200  # noqa: PLR2004
+        assert response.context["form"].instance.name == "Stored Product"
+        notices = [str(m) for m in response.context["messages"]]
+        assert any("was not found in OpenFoodFacts" in n for n in notices), notices
 
     @patch("products.forms.requests.get")
     @patch("products.views.fetch_from_off")
