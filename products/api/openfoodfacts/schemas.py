@@ -151,11 +151,6 @@ class OFFProductAPIResponseSchema(Schema):
     product: OFFProductSchema | None = None
 
 
-# If API returns an error (e.g., 500), we return this schema
-class OFFAPIErrorSchema(Schema):
-    error: str
-
-
 # Form -----------------------------------------------------------------------
 class MacronutrientsFormSchema(Schema):
     fat: float | None = Field(default=None, alias="macronutrients_fat")
