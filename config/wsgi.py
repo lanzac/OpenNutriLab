@@ -13,15 +13,8 @@ https://docs.djangoproject.com/en/dev/howto/deployment/wsgi/
 """
 
 import os
-import sys
-from pathlib import Path
 
 from django.core.wsgi import get_wsgi_application
-
-# This allows easy placement of apps within the interior
-# opennutrilab directory.
-BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
-sys.path.append(str(BASE_DIR / "opennutrilab"))
 
 # If DJANGO_SETTINGS_MODULE is unset, default to the local settings
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.local")

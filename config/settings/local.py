@@ -57,17 +57,15 @@ DEBUG_TOOLBAR_CONFIG = {
 }
 # https://django-debug-toolbar.readthedocs.io/en/latest/installation.html#internal-ips
 INTERNAL_IPS = ["127.0.0.1", "10.0.2.2"]
-if env("USE_DOCKER") == "yes":
+# Defaults to "no" so this module also loads outside the devcontainer (CI,
+# a subprocess probe, a plain virtualenv).
+if env("USE_DOCKER", default="no") == "yes":
     import socket
 
+    # Requests reach the container from the Docker network's gateway, which
+    # is the ".1" address of each network the container is attached to.
     hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
     INTERNAL_IPS += [".".join([*ip.split(".")[:-1], "1"]) for ip in ips]
-    try:
-        _, _, ips = socket.gethostbyname_ex("node")
-        INTERNAL_IPS.extend(ips)
-    except socket.gaierror:
-        # The node container isn't started (yet?)
-        pass
 
 # django-extensions
 # ------------------------------------------------------------------------------
