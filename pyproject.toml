@@ -66,10 +66,12 @@ dev = [
 
 # ==== pytest ====
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "config.settings.test"
 minversion = "6.0"
+# --ds rather than a DJANGO_SETTINGS_MODULE key: the command-line option wins
+# over a DJANGO_SETTINGS_MODULE exported in the shell, so the suite always
+# runs against the test settings.
 addopts = "--ds=config.settings.test --reuse-db --import-mode=importlib"
-python_files = ["test_*.py", "test_*.py"]
+python_files = ["test_*.py"]
 
 # ==== Coverage ====
 [tool.coverage.run]
@@ -79,8 +81,8 @@ plugins = ["django_coverage_plugin"]
 
 # ==== basedpyright ====
 [tool.basedpyright]
-# Target Python version
-pythonVersion = "3.12"
+# Target Python version (requires-python above)
+pythonVersion = "3.13"
 
 # Type checking mode: "off" | "basic" | "strict"
 # Use "strict" for stronger checks, "basic" for fewer warnings
@@ -132,7 +134,7 @@ indent_size = 2
 
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py313"
 # Exclude a variety of commonly ignored directories.
 extend-exclude = [
     "*/migrations/*.py",
@@ -202,16 +204,7 @@ ignore = [
     "S101", # Use of assert detected https://docs.astral.sh/ruff/rules/assert/
     "RUF012", # Mutable class attributes should be annotated with `typing.ClassVar`
     "SIM102", # sometimes it's better to nest
-    "UP038", # Checks for uses of isinstance/issubclass that take a tuple
-    # of types for comparison.
-    # Deactivated because it can make the code slow:
-    # https://github.com/astral-sh/ruff/issues/7871
     "COM812",
-]
-# The fixes in extend-unsafe-fixes will require
-# provide the `--unsafe-fixes` flag when fixing.
-extend-unsafe-fixes = [
-  "UP038",
 ]
 
 [tool.ruff.lint.per-file-ignores]
