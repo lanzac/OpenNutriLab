@@ -51,7 +51,11 @@ dev = [
     "django-stubs-ext>=5.2.2",
     "watchfiles>=1.1.0",
     "pre-commit>=4.3.0",
-    "djlint>=1.36.4",
+    # Pinned to the revs in .pre-commit-config.yaml, so the editor (which runs
+    # them from this virtualenv, see .devcontainer/devcontainer.json) and the
+    # hooks never disagree. Bump both places together.
+    "djlint==1.36.4",
+    "ruff==0.13.1",
     "factory-boy>=3.3.3",
     "djangorestframework-types>=0.9.0",
     # Browser-driven verification. Not used by the pytest suite: it is the only

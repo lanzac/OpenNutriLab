@@ -26,17 +26,17 @@
                 "editor.formatOnSave": true,
                 // Set the global interpreter for the project
                 "python.defaultInterpreterPath": "/app/.venv/bin/python",
-                // Ruff configuration (system binary)
+                // ruff, basedpyright and djLint run from the project virtualenv,
+                // at the versions pinned in pyproject.toml (the same ones
+                // pre-commit uses), rather than from unpinned global installs.
                 "ruff.path": [
-                    "/usr/local/bin/ruff"
+                    "/app/.venv/bin/ruff"
                 ],
                 "ruff.importStrategy": "fromEnvironment",
-                // Basedpyright configuration (system binary)
                 "basedpyright.importStrategy": "fromEnvironment",
-                "basedpyright.executablePath": "/usr/local/bin/basedpyright",
+                "basedpyright.executablePath": "/app/.venv/bin/basedpyright",
                 "python.analysis.typeCheckingMode": "off", // Handled by basedpyright
-                // djLint configuration (system binary)
-                "djlint.executablePath": "/usr/local/bin/djlint",
+                "djlint.executablePath": "/app/.venv/bin/djlint",
                 "[python]": {
                     "editor.codeActionsOnSave": {
                         "source.organizeImports": "always"

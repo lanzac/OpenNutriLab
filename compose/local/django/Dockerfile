@@ -34,11 +34,6 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     && rm -rf /var/lib/apt/lists/*
 
 # -------------------------
-# Install dev tools globally
-# -------------------------
-RUN uv pip install --system ruff djlint basedpyright
-
-# -------------------------
 # Install act (nektos/act)
 # -------------------------
 # Runs the workflows in .github/workflows/ locally, against the host's Docker
