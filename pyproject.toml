@@ -75,9 +75,19 @@ python_files = ["test_*.py"]
 
 # ==== Coverage ====
 [tool.coverage.run]
-include = ["opennutrilab/**"]
-omit = ["*/migrations/*", "*/tests/*"]
-plugins = ["django_coverage_plugin"]
+source = ["products", "opennutrilab"]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    # Framework glue with no logic of its own to test.
+    "opennutrilab/users/adapters.py",
+    "products/admin.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 90
 
 # ==== basedpyright ====
 [tool.basedpyright]
