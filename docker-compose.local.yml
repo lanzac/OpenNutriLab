@@ -68,7 +68,8 @@ services:
   # Redis
   # -------------------------
   redis:
-    image: redis:6
+    # Same image as docker-compose.production.yml; redis:6 is end of life.
+    image: docker.io/redis:7-alpine
     container_name: opennutrilab_local_redis
     volumes:
       - opennutrilab_local_redis_data:/data
@@ -141,7 +142,9 @@ services:
       - ./frontend:/app:z
       - opennutrilab_local_vite_node_modules:/app/node_modules
     # The named volume hides whatever the image installed, so dependencies
-    # are installed on start instead.
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    # are installed on start instead - with npm ci, like the image and CI, so
+    # the lockfile is never rewritten. npm ci empties node_modules rather than
+    # deleting it, which is what makes it safe on a volume mount point.
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0"
     ports:
       - '5173:5173'
