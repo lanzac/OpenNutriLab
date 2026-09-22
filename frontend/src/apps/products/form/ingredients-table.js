@@ -3,7 +3,6 @@
 import { TabulatorFull as Tabulator } from 'tabulator-tables';
 
 import 'tabulator-tables/dist/css/tabulator_bootstrap5.min.css';
-import './tabulator.scss';
 
 /**
  * @param {{ name: string, percentage: string, recognized: string }} labels
