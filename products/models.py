@@ -258,8 +258,8 @@ class Product(models.Model):
     # ------------------------------------------------------------------------
 
     if TYPE_CHECKING:
-        ingredients: models.QuerySet["Ingredient"]
-        product_ingredients_set: RelatedManager["Ingredient"]
+        # Reverse side of Ingredient.product (related_name="ingredients").
+        ingredients: RelatedManager["Ingredient"]
 
     @override
     def __str__(self) -> str:

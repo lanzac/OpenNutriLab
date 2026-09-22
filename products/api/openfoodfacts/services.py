@@ -1,11 +1,8 @@
-import json
 from http import HTTPStatus
-from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
 
 import requests
-from django.conf import settings
 from ninja.errors import HttpError
 from pydantic import ValidationError
 
@@ -19,31 +16,6 @@ from products.models import Product
 
 if TYPE_CHECKING:
     from django.db.models.query import QuerySet
-
-
-def fetch_local_product(
-    barcode: str,
-    base_dir: Path | None = None,
-) -> OFFProductSchema:
-    """
-    Load a local OFF-style JSON file and convert it to an OFFProductSchema.
-
-    Args:
-        barcode: The product barcode.
-        base_dir: Optional base directory, defaults to Django's BASE_DIR.
-    """
-    base_dir = base_dir or Path(settings.BASE_DIR)
-    local_path = base_dir / "products" / "tests" / "data" / f"{barcode}.json"
-
-    with Path.open(local_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-
-    try:
-        product = OFFProductSchema.model_validate(data["product"])
-    except ValidationError as e:
-        msg = f"Invalid product data format for {barcode}: {e}"
-        raise ValueError(msg) from e
-    return product
 
 
 # OpenFoodFacts rejects generic clients: without a User-Agent naming the

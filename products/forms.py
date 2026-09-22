@@ -24,7 +24,6 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
-from quantityfield.fields import QuantityFormField
 
 from opennutrilab.crispy_bootstrap_extended.layouts import AccordionGroupExtended
 from products.api.openfoodfacts.services import save_ingredients_from_schema
@@ -35,9 +34,9 @@ from .models import Product
 from .models import ProductMacronutrient
 
 if TYPE_CHECKING:
-    from django.forms.widgets import Widget
+    from decimal import Decimal
+
     from django.utils.safestring import SafeText
-    from pint import Quantity
 
     from products.api.openfoodfacts.schemas import OFFIngredientSchema
 
@@ -134,10 +133,6 @@ class ProductForm(forms.ModelForm):
             self._get_nutritional_values_layout()
         )
 
-        # 🔹 Configure widgets attrs for all QuantityFormField fields
-        # It is important to call this method after having added the dynamic fields.
-        self._configure_field_widgets_attrs()
-
         # --------------------------------------------------------------------
 
         # --------------------------------------------------------------------
@@ -231,7 +226,7 @@ class ProductForm(forms.ModelForm):
         _("Proteins")
 
         for macronutrient in Macronutrient.objects.all():
-            form_field: QuantityFormField = ProductMacronutrient._meta.get_field(  # noqa: SLF001
+            form_field: forms.Field = ProductMacronutrient._meta.get_field(  # noqa: SLF001
                 field_name="amount_g",
             ).formfield(
                 required=False,
@@ -239,7 +234,7 @@ class ProductForm(forms.ModelForm):
             form_field.label = _(str(macronutrient))
 
             if self.instance and self.instance.pk:
-                amount_g_value: Quantity | None = (
+                amount_g_value: Decimal | None = (
                     ProductMacronutrient.objects.filter(
                         product=self.instance,
                         macronutrient=macronutrient,
@@ -266,25 +261,6 @@ class ProductForm(forms.ModelForm):
             for m in Macronutrient.objects.all()
         ]
         return layout_fields
-
-    def _configure_field_widgets_attrs(self) -> None:
-        for field in self.fields.values():
-            if isinstance(field, QuantityFormField):
-                widget: type[Widget] | Widget = field.widget
-                # Important here to not assign class attribute to the widget attrs that
-                # would not allow to set custom "css_class" in the layout.
-                widget.attrs["step"] = "0.01"
-                widget.attrs["placeholder"] = _("No data found")
-
-                if isinstance(widget, forms.MultiWidget):
-                    for subwidget in widget.widgets:
-                        if isinstance(subwidget, forms.NumberInput):
-                            subwidget.attrs.update(
-                                {
-                                    "type": "number",
-                                    "min": "0.00",
-                                },
-                            )
 
     def save(self, commit: bool = True):  # noqa: FBT001, FBT002
         # Save Product object without committing
@@ -324,7 +300,7 @@ class ProductForm(forms.ModelForm):
         # Handle macronutrients
         for macronutrient in Macronutrient.objects.all():
             field_name = macronutrient.name_in_form
-            value: Quantity | None = self.cleaned_data.get(field_name)
+            value: Decimal | None = self.cleaned_data.get(field_name)
             # An empty field means "unknown" and removes the row; 0 is a real
             # measurement and must be kept, so no truthiness test here.
             if value is not None:

@@ -16,77 +16,32 @@ from products.api.openfoodfacts.schemas import ProductFormSchema
 from products.api.openfoodfacts.schemas import product_schema_to_form_data
 from products.api.openfoodfacts.services import build_ingredient_json_from_schema
 from products.api.openfoodfacts.services import fetch_from_off
-from products.api.openfoodfacts.services import fetch_local_product
 from products.api.openfoodfacts.services import get_schema_from_ingredients
 from products.api.openfoodfacts.services import save_ingredients_from_schema
 from products.models import Ingredient
 from products.models import IngredientRef
 from products.models import Product
 
-
-@pytest.fixture
-def sample_data(tmp_path: Path) -> Path:
-    """Create a temporary local JSON file mimicking OFF data."""
-    data = {
-        "product": {
-            "code": "123456",
-            "product_name": "Test Product",
-            "image_small_url": "https://example.com/image.jpg",
-            "nutriments": {
-                "fat_100g": 10.0,
-                "carbohydrates_100g": 20.0,
-                "proteins_100g": 5.0,
-            },
-        },
-    }
-    data_dir = tmp_path / "products" / "tests" / "data"
-    data_dir.mkdir(parents=True, exist_ok=True)
-    file_path = data_dir / "123456.json"
-    with Path.open(file_path, "w", encoding="utf-8") as f:
-        json.dump(data, f)
-    return file_path
+# A product recorded from OpenFoodFacts (API v2: the envelope differs from
+# the v3 one fetch_from_off reads, but the "product" object has the same shape).
+RECORDED_PRODUCT = Path(__file__).parent / "data" / "3229820794556.json"
 
 
-def test_fetch_local_product_valid_data(sample_data: Path):
-    """Test reading a local JSON and transforming it into a ProductSchema."""
-    base_dir = sample_data.parents[3]  # root of the tmp project structure
-    product: OFFProductSchema = fetch_local_product(
-        barcode="123456",
-        base_dir=base_dir,
-    )
+def test_product_schema_parses_a_recorded_off_product():
+    """OFFProductSchema maps a real OpenFoodFacts payload, not a hand-made one."""
+    with RECORDED_PRODUCT.open(encoding="utf-8") as f:
+        payload: dict[str, Any] = json.load(f)["product"]
 
-    expected_product = OFFProductSchema(
-        barcode="123456",
-        name="Test Product",
-        image_url="https://example.com/image.jpg",
-        macronutrients=OFFMacronutrientsSchema(
-            fat=10.0,
-            carbohydrates=20.0,
-            proteins=5.0,
-        ),
-    )
+    product = OFFProductSchema.model_validate(payload)
 
-    assert isinstance(product, OFFProductSchema)
-    assert product.dict() == expected_product.dict()
-
-
-def test_fetch_local_product_invalid_data(sample_data: Path):
-    """Test that invalid product data raises a ValueError."""
-    # We volontarily corrupt the sample data
-    with Path.open(sample_data, "r+", encoding="utf-8") as f:
-        data = json.load(f)
-
-        del data["product"]["product_name"]  # mandatory field removed
-        data["product"]["nutriments"]["fat_100g"] = "not_a_number"
-
-        f.seek(0)
-        json.dump(data, f)
-        f.truncate()
-
-    base_dir = sample_data.parents[3]
-
-    with pytest.raises(ValueError, match="Invalid product data format for 123456"):
-        fetch_local_product("123456", base_dir)
+    assert product.barcode == "3229820794556"
+    assert product.name == "Muesli Protéines"
+    assert product.energy_kj == 1598  # noqa: PLR2004
+    assert product.macronutrients is not None
+    assert product.macronutrients.fat == 12  # noqa: PLR2004
+    assert product.group_level_1 == "Cereals and potatoes"
+    assert product.ingredients is not None
+    assert len(product.ingredients) == 7  # noqa: PLR2004
 
 
 def test_fetch_product():
