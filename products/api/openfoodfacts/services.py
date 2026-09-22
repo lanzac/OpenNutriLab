@@ -143,12 +143,17 @@ def fetch_from_off(
             ),
         )
 
+    # OFF answering with another product means it has none for this barcode.
+    # Reported as a 404 like any other unknown barcode, so the views' existing
+    # HttpError handling covers it instead of it escaping as a 500.
     if normalize_barcode(query_barcode) != normalize_barcode(product.barcode):
-        msg = (
-            f"Barcode mismatch: requested {query_barcode}, "
-            f"but got {product.barcode} from OpenFoodFacts"
+        raise HttpError(
+            status_code=404,
+            message=(
+                f"Barcode mismatch: requested {query_barcode}, "
+                f"but got {product.barcode} from OpenFoodFacts"
+            ),
         )
-        raise ValueError(msg)
 
     return product
 

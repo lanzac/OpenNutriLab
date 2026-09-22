@@ -443,9 +443,11 @@ def test_fetch_product_barcode_mismatch():
             "products.api.openfoodfacts.services.requests.get",
             return_value=mock_response,
         ),
-        pytest.raises(ValueError, match="Barcode mismatch"),
+        pytest.raises(HttpError, match="Barcode mismatch") as exc_info,
     ):
         fetch_from_off("999999")
+
+    assert exc_info.value.status_code == 404  # noqa: PLR2004
 
 
 def test_product_schema_to_form_data():

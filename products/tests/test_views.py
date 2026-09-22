@@ -130,6 +130,32 @@ class TestProductCreateView:
         notices = [str(m) for m in response.context["messages"]]
         assert any("was not found in OpenFoodFacts" in n for n in notices), notices
 
+    @patch("products.api.openfoodfacts.services.requests.get")
+    def test_off_answering_another_barcode_keeps_the_form_usable(
+        self, mock_get: MagicMock, client: Client
+    ):
+        """
+        OFF answering with a different product used to raise a ValueError that
+        the view does not catch, so the page was a 500. It now reads as an
+        unknown barcode. Only the HTTP call is mocked: the real fetch_from_off
+        runs, which is where the error type is decided.
+        """
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {
+            "status": "success",
+            "result": {"id": "product_found", "name": "Product found"},
+            "product": {"code": "7613032637620", "product_name": "Other"},
+        }
+
+        response: HttpResponse = client.get(
+            reverse("create_product"), {"barcode": "3229820794556"}
+        )
+
+        assert response.status_code == 200  # noqa: PLR2004
+        assert response.context["form"].initial == {"barcode": "3229820794556"}
+        notices = [str(m) for m in response.context["messages"]]
+        assert any("was not found in OpenFoodFacts" in n for n in notices), notices
+
     @patch("products.views.fetch_from_off")
     def test_unreachable_api_keeps_the_form_usable(
         self, mock_fetch_from_off: MagicMock, client: Client
