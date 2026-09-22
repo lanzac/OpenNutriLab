@@ -106,3 +106,16 @@ def test_delete_product(api_client: TestClient, products_two: tuple[Product, Pro
     resp = api_client.delete(f"/{p2.barcode}")  # pyright: ignore[reportUnknownMemberType]
     assert resp.status_code in (200, 204)
     assert not Product.objects.filter(barcode=p2.barcode).exists()
+
+
+@pytest.mark.django_db
+def test_delete_product_with_a_leading_zero(api_client: TestClient):
+    # EAN-13 codes may start with 0. The path parameter used to be typed int,
+    # which turned "0123456789012" into 123456789012 and missed the product.
+    barcode = "0123456789012"
+    Product.objects.create(barcode=barcode, name="Leading zero", energy_kj=100)
+
+    resp = api_client.delete(f"/{barcode}")  # pyright: ignore[reportUnknownMemberType]
+
+    assert resp.status_code == 200  # noqa: PLR2004
+    assert not Product.objects.filter(barcode=barcode).exists()

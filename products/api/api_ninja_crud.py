@@ -38,7 +38,7 @@ def update_product(
 
 
 @router.delete(path="/{product_id}")
-def delete_product(request: HttpRequest, product_id: int) -> dict[str, bool]:
+def delete_product(request: HttpRequest, product_id: str) -> dict[str, bool]:
     product: Product = get_object_or_404(Product, barcode=product_id)
     product.delete()
     return {"success": True}
