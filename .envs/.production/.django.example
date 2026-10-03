@@ -1,4 +1,4 @@
-# Production environment for the django, celeryworker and celerybeat services.
+# Production environment for the django service.
 #
 # Copy this file to `.envs/.production/.django` and fill it in. That copy is
 # git-ignored and never enters the image (.dockerignore excludes .envs/):
@@ -33,7 +33,7 @@ DJANGO_SECURE_HSTS_SECONDS=60
 
 # Redis
 # ------------------------------------------------------------------------------
-# Cache, Celery broker and Celery results. rediss:// switches on TLS.
+# The cache. rediss:// switches on TLS.
 REDIS_URL=redis://redis:6379/0
 
 # Email

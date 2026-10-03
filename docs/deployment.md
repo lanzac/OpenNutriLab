@@ -15,14 +15,12 @@ them, and on a managed container platform too.
 
 ## What the stack contains
 
-| Service        | Role                                                                                                                                                                             |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `caddy`        | Terminates TLS, obtains and renews the Let's Encrypt certificate automatically, serves `/media/` and forwards everything else to Django. The only service that publishes a port. |
-| `django`       | The ASGI application under uvicorn. Runs migrations on start.                                                                                                                    |
-| `postgres`     | The database, on a named volume.                                                                                                                                                 |
-| `redis`        | Cache and Celery broker.                                                                                                                                                         |
-| `celeryworker` | Background tasks.                                                                                                                                                                |
-| `celerybeat`   | Scheduled tasks.                                                                                                                                                                 |
+| Service    | Role                                                                                                                                                                             |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `caddy`    | Terminates TLS, obtains and renews the Let's Encrypt certificate automatically, serves `/media/` and forwards everything else to Django. The only service that publishes a port. |
+| `django`   | The ASGI application under uvicorn. Runs migrations on start.                                                                                                                    |
+| `postgres` | The database, on a named volume.                                                                                                                                                 |
+| `redis`    | Cache.                                                                                                                                                                           |
 
 Static files are not a service. `collectstatic` runs while the image is built,
 and WhiteNoise serves the hashed bundle from inside the Django process with the

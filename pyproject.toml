@@ -21,8 +21,6 @@ dependencies = [
     "django-cors-headers>=4.7.0",
     "django-allauth[mfa]>=65.11.1",
     "argon2-cffi>=25.1.0",
-    "celery>=5.5.3",
-    "django-celery-beat>=2.8.1",
     "django-redis>=6.0.0",
     "hiredis>=3.2.1",
     "redis>=6.4.0",
@@ -226,7 +224,6 @@ ignore = [
 # run before or during Django's app loading, so they cannot sit at module
 # level.
 "manage.py" = ["PLC0415", "E501", "TRY003", "EM101"]
-"config/celery_app.py" = ["PLC0415"]
 # The debugpy block is dev-only tooling, guarded by settings.DEBUG.
 "config/asgi.py" = ["T100", "ERA001"]
 # Importing signals inside AppConfig.ready() is the documented Django pattern.

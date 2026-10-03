@@ -4,7 +4,6 @@
 volumes:
   opennutrilab_local_postgres_data: {}
   opennutrilab_local_postgres_data_backups: {}
-  opennutrilab_local_redis_data: {}
   opennutrilab_local_django_venv: {} # persistent venv for dev
   opennutrilab_local_vite_node_modules: {} # persistent node_modules (frontend/)
   opennutrilab_pre_commit_cache: {} # persistent pre-commit cache
@@ -65,16 +64,6 @@ services:
       - '5432:5432'
 
   # -------------------------
-  # Redis
-  # -------------------------
-  redis:
-    # Same image as docker-compose.production.yml; redis:6 is end of life.
-    image: docker.io/redis:7-alpine
-    container_name: opennutrilab_local_redis
-    volumes:
-      - opennutrilab_local_redis_data:/data
-
-  # -------------------------
   # Mail testing
   # -------------------------
   mailpit:
@@ -82,50 +71,6 @@ services:
     container_name: opennutrilab_local_mailpit
     ports:
       - '8025:8025'
-
-  # -------------------------
-  # Celery worker
-  # -------------------------
-  celeryworker:
-    <<: *django
-    image: opennutrilab_local_celeryworker
-    container_name: opennutrilab_local_celeryworker
-    # Re-declared without the docker.sock mount: unlike django, this service
-    # has no business talking to the host's Docker daemon.
-    volumes:
-      - opennutrilab_local_django_venv:/app/.venv
-      - ./:/app:z
-      - opennutrilab_pre_commit_cache:/home/dev-user/.cache/pre-commit
-      - opennutrilab_local_claude_config:/home/dev-user/.claude
-      - opennutrilab_local_playwright_cache:/home/dev-user/.cache/ms-playwright
-    depends_on:
-      - redis
-      - postgres
-      - mailpit
-    ports: []
-    command: /start-celeryworker
-
-  # -------------------------
-  # Celery beat
-  # -------------------------
-  celerybeat:
-    <<: *django
-    image: opennutrilab_local_celerybeat
-    container_name: opennutrilab_local_celerybeat
-    # Re-declared without the docker.sock mount: unlike django, this service
-    # has no business talking to the host's Docker daemon.
-    volumes:
-      - opennutrilab_local_django_venv:/app/.venv
-      - ./:/app:z
-      - opennutrilab_pre_commit_cache:/home/dev-user/.cache/pre-commit
-      - opennutrilab_local_claude_config:/home/dev-user/.claude
-      - opennutrilab_local_playwright_cache:/home/dev-user/.cache/ms-playwright
-    depends_on:
-      - redis
-      - postgres
-      - mailpit
-    ports: []
-    command: /start-celerybeat
 
   # -------------------------
   # Vite dev server (frontend/)

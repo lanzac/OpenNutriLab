@@ -10,8 +10,6 @@ from .base import *  # noqa: F403
 from .base import APPS_DIR
 from .base import DATABASES
 from .base import DJANGO_VITE
-from .base import REDIS_SSL
-from .base import REDIS_URL
 from .base import env
 
 # GENERAL
@@ -40,6 +38,9 @@ if env.bool("DJANGO_DATABASE_SSL_REQUIRE", default=False):
 
 # CACHES
 # ------------------------------------------------------------------------------
+# Redis is only used as this cache. rediss:// switches on TLS.
+REDIS_URL = env("REDIS_URL", default="redis://redis:6379/0")
+REDIS_SSL = REDIS_URL.startswith("rediss://")
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",

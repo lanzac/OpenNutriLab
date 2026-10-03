@@ -60,7 +60,7 @@ jobs:
 
     env:
       # config/settings/base.py reads this with no default; everything else the
-      # test settings need (SECRET_KEY, REDIS_URL) falls back on its own.
+      # test settings need (SECRET_KEY) falls back on its own.
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/opennutrilab
 
     steps:

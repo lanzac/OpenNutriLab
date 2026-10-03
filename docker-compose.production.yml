@@ -72,11 +72,9 @@ services:
       retries: 5
 
   # -------------------------
-  # Redis (cache + Celery broker)
+  # Redis (cache)
   # -------------------------
   redis:
-    # Newer than the local stack's redis:6, which is end of life. Nothing here
-    # depends on version-specific behaviour.
     image: docker.io/redis:7-alpine
     restart: unless-stopped
     volumes:
@@ -86,24 +84,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  # -------------------------
-  # Celery worker
-  # -------------------------
-  celeryworker:
-    <<: *django
-    image: opennutrilab_production_celeryworker
-    expose: []
-    command: /start-celeryworker
-
-  # -------------------------
-  # Celery beat
-  # -------------------------
-  celerybeat:
-    <<: *django
-    image: opennutrilab_production_celerybeat
-    expose: []
-    command: /start-celerybeat
 
   # -------------------------
   # Caddy (TLS termination + media)

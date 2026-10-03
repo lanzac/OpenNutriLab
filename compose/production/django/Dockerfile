@@ -82,11 +82,9 @@ COPY --from=builder --chown=django:django /app/.venv ${APP_HOME}/.venv
 # Copied as root so the line-ending fix and chmod work, then handed over.
 COPY ./compose/production/django/entrypoint /entrypoint
 COPY ./compose/production/django/start /start
-COPY ./compose/production/django/celery/worker/start /start-celeryworker
-COPY ./compose/production/django/celery/beat/start /start-celerybeat
-RUN sed -i 's/\r$//g' /entrypoint /start /start-celeryworker /start-celerybeat \
-    && chmod +x /entrypoint /start /start-celeryworker /start-celerybeat \
-    && chown django:django /entrypoint /start /start-celeryworker /start-celerybeat
+RUN sed -i 's/\r$//g' /entrypoint /start \
+    && chmod +x /entrypoint /start \
+    && chown django:django /entrypoint /start
 
 COPY --chown=django:django . ${APP_HOME}
 

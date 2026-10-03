@@ -9,3 +9,4 @@ This project is currently in its **MVP (Minimum Viable Product) development phas
 ## Documentation
 
 - [Deployment](docs/deployment.md): running the production stack on a single Docker host.
+- [Roadmap](docs/roadmap.md): decided changes not started yet, and why.
