@@ -89,7 +89,7 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     "opennutrilab.users",
     # Your stuff: custom apps go here
-    "products.apps.ProductsConfig",
+    "opennutrilab.products.apps.ProductsConfig",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

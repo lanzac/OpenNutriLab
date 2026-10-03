@@ -5,11 +5,11 @@ import pytest
 from allauth.account.models import EmailAddress
 from django.test import Client
 
+from opennutrilab.products.api.schemas.inbound import ProductCreate
+from opennutrilab.products.models import Product
+from opennutrilab.products.services import product_services
 from opennutrilab.users.models import User
 from opennutrilab.users.tests.factories import UserFactory
-from products.api.schemas.inbound import ProductCreate
-from products.models import Product
-from products.services import product_services
 
 API = "/api/v1/products/"
 PASSWORD = "a-Long-and-unguessable-passw0rd"  # noqa: S105 - a test user's

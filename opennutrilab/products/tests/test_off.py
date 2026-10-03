@@ -9,15 +9,15 @@ from unittest.mock import patch
 import pytest
 from requests import RequestException
 
-from products.api.openfoodfacts.schemas import OFFIngredientSchema
-from products.api.openfoodfacts.schemas import OFFMacronutrientsSchema
-from products.api.openfoodfacts.schemas import OFFProductSchema
-from products.api.openfoodfacts.schemas import ProductFormSchema
-from products.api.openfoodfacts.schemas import product_schema_to_form_data
-from products.api.openfoodfacts.services import OFFError
-from products.api.openfoodfacts.services import OFFProductNotFoundError
-from products.api.openfoodfacts.services import fetch_from_off
-from products.api.openfoodfacts.services import to_ingredient_inputs
+from opennutrilab.products.api.openfoodfacts.schemas import OFFIngredientSchema
+from opennutrilab.products.api.openfoodfacts.schemas import OFFMacronutrientsSchema
+from opennutrilab.products.api.openfoodfacts.schemas import OFFProductSchema
+from opennutrilab.products.api.openfoodfacts.schemas import ProductFormSchema
+from opennutrilab.products.api.openfoodfacts.schemas import product_schema_to_form_data
+from opennutrilab.products.api.openfoodfacts.services import OFFError
+from opennutrilab.products.api.openfoodfacts.services import OFFProductNotFoundError
+from opennutrilab.products.api.openfoodfacts.services import fetch_from_off
+from opennutrilab.products.api.openfoodfacts.services import to_ingredient_inputs
 
 # A product recorded from OpenFoodFacts (API v2: the envelope differs from
 # the v3 one fetch_from_off reads, but the "product" object has the same shape).
@@ -63,7 +63,8 @@ def test_fetch_product():
     mock_response.status_code = 200
 
     with patch(
-        "products.api.openfoodfacts.services.requests.get", return_value=mock_response
+        "opennutrilab.products.api.openfoodfacts.services.requests.get",
+        return_value=mock_response,
     ):
         product: OFFProductSchema = fetch_from_off(query_barcode="999999")
 
@@ -89,7 +90,7 @@ def test_fetch_product_http_error():
 
     with (
         patch(
-            "products.api.openfoodfacts.services.requests.get",
+            "opennutrilab.products.api.openfoodfacts.services.requests.get",
             return_value=mock_response,
         ),
         pytest.raises(OFFError) as exc,
@@ -105,7 +106,7 @@ def test_fetch_product_http_error():
 def test_fetch_product_request_exception():
     with (
         patch(
-            "products.api.openfoodfacts.services.requests.get",
+            "opennutrilab.products.api.openfoodfacts.services.requests.get",
             side_effect=RequestException("Connection timeout"),
         ),
         pytest.raises(OFFError) as exc,
@@ -125,7 +126,7 @@ def test_fetch_product_invalid_json():
 
     with (
         patch(
-            "products.api.openfoodfacts.services.requests.get",
+            "opennutrilab.products.api.openfoodfacts.services.requests.get",
             return_value=mock_response,
         ),
         pytest.raises(OFFError) as exc,
@@ -145,7 +146,7 @@ def test_fetch_product_invalid_schema():
 
     with (
         patch(
-            "products.api.openfoodfacts.services.requests.get",
+            "opennutrilab.products.api.openfoodfacts.services.requests.get",
             return_value=mock_response,
         ),
         pytest.raises(OFFError) as exc,
@@ -186,7 +187,7 @@ def test_fetch_product_not_found():
 
     with (
         patch(
-            "products.api.openfoodfacts.services.requests.get",
+            "opennutrilab.products.api.openfoodfacts.services.requests.get",
             return_value=mock_response,
         ),
         pytest.raises(OFFProductNotFoundError),
@@ -234,7 +235,8 @@ def test_fetch_product_success_with_warnings():
     }
 
     with patch(
-        "products.api.openfoodfacts.services.requests.get", return_value=mock_response
+        "opennutrilab.products.api.openfoodfacts.services.requests.get",
+        return_value=mock_response,
     ):
         product: OFFProductSchema = fetch_from_off("999999")
 
@@ -277,7 +279,7 @@ def test_fetch_product_success_with_errors():
 
     with (
         patch(
-            "products.api.openfoodfacts.services.requests.get",
+            "opennutrilab.products.api.openfoodfacts.services.requests.get",
             return_value=mock_response,
         ),
         pytest.raises(OFFError) as exc,
@@ -306,7 +308,7 @@ def test_fetch_product_success_but_product_is_none():
 
     with (
         patch(
-            "products.api.openfoodfacts.services.requests.get",
+            "opennutrilab.products.api.openfoodfacts.services.requests.get",
             return_value=mock_response,
         ),
         pytest.raises(OFFError) as exc,
@@ -349,7 +351,8 @@ def test_fetch_product_accepts_normalized_upca_barcode():
     }
 
     with patch(
-        "products.api.openfoodfacts.services.requests.get", return_value=mock_response
+        "opennutrilab.products.api.openfoodfacts.services.requests.get",
+        return_value=mock_response,
     ):
         product: OFFProductSchema = fetch_from_off("13764027053")
 
@@ -376,7 +379,8 @@ def test_fetch_product_rounds_fractional_energy():
     }
 
     with patch(
-        "products.api.openfoodfacts.services.requests.get", return_value=mock_response
+        "opennutrilab.products.api.openfoodfacts.services.requests.get",
+        return_value=mock_response,
     ):
         product: OFFProductSchema = fetch_from_off("999999")
 
@@ -402,7 +406,7 @@ def test_fetch_product_barcode_mismatch():
 
     with (
         patch(
-            "products.api.openfoodfacts.services.requests.get",
+            "opennutrilab.products.api.openfoodfacts.services.requests.get",
             return_value=mock_response,
         ),
         pytest.raises(OFFProductNotFoundError, match="Barcode mismatch"),
@@ -500,7 +504,8 @@ def test_fetch_from_off_identifies_the_client():
     mock_response.status_code = 200
 
     with patch(
-        "products.api.openfoodfacts.services.requests.get", return_value=mock_response
+        "opennutrilab.products.api.openfoodfacts.services.requests.get",
+        return_value=mock_response,
     ) as mock_get:
         fetch_from_off(query_barcode="999999")
 

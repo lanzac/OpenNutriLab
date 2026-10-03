@@ -22,17 +22,17 @@ from django.db import models
 from django.db import transaction
 from django.db.models.functions import Lower
 
-from products.api.openfoodfacts.services import OFF_HEADERS
-from products.api.schemas.inbound import OFF_IMAGE_HOSTS
-from products.api.schemas.inbound import IngredientInput
-from products.api.schemas.inbound import MacronutrientInput
-from products.api.schemas.inbound import ProductCreate
-from products.api.schemas.inbound import ProductUpdate
-from products.models import Ingredient
-from products.models import IngredientRef
-from products.models import Macronutrient
-from products.models import Product
-from products.models import ProductMacronutrient
+from opennutrilab.products.api.openfoodfacts.services import OFF_HEADERS
+from opennutrilab.products.api.schemas.inbound import OFF_IMAGE_HOSTS
+from opennutrilab.products.api.schemas.inbound import IngredientInput
+from opennutrilab.products.api.schemas.inbound import MacronutrientInput
+from opennutrilab.products.api.schemas.inbound import ProductCreate
+from opennutrilab.products.api.schemas.inbound import ProductUpdate
+from opennutrilab.products.models import Ingredient
+from opennutrilab.products.models import IngredientRef
+from opennutrilab.products.models import Macronutrient
+from opennutrilab.products.models import Product
+from opennutrilab.products.models import ProductMacronutrient
 
 logger = logging.getLogger(__name__)
 

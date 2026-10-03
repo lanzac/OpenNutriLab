@@ -20,7 +20,7 @@ would be better off in the background:
   saved, with a 10-second timeout, from an image host that is sometimes
   unreachable while the OpenFoodFacts API answers. Each wait holds a server
   worker, and a failure can only be reported, not retried
-  (`products/services/product_services.py`, `download_image`).
+  (`opennutrilab/products/services/product_services.py`, `download_image`).
 - **Emails** (account verification, password reset) are sent synchronously
   over SMTP.
 

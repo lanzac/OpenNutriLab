@@ -1,5 +1,5 @@
 // Thin fetch wrapper for the django-ninja products API (see
-// products/api/routes.py, mounted at /api/v1/products/ by config/api.py).
+// opennutrilab/products/api/routes.py, mounted at /api/v1/products/ by config/api.py).
 // Kept dependency-free on purpose: nothing here needs caching/invalidation
 // yet, so plain fetch is simpler than pulling in a data-fetching library.
 //

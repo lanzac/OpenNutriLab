@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { buildPlotData, sliceValues } from './macronutrients-graph.js';
 
 // Stands in for product_form_labels()["macronutrientsGraph"] in
-// products/views.py - real French text, so a regression back to the
+// opennutrilab/products/views.py - real French text, so a regression back to the
 // hardcoded English keys fails these tests the same way
 // ProductListApp.test.jsx catches it for the product list.
 const LABELS = {

@@ -4,11 +4,11 @@ from decimal import Decimal
 import pytest
 from crispy_forms.bootstrap import FieldWithButtons
 
-from products.api.schemas.inbound import ProductCreate
-from products.forms import ProductForm
-from products.models import Macronutrient
-from products.models import Product
-from products.models import ProductMacronutrient
+from opennutrilab.products.api.schemas.inbound import ProductCreate
+from opennutrilab.products.forms import ProductForm
+from opennutrilab.products.models import Macronutrient
+from opennutrilab.products.models import Product
+from opennutrilab.products.models import ProductMacronutrient
 
 
 @pytest.mark.django_db

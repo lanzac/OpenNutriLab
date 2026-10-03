@@ -15,7 +15,7 @@ from ninja import Field
 from ninja import Schema
 from pydantic import field_validator
 
-from products.fields import validate_ean13
+from opennutrilab.products.fields import validate_ean13
 
 # The only hosts a product photo is downloaded from. The URL comes from the
 # client (an API payload, a hidden field of the product form), so without this

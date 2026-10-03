@@ -7,10 +7,10 @@ from ninja import ModelSchema
 from ninja import Schema
 from pydantic import AliasPath
 
-from products.models import Ingredient
-from products.models import IngredientRef
-from products.models import Product
-from products.models import ProductMacronutrient
+from opennutrilab.products.models import Ingredient
+from opennutrilab.products.models import IngredientRef
+from opennutrilab.products.models import Product
+from opennutrilab.products.models import ProductMacronutrient
 
 # More information on : Regulation (EU) No 1169/2011
 # https://eur-lex.europa.eu/eli/reg/2011/1169/oj?locale=fr

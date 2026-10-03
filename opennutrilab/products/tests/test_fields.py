@@ -2,7 +2,7 @@ import pytest
 from django.core.exceptions import ValidationError
 from django.db.models.fields import CharField
 
-from products.fields import EAN13Field
+from opennutrilab.products.fields import EAN13Field
 
 
 @pytest.fixture

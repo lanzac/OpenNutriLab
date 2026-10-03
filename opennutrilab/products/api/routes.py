@@ -4,12 +4,12 @@ from django.shortcuts import get_object_or_404
 from ninja import Router
 from ninja.errors import HttpError
 
-from products.api.schemas.inbound import ProductCreate
-from products.api.schemas.inbound import ProductUpdate
-from products.api.schemas.outbound import ProductListItemOut
-from products.api.schemas.outbound import ProductOut
-from products.models import Product
-from products.services import product_services
+from opennutrilab.products.api.schemas.inbound import ProductCreate
+from opennutrilab.products.api.schemas.inbound import ProductUpdate
+from opennutrilab.products.api.schemas.outbound import ProductListItemOut
+from opennutrilab.products.api.schemas.outbound import ProductOut
+from opennutrilab.products.models import Product
+from opennutrilab.products.services import product_services
 
 router = Router(tags=["Products"])
 

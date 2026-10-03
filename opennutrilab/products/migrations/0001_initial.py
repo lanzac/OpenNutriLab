@@ -2,7 +2,7 @@
 
 import django.db.models.deletion
 import django.db.models.functions.text
-import products.fields
+import opennutrilab.products.fields
 import quantityfield.fields
 from django.db import migrations, models
 
@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Product',
             fields=[
-                ('barcode', products.fields.EAN13Field(max_length=13, primary_key=True, serialize=False)),
+                ('barcode', opennutrilab.products.fields.EAN13Field(max_length=13, primary_key=True, serialize=False)),
                 ('name', models.CharField(max_length=100)),
                 ('image', models.ImageField(blank=True, null=True, upload_to='images/products/')),
                 ('description', models.TextField(blank=True, default='')),

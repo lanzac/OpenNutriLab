@@ -10,7 +10,7 @@ function reloadWith(param, value) {
 
 /**
  * @param {{ enterBarcode: string }} labels Translated server-side (see
- *   product_form_labels in products/views.py).
+ *   product_form_labels in opennutrilab/products/views.py).
  */
 export function initBarcodeActions(labels) {
   const fetchButton = document.getElementById('fetch-product-data');

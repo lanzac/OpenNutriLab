@@ -4,11 +4,11 @@ from http import HTTPStatus
 import requests
 from pydantic import ValidationError
 
-from products.api.openfoodfacts.schemas import OFFIngredientSchema
-from products.api.openfoodfacts.schemas import OFFProductAPIResponseSchema
-from products.api.openfoodfacts.schemas import OFFProductSchema
-from products.api.openfoodfacts.schemas import StatusEnum
-from products.api.schemas.inbound import IngredientInput
+from opennutrilab.products.api.openfoodfacts.schemas import OFFIngredientSchema
+from opennutrilab.products.api.openfoodfacts.schemas import OFFProductAPIResponseSchema
+from opennutrilab.products.api.openfoodfacts.schemas import OFFProductSchema
+from opennutrilab.products.api.openfoodfacts.schemas import StatusEnum
+from opennutrilab.products.api.schemas.inbound import IngredientInput
 
 
 class OFFError(Exception):

@@ -15,22 +15,22 @@ from django.urls import reverse
 from django.utils import translation
 from PIL import Image
 
+from opennutrilab.products.api.openfoodfacts.schemas import OFFIngredientSchema
+from opennutrilab.products.api.openfoodfacts.schemas import OFFMacronutrientsSchema
+from opennutrilab.products.api.openfoodfacts.schemas import OFFProductSchema
+from opennutrilab.products.api.openfoodfacts.services import OFFError
+from opennutrilab.products.api.openfoodfacts.services import OFFProductNotFoundError
+from opennutrilab.products.api.schemas.inbound import IngredientInput
+from opennutrilab.products.api.schemas.inbound import ProductCreate
+from opennutrilab.products.forms import ProductForm
+from opennutrilab.products.models import Ingredient
+from opennutrilab.products.models import IngredientRef
+from opennutrilab.products.models import Product
+from opennutrilab.products.services.product_services import create_product
+from opennutrilab.products.views import ingredient_rows_from_db
+from opennutrilab.products.views import ingredient_rows_from_inputs
 from opennutrilab.users.models import User
 from opennutrilab.users.tests.factories import UserFactory
-from products.api.openfoodfacts.schemas import OFFIngredientSchema
-from products.api.openfoodfacts.schemas import OFFMacronutrientsSchema
-from products.api.openfoodfacts.schemas import OFFProductSchema
-from products.api.openfoodfacts.services import OFFError
-from products.api.openfoodfacts.services import OFFProductNotFoundError
-from products.api.schemas.inbound import IngredientInput
-from products.api.schemas.inbound import ProductCreate
-from products.forms import ProductForm
-from products.models import Ingredient
-from products.models import IngredientRef
-from products.models import Product
-from products.services.product_services import create_product
-from products.views import ingredient_rows_from_db
-from products.views import ingredient_rows_from_inputs
 
 if TYPE_CHECKING:
     from django.http.response import HttpResponse
@@ -167,7 +167,7 @@ class TestProductListView:
 
 @pytest.mark.django_db
 class TestProductCreateView:
-    @patch("products.views.fetch_from_off")
+    @patch("opennutrilab.products.views.fetch_from_off")
     def test_unknown_barcode_keeps_the_form_usable(
         self, mock_fetch_from_off: MagicMock, client: Client
     ):
@@ -187,7 +187,7 @@ class TestProductCreateView:
         notices = [str(m) for m in response.context["messages"]]
         assert any("was not found in OpenFoodFacts" in n for n in notices), notices
 
-    @patch("products.views.fetch_from_off")
+    @patch("opennutrilab.products.views.fetch_from_off")
     def test_off_failure_notice_is_translated(
         self, mock_fetch_from_off: MagicMock, client: Client
     ):
@@ -207,7 +207,7 @@ class TestProductCreateView:
         notices = [str(m) for m in response.context["messages"]]
         assert any("est introuvable dans OpenFoodFacts" in n for n in notices), notices
 
-    @patch("products.api.openfoodfacts.services.requests.get")
+    @patch("opennutrilab.products.api.openfoodfacts.services.requests.get")
     def test_off_answering_another_barcode_keeps_the_form_usable(
         self, mock_get: MagicMock, client: Client
     ):
@@ -233,7 +233,7 @@ class TestProductCreateView:
         notices = [str(m) for m in response.context["messages"]]
         assert any("was not found in OpenFoodFacts" in n for n in notices), notices
 
-    @patch("products.views.fetch_from_off")
+    @patch("opennutrilab.products.views.fetch_from_off")
     def test_unreachable_api_keeps_the_form_usable(
         self, mock_fetch_from_off: MagicMock, client: Client
     ):
@@ -249,13 +249,13 @@ class TestProductCreateView:
         assert any("could not be reached" in n for n in notices), notices
 
     def test_get_form_without_barcode(self, client: Client):
-        with patch("products.views.fetch_from_off") as fetch:
+        with patch("opennutrilab.products.views.fetch_from_off") as fetch:
             response: HttpResponse = client.get(reverse("create_product"))
 
         fetch.assert_not_called()
         assert response.context["form"].initial == {}
 
-    @patch("products.views.fetch_from_off")
+    @patch("opennutrilab.products.views.fetch_from_off")
     def test_lookup_fills_the_form_and_the_hidden_fields(
         self, mock_fetch_from_off: MagicMock, client: Client
     ):
@@ -277,8 +277,8 @@ class TestProductCreateView:
         assert [r["name"] for r in rows] == ["Sucre", "Lait"]
         assert rows[1]["ingredients"][0]["name"] == "lait écrémé"
 
-    @patch("products.services.product_services.requests.get")
-    @patch("products.views.fetch_from_off")
+    @patch("opennutrilab.products.services.product_services.requests.get")
+    @patch("opennutrilab.products.views.fetch_from_off")
     def test_save_stores_what_the_lookup_showed_without_asking_off_again(
         self, mock_fetch_from_off: MagicMock, mock_get: MagicMock, client: Client
     ):
@@ -301,8 +301,8 @@ class TestProductCreateView:
         assert mock_get.call_args.args == (IMAGE_URL,)
         assert product.image.name == f"images/products/{NUTELLA}.jpg"
 
-    @patch("products.services.product_services.requests.get")
-    @patch("products.views.fetch_from_off")
+    @patch("opennutrilab.products.services.product_services.requests.get")
+    @patch("opennutrilab.products.views.fetch_from_off")
     def test_changing_the_barcode_after_the_lookup_drops_what_it_returned(
         self, mock_fetch_from_off: MagicMock, mock_get: MagicMock, client: Client
     ):
@@ -319,8 +319,8 @@ class TestProductCreateView:
         assert not product.image
         mock_get.assert_not_called()
 
-    @patch("products.services.product_services.requests.get")
-    @patch("products.views.fetch_from_off")
+    @patch("opennutrilab.products.services.product_services.requests.get")
+    @patch("opennutrilab.products.views.fetch_from_off")
     def test_an_uploaded_photo_wins_over_the_fetched_one(
         self, mock_fetch_from_off: MagicMock, mock_get: MagicMock, client: Client
     ):
@@ -354,7 +354,7 @@ class TestProductCreateView:
 
 @pytest.mark.django_db
 class TestProductEditView:
-    @patch("products.views.fetch_from_off")
+    @patch("opennutrilab.products.views.fetch_from_off")
     def test_failed_reset_falls_back_to_stored_values(
         self, mock_fetch_from_off: MagicMock, client: Client
     ):
@@ -394,7 +394,7 @@ class TestProductEditView:
         url = reverse("edit_product", args=[product.pk])
         form = client.get(url).context["form"]
 
-        with patch("products.views.fetch_from_off") as fetch:
+        with patch("opennutrilab.products.views.fetch_from_off") as fetch:
             client.post(url, submitted(form, name="Renamed"))
 
         fetch.assert_not_called()
@@ -402,8 +402,8 @@ class TestProductEditView:
         assert product.name == "Renamed"
         assert set(product.ingredients.values_list("id", flat=True)) == ids
 
-    @patch("products.services.product_services.requests.get")
-    @patch("products.views.fetch_from_off")
+    @patch("opennutrilab.products.services.product_services.requests.get")
+    @patch("opennutrilab.products.views.fetch_from_off")
     def test_reset_then_save_replaces_ingredients_and_warns_about_the_photo(
         self,
         mock_fetch_from_off: MagicMock,

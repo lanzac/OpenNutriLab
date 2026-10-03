@@ -12,8 +12,8 @@ from django.db.models.functions import Lower
 from django.db.models.functions import Upper
 from django.utils.translation import gettext_lazy as _
 
-from products.units import DEFAULT_VITAMIN_UNIT
-from products.units import VITAMIN_UNIT_CHOICES
+from opennutrilab.products.units import DEFAULT_VITAMIN_UNIT
+from opennutrilab.products.units import VITAMIN_UNIT_CHOICES
 
 from .fields import EAN13Field
 

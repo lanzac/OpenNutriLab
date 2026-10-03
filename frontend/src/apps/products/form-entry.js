@@ -18,7 +18,7 @@ function ready(callback) {
 }
 
 ready(() => {
-  // Translated server-side (see product_form_labels in products/views.py),
+  // Translated server-side (see product_form_labels in opennutrilab/products/views.py),
   // handed over the same way ProductListView does for the React list.
   const labels = JSON.parse(
     document.getElementById('product-form-labels').textContent,

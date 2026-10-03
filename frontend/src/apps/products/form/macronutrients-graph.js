@@ -60,7 +60,7 @@ const plotLayout = {
 
 /**
  * @param {Record<string, string>} labels Translated display text keyed like
- *   SLICES (see product_form_labels in products/views.py).
+ *   SLICES (see product_form_labels in opennutrilab/products/views.py).
  */
 export function buildPlotData(labels) {
   return [

@@ -3,7 +3,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from products.api.schemas.inbound import ProductCreate
+from opennutrilab.products.api.schemas.inbound import ProductCreate
 
 
 def _minimal_payload(barcode: str, name: str) -> dict[str, Any]:

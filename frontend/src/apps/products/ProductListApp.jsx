@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react';
 import { fetchProducts } from './api/client.js';
 
 // Django's edit/delete class-based views still own these URLs (see
-// /app/products/urls.py) - React only needs to build links to them.
-// Product.barcode is the model's primary key (see /app/products/models.py),
+// opennutrilab/products/urls.py) - React only needs to build links to them.
+// Product.barcode is the model's primary key (see opennutrilab/products/models.py),
 // matching the <str:pk> URL parameter.
 const productEditUrl = (barcode) => `/products/${barcode}/edit/`;
 const productDeleteUrl = (barcode) => `/products/${barcode}/delete/`;

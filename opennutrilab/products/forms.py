@@ -24,10 +24,10 @@ from pydantic import TypeAdapter
 from pydantic import ValidationError
 
 from opennutrilab.crispy_bootstrap_extended.layouts import AccordionGroupExtended
-from products.api.schemas.inbound import IngredientInput
-from products.api.schemas.inbound import ProductCreate
-from products.api.schemas.inbound import ProductUpdate
-from products.services import product_services
+from opennutrilab.products.api.schemas.inbound import IngredientInput
+from opennutrilab.products.api.schemas.inbound import ProductCreate
+from opennutrilab.products.api.schemas.inbound import ProductUpdate
+from opennutrilab.products.services import product_services
 
 from .models import Macronutrient
 from .models import Product

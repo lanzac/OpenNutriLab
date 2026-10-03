@@ -7,7 +7,7 @@ import 'tabulator-tables/dist/css/tabulator_bootstrap5.min.css';
 /**
  * @param {{ name: string, percentage: string, recognized: string }} labels
  *   Column titles, translated server-side (see product_form_labels in
- *   products/views.py) so the .po catalogue stays the single source of truth.
+ *   opennutrilab/products/views.py) so the .po catalogue stays the single source of truth.
  */
 export function initIngredientsTable(labels) {
   const tableDiv = document.getElementById('ingredients_table');

@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from products.models import Product
+from opennutrilab.products.models import Product
 
 
 @pytest.mark.django_db

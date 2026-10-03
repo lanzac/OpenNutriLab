@@ -14,18 +14,18 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.files.uploadedfile import UploadedFile
 from django.db.models.fields.files import ImageFieldFile
 
-from products.api.schemas.inbound import ProductCreate
-from products.api.schemas.inbound import ProductUpdate
-from products.models import Ingredient
-from products.models import IngredientRef
-from products.models import Product
-from products.models import ProductMacronutrient
-from products.services.product_services import ProductAlreadyExistsError
-from products.services.product_services import UnknownMacronutrientError
-from products.services.product_services import create_product
-from products.services.product_services import download_image
-from products.services.product_services import save_image_overwrite
-from products.services.product_services import update_product
+from opennutrilab.products.api.schemas.inbound import ProductCreate
+from opennutrilab.products.api.schemas.inbound import ProductUpdate
+from opennutrilab.products.models import Ingredient
+from opennutrilab.products.models import IngredientRef
+from opennutrilab.products.models import Product
+from opennutrilab.products.models import ProductMacronutrient
+from opennutrilab.products.services.product_services import ProductAlreadyExistsError
+from opennutrilab.products.services.product_services import UnknownMacronutrientError
+from opennutrilab.products.services.product_services import create_product
+from opennutrilab.products.services.product_services import download_image
+from opennutrilab.products.services.product_services import save_image_overwrite
+from opennutrilab.products.services.product_services import update_product
 
 if TYPE_CHECKING:
     from django.db.models import FileField
@@ -209,7 +209,7 @@ def test_update_product_replaces_the_ingredient_tree_when_given(product: Product
 @pytest.mark.django_db
 def test_create_product_downloads_the_photo_named_after_the_barcode():
     with patch(
-        "products.services.product_services.requests.get",
+        "opennutrilab.products.services.product_services.requests.get",
         return_value=ok_image_response(),
     ) as get:
         result = create_product(create_payload(image_url=IMAGE_URL))
@@ -223,7 +223,7 @@ def test_create_product_downloads_the_photo_named_after_the_barcode():
 @pytest.mark.django_db
 def test_failed_photo_download_still_saves_the_product():
     with patch(
-        "products.services.product_services.requests.get",
+        "opennutrilab.products.services.product_services.requests.get",
         side_effect=requests.ConnectTimeout("images host unreachable"),
     ):
         result = create_product(create_payload(image_url=IMAGE_URL))
@@ -237,7 +237,7 @@ def test_failed_photo_download_still_saves_the_product():
 def test_an_uploaded_photo_wins_over_the_url():
     upload = SimpleUploadedFile("my photo.PNG", b"png-bytes", content_type="image/png")
 
-    with patch("products.services.product_services.requests.get") as get:
+    with patch("opennutrilab.products.services.product_services.requests.get") as get:
         result = create_product(create_payload(image_url=IMAGE_URL), image=upload)
 
     get.assert_not_called()
@@ -247,7 +247,7 @@ def test_an_uploaded_photo_wins_over_the_url():
 def test_download_image_refuses_hosts_other_than_openfoodfacts():
     """The schemas reject these URLs too; the function must not rely on it."""
     with (
-        patch("products.services.product_services.requests.get") as get,
+        patch("opennutrilab.products.services.product_services.requests.get") as get,
         pytest.raises(ValueError, match="Refusing"),
     ):
         download_image("http://redis:6379/", filename="x.jpg")

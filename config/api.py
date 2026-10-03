@@ -14,7 +14,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from ninja import NinjaAPI
 from ninja.security import django_auth
 
-from products.api.routes import router as products_router
+from opennutrilab.products.api.routes import router as products_router
 
 api = NinjaAPI(
     title="OpenNutriLab API",
