@@ -1,4 +1,4 @@
-# Hand-written, unlike the rest of typings/: django-environ annotates every
+# Hand-written stub. django-environ annotates every
 # `default` parameter with its own NoValue sentinel type, so any real default
 # (env.bool("X", default=False)) is a type error. Covers what config/settings
 # uses.
