@@ -6,7 +6,6 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
-from ninja.errors import HttpError
 from requests import RequestException
 
 from products.api.openfoodfacts.schemas import OFFIngredientSchema
@@ -14,6 +13,8 @@ from products.api.openfoodfacts.schemas import OFFMacronutrientsSchema
 from products.api.openfoodfacts.schemas import OFFProductSchema
 from products.api.openfoodfacts.schemas import ProductFormSchema
 from products.api.openfoodfacts.schemas import product_schema_to_form_data
+from products.api.openfoodfacts.services import OFFError
+from products.api.openfoodfacts.services import OFFProductNotFoundError
 from products.api.openfoodfacts.services import build_ingredient_json_from_schema
 from products.api.openfoodfacts.services import fetch_from_off
 from products.api.openfoodfacts.services import get_schema_from_ingredients
@@ -95,12 +96,14 @@ def test_fetch_product_http_error():
             "products.api.openfoodfacts.services.requests.get",
             return_value=mock_response,
         ),
-        pytest.raises(HttpError) as exc,
+        pytest.raises(OFFError) as exc,
     ):
         fetch_from_off(query_barcode="999999")
 
-    assert exc.value.status_code == 502  # noqa: PLR2004
-    assert "External API returned an error" in exc.value.message
+    # An outage, not an unknown barcode.
+    assert type(exc.value) is OFFError
+
+    assert "External API returned an error" in str(exc.value)
 
 
 def test_fetch_product_request_exception():
@@ -109,12 +112,14 @@ def test_fetch_product_request_exception():
             "products.api.openfoodfacts.services.requests.get",
             side_effect=RequestException("Connection timeout"),
         ),
-        pytest.raises(HttpError) as exc,
+        pytest.raises(OFFError) as exc,
     ):
         fetch_from_off("999999")
 
-    assert exc.value.status_code == 503  # noqa: PLR2004
-    assert "External API unreachable" in exc.value.message
+    # An outage, not an unknown barcode.
+    assert type(exc.value) is OFFError
+
+    assert "External API unreachable" in str(exc.value)
 
 
 def test_fetch_product_invalid_json():
@@ -127,12 +132,14 @@ def test_fetch_product_invalid_json():
             "products.api.openfoodfacts.services.requests.get",
             return_value=mock_response,
         ),
-        pytest.raises(HttpError) as exc,
+        pytest.raises(OFFError) as exc,
     ):
         fetch_from_off("999999")
 
-    assert exc.value.status_code == 502  # noqa: PLR2004
-    assert "Invalid JSON received" in exc.value.message
+    # An outage, not an unknown barcode.
+    assert type(exc.value) is OFFError
+
+    assert "Invalid JSON received" in str(exc.value)
 
 
 def test_fetch_product_invalid_schema():
@@ -145,12 +152,14 @@ def test_fetch_product_invalid_schema():
             "products.api.openfoodfacts.services.requests.get",
             return_value=mock_response,
         ),
-        pytest.raises(HttpError) as exc,
+        pytest.raises(OFFError) as exc,
     ):
         fetch_from_off("999999")
 
-    assert exc.value.status_code == 500  # noqa: PLR2004
-    assert "Invalid API response format" in exc.value.message
+    # An outage, not an unknown barcode.
+    assert type(exc.value) is OFFError
+
+    assert "Invalid API response format" in str(exc.value)
 
 
 def test_fetch_product_not_found():
@@ -184,11 +193,9 @@ def test_fetch_product_not_found():
             "products.api.openfoodfacts.services.requests.get",
             return_value=mock_response,
         ),
-        pytest.raises(HttpError) as exc,
+        pytest.raises(OFFProductNotFoundError),
     ):
         fetch_from_off("999999")
-
-    assert exc.value.status_code == 404  # noqa: PLR2004
 
 
 def test_fetch_product_success_with_warnings():
@@ -277,12 +284,14 @@ def test_fetch_product_success_with_errors():
             "products.api.openfoodfacts.services.requests.get",
             return_value=mock_response,
         ),
-        pytest.raises(HttpError) as exc,
+        pytest.raises(OFFError) as exc,
     ):
         fetch_from_off("999999")
 
-    assert exc.value.status_code == 400  # noqa: PLR2004
-    assert "Invalid nutriments" in exc.value.message
+    # An outage, not an unknown barcode.
+    assert type(exc.value) is OFFError
+
+    assert "Invalid nutriments" in str(exc.value)
 
 
 def test_fetch_product_success_but_product_is_none():
@@ -304,12 +313,14 @@ def test_fetch_product_success_but_product_is_none():
             "products.api.openfoodfacts.services.requests.get",
             return_value=mock_response,
         ),
-        pytest.raises(HttpError) as exc,
+        pytest.raises(OFFError) as exc,
     ):
         fetch_from_off("999999")
 
-    assert exc.value.status_code == 500  # noqa: PLR2004
-    assert "returned no product" in exc.value.message
+    # An outage, not an unknown barcode.
+    assert type(exc.value) is OFFError
+
+    assert "returned no product" in str(exc.value)
 
 
 def test_fetch_product_accepts_normalized_upca_barcode():
@@ -398,11 +409,9 @@ def test_fetch_product_barcode_mismatch():
             "products.api.openfoodfacts.services.requests.get",
             return_value=mock_response,
         ),
-        pytest.raises(HttpError, match="Barcode mismatch") as exc_info,
+        pytest.raises(OFFProductNotFoundError, match="Barcode mismatch"),
     ):
         fetch_from_off("999999")
-
-    assert exc_info.value.status_code == 404  # noqa: PLR2004
 
 
 def test_product_schema_to_form_data():

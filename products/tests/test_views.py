@@ -11,12 +11,13 @@ from django.test import Client
 from django.test import RequestFactory
 from django.urls import reverse
 from django.utils import translation
-from ninja.errors import HttpError
 
 from products.api.openfoodfacts.schemas import OFFIngredientSchema
 from products.api.openfoodfacts.schemas import OFFMacronutrientsSchema
 from products.api.openfoodfacts.schemas import OFFProductSchema
 from products.api.openfoodfacts.schemas import product_schema_to_form_data
+from products.api.openfoodfacts.services import OFFError
+from products.api.openfoodfacts.services import OFFProductNotFoundError
 from products.forms import ProductForm
 from products.models import IngredientRef
 from products.models import Product
@@ -113,12 +114,11 @@ class TestProductCreateView:
         self, mock_fetch_from_off: MagicMock, client: Client
     ):
         """
-        A barcode OpenFoodFacts does not know used to 500: fetch_from_off
-        raises django-ninja's HttpError, which only becomes a response inside
-        an API route. The page must instead come back with the barcode filled
-        in and a notice telling the user to enter the rest by hand.
+        A barcode OpenFoodFacts does not know is not a server fault: the page
+        comes back with the barcode filled in and a notice telling the user to
+        enter the rest by hand.
         """
-        mock_fetch_from_off.side_effect = HttpError(404, "Product not found.")
+        mock_fetch_from_off.side_effect = OFFProductNotFoundError("Product not found.")
 
         response: HttpResponse = client.get(
             reverse("create_product"), {"barcode": "322982079455"}
@@ -137,7 +137,7 @@ class TestProductCreateView:
         The notices were added without running makemessages, so French users
         got them in English. Guards against a notice missing from the .po.
         """
-        mock_fetch_from_off.side_effect = HttpError(404, "Product not found.")
+        mock_fetch_from_off.side_effect = OFFProductNotFoundError("Product not found.")
 
         with translation.override("fr-fr"):
             response: HttpResponse = client.get(
@@ -180,7 +180,7 @@ class TestProductCreateView:
         self, mock_fetch_from_off: MagicMock, client: Client
     ):
         """An upstream outage is reported differently from a missing product."""
-        mock_fetch_from_off.side_effect = HttpError(503, "External API unreachable")
+        mock_fetch_from_off.side_effect = OFFError("External API unreachable")
 
         response: HttpResponse = client.get(
             reverse("create_product"), {"barcode": "322982079455"}
@@ -261,7 +261,7 @@ class TestProductEditView:
             name="Stored Product",
             energy_kj=10,
         )
-        mock_fetch_from_off.side_effect = HttpError(404, "Product not found.")
+        mock_fetch_from_off.side_effect = OFFProductNotFoundError("Product not found.")
 
         response: HttpResponse = client.get(
             reverse("edit_product", args=[product.pk]), {"reset": "1"}

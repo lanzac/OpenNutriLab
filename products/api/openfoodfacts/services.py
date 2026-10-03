@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING
 from typing import Any
 
 import requests
-from ninja.errors import HttpError
 from pydantic import ValidationError
 
 from products.api.openfoodfacts.schemas import OFFIngredientSchema
@@ -16,6 +15,19 @@ from products.models import Product
 
 if TYPE_CHECKING:
     from django.db.models.query import QuerySet
+
+
+class OFFError(Exception):
+    """OpenFoodFacts could not give a usable answer for a barcode.
+
+    Raised for an unreachable API, an upstream error status, or a response
+    that does not parse. Callers turn it into whatever their layer speaks: a
+    notice on the product form, an HTTP status in an API route.
+    """
+
+
+class OFFProductNotFoundError(OFFError):
+    """OpenFoodFacts has no product for this barcode."""
 
 
 # OpenFoodFacts rejects generic clients: without a User-Agent naming the
@@ -52,76 +64,58 @@ def fetch_from_off(
             headers=OFF_HEADERS,
         )
     except requests.RequestException as e:
-        raise HttpError(
-            status_code=503,  # Service Unavailable → connexion impossible
-            message=f"External API unreachable: {e}",
-        ) from e
+        msg = f"External API unreachable: {e}"
+        raise OFFError(msg) from e
 
     # OFF answers an unknown barcode with 404 *and* a well-formed failure body,
     # so the status line alone cannot tell "no such product" from a broken
     # gateway. Let 404 fall through to the body checks below, which turn
-    # `status: failure` into a 404; anything else is a genuine upstream error.
+    # `status: failure` into a not-found; anything else is an upstream error.
     if response.status_code not in (HTTPStatus.OK, HTTPStatus.NOT_FOUND):
-        raise HttpError(
-            status_code=502,  # Bad Gateway → API externe en erreur
-            message=(
-                f"External API returned an error: {response.status_code} for url: {url}"
-            ),
-        )
+        msg = f"External API returned an error: {response.status_code} for url: {url}"
+        raise OFFError(msg)
 
     # JSON parsing
     try:
         data = response.json()
     except ValueError as e:
-        raise HttpError(
-            status_code=502,
-            message=f"Invalid JSON received from external API: {e}",
-        ) from e
+        msg = f"Invalid JSON received from external API: {e}"
+        raise OFFError(msg) from e
 
     # Validation Pydantic
     try:
         api_product_response = OFFProductAPIResponseSchema.model_validate(data)
     except ValidationError as e:
-        raise HttpError(
-            status_code=500,
-            message=f"Invalid API response format for {query_barcode}: {e}",
-        ) from e
+        msg = f"Invalid API response format for {query_barcode}: {e}"
+        raise OFFError(msg) from e
 
     # API-level errors
     if api_product_response.status == StatusEnum.failure:
-        raise HttpError(status_code=404, message="Product not found.")
+        msg = f"Product {query_barcode} not found."
+        raise OFFProductNotFoundError(msg)
 
     # `success_with_warnings` is the ordinary answer for a short barcode: OFF
     # pads codes to 13 digits and reports the padding as a
     # `different_normalized_product_code` warning. Only errors are fatal.
     if api_product_response.status == StatusEnum.success_with_errors:
-        raise HttpError(
-            status_code=400,
-            message=str(api_product_response.errors),
-        )
+        raise OFFError(str(api_product_response.errors))
 
     product = api_product_response.product
 
     if product is None:
-        raise HttpError(
-            status_code=500,
-            message=(
-                f"API response for {query_barcode} indicated success "
-                "but returned no product."
-            ),
+        msg = (
+            f"API response for {query_barcode} indicated success "
+            "but returned no product."
         )
+        raise OFFError(msg)
 
     # OFF answering with another product means it has none for this barcode.
-    # Reported as a 404 like any other unknown barcode, so the views' existing
-    # HttpError handling covers it instead of it escaping as a 500.
     if normalize_barcode(query_barcode) != normalize_barcode(product.barcode):
-        raise HttpError(
-            status_code=404,
-            message=(
-                f"Barcode mismatch: requested {query_barcode}, "
-                f"but got {product.barcode} from OpenFoodFacts"
-            ),
+        msg = (
+            f"Barcode mismatch: requested {query_barcode}, "
+            f"but got {product.barcode} from OpenFoodFacts"
         )
+        raise OFFProductNotFoundError(msg)
 
     return product
 

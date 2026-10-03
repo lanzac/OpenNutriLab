@@ -1,5 +1,4 @@
 import logging
-from http import HTTPStatus
 from typing import TYPE_CHECKING
 from typing import Any
 
@@ -9,7 +8,6 @@ from django.middleware.csrf import get_token
 from django.urls import reverse_lazy
 from django.utils.translation import get_language
 from django.utils.translation import gettext as _
-from ninja.errors import HttpError
 from vanilla import CreateView
 from vanilla import DeleteView
 from vanilla import ListView
@@ -18,6 +16,8 @@ from vanilla import UpdateView
 from .api.openfoodfacts.schemas import OFFProductSchema
 from .api.openfoodfacts.schemas import ProductFormSchema
 from .api.openfoodfacts.schemas import product_schema_to_form_data
+from .api.openfoodfacts.services import OFFError
+from .api.openfoodfacts.services import OFFProductNotFoundError
 from .api.openfoodfacts.services import build_ingredient_json_from_schema
 from .api.openfoodfacts.services import fetch_from_off
 from .api.openfoodfacts.services import get_schema_from_ingredients
@@ -91,12 +91,10 @@ class ProductCreateView(CreateView):
                 fetched_product: OFFProductSchema = fetch_from_off(
                     query_barcode=barcode
                 )
-            except HttpError as e:
-                # A barcode OpenFoodFacts does not know is an ordinary outcome
-                # here, not a server fault. Left uncaught this would be a 500:
-                # fetch_from_off speaks django-ninja's HttpError, which only
-                # becomes a response inside an API route. Keep the form usable
-                # with the barcode filled in so it can be entered by hand.
+            except OFFError as e:
+                # A barcode OpenFoodFacts does not know, or an OFF outage, is an
+                # ordinary outcome here, not a server fault. Keep the form
+                # usable with the barcode filled in so it can be entered by hand.
                 report_off_failure(self.request, barcode=barcode, error=e)
                 initial = {"barcode": barcode}
             else:
@@ -148,10 +146,10 @@ class ProductEditView(UpdateView):
         if reset:
             try:
                 fetched_product = fetch_from_off(query_barcode=product_instance.barcode)
-            except HttpError as e:
-                # Same trap as ProductCreateView. Leaving fetched_product as
-                # None falls back to the values already stored for this
-                # product, so a failed reset shows the form unchanged.
+            except OFFError as e:
+                # Leaving fetched_product as None falls back to the values
+                # already stored for this product, so a failed reset shows the
+                # form unchanged.
                 report_off_failure(
                     self.request, barcode=product_instance.barcode, error=e
                 )
@@ -239,21 +237,16 @@ def product_form_labels() -> dict[str, Any]:
     }
 
 
-def report_off_failure(request: HttpRequest, barcode: str, error: HttpError) -> None:
+def report_off_failure(request: HttpRequest, barcode: str, error: OFFError) -> None:
     """
     Log a failed OpenFoodFacts lookup and tell the user what to do next.
 
     The exception message carries the upstream detail, which is useful in the
     log but too noisy for a page banner, so only the cause is shown.
     """
-    logger.warning(
-        "OpenFoodFacts lookup failed for %s: %s %s",
-        barcode,
-        error.status_code,
-        error.message,
-    )
+    logger.warning("OpenFoodFacts lookup failed for %s: %s", barcode, error)
 
-    if error.status_code == HTTPStatus.NOT_FOUND:
+    if isinstance(error, OFFProductNotFoundError):
         text = _(
             "Barcode %(barcode)s was not found in OpenFoodFacts. "
             "Please fill in the details by hand."
