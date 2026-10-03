@@ -101,7 +101,7 @@ CSRF_TRUSTED_ORIGINS = env.list(
 
 # CORS
 # ------------------------------------------------------------------------------
-# base.py restricts CORS to ^/api/.*$. Browsers are what enforce CORS, so this
+# base.py restricts CORS to /api/ and /_allauth/. Browsers are what enforce CORS, so this
 # matters for the React SPA served from another origin and for a mobile app
 # running in a web view (Capacitor sends "capacitor://localhost"); a native
 # HTTP client sends no Origin header and is unaffected.

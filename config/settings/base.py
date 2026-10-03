@@ -82,11 +82,9 @@ THIRD_PARTY_APPS = [
     "allauth.account",
     "allauth.mfa",
     "allauth.socialaccount",
+    "allauth.headless",
     "django_celery_beat",
-    "rest_framework",
-    "rest_framework.authtoken",
     "corsheaders",
-    "drf_spectacular",
     "django_vite",
 ]
 
@@ -321,30 +319,11 @@ SOCIALACCOUNT_ADAPTER = "opennutrilab.users.adapters.SocialAccountAdapter"
 # https://docs.allauth.org/en/latest/socialaccount/configuration.html
 SOCIALACCOUNT_FORMS = {"signup": "opennutrilab.users.forms.UserSocialSignupForm"}
 
-# django-rest-framework
-# -------------------------------------------------------------------------------
-# django-rest-framework - https://www.django-rest-framework.org/api-guide/settings/
-REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework.authentication.SessionAuthentication",
-        "rest_framework.authentication.TokenAuthentication",
-    ),
-    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
-    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-}
-
 # django-cors-headers - https://github.com/adamchainz/django-cors-headers#setup
-CORS_URLS_REGEX = r"^/api/.*$"
+# The API and allauth's headless endpoints are the only cross-origin surface:
+# the mobile app (in a web view) and a future SPA on another origin call them.
+CORS_URLS_REGEX = r"^/(api|_allauth)/.*$"
 
-# # By Default swagger ui is available only to admin user(s). You can change permission classes to change that
-# # See more configuration options at https://drf-spectacular.readthedocs.io/en/latest/settings.html#settings
-SPECTACULAR_SETTINGS = {
-    "TITLE": "Open Nutri Lab API",
-    "DESCRIPTION": "Documentation of API endpoints of Open Nutri Lab",
-    "VERSION": "1.0.0",
-    "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAdminUser"],
-    "SCHEMA_PATH_PREFIX": "/api/",
-}
 # django-vite
 # ------------------------------------------------------------------------------
 # The frontend build pipeline. See frontend/vite.config.js

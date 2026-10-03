@@ -50,7 +50,7 @@ EMAIL_USE_TLS=True
 # API clients (web SPA, mobile app)
 # ------------------------------------------------------------------------------
 # Only browsers and web views enforce CORS; a native HTTP client sends no Origin
-# header and needs nothing here. Scoped to /api/ by CORS_URLS_REGEX.
+# header and needs nothing here. Scoped to /api/ and /_allauth/ by CORS_URLS_REGEX.
 # DJANGO_CORS_ALLOWED_ORIGINS=https://app.opennutrilab.example,capacitor://localhost
 
 # Media

@@ -150,23 +150,25 @@ or use a managed database and let the provider handle it.
 
 ## Serving the mobile app
 
-The DRF API lives under `/api/` and is restricted by `CORS_URLS_REGEX`.
-Browsers and web views are what enforce CORS; a native HTTP client sends no
-`Origin` header and needs nothing configured. If the mobile app runs in a web
-view (Capacitor, for instance) add its origin:
+The API lives under `/api/v1/`; its documentation, at `/api/v1/docs`, is
+reserved to staff accounts. Every route needs a signed-in user:
+
+- the site's own pages use the Django session cookie (with CSRF on writes);
+- a mobile client signs in through django-allauth's headless API, under
+  `/_allauth/app/v1/` (`auth/login`, `auth/signup`, ...), and sends the session
+  token it receives in an `X-Session-Token` header on every API call.
+
+`ACCOUNT_EMAIL_VERIFICATION` is mandatory for those accounts too, so the SMTP
+settings above must work before anyone can sign in from the app.
+
+Both `/api/` and `/_allauth/` are matched by `CORS_URLS_REGEX`. Browsers and web
+views are what enforce CORS; a native HTTP client sends no `Origin` header and
+needs nothing configured. If the mobile app runs in a web view (Capacitor, for
+instance) add its origin:
 
 ```sh
 DJANGO_CORS_ALLOWED_ORIGINS=capacitor://localhost,https://app.opennutrilab.example
 ```
-
-Token authentication is wired up for that API (`rest_framework.authtoken`,
-`/api/auth-token/`), which is what a mobile client should use rather than
-session cookies.
-
-> [!IMPORTANT]
-> Known gap: the products API is served by django-ninja under `/api-ninja/`,
-> which `CORS_URLS_REGEX` does not match and which has no authentication at
-> all. Neither the CORS setting nor the token above applies to it yet.
 
 ## What this does not cover
 

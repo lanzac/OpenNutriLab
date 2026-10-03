@@ -6,18 +6,19 @@ from ninja.errors import HttpError
 
 from products.api.schemas.inbound import ProductCreate
 from products.api.schemas.inbound import ProductUpdate
+from products.api.schemas.outbound import ProductListItemOut
 from products.api.schemas.outbound import ProductOut
 from products.models import Product
 from products.services import product_services
 
-router = Router(tags=["Products CRUD"])
+router = Router(tags=["Products"])
 
 
-@router.get(path="/", response=list[ProductOut])
+@router.get(path="/", response=list[ProductListItemOut])
 def list_products(request: HttpRequest) -> BaseManager[Product]:
-    return Product.objects.prefetch_related(
-        "productmacronutrient_set__macronutrient",
-    ).all()
+    # Just what a list shows. The full product, ingredient tree included, is
+    # one request per product away at /{barcode}.
+    return Product.objects.only("barcode", "name", "created_at").order_by("created_at")
 
 
 @router.get(path="/{product_id}", response=ProductOut)
@@ -48,6 +49,10 @@ def update_product(
 
 @router.delete(path="/{product_id}")
 def delete_product(request: HttpRequest, product_id: str) -> dict[str, bool]:
+    # Products form a catalogue shared by every user, so removing one is
+    # reserved to staff.
+    if not request.auth.is_staff:  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
+        raise HttpError(403, "Only staff can delete products.")
     product: Product = get_object_or_404(Product, barcode=product_id)
     product.delete()
     return {"success": True}

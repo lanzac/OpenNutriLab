@@ -64,6 +64,14 @@ class NutritionalValuesOut(Schema):
     macronutrients: list[ProductMacronutrientOut] = []
 
 
+class ProductListItemOut(ModelSchema):
+    """A product as a list shows it."""
+
+    class Meta:
+        model = Product
+        fields: list[str] = ["barcode", "name", "created_at"]
+
+
 class ProductOut(ModelSchema):
     # Issue field ordering : https://github.com/vitalik/django-ninja/issues/1504
     # So we manually define the fields in the desired order, instead of relying on

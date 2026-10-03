@@ -129,7 +129,7 @@ class TestProductListView:
         The React table replaces the server-rendered one, so what the template
         owes it is a mount point and the labels blob. Products exist here only
         to prove the page still renders once the queryset is non-empty - the
-        rows themselves now come from /api-ninja/products/.
+        rows themselves now come from /api/v1/products/.
         """
         Product.objects.create(
             barcode="1111111111111",
