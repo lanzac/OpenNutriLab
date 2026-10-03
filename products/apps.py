@@ -6,4 +6,5 @@ class ProductsConfig(AppConfig):
     name = "products"
 
     def ready(self):
-        import products.signals  # noqa: F401
+        # Imported for its side effect: registering the signal receivers.
+        import products.signals  # noqa: F401  # pyright: ignore[reportUnusedImport]

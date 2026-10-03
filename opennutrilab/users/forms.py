@@ -11,7 +11,8 @@ class UserAdminChangeForm(admin_forms.UserChangeForm):
         model = User
 
 
-class UserAdminCreationForm(admin_forms.AdminUserCreationForm):
+# AdminUserCreationForm is new in Django 5.1; django-types does not know it yet.
+class UserAdminCreationForm(admin_forms.AdminUserCreationForm):  # pyright: ignore[reportAttributeAccessIssue]
     """
     Form for User Creation in the Admin Area.
     To change user signup, see UserSignupForm and UserSocialSignupForm.

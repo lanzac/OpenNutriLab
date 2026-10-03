@@ -117,7 +117,7 @@ def test_cors_is_answered_for_the_api_and_allauth_only(client: Client, settings:
         assert response["Access-Control-Allow-Origin"] == "https://app.example", path
 
     page = client.options("/products/", headers=preflight)
-    assert "Access-Control-Allow-Origin" not in page
+    assert not page.has_header("Access-Control-Allow-Origin")
 
 
 @pytest.mark.django_db

@@ -1,3 +1,5 @@
+from typing import cast
+
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.db.models import QuerySet
@@ -25,12 +27,13 @@ class UserUpdateView(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
     success_message = _("Information successfully updated")
 
     def get_success_url(self) -> str:
-        assert self.request.user.is_authenticated  # type guard
-        return self.request.user.get_absolute_url()
+        return self.get_object().get_absolute_url()
 
     def get_object(self, queryset: QuerySet | None = None) -> User:
-        assert self.request.user.is_authenticated  # type guard
-        return self.request.user
+        # LoginRequiredMixin guarantees a signed-in user, which is always a
+        # User here; the stubs only know request.user as AbstractUser or
+        # AnonymousUser.
+        return cast("User", self.request.user)
 
 
 user_update_view = UserUpdateView.as_view()

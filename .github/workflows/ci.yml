@@ -39,6 +39,10 @@ jobs:
       - name: Run hooks
         run: uv run pre-commit run --all-files --show-diff-on-failure
 
+      # Configured in pyproject.toml: strict on products/, basic elsewhere.
+      - name: Type check
+        run: uv run basedpyright
+
   backend:
     name: Backend tests
     runs-on: ubuntu-latest

@@ -329,7 +329,7 @@ class ProductForm(forms.ModelForm):
             msg = "ProductForm writes through the product services; it cannot defer."
             raise ValueError(msg)
         photo = self.cleaned_data.get("photo")
-        if self.is_edit:
+        if isinstance(self.write_data, ProductUpdate):
             result = product_services.update_product(
                 self.instance, self.write_data, image=photo
             )

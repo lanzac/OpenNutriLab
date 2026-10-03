@@ -4,6 +4,7 @@ from decimal import Decimal
 import pytest
 from crispy_forms.bootstrap import FieldWithButtons
 
+from products.api.schemas.inbound import ProductCreate
 from products.forms import ProductForm
 from products.models import Macronutrient
 from products.models import Product
@@ -222,6 +223,8 @@ def test_off_fields_only_apply_to_the_barcode_they_were_fetched_for():
 
     assert matching.is_valid(), matching.errors
     assert other.is_valid(), other.errors
+    assert isinstance(matching.write_data, ProductCreate)
+    assert isinstance(other.write_data, ProductCreate)
     assert [i.name for i in matching.write_data.ingredients] == ["Sucre"]
     assert other.write_data.ingredients == []
 

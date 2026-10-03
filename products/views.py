@@ -1,10 +1,12 @@
 import logging
 from typing import Any
+from typing import cast
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.http import HttpRequest
+from django.http import HttpResponseRedirect
 from django.middleware.csrf import get_token
 from django.urls import reverse_lazy
 from django.utils.translation import get_language
@@ -79,15 +81,22 @@ class ProductFormViewMixin:
 
     request: HttpRequest
 
-    def form_valid(self, form: ProductForm):  # pyright: ignore[reportIncompatibleMethodOverride]
-        response = super().form_valid(form)  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
+    # super() is vanilla-views' CreateView/UpdateView, which ship no types.
+    def form_valid(self, form: ProductForm) -> HttpResponseRedirect:
+        response = cast(
+            "HttpResponseRedirect",
+            super().form_valid(form),  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
+        )
         if form.image_fetch_failed:
             report_image_fetch_failure(self.request, barcode=form.instance.barcode)
-        return response  # pyright: ignore[reportUnknownVariableType]
+        return response
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
-        context: dict[str, Any] = super().get_context_data(**kwargs)  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
-        form: ProductForm = context["form"]
+        context = cast(
+            "dict[str, Any]",
+            super().get_context_data(**kwargs),  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
+        )
+        form = cast("ProductForm", context["form"])
         context["product_form_labels"] = product_form_labels()
         context["ingredient_rows"] = ingredient_rows_for(form)
         return context
@@ -304,7 +313,8 @@ def ingredient_rows_from_db(product: Product) -> list[dict[str, Any]]:
         ingredient.id: {
             "name": ingredient.name,
             "percentage": ingredient.percentage,
-            "has_reference": ingredient.has_reference,
+            # GeneratedField has no type in django-types yet (see the model).
+            "has_reference": ingredient.has_reference,  # pyright: ignore[reportUnknownMemberType]
             "ingredients": None,
         }
         for ingredient in ingredients

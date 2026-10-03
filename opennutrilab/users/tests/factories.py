@@ -1,9 +1,9 @@
 from collections.abc import Sequence
 from typing import Any
 
-from factory import Faker
-from factory import post_generation
 from factory.django import DjangoModelFactory
+from factory.faker import Faker
+from factory.helpers import post_generation
 
 from opennutrilab.users.models import User
 
@@ -27,12 +27,13 @@ class UserFactory(DjangoModelFactory[User]):
                 lower_case=True,
             ).evaluate(None, None, extra={"locale": None})
         )
-        self.set_password(password)
+        # factory_boy hands post-generation hooks the built User, not the factory.
+        self.set_password(password)  # pyright: ignore[reportAttributeAccessIssue]
 
     @classmethod
     def _after_postgeneration(cls, instance, create, results=None):
         """Save again the instance if creating and at least one hook ran."""
-        if create and results and not cls._meta.skip_postgeneration_save:
+        if create and results and not cls._meta.skip_postgeneration_save:  # pyright: ignore[reportAttributeAccessIssue]
             # Some post-generation hooks ran, and may have modified us.
             instance.save()
 

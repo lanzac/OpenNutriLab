@@ -119,9 +119,14 @@ reportUndefinedVariable = true
 reportUnusedImport = false    # Set to true if you want to detect unused imports
 reportUnusedVariable = false  # Set to true if you want to detect unused variables
 
-# Analysed for imports but never reported on. typings/ holds stubs generated
-# by pyright, not hand-written code.
+# Analysed for imports but never reported on. typings/ holds stubs: generated
+# by pyright, except typings/environ, written by hand (see its header).
 ignore = ["**/migrations/**", "**/node_modules/**", ".venv/**", "typings/**"]
+
+# Libraries that ship no type information. Without this, strict mode on
+# products/ reports every import from them. crispy-forms and vanilla-views
+# leave with the server-rendered product form.
+allowedUntypedLibraries = ["crispy_forms", "crispy_bootstrap5", "vanilla", "allauth", "factory"]
 
 
 

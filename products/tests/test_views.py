@@ -78,7 +78,7 @@ def png_upload(name: str = "mine.png") -> SimpleUploadedFile:
 
 
 @pytest.fixture(autouse=True)
-def _signed_in(client: Client, user: User) -> None:
+def _signed_in(client: Client, user: User) -> None:  # pyright: ignore[reportUnusedFunction]
     """Every product page needs a signed-in user; tests opt out explicitly."""
     client.force_login(user)
 
@@ -106,7 +106,7 @@ class TestProductListView:
 
         assert response.status_code == 200  # noqa: PLR2004
 
-        props: dict[str, object] = response.context["product_list_props"]
+        props: dict[str, Any] = response.context["product_list_props"]
         labels: dict[str, str] = props["labels"]
         assert labels["productName"] == "Nom du produit"
         assert labels["createdAt"] == "Créé le"
