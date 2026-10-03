@@ -31,9 +31,8 @@
       </div>
     </div>
   </div>
-  {# Rows for the Tabulator tree, see ingredients-table.js. Serialised once, #}
-  {# here: extra_data holds plain Python lists, not JSON text. #}
-  {{ form.extra_data.ingredients_table_data|json_script:"ingredients-data" }}
+  {# Rows for the Tabulator tree, see ingredients-table.js. #}
+  {{ ingredient_rows|json_script:"ingredients-data" }}
   {{ product_form_labels|json_script:"product-form-labels" }}
   {% vite_asset 'src/apps/products/form-entry.js' %}
 {% endblock content %}

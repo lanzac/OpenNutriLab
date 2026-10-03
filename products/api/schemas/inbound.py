@@ -23,7 +23,7 @@ from products.fields import validate_ean13
 OFF_IMAGE_HOSTS = frozenset({"images.openfoodfacts.org", "static.openfoodfacts.org"})
 
 
-def _check_off_image_url(url: str | None) -> str | None:
+def validate_off_image_url(url: str | None) -> str | None:
     if url:
         parsed = urlparse(url)
         if parsed.scheme != "https" or parsed.hostname not in OFF_IMAGE_HOSTS:
@@ -94,7 +94,7 @@ class ProductCreate(Schema):
     @field_validator("image_url")
     @classmethod
     def image_from_off(cls, url: str | None) -> str | None:
-        return _check_off_image_url(url)
+        return validate_off_image_url(url)
 
 
 # -------------------------------------------------------------
@@ -129,4 +129,4 @@ class ProductUpdate(Schema):
     @field_validator("image_url")
     @classmethod
     def image_from_off(cls, url: str | None) -> str | None:
-        return _check_off_image_url(url)
+        return validate_off_image_url(url)

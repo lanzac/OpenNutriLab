@@ -1,14 +1,10 @@
+import json
 from decimal import Decimal
-from unittest.mock import Mock
-from unittest.mock import patch
 
 import pytest
-import requests
 from crispy_forms.bootstrap import FieldWithButtons
 
-from products.api.openfoodfacts.schemas import OFFIngredientSchema
 from products.forms import ProductForm
-from products.models import Ingredient
 from products.models import Macronutrient
 from products.models import Product
 from products.models import ProductMacronutrient
@@ -22,7 +18,7 @@ class TestBuildBarcodeField:
 
         assert isinstance(field, FieldWithButtons)
 
-    def test_edit_mode_returns_readonly_field(self):
+    def test_edit_mode_disables_the_barcode(self):
         product = Product.objects.create(
             name="Apple", barcode="1234567890123", energy_kj=100
         )
@@ -31,9 +27,8 @@ class TestBuildBarcodeField:
 
         assert isinstance(field, FieldWithButtons)
 
-        # The barcode is the primary key: it is read-only once saved.
-        widget_attrs = form.fields["barcode"].widget.attrs
-        assert widget_attrs["readonly"] is True
+        # The barcode is the primary key: Django ignores it once saved.
+        assert form.fields["barcode"].disabled is True
 
 
 @pytest.mark.django_db
@@ -160,7 +155,7 @@ def test_product_form_save_updates_existing_productmacronutrient():
 
 @pytest.mark.django_db
 def test_product_form_save_removes_macronutrient_if_value_missing():
-    protein = Macronutrient.objects.create(name="protein_test")
+    protein = Macronutrient.objects.get(name="proteins")
     product = Product.objects.create(
         name="Delete Test", barcode="3229820794556", energy_kj=150
     )
@@ -173,7 +168,7 @@ def test_product_form_save_removes_macronutrient_if_value_missing():
         "barcode": "3229820794556",
         "name": "Delete Test",
         "energy_kj": 150,
-        f"macronutrients_{protein.name.lower()}": "",  # empty value = remove relation
+        protein.name_in_form: "",  # empty value = remove relation
     }
 
     form = ProductForm(data=form_data, instance=product)
@@ -214,122 +209,30 @@ def test_product_form_save_keeps_a_zero_amount():
 
 
 @pytest.mark.django_db
-def test_save_with_fetched_image_and_delete():
-    """Test save fetches image, deletes existing file, and assigns new image."""
+def test_off_fields_only_apply_to_the_barcode_they_were_fetched_for():
+    off_ingredients = json.dumps([{"name": "Sucre"}])
+    base = {"name": "Nutella", "energy_kj": 100, "off_ingredients": off_ingredients}
 
-    path = "images/products/3242272270157.jpg"
+    matching = ProductForm(
+        data={**base, "barcode": "3017620422003", "off_barcode": "3017620422003"}
+    )
+    other = ProductForm(
+        data={**base, "barcode": "3229820794556", "off_barcode": "3017620422003"}
+    )
 
-    with (
-        patch("products.forms.requests.get") as mock_requests_get,
-        patch("django.core.files.storage.FileSystemStorage.exists") as mock_exists,
-        patch("django.core.files.storage.FileSystemStorage.delete") as mock_delete,
-        patch("django.core.files.storage.FileSystemStorage.save") as mock_save,
-    ):
-        # --- Mock HTTP response ---
-        mock_response = Mock()
-        mock_response.content = b"fake image bytes"
-        mock_response.raise_for_status = Mock()
-        mock_requests_get.return_value = mock_response
-
-        # --- Mock storage ---
-        mock_exists.return_value = True  # simulate file already exists
-        mock_save.return_value = path
-
-        # --- Form with minimal valid data ---
-        form = ProductForm(
-            data={
-                "barcode": "3242272270157",
-                "name": "Apple",
-                "energy_kj": 100,
-            }
-        )
-        form.extra_data = {"fetched_image_url": "https://example.com/apple.jpg"}
-        form.full_clean()
-
-        # --- Call save ---
-        product: Product = form.save(commit=True)
-
-        # --- Assertions ---
-        mock_requests_get.assert_called_once_with(
-            "https://example.com/apple.jpg", timeout=10
-        )
-        mock_exists.assert_called_once_with(path)  # check exists called
-        mock_delete.assert_called_once_with(path)  # check delete called
-        mock_save.assert_called_once()  # file was saved
-        assert product.image.name == path
+    assert matching.is_valid(), matching.errors
+    assert other.is_valid(), other.errors
+    assert [i.name for i in matching.write_data.ingredients] == ["Sucre"]
+    assert other.write_data.ingredients == []
 
 
 @pytest.mark.django_db
-def test_save_with_unreachable_image_host_keeps_product():
-    """
-    OFF's image CDN is a separate host from its API and can time out even
-    when the API answered fine (e.g. a stricter egress allowlist). This must
-    not crash the whole save: the product is kept, without an image, and the
-    form flags the failure for the view to report.
-    """
-    with patch("products.forms.requests.get") as mock_requests_get:
-        mock_requests_get.side_effect = requests.ConnectTimeout("timed out")
+def test_save_cannot_defer_the_write():
+    """The services write the product; there is no unsaved instance to hand back."""
+    form = ProductForm(data={"barcode": "3017620422003", "name": "N", "energy_kj": 1})
+    assert form.is_valid(), form.errors
 
-        form = ProductForm(
-            data={
-                "barcode": "3242272270157",
-                "name": "Apple",
-                "energy_kj": 100,
-            }
-        )
-        form.extra_data = {"fetched_image_url": "https://example.com/apple.jpg"}
-        form.full_clean()
+    with pytest.raises(ValueError, match="cannot defer"):
+        form.save(commit=False)
 
-        product: Product = form.save(commit=True)
-
-        assert form.image_fetch_failed is True
-        assert not product.image
-        assert Product.objects.filter(barcode="3242272270157").exists()
-
-
-@pytest.mark.django_db
-def test_product_form_save_with_ingredients_schema():
-    # --- Setup product ---
-    product = Product.objects.create(
-        name="Ingredient Test", barcode="3242272270157", energy_kj=100
-    )
-
-    # --- Ingredients schema ---
-
-    ingredients_schema = [
-        OFFIngredientSchema(name="Sugar", percentage=50),
-        OFFIngredientSchema(
-            name="Salt", percentage=10, ingredients=[OFFIngredientSchema(name="Iodine")]
-        ),
-    ]
-
-    # --- Form with extra_data containing ingredients ---
-    form = ProductForm(
-        data={
-            "barcode": product.barcode,
-            "name": product.name,
-            "energy_kj": 100,
-        },
-        instance=product,
-    )
-    form.full_clean()
-    form.extra_data = {"ingredients": ingredients_schema}
-
-    # --- Patch save_ingredients_from_schema to track calls ---
-    with patch("products.forms.save_ingredients_from_schema") as mock_save_ingredients:
-        saved_product = form.save()
-
-        # --- Assertions ---
-        # 1️⃣ Product returned correctly
-        assert saved_product == product
-
-        # 2️⃣ save_ingredients_from_schema called once with correct args
-        mock_save_ingredients.assert_called_once_with(
-            ingredients_schema, product=product, parent=None
-        )
-
-        # 3️⃣ Ensure existing ingredients deleted
-        # Here, we can pre-create an ingredient to test deletion
-        ing_to_delete = Ingredient.objects.create(name="OldIngredient", product=product)
-        form.save()
-        assert not Ingredient.objects.filter(pk=ing_to_delete.pk).exists()
+    assert not Product.objects.exists()

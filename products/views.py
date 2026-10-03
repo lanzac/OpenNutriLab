@@ -1,5 +1,4 @@
 import logging
-from typing import TYPE_CHECKING
 from typing import Any
 
 from django.contrib import messages
@@ -13,20 +12,18 @@ from vanilla import DeleteView
 from vanilla import ListView
 from vanilla import UpdateView
 
-from .api.openfoodfacts.schemas import OFFProductSchema
-from .api.openfoodfacts.schemas import ProductFormSchema
 from .api.openfoodfacts.schemas import product_schema_to_form_data
 from .api.openfoodfacts.services import OFFError
 from .api.openfoodfacts.services import OFFProductNotFoundError
-from .api.openfoodfacts.services import build_ingredient_json_from_schema
 from .api.openfoodfacts.services import fetch_from_off
-from .api.openfoodfacts.services import get_schema_from_ingredients
+from .api.openfoodfacts.services import to_ingredient_inputs
+from .api.schemas.inbound import IngredientInput
+from .api.schemas.inbound import validate_off_image_url
+from .forms import INGREDIENTS_JSON
 from .forms import ProductForm
-from .models import IngredientRef
+from .models import Ingredient
 from .models import Product
-
-if TYPE_CHECKING:
-    from products.api.openfoodfacts.schemas import OFFIngredientSchema
+from .services.product_services import references_by_lowercase_name
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +69,26 @@ class ProductListView(ListView):
         return context
 
 
-class ProductCreateView(CreateView):
+class ProductFormViewMixin:
+    """What the create and edit pages share."""
+
+    request: HttpRequest
+
+    def form_valid(self, form: ProductForm):  # pyright: ignore[reportIncompatibleMethodOverride]
+        response = super().form_valid(form)  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
+        if form.image_fetch_failed:
+            report_image_fetch_failure(self.request, barcode=form.instance.barcode)
+        return response  # pyright: ignore[reportUnknownVariableType]
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        context: dict[str, Any] = super().get_context_data(**kwargs)  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
+        form: ProductForm = context["form"]
+        context["product_form_labels"] = product_form_labels()
+        context["ingredient_rows"] = ingredient_rows_for(form)
+        return context
+
+
+class ProductCreateView(ProductFormViewMixin, CreateView):
     model = Product
     form_class = ProductForm
     success_url = reverse_lazy("list_products")
@@ -81,50 +97,19 @@ class ProductCreateView(CreateView):
         self,
         data=None,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
         files=None,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
-        extra_data: dict[str, Any] | None = None,
         **kwargs: Any,
-    ) -> form_class:
-        barcode: str | None = self.request.GET.get("barcode")
+    ) -> ProductForm:
         initial: dict[str, Any] = {}
-        if barcode:
-            try:
-                fetched_product: OFFProductSchema = fetch_from_off(
-                    query_barcode=barcode
-                )
-            except OFFError as e:
-                # A barcode OpenFoodFacts does not know, or an OFF outage, is an
-                # ordinary outcome here, not a server fault. Keep the form
-                # usable with the barcode filled in so it can be entered by hand.
-                report_off_failure(self.request, barcode=barcode, error=e)
-                initial = {"barcode": barcode}
-            else:
-                initial, extra_data = prepare_product_form_data(
-                    fetched_product=fetched_product, extra_data=extra_data
-                )
-
-        return self.form_class(
-            data=data,
-            files=files,
-            initial=initial,
-            extra_data=extra_data,
-            **kwargs,
-        )
-
-    def form_valid(self, form: form_class):
-        response = super().form_valid(form)
-        if getattr(form, "image_fetch_failed", False):
-            report_image_fetch_failure(
-                self.request, barcode=form.cleaned_data["barcode"]
-            )
-        return response
-
-    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
-        context: dict[str, Any] = super().get_context_data(**kwargs)  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
-        context["product_form_labels"] = product_form_labels()
-        return context
+        # Only on GET: the POST that saves carries what this lookup returned
+        # in hidden fields, so OpenFoodFacts is asked once per page, not again
+        # at save time.
+        barcode: str | None = self.request.GET.get("barcode")
+        if self.request.method == "GET" and barcode:
+            initial = initial_from_off(self.request, barcode) or {"barcode": barcode}
+        return ProductForm(data=data, files=files, initial=initial, **kwargs)
 
 
-class ProductEditView(UpdateView):
+class ProductEditView(ProductFormViewMixin, UpdateView):
     model = Product
     form_class = ProductForm
     success_url = reverse_lazy("list_products")
@@ -133,53 +118,18 @@ class ProductEditView(UpdateView):
         self,
         data=None,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
         files=None,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
-        extra_data: dict[str, Any] | None = None,
         **kwargs: Any,  # https://adamj.eu/tech/2021/05/11/python-type-hints-args-and-kwargs/
-    ) -> form_class:
-        reset: bool = self.request.GET.get("reset") == "1"
-        product_instance: Product | None = kwargs.get("instance")
-        if product_instance is None:
-            msg = "Product instance is required to edit a product."
-            raise ValueError(msg)
-
-        fetched_product: OFFProductSchema | None = None
-        if reset:
-            try:
-                fetched_product = fetch_from_off(query_barcode=product_instance.barcode)
-            except OFFError as e:
-                # Leaving fetched_product as None falls back to the values
-                # already stored for this product, so a failed reset shows the
-                # form unchanged.
-                report_off_failure(
-                    self.request, barcode=product_instance.barcode, error=e
-                )
-
-        initial, extra_data = prepare_product_form_data(
-            product_instance=product_instance,
-            fetched_product=fetched_product,
-            extra_data=extra_data,
-        )
-
-        return self.form_class(
-            data=data,
-            files=files,
-            initial=initial,
-            extra_data=extra_data,
-            **kwargs,
-        )
-
-    def form_valid(self, form: form_class):
-        response = super().form_valid(form)
-        if getattr(form, "image_fetch_failed", False):
-            report_image_fetch_failure(
-                self.request, barcode=form.cleaned_data["barcode"]
-            )
-        return response
-
-    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
-        context: dict[str, Any] = super().get_context_data(**kwargs)  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
-        context["product_form_labels"] = product_form_labels()
-        return context
+    ) -> ProductForm:
+        initial: dict[str, Any] = {}
+        product: Product = kwargs["instance"]
+        if self.request.method == "GET" and self.request.GET.get("reset") == "1":
+            # On failure the form keeps the stored values; the notice says why.
+            initial = initial_from_off(self.request, product.barcode) or {}
+            # The barcode is the stored primary key, whatever OFF spelled it as.
+            initial.pop("barcode", None)
+            if initial:
+                initial["off_barcode"] = product.barcode
+        return ProductForm(data=data, files=files, initial=initial, **kwargs)
 
 
 class ProductDeleteView(DeleteView):
@@ -274,52 +224,85 @@ def report_image_fetch_failure(request: HttpRequest, barcode: str) -> None:
     messages.warning(request, text % {"barcode": barcode})
 
 
-def prepare_product_form_data(
-    product_instance: Product | None = None,
-    fetched_product: OFFProductSchema | None = None,
-    extra_data: dict[str, Any] | None = None,
-) -> tuple[dict[str, Any], dict[str, Any]]:
+def initial_from_off(request: HttpRequest, barcode: str) -> dict[str, Any] | None:
     """
-    Prepare `initial` and `extra_data` for Product form.
+    Form initial data from an OpenFoodFacts lookup, or None if it failed.
 
-    :param product_instance: Product from DB (for Edit)
-    :param fetched_product: OFFProductSchema from API (for Create or Edit reset)
-    :param extra_data: existing extra_data dict
-    :return: tuple(initial, extra_data)
+    Besides the visible fields, it fills the hidden off_* fields that carry the
+    photo URL and the ingredient tree to the POST that saves them.
     """
-    initial: dict[str, Any] = {}
-    extra_data = extra_data or {}
+    try:
+        fetched = fetch_from_off(query_barcode=barcode)
+    except OFFError as e:
+        report_off_failure(request, barcode=barcode, error=e)
+        return None
 
-    reference_names = {
-        name.lower() for name in IngredientRef.objects.values_list("name", flat=True)
-    }
+    initial: dict[str, Any] = product_schema_to_form_data(fetched).dict()
+    image_url = initial.pop("image_url", None)
+    try:
+        initial["off_image_url"] = validate_off_image_url(image_url)
+    except ValueError:
+        # A photo hosted somewhere the services refuse to download from.
+        initial["off_image_url"] = None
+    initial["off_barcode"] = fetched.barcode
+    initial["off_ingredients"] = INGREDIENTS_JSON.dump_json(
+        to_ingredient_inputs(fetched.ingredients)
+    ).decode()
+    return initial
 
-    # Use fetched_product if provided (Create or Edit reset)
-    if fetched_product is not None:
-        # convert to form schema
-        product_form: ProductFormSchema = product_schema_to_form_data(fetched_product)
-        initial.update(product_form.dict())
-        extra_data["fetched_image_url"] = product_form.image_url
 
-        # Ingredients from fetched_product
-        extra_data["ingredients"] = fetched_product.ingredients
-        if fetched_product.ingredients:
-            extra_data["ingredients_table_data"] = [
-                build_ingredient_json_from_schema(ingredient, reference_names)
-                for ingredient in fetched_product.ingredients
-            ]
-    elif product_instance is not None:
-        # Edit normal (no reset) → ingredients from DB
-        ingredients: list[OFFIngredientSchema] = get_schema_from_ingredients(
-            product_instance
+def ingredient_rows_for(form: ProductForm) -> list[dict[str, Any]]:
+    """
+    Rows for the ingredients tree (frontend/.../ingredients-table.js).
+
+    The OpenFoodFacts tree this page would save if there is one, otherwise
+    what is stored for the product.
+    """
+    from_off = form.off_ingredients_for_display()
+    if from_off is not None:
+        return ingredient_rows_from_inputs(
+            from_off, set(references_by_lowercase_name(from_off))
         )
-        extra_data["ingredients"] = ingredients
-        extra_data["ingredients_table_data"] = [
-            build_ingredient_json_from_schema(ingredient, reference_names)
-            for ingredient in ingredients
-        ]
-    else:
-        msg = "Either product_instance or fetched_product must be provided"
-        raise ValueError(msg)
+    if form.is_edit:
+        return ingredient_rows_from_db(form.instance)
+    return []
 
-    return initial, extra_data
+
+def ingredient_rows_from_inputs(
+    items: list[IngredientInput], reference_names: set[str]
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "name": item.name,
+            "percentage": item.percentage,
+            "has_reference": item.name.strip().lower() in reference_names,
+            "ingredients": (
+                ingredient_rows_from_inputs(item.sub_ingredients, reference_names)
+                or None
+            ),
+        }
+        for item in items
+    ]
+
+
+def ingredient_rows_from_db(product: Product) -> list[dict[str, Any]]:
+    """The stored ingredient tree, in one query."""
+    ingredients = list(Ingredient.objects.filter(product=product).order_by("id"))
+    rows: dict[int, dict[str, Any]] = {
+        ingredient.id: {
+            "name": ingredient.name,
+            "percentage": ingredient.percentage,
+            "has_reference": ingredient.has_reference,
+            "ingredients": None,
+        }
+        for ingredient in ingredients
+    }
+    roots: list[dict[str, Any]] = []
+    for ingredient in ingredients:
+        row = rows[ingredient.id]
+        if ingredient.parent_id is None:
+            roots.append(row)
+        else:
+            parent = rows[ingredient.parent_id]
+            parent["ingredients"] = [*(parent["ingredients"] or []), row]
+    return roots

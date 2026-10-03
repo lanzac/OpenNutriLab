@@ -1,3 +1,5 @@
+import io
+import json
 from http import HTTPStatus
 from typing import TYPE_CHECKING
 from typing import Any
@@ -6,27 +8,78 @@ from unittest.mock import patch
 
 import pytest
 import requests
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http.response import HttpResponse
 from django.test import Client
-from django.test import RequestFactory
 from django.urls import reverse
 from django.utils import translation
+from PIL import Image
 
 from products.api.openfoodfacts.schemas import OFFIngredientSchema
 from products.api.openfoodfacts.schemas import OFFMacronutrientsSchema
 from products.api.openfoodfacts.schemas import OFFProductSchema
-from products.api.openfoodfacts.schemas import product_schema_to_form_data
 from products.api.openfoodfacts.services import OFFError
 from products.api.openfoodfacts.services import OFFProductNotFoundError
+from products.api.schemas.inbound import IngredientInput
+from products.api.schemas.inbound import ProductCreate
 from products.forms import ProductForm
+from products.models import Ingredient
 from products.models import IngredientRef
 from products.models import Product
-from products.views import ProductCreateView
-from products.views import ProductEditView
-from products.views import prepare_product_form_data
+from products.services.product_services import create_product
+from products.views import ingredient_rows_from_db
+from products.views import ingredient_rows_from_inputs
 
 if TYPE_CHECKING:
     from django.http.response import HttpResponse
+
+
+NUTELLA = "3017620422003"
+IMAGE_URL = (
+    "https://images.openfoodfacts.org/images/products/301/762/042/2003/front.jpg"
+)
+
+
+def off_product(**overrides: Any) -> OFFProductSchema:
+    data: dict[str, Any] = {
+        "barcode": NUTELLA,
+        "name": "Nutella",
+        "image_url": IMAGE_URL,
+        "energy_kj": 2252,
+        "macronutrients": OFFMacronutrientsSchema(fat=30.9, sugars=56.3),
+        "ingredients": [
+            OFFIngredientSchema(name="Sucre", percentage=56.3),
+            OFFIngredientSchema(
+                name="Lait", ingredients=[OFFIngredientSchema(name="lait écrémé")]
+            ),
+        ],
+    }
+    data.update(overrides)
+    return OFFProductSchema(**data)
+
+
+def submitted(form: ProductForm, **changes: Any) -> dict[str, Any]:
+    """What a browser posts back for this form, hidden fields included."""
+    data = {
+        name: "" if form[name].value() is None else form[name].value()
+        for name in form.fields
+        if name != "photo"
+    }
+    data.update(changes)
+    return data
+
+
+def png_upload(name: str = "mine.png") -> SimpleUploadedFile:
+    buffer = io.BytesIO()
+    Image.new("RGB", (2, 2), "red").save(buffer, format="PNG")
+    return SimpleUploadedFile(name, buffer.getvalue(), content_type="image/png")
+
+
+def ok_image_response() -> MagicMock:
+    response = MagicMock()
+    response.content = b"jpeg-bytes"
+    response.headers = {"Content-Type": "image/jpeg"}
+    return response
 
 
 @pytest.mark.django_db
@@ -106,9 +159,6 @@ class TestProductListView:
 
 @pytest.mark.django_db
 class TestProductCreateView:
-    def setup_method(self):
-        self.factory = RequestFactory()
-
     @patch("products.views.fetch_from_off")
     def test_unknown_barcode_keeps_the_form_usable(
         self, mock_fetch_from_off: MagicMock, client: Client
@@ -190,64 +240,112 @@ class TestProductCreateView:
         notices = [str(m) for m in response.context["messages"]]
         assert any("could not be reached" in n for n in notices), notices
 
-    def test_get_form_without_barcode(self):
-        """The form is empty when no barcode is given."""
-        request = self.factory.get("/products/new/")
-        view = ProductCreateView()
-        view.request = request
+    def test_get_form_without_barcode(self, client: Client):
+        with patch("products.views.fetch_from_off") as fetch:
+            response: HttpResponse = client.get(reverse("create_product"))
 
-        form = view.get_form()  # pyright: ignore[reportUnknownMemberType]
-
-        assert isinstance(form, ProductForm), "The returned form is not a ProductForm"
-        assert form.initial == {}, f"The initial data is not empty: {form.initial}"
+        fetch.assert_not_called()
+        assert response.context["form"].initial == {}
 
     @patch("products.views.fetch_from_off")
-    def test_get_form_with_barcode(self, mock_fetch_product_data: MagicMock):
-        """The form should be pre-filled when a barcode is provided."""
+    def test_lookup_fills_the_form_and_the_hidden_fields(
+        self, mock_fetch_from_off: MagicMock, client: Client
+    ):
+        mock_fetch_from_off.return_value = off_product()
 
-        # --- Create a realistic ProductSchema instance ---
-        mock_product_schema: OFFProductSchema = OFFProductSchema(
-            barcode="123456",
-            name="Apple",
-            image_url="https://example.com/apple.jpg",
-            macronutrients=OFFMacronutrientsSchema(
-                fat=3.0,
-                proteins=1.5,
-            ),
+        response: HttpResponse = client.get(
+            reverse("create_product"), {"barcode": NUTELLA}
         )
 
-        # fetch_product_data() should return this schema instance
-        mock_fetch_product_data.return_value = mock_product_schema
+        form: ProductForm = response.context["form"]
+        mock_fetch_from_off.assert_called_once_with(query_barcode=NUTELLA)
+        assert form["name"].value() == "Nutella"
+        assert form["macronutrients_sugars"].value() == 56.3  # noqa: PLR2004
+        assert form["off_barcode"].value() == NUTELLA
+        assert form["off_image_url"].value() == IMAGE_URL
+        carried = json.loads(form["off_ingredients"].value())
+        assert [i["name"] for i in carried] == ["Sucre", "Lait"]
+        rows = response.context["ingredient_rows"]
+        assert [r["name"] for r in rows] == ["Sucre", "Lait"]
+        assert rows[1]["ingredients"][0]["name"] == "lait écrémé"
 
-        # --- Create the request and assign it to the view ---
-        request = self.factory.get("/products/create/?barcode=123456")
-        view = ProductCreateView()
-        view.request = request
+    @patch("products.services.product_services.requests.get")
+    @patch("products.views.fetch_from_off")
+    def test_save_stores_what_the_lookup_showed_without_asking_off_again(
+        self, mock_fetch_from_off: MagicMock, mock_get: MagicMock, client: Client
+    ):
+        mock_fetch_from_off.return_value = off_product()
+        mock_get.return_value = ok_image_response()
+        url = f"{reverse('create_product')}?barcode={NUTELLA}"
+        form = client.get(url).context["form"]
+        mock_fetch_from_off.reset_mock()
 
-        # --- Call the method under test ---
-        form = view.get_form()  # pyright: ignore[reportUnknownMemberType]
+        # The form posts back to the same URL, query string included.
+        response: HttpResponse = client.post(url, submitted(form))
 
-        # --- Assertions ---
-        mock_fetch_product_data.assert_called_once_with(query_barcode="123456")
+        assert response.status_code == HTTPStatus.FOUND
+        mock_fetch_from_off.assert_not_called()
+        product = Product.objects.get(pk=NUTELLA)
+        assert product.name == "Nutella"
+        assert list(
+            product.ingredients.filter(parent=None).values_list("name", flat=True)
+        ) == ["Sucre", "Lait"]
+        assert mock_get.call_args.args == (IMAGE_URL,)
+        assert product.image.name == f"images/products/{NUTELLA}.jpg"
 
-        expected_initial = product_schema_to_form_data(mock_product_schema).dict()
-        assert form.initial == expected_initial, (
-            f"Expected initial={expected_initial}, got {form.initial}"
+    @patch("products.services.product_services.requests.get")
+    @patch("products.views.fetch_from_off")
+    def test_changing_the_barcode_after_the_lookup_drops_what_it_returned(
+        self, mock_fetch_from_off: MagicMock, mock_get: MagicMock, client: Client
+    ):
+        """Otherwise one product's ingredients and photo end up on another."""
+        mock_fetch_from_off.return_value = off_product()
+        url = f"{reverse('create_product')}?barcode={NUTELLA}"
+        form = client.get(url).context["form"]
+
+        client.post(url, submitted(form, barcode="3229820794556"))
+
+        product = Product.objects.get(pk="3229820794556")
+        assert product.name == "Nutella"  # what the user typed is kept
+        assert not product.ingredients.exists()
+        assert not product.image
+        mock_get.assert_not_called()
+
+    @patch("products.services.product_services.requests.get")
+    @patch("products.views.fetch_from_off")
+    def test_an_uploaded_photo_wins_over_the_fetched_one(
+        self, mock_fetch_from_off: MagicMock, mock_get: MagicMock, client: Client
+    ):
+        mock_fetch_from_off.return_value = off_product()
+        url = f"{reverse('create_product')}?barcode={NUTELLA}"
+        form = client.get(url).context["form"]
+
+        client.post(url, {**submitted(form), "photo": png_upload()})
+
+        mock_get.assert_not_called()
+        product = Product.objects.get(pk=NUTELLA)
+        assert product.image.name == f"images/products/{NUTELLA}.png"
+
+    def test_tampered_ingredients_are_reported_not_saved(self, client: Client):
+        form = client.get(reverse("create_product")).context["form"]
+        data = submitted(
+            form,
+            barcode=NUTELLA,
+            name="Nutella",
+            energy_kj=1,
+            off_barcode=NUTELLA,
+            off_ingredients="not json",
         )
 
-        assert (
-            form.extra_data.get("fetched_image_url") == "https://example.com/apple.jpg"
-        )
+        response: HttpResponse = client.post(reverse("create_product"), data)
 
-        # Optional: ensure the form type is correct
-        assert isinstance(form, ProductForm)
+        assert response.status_code == HTTPStatus.OK
+        assert response.context["form"].non_field_errors()
+        assert not Product.objects.filter(pk=NUTELLA).exists()
 
 
 @pytest.mark.django_db
 class TestProductEditView:
-    def setup_method(self):
-        self.factory = RequestFactory()
-
     @patch("products.views.fetch_from_off")
     def test_failed_reset_falls_back_to_stored_values(
         self, mock_fetch_from_off: MagicMock, client: Client
@@ -272,131 +370,72 @@ class TestProductEditView:
         notices = [str(m) for m in response.context["messages"]]
         assert any("was not found in OpenFoodFacts" in n for n in notices), notices
 
-    @patch("products.forms.requests.get")
+    def test_plain_edit_leaves_the_ingredients_alone(self, client: Client):
+        """Saving used to delete and recreate every ingredient, every time."""
+        product = create_product(
+            ProductCreate.model_validate(
+                {
+                    "barcode": NUTELLA,
+                    "name": "Nutella",
+                    "nutritional_values": {"energy_kj": 1},
+                    "ingredients": [{"name": "Sucre"}, {"name": "Cacao"}],
+                }
+            )
+        ).product
+        ids = set(product.ingredients.values_list("id", flat=True))
+        url = reverse("edit_product", args=[product.pk])
+        form = client.get(url).context["form"]
+
+        with patch("products.views.fetch_from_off") as fetch:
+            client.post(url, submitted(form, name="Renamed"))
+
+        fetch.assert_not_called()
+        product.refresh_from_db()
+        assert product.name == "Renamed"
+        assert set(product.ingredients.values_list("id", flat=True)) == ids
+
+    @patch("products.services.product_services.requests.get")
     @patch("products.views.fetch_from_off")
-    def test_save_after_reset_warns_when_image_host_is_unreachable(
+    def test_reset_then_save_replaces_ingredients_and_warns_about_the_photo(
         self,
         mock_fetch_from_off: MagicMock,
-        mock_forms_requests_get: MagicMock,
+        mock_get: MagicMock,
         client: Client,
     ):
         """
-        The image lives on a separate OFF host from the product API and can
-        time out on its own (e.g. a stricter egress allowlist than the API's).
-        This used to crash the save with an unhandled ConnectTimeout; it must
-        instead save the product and tell the user to add the photo by hand.
+        The photo lives on a separate OFF host that can time out on its own:
+        the product is saved anyway, with a notice to add the photo by hand.
         """
         product = Product.objects.create(
-            barcode="3229820794556",
-            name="Stored Product",
-            energy_kj=10,
+            barcode=NUTELLA, name="Stored Product", energy_kj=10
         )
-        mock_fetch_from_off.return_value = OFFProductSchema(
-            barcode="3229820794556",
-            name="Stored Product",
-            image_url="https://images.openfoodfacts.org/apple.jpg",
-        )
-        mock_forms_requests_get.side_effect = requests.ConnectTimeout("timed out")
+        mock_fetch_from_off.return_value = off_product()
+        mock_get.side_effect = requests.ConnectTimeout("timed out")
+        url = reverse("edit_product", args=[product.pk])
+        form = client.get(url, {"reset": "1"}).context["form"]
+        assert form["off_barcode"].value() == NUTELLA
 
-        response: HttpResponse = client.post(
-            f"{reverse('edit_product', args=[product.pk])}?reset=1",
-            {
-                "barcode": "3229820794556",
-                "name": "Stored Product",
-                "energy_kj": 10,
-            },
-            follow=True,
-        )
+        response: HttpResponse = client.post(url, submitted(form), follow=True)
 
-        assert response.status_code == 200  # noqa: PLR2004
         product.refresh_from_db()
+        assert product.name == "Nutella"
+        assert list(
+            product.ingredients.filter(parent=None).values_list("name", flat=True)
+        ) == ["Sucre", "Lait"]
         assert not product.image
         notices = [str(m) for m in response.context["messages"]]
         assert any("could not be downloaded" in n for n in notices), notices
 
-    def test_get_form_raises_without_instance(self):
-        view = ProductEditView()
-        view.request = self.factory.get("/fake-url/")
-        # `match` performs a substring/regex search, so it passes as long as the text
-        # is contained in the exception message.
-        with pytest.raises(ValueError, match="Product instance is required"):
-            view.get_form()  # pyright: ignore[reportUnknownMemberType]
+    def test_a_tampered_barcode_is_ignored(self, client: Client):
+        """The barcode is the primary key: editing must never move a product."""
+        product = Product.objects.create(barcode=NUTELLA, name="Nutella", energy_kj=1)
+        url = reverse("edit_product", args=[product.pk])
+        form = client.get(url).context["form"]
 
-    # @patch("products.views.fetch_product_data")
-    # def test_get_form
-    def test_get_form_without_reset(self):
-        product = Product.objects.create(
-            barcode="1234567890123",
-            name="Test Product",
-            description="obsolete description",
-            energy_kj=10.0,
-        )
+        client.post(url, submitted(form, barcode="3229820794556", name="Renamed"))
 
-        view = ProductEditView()
-        view.request = self.factory.get(f"/products/edit/{product.barcode}/")
-        form = view.get_form(instance=product)  # pyright: ignore[reportUnknownMemberType]
-
-        assert isinstance(form, ProductForm)
-
-        expected_form = {
-            "barcode": "1234567890123",
-            "description": "obsolete description",
-            "energy_kj": 10.0,
-            "image": None,
-            "name": "Test Product",
-            "group_level_1": "",
-            "group_level_2": "",
-        }
-        assert form.initial == expected_form
-
-    @pytest.mark.django_db
-    @patch("products.views.fetch_from_off")
-    def test_get_form_with_reset(self, mock_fetch_product_data: MagicMock):
-        product = Product.objects.create(
-            barcode="1234567890123",
-            name="Test Product",
-            description="obsolete description",
-            energy_kj=10.0,
-        )
-
-        # --------------------------------------------------------------------
-        # --- Create a realistic ProductSchema instance ---
-        mock_product_schema: OFFProductSchema = OFFProductSchema(
-            barcode="1234567890123",
-            name="Test",
-            image_url="https://example.com/apple.jpg",
-            macronutrients=OFFMacronutrientsSchema(
-                fat=3.0,
-                proteins=1.5,
-            ),
-        )
-
-        # fetch_product_data() should return this schema instance
-        mock_fetch_product_data.return_value = mock_product_schema
-
-        view = ProductEditView()
-        view.request = RequestFactory().get(
-            f"/products/edit/{product.barcode}/?reset=1"
-        )
-
-        form = view.get_form(instance=product)  # pyright: ignore[reportUnknownMemberType]
-
-        # --------------------------------------------------------------------
-        expected_initial = product_schema_to_form_data(mock_product_schema).dict()
-        expected_initial["image"] = None
-        assert form.initial == expected_initial, (
-            f"Expected initial={expected_initial}, got {form.initial}"
-        )
-
-        assert isinstance(form.extra_data, dict), (
-            f"Expected dict, got {type(form.extra_data)}"
-        )
-        assert (
-            form.extra_data.get("fetched_image_url") == "https://example.com/apple.jpg"
-        )
-
-        # Optional: ensure the form type is correct
-        assert isinstance(form, ProductForm)
+        assert Product.objects.get(pk=NUTELLA).name == "Renamed"
+        assert not Product.objects.filter(pk="3229820794556").exists()
 
 
 @pytest.mark.django_db
@@ -466,56 +505,41 @@ def test_product_form_pages_hand_labels_to_the_scripts(
 
 
 @pytest.mark.django_db
-def test_reference_names_loaded_in_single_query(django_assert_num_queries: Any) -> None:
-    IngredientRef.objects.create(name="Sugar")
-    IngredientRef.objects.create(name="Salt")
+def test_rows_from_inputs_mark_references_regardless_of_case():
+    """Same matching as the services use to link them (see their tests)."""
+    items = [IngredientInput(name="Sucre"), IngredientInput(name="Farine")]
+
+    rows = ingredient_rows_from_inputs(items, reference_names={"sucre"})
+
+    assert [(r["name"], r["has_reference"]) for r in rows] == [
+        ("Sucre", True),
+        ("Farine", False),
+    ]
+
+
+@pytest.mark.django_db
+def test_rows_from_db_rebuild_the_tree(django_assert_num_queries: Any):
+    IngredientRef.objects.create(name="lait")
+    product = create_product(
+        ProductCreate.model_validate(
+            {
+                "barcode": NUTELLA,
+                "name": "Nutella",
+                "nutritional_values": {"energy_kj": 1},
+                "ingredients": [
+                    {"name": "Sucre", "percentage": "56.3"},
+                    {"name": "Lait en poudre", "sub_ingredients": [{"name": "Lait"}]},
+                ],
+            }
+        )
+    ).product
 
     with django_assert_num_queries(1):
-        _ = {
-            name.lower()
-            for name in IngredientRef.objects.values_list("name", flat=True)
-        }
+        rows = ingredient_rows_from_db(product)
 
-
-@pytest.mark.django_db
-def test_prepare_product_form_data_with_fetched_product_and_refs():
-    # --- Arrange --- DB refs
-    IngredientRef.objects.create(name="Sugar")
-    IngredientRef.objects.create(name="Salt")
-
-    # OFFProductSchema with ingredients
-    ingredients = [
-        OFFIngredientSchema(name="Sugar"),
-        OFFIngredientSchema(name="Flour"),
+    assert [r["name"] for r in rows] == ["Sucre", "Lait en poudre"]
+    assert rows[0]["ingredients"] is None
+    assert [(c["name"], c["has_reference"]) for c in rows[1]["ingredients"]] == [
+        ("Lait", True)
     ]
-    fetched_product = OFFProductSchema(
-        barcode="123456",
-        name="Test Product",
-        ingredients=ingredients,
-    )
-
-    # --- Act ---
-    _initial, extra_data = prepare_product_form_data(fetched_product=fetched_product)
-
-    # --- Assert ---
-    assert "fetched_image_url" in extra_data
-    assert "ingredients" in extra_data
-    assert "ingredients_table_data" in extra_data
-
-    # Plain Python data: the template's json_script is the only serialiser.
-    payload: list[dict[str, Any]] = extra_data["ingredients_table_data"]
-    assert isinstance(payload, list)
-    assert len(payload) == 2  # noqa: PLR2004
-    assert payload[0]["name"] == "Sugar"
-    assert payload[0]["has_reference"] is True
-    assert payload[1]["name"] == "Flour"
-    assert payload[1]["has_reference"] is False
-
-
-@pytest.mark.django_db
-def test_prepare_product_form_data_raises_without_arguments():
-    # --- Act & Assert ---
-    with pytest.raises(
-        ValueError, match="Either product_instance or fetched_product must be provided"
-    ):
-        prepare_product_form_data()
+    assert Ingredient.objects.filter(product=product).count() == 3  # noqa: PLR2004

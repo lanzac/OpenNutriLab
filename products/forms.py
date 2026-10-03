@@ -1,9 +1,6 @@
-import io
-import logging
 from typing import TYPE_CHECKING
 from typing import Any
 
-import requests
 from crispy_bootstrap5.bootstrap5 import BS5Accordion
 from crispy_bootstrap5.bootstrap5 import FloatingField
 
@@ -20,14 +17,17 @@ from crispy_forms.layout import Layout
 from crispy_forms.layout import Row
 from crispy_forms.layout import Submit
 from django import forms
-from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
+from pydantic import TypeAdapter
+from pydantic import ValidationError
 
 from opennutrilab.crispy_bootstrap_extended.layouts import AccordionGroupExtended
-from products.api.openfoodfacts.services import save_ingredients_from_schema
-from products.services.product_services import save_image_overwrite
+from products.api.schemas.inbound import IngredientInput
+from products.api.schemas.inbound import ProductCreate
+from products.api.schemas.inbound import ProductUpdate
+from products.services import product_services
 
 from .models import Macronutrient
 from .models import Product
@@ -38,20 +38,39 @@ if TYPE_CHECKING:
 
     from django.utils.safestring import SafeText
 
-    from products.api.openfoodfacts.schemas import OFFIngredientSchema
-
-logger = logging.getLogger(__name__)
+# How the ingredient tree travels in the off_ingredients hidden field.
+INGREDIENTS_JSON = TypeAdapter(list[IngredientInput])
 
 
 class ProductForm(forms.ModelForm):
+    """
+    The product create/edit page. It only validates and describes the change:
+    products.services.product_services writes it, as it does for the API.
+    """
+
+    # What a lookup on OpenFoodFacts returned when the page was loaded, carried
+    # to the POST that saves it, so the save stores what the user was shown
+    # rather than asking OpenFoodFacts again. Applied only while off_barcode
+    # still matches the barcode being saved.
+    off_barcode = forms.CharField(required=False, widget=forms.HiddenInput)
+    off_image_url = forms.CharField(required=False, widget=forms.HiddenInput)
+    off_ingredients = forms.CharField(required=False, widget=forms.HiddenInput)
+    # A photo chosen by hand; it wins over the OpenFoodFacts one. Deliberately
+    # not the model's image field, so ModelForm never assigns product.image
+    # itself: the services store the file.
+    photo = forms.ImageField(
+        required=False,
+        label=_("Photo"),
+        widget=forms.FileInput(attrs={"accept": "image/*"}),
+    )
+
     class Meta:
         model = Product
-        # Fields from the Product model, extended with those from the Macronutrient
-        # model. Nutritional values defined in this form : energy_kj + macronutrients
+        # Nutritional values defined in this form: energy_kj here, plus one
+        # field per Macronutrient row, added in __init__.
         fields: list[str] = [
             "barcode",
             "name",
-            "image",
             "description",
             "energy_kj",
             "group_level_1",
@@ -72,19 +91,16 @@ class ProductForm(forms.ModelForm):
     def __init__(
         self,
         *args,  # pyright: ignore[reportMissingParameterType, reportUnknownParameterType]
-        extra_data: dict[str, Any] | None = None,
         **kwargs,  # pyright: ignore[reportMissingParameterType, reportUnknownParameterType]
     ):
-        # register extra_data variable before calling the super() method
-        # https://djangoandy.com/2023/08/23/passing-custom-variables-into-django-forms/
-        self.extra_data: dict[str, Any] = extra_data or {}
         super().__init__(*args, **kwargs)  # pyright: ignore[reportUnknownArgumentType]
 
-        # TODO : TEST if image preview is correctly initialized when data is fetched
-        # The next line is important for that !!
-        self.fetched_image_url: str | None = (
-            self.extra_data.get("fetched_image_url") if self.extra_data else None
-        )
+        # Not `instance.pk is not None`: the primary key is a CharField, so a
+        # new Product's pk is "" rather than None, and ModelForm fills it in
+        # while cleaning anyway.
+        self.is_edit: bool = not self.instance._state.adding  # noqa: SLF001
+        self.image_fetch_failed = False
+        self._macronutrients = list(Macronutrient.objects.all())
 
         # Configure Graph container template
         macronutrients_graph_container_template: SafeText = render_to_string(
@@ -152,10 +168,14 @@ class ProductForm(forms.ModelForm):
                 ),
                 Column(
                     HTML("{% include 'products/components/image_preview.html' %}"),
-                    css_class="col-md-4 d-flex align-items-center justify-content-center",  # noqa: E501
+                    Field("photo"),
+                    css_class="col-md-4 d-flex flex-column align-items-center justify-content-center",  # noqa: E501
                 ),
                 Field("group_level_1", value="Unknown"),
                 Field("group_level_2", value="Unknown"),
+                Field("off_barcode"),
+                Field("off_image_url"),
+                Field("off_ingredients"),
             ),
             BS5Accordion(
                 AccordionGroupExtended(
@@ -188,7 +208,7 @@ class ProductForm(forms.ModelForm):
         # --------------------------------------------------------------------
 
     def _get_barcode_field_layout(self) -> FieldWithButtons:
-        if not self.instance.pk:
+        if not self.is_edit:
             return FieldWithButtons(
                 Field("barcode"),
                 StrictButton(
@@ -198,12 +218,10 @@ class ProductForm(forms.ModelForm):
                     id="fetch-product-data",
                 ),
             )
-        self.fields["barcode"].widget.attrs.update(
-            {
-                "readonly": True,
-                "class": "bg-body-secondary",
-            },
-        )
+        # The barcode is the primary key. Disabled rather than readonly:
+        # Django then ignores whatever a tampered POST sends for it and keeps
+        # the stored value.
+        self.fields["barcode"].disabled = True
         return FieldWithButtons(
             Field("barcode"),
             StrictButton(
@@ -225,26 +243,22 @@ class ProductForm(forms.ModelForm):
         _("Fiber")
         _("Proteins")
 
-        for macronutrient in Macronutrient.objects.all():
+        stored: dict[str, Decimal] = {}
+        if self.is_edit:
+            stored = dict(
+                ProductMacronutrient.objects.filter(product=self.instance).values_list(
+                    "macronutrient_id", "amount_g"
+                )
+            )
+
+        for macronutrient in self._macronutrients:
             form_field: forms.Field = ProductMacronutrient._meta.get_field(  # noqa: SLF001
                 field_name="amount_g",
             ).formfield(
                 required=False,
             )
             form_field.label = _(str(macronutrient))
-
-            if self.instance and self.instance.pk:
-                amount_g_value: Decimal | None = (
-                    ProductMacronutrient.objects.filter(
-                        product=self.instance,
-                        macronutrient=macronutrient,
-                    )
-                    .values_list("amount_g", flat=True)
-                    .first()
-                )
-                if amount_g_value is not None:
-                    form_field.initial = amount_g_value
-
+            form_field.initial = stored.get(macronutrient.name)
             self.fields[macronutrient.name_in_form] = form_field
 
     def _get_nutritional_values_layout(self) -> list[Field]:
@@ -253,82 +267,92 @@ class ProductForm(forms.ModelForm):
             PrependedText(field="energy_kj", text="", css_class="plot-input")
         ]
         layout_fields += [
-            PrependedText(
-                field=f"macronutrients_{m.name.lower()}",
-                text="",
-                css_class="plot-input",
-            )
-            for m in Macronutrient.objects.all()
+            PrependedText(field=m.name_in_form, text="", css_class="plot-input")
+            for m in self._macronutrients
         ]
         return layout_fields
 
-    def save(self, commit: bool = True):  # noqa: FBT001, FBT002
-        # Save Product object without committing
-        product: Product = super().save(commit=False)
-
-        # Assign fetched image if needed
-        self.image_fetch_failed = False
-        fetched_image_url = getattr(self, "extra_data", {}).get("fetched_image_url")
-        if fetched_image_url:
-            try:
-                resp = requests.get(fetched_image_url, timeout=10)
-                resp.raise_for_status()
-            except requests.RequestException as e:
-                # OFF's image CDN is a separate host from its API and can be
-                # unreachable even when the API isn't (e.g. a stricter
-                # egress allowlist). This must not lose the rest of the form:
-                # save the product without the image and let the view warn.
-                logger.warning(
-                    "Failed to download product image from %s: %s",
-                    fetched_image_url,
-                    e,
+    def clean(self) -> dict[str, Any]:
+        cleaned: dict[str, Any] = super().clean()
+        if self.errors:
+            return cleaned
+        try:
+            self.write_data: ProductCreate | ProductUpdate = self._write_data(cleaned)
+        except ValidationError as e:
+            # Only reachable through the hidden fields, i.e. a tampered POST
+            # or a lookup result the schemas reject.
+            raise forms.ValidationError(
+                _(
+                    "The data fetched from OpenFoodFacts could not be used. "
+                    "Please fetch it again."
                 )
-                self.image_fetch_failed = True
-            else:
-                filename = f"{self.cleaned_data['barcode']}.jpg"
+            ) from e
+        return cleaned
 
-                new_image = InMemoryUploadedFile(  # pyright: ignore[reportAttributeAccessIssue]
-                    io.BytesIO(resp.content),
-                    field_name="image",
-                    name=filename,
-                    content_type="image/jpeg",
-                    size=len(resp.content),
-                    charset=None,
-                )
-                save_image_overwrite(product, new_image)
-
-        # Handle macronutrients
-        for macronutrient in Macronutrient.objects.all():
-            field_name = macronutrient.name_in_form
-            value: Decimal | None = self.cleaned_data.get(field_name)
-            # An empty field means "unknown" and removes the row; 0 is a real
-            # measurement and must be kept, so no truthiness test here.
-            if value is not None:
-                ProductMacronutrient.objects.update_or_create(
-                    product=product,
-                    macronutrient=macronutrient,
-                    defaults={"amount_g": value},
-                )
-            else:
-                ProductMacronutrient.objects.filter(
-                    product=product,
-                    macronutrient=macronutrient,
-                ).delete()
-
-        ingredients_schema: list[OFFIngredientSchema] | None = (
-            self.extra_data.get("ingredients") if hasattr(self, "extra_data") else None
+    def _write_data(self, cleaned: dict[str, Any]) -> ProductCreate | ProductUpdate:
+        barcode = self.instance.barcode if self.is_edit else cleaned["barcode"]
+        off_barcode = cleaned.get("off_barcode")
+        from_off = bool(off_barcode) and off_barcode == barcode
+        raw_ingredients = cleaned.get("off_ingredients") if from_off else None
+        ingredients = (
+            INGREDIENTS_JSON.validate_json(raw_ingredients) if raw_ingredients else None
         )
 
-        if ingredients_schema:
-            product.ingredients.all().delete()
+        payload: dict[str, Any] = {
+            "name": cleaned["name"],
+            "description": cleaned.get("description") or "",
+            "group_level_1": cleaned.get("group_level_1") or "",
+            "group_level_2": cleaned.get("group_level_2") or "",
+            "image_url": (cleaned.get("off_image_url") or None) if from_off else None,
+            "nutritional_values": {
+                "energy_kj": cleaned["energy_kj"],
+                # The complete set: an empty field drops that macronutrient,
+                # and 0 is stored as a measurement.
+                "macronutrients": [
+                    {"name": m.name, "amount_g": cleaned[m.name_in_form]}
+                    for m in self._macronutrients
+                    if cleaned.get(m.name_in_form) is not None
+                ],
+            },
+        }
+        if self.is_edit:
+            # None leaves the stored ingredients alone: they are replaced only
+            # when this page was loaded from OpenFoodFacts ("Reset data").
+            payload["ingredients"] = ingredients
+            return ProductUpdate.model_validate(payload)
+        payload["barcode"] = barcode
+        payload["ingredients"] = ingredients or []
+        return ProductCreate.model_validate(payload)
 
-            save_ingredients_from_schema(
-                ingredients_schema,
-                product=product,
-                parent=None,
+    def save(self, commit: bool = True) -> Product:  # noqa: FBT001, FBT002
+        if not commit:
+            msg = "ProductForm writes through the product services; it cannot defer."
+            raise ValueError(msg)
+        photo = self.cleaned_data.get("photo")
+        if self.is_edit:
+            result = product_services.update_product(
+                self.instance, self.write_data, image=photo
             )
+        else:
+            result = product_services.create_product(self.write_data, image=photo)
+        self.instance = result.product
+        self.image_fetch_failed = result.image_fetch_failed
+        return result.product
 
-        if commit:
-            product.save()
+    # ------------------------------------------------------------------------
+    # What the page shows besides the fields
+    # ------------------------------------------------------------------------
+    @property
+    def preview_image_url(self) -> str | None:
+        """The OpenFoodFacts photo this page will save, if any."""
+        return self["off_image_url"].value() or None
 
-        return product
+    def off_ingredients_for_display(self) -> list[IngredientInput] | None:
+        """The OpenFoodFacts ingredient tree this page will save, if any."""
+        raw = self["off_ingredients"].value()
+        if not raw:
+            return None
+        try:
+            return INGREDIENTS_JSON.validate_json(raw)
+        except ValidationError:
+            return None

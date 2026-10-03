@@ -158,7 +158,7 @@ def _replace_macronutrients(product: Product, items: list[MacronutrientInput]) -
 def _replace_ingredients(product: Product, items: list[IngredientInput]) -> None:
     """Replace the product's ingredient tree with `items`."""
     product.ingredients.all().delete()
-    references = _references_by_lowercase_name(items)
+    references = references_by_lowercase_name(items)
     _create_ingredients(product, items, parent=None, references=references)
 
 
@@ -185,14 +185,15 @@ def _create_ingredients(
         _create_ingredients(product, item.sub_ingredients, ingredient, references)
 
 
-def _references_by_lowercase_name(
+def references_by_lowercase_name(
     items: list[IngredientInput],
 ) -> dict[str, IngredientRef]:
     """
     Reference ingredients for every name in the tree, in one query.
 
-    Matched without regard to case, like the "recognized" column the product
-    form shows (see products.views.ingredient_rows_from_inputs).
+    Matched without regard to case. The product form's "recognized" column
+    uses this same function (products.views), so what it shows as recognized
+    is what gets linked.
     """
     names: set[str] = set()
     stack = list(items)

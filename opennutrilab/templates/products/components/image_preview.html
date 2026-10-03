@@ -1,13 +1,17 @@
 {% load static %}
 
-{% if form.instance.image %}
+{% comment %}
+  The OpenFoodFacts photo comes first: when this page was loaded from OFF
+  (a new product, or "Reset data"), that is the photo saving will store.
+{% endcomment %}
+{% if form.preview_image_url %}
+  <img src="{{ form.preview_image_url }}"
+       class="product-image-preview"
+       alt="Fetched image not found" />
+{% elif form.instance.image %}
   <img src="{{ form.instance.image.url }}"
        class="product-image-preview"
        alt="Image not found" />
-{% elif form.fetched_image_url %}
-  <img src="{{ form.fetched_image_url }}"
-       class="product-image-preview"
-       alt="Fetched image not found" />
 {% else %}
   <img src="{% static 'images/milk-carton-svgrepo-com.png' %}"
        class="product-image-preview"
