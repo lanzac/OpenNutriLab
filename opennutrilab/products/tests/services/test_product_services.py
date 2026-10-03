@@ -17,12 +17,13 @@ from django.db.models.fields.files import ImageFieldFile
 from opennutrilab.products.api.schemas.inbound import ProductCreate
 from opennutrilab.products.api.schemas.inbound import ProductUpdate
 from opennutrilab.products.models import Ingredient
-from opennutrilab.products.models import IngredientRef
 from opennutrilab.products.models import Product
-from opennutrilab.products.models import ProductMacronutrient
+from opennutrilab.products.models import ProductNutrient
+from opennutrilab.products.models import ReferenceIngredient
 from opennutrilab.products.services.product_services import ProductAlreadyExistsError
-from opennutrilab.products.services.product_services import UnknownMacronutrientError
+from opennutrilab.products.services.product_services import UnknownNutrientError
 from opennutrilab.products.services.product_services import create_product
+from opennutrilab.products.services.product_services import declared_value_warnings
 from opennutrilab.products.services.product_services import download_image
 from opennutrilab.products.services.product_services import save_image_overwrite
 from opennutrilab.products.services.product_services import update_product
@@ -42,20 +43,13 @@ def create_payload(**overrides: Any) -> ProductCreate:
         "barcode": BARCODE,
         "name": "Nutella",
         "description": "Spread",
-        "nutritional_values": {
-            "energy_kj": 2252,
-            "macronutrients": [
-                {"name": "fat", "amount_g": "30.9"},
-                {"name": "sugars", "amount_g": "56.3"},
-            ],
-        },
+        "nutrients": {"energy": "2252", "fat": "30.9", "sugars": "56.3"},
         "ingredients": [
-            {
-                "name": "Sucre",
-                "percentage": "56.3",
-            },
+            {"name": "Sucre", "percentage": "56.3", "off_id": "en:sugar"},
             {
                 "name": "Lait écrémé en poudre",
+                "off_id": "en:skimmed-milk-powder",
+                "off_ciqual_food_code": "19054",
                 "sub_ingredients": [{"name": "lait", "percentage": "8.7"}],
             },
         ],
@@ -64,10 +58,10 @@ def create_payload(**overrides: Any) -> ProductCreate:
     return ProductCreate.model_validate(payload)
 
 
-def amounts(product: Product) -> dict[str, Decimal]:
+def declared(product: Product) -> dict[str, Decimal]:
     return dict(
-        ProductMacronutrient.objects.filter(product=product).values_list(
-            "macronutrient__name", "amount_g"
+        ProductNutrient.objects.filter(product=product).values_list(
+            "nutrient_id", "amount"
         )
     )
 
@@ -88,21 +82,25 @@ def product() -> Product:
 # create_product
 # -----------------------
 @pytest.mark.django_db
-def test_create_product_writes_fields_macronutrients_and_ingredient_tree():
+def test_create_product_writes_fields_declared_values_and_ingredient_tree():
     result = create_product(create_payload())
     product = Product.objects.get(pk=BARCODE)
 
     assert result.product == product
     assert result.image_fetch_failed is False
-    assert (product.name, product.description, product.energy_kj) == (
-        "Nutella",
-        "Spread",
-        2252,
-    )
-    assert amounts(product) == {"fat": Decimal("30.90"), "sugars": Decimal("56.30")}
+    assert (product.name, product.description) == ("Nutella", "Spread")
+    assert declared(product) == {
+        "energy": Decimal(2252),
+        "fat": Decimal("30.9"),
+        "sugars": Decimal("56.3"),
+    }
 
     roots = Ingredient.objects.filter(product=product, parent=None).order_by("id")
     assert [i.name for i in roots] == ["Sucre", "Lait écrémé en poudre"]
+    assert (roots[1].off_id, roots[1].off_ciqual_food_code) == (
+        "en:skimmed-milk-powder",
+        "19054",
+    )
     child = Ingredient.objects.get(product=product, parent=roots[1])
     assert (child.name, child.percentage) == ("lait", Decimal("8.70"))
 
@@ -120,28 +118,23 @@ def test_create_product_refuses_an_existing_barcode(product: Product):
 
 
 @pytest.mark.django_db
-def test_create_product_with_an_unknown_macronutrient_writes_nothing():
-    payload = create_payload(
-        nutritional_values={
-            "energy_kj": 1,
-            "macronutrients": [{"name": "unobtainium", "amount_g": "1"}],
-        }
-    )
+def test_create_product_with_an_unknown_nutrient_writes_nothing():
+    payload = create_payload(nutrients={"unobtainium": "1"})
 
-    with pytest.raises(UnknownMacronutrientError, match="unobtainium"):
+    with pytest.raises(UnknownNutrientError, match="unobtainium"):
         create_product(payload)
 
     assert not Product.objects.filter(pk=BARCODE).exists()
 
 
 @pytest.mark.django_db
-def test_create_product_links_references_regardless_of_case():
-    """Same rule as the form's "recognized" column, which ignores case."""
-    sugar = IngredientRef.objects.create(name="sucre")
+def test_nothing_links_an_ingredient_to_a_reference_by_itself():
+    """OFF's CIQUAL code is stored for reference; linking is done by hand."""
+    ReferenceIngredient.objects.create(name_fr="sucre")
 
     product = create_product(create_payload()).product
 
-    assert Ingredient.objects.get(product=product, name="Sucre").reference == sugar
+    assert not product.ingredients.exclude(reference=None).exists()
 
 
 # -----------------------
@@ -156,42 +149,26 @@ def test_update_product_only_touches_what_is_given(product: Product):
     product.refresh_from_db()
     assert product.name == "Renamed"
     assert product.description == "Spread"
-    assert amounts(product) == {"fat": Decimal("30.90"), "sugars": Decimal("56.30")}
+    assert declared(product)["fat"] == Decimal("30.9")
     # Not recreated: same rows, same ids.
     assert set(product.ingredients.values_list("id", flat=True)) == ingredient_ids
 
 
 @pytest.mark.django_db
-def test_update_product_replaces_the_macronutrient_set(product: Product):
+def test_update_product_sets_and_clears_declared_values_by_code(product: Product):
     data = ProductUpdate.model_validate(
-        {
-            "nutritional_values": {
-                "energy_kj": 100,
-                "macronutrients": [
-                    {"name": "sugars", "amount_g": "0"},
-                    {"name": "proteins", "amount_g": "6.3"},
-                ],
-            }
-        }
+        {"nutrients": {"sugars": "0", "fat": None, "salt": "0.1"}}
     )
 
     update_product(product, data)
 
-    product.refresh_from_db()
-    assert product.energy_kj == 100  # noqa: PLR2004
-    # fat was left out, so it is removed; 0 g of sugar is kept.
-    assert amounts(product) == {"sugars": Decimal("0.00"), "proteins": Decimal("6.30")}
-
-
-@pytest.mark.django_db
-def test_update_product_with_an_empty_macronutrient_list_clears_them(
-    product: Product,
-):
-    data = ProductUpdate.model_validate({"nutritional_values": {"macronutrients": []}})
-
-    update_product(product, data)
-
-    assert amounts(product) == {}
+    # sugars: 0 is a measurement and is kept; fat: null clears it; salt: new;
+    # energy: left out, so untouched.
+    assert declared(product) == {
+        "energy": Decimal(2252),
+        "sugars": Decimal(0),
+        "salt": Decimal("0.1"),
+    }
 
 
 @pytest.mark.django_db
@@ -201,6 +178,64 @@ def test_update_product_replaces_the_ingredient_tree_when_given(product: Product
     update_product(product, data)
 
     assert list(product.ingredients.values_list("name", flat=True)) == ["Cacao"]
+
+
+@pytest.mark.django_db
+def test_replacing_the_tree_keeps_links_made_by_hand(product: Product):
+    """
+    Reloading a product from OpenFoodFacts must not undo curation: a link to
+    a reference ingredient follows the ingredient (same OFF id, or same name).
+    """
+    sugar = ReferenceIngredient.objects.create(name_fr="sucre")
+    milk = ReferenceIngredient.objects.create(name_fr="lait")
+    product.ingredients.filter(name="Sucre").update(reference=sugar)
+    product.ingredients.filter(name="lait").update(reference=milk)
+    data = ProductUpdate.model_validate(
+        {
+            "ingredients": [
+                {"name": "Sucre de canne", "off_id": "en:sugar"},
+                {"name": "Noisettes"},
+                {"name": "Lait", "sub_ingredients": []},
+            ]
+        }
+    )
+
+    update_product(product, data)
+
+    links = dict(product.ingredients.values_list("name", "reference"))
+    assert links == {"Sucre de canne": sugar.pk, "Noisettes": None, "Lait": milk.pk}
+
+
+# -----------------------
+# Consistency of declared values
+# -----------------------
+@pytest.mark.django_db
+def test_consistent_values_raise_no_warning():
+    values = {"fat": Decimal(10), "saturated_fat": Decimal(3), "salt": Decimal("0.5")}
+
+    assert declared_value_warnings(values) == []
+
+
+@pytest.mark.django_db
+def test_a_part_exceeding_its_whole_is_reported():
+    warnings = declared_value_warnings(
+        {"carbohydrates": Decimal("9.9"), "sugars": Decimal("10.0")}
+    )
+
+    assert warnings == [
+        "of which sugars (10 g) exceed Carbohydrate (9.9 g).",
+    ]
+
+
+@pytest.mark.django_db
+def test_more_than_100_g_in_100_g_is_reported():
+    warnings = declared_value_warnings(
+        {"fat": Decimal(60), "carbohydrates": Decimal(30), "proteins": Decimal(20)}
+    )
+
+    assert warnings == [
+        "The amounts add up to 110 g, more than the 100 g they are given for.",
+    ]
 
 
 # -----------------------

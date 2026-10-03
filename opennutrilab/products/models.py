@@ -1,19 +1,26 @@
+"""
+Products, their ingredients, and the nutrient data behind them.
+
+- Nutrient: the one catalogue every amount below refers to, each nutrient
+  with its unit. All amounts are per 100 g, in that unit.
+- Product and ProductNutrient: what a product's nutrition label declares.
+- Ingredient: a product's ingredient tree, as its label lists it.
+- Source, SourceFood and SourceFoodNutrient: composition data exactly as a
+  food composition table publishes it (CIQUAL first), with its qualifiers
+  and confidence grades.
+- ReferenceIngredient: a curated ingredient ("carotte crue") drawing on any
+  number of source foods. Product ingredients link to it.
+"""
+
 from typing import TYPE_CHECKING
 from typing import Any
-from typing import final
 from typing import override
 
 from django.core.validators import MaxValueValidator
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import UniqueConstraint
-from django.db.models.fields.related import ForeignKey
-from django.db.models.functions import Lower
-from django.db.models.functions import Upper
+from django.utils.translation import get_language
 from django.utils.translation import gettext_lazy as _
-
-from opennutrilab.products.units import DEFAULT_VITAMIN_UNIT
-from opennutrilab.products.units import VITAMIN_UNIT_CHOICES
 
 from .fields import EAN13Field
 
@@ -21,151 +28,160 @@ if TYPE_CHECKING:
     from django.db.models.manager import RelatedManager
 
 
-@final
-class Macronutrient(models.Model):
-    name = models.CharField(max_length=100, primary_key=True)
-    description = models.TextField(blank=True, default="")
-    label = models.CharField(max_length=100, blank=True, default="")
-    name_in_form = models.CharField(max_length=100, blank=True, default="")
-    order_index = models.PositiveIntegerField(default=0)
+class Nutrient(models.Model):
+    parent_id: str | None
 
-    class Meta:
-        constraints = [
-            UniqueConstraint(
-                Lower("name"),
-                name="unique_macronutrient_name_case_insensitive",
-            ),
-        ]
-        ordering = ["order_index"]
+    class Unit(models.TextChoices):
+        KILOJOULE = "kJ", "kJ"
+        GRAM = "g", "g"
+        MILLIGRAM = "mg", "mg"
+        MICROGRAM = "µg", "µg"
 
-    @override
-    def __str__(self) -> str:
-        if self.label:
-            return self.label
+    class Group(models.TextChoices):
+        ENERGY = "energy", _("Energy")
+        MACRONUTRIENT = "macronutrient", _("Macronutrient")
+        MINERAL = "mineral", _("Mineral")
+        VITAMIN = "vitamin", _("Vitamin")
+        OTHER = "other", _("Other")
 
-        label: str = self.name.replace("_", " ").title()
-        if self.description:
-            label += f" ({self.description})"
-        return label
-
-
-@final
-class Vitamin(models.Model):
-    name = models.CharField(max_length=100, primary_key=True)
-    common_name = models.TextField(max_length=100, blank=True)
-    atc_code = models.CharField(max_length=7, unique=True)
-    chembl_id = models.CharField(max_length=12, unique=True)
-
-    # Conventional default unit for the given vitamin to show in the form
-    default_unit_in_form = models.CharField(
-        choices=VITAMIN_UNIT_CHOICES,
+    code = models.SlugField(primary_key=True, max_length=50)
+    name_en = models.CharField(max_length=100)
+    name_fr = models.CharField(max_length=100)
+    unit = models.CharField(max_length=3, choices=Unit.choices)
+    group = models.CharField(max_length=20, choices=Group.choices)
+    parent = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="children",
+        help_text=_("The nutrient this one is part of: sugars are carbohydrates."),
+    )
+    on_label = models.BooleanField(
+        default=False,
+        help_text=_("Part of the nutrition declaration the product form asks for."),
+    )
+    display_order = models.PositiveSmallIntegerField(default=0)
+    ciqual_code = models.CharField(
         max_length=10,
-        default=DEFAULT_VITAMIN_UNIT,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text=_("Code of the matching constituent in the CIQUAL table."),
     )
-
-    class Meta:
-        constraints = [
-            UniqueConstraint(
-                Lower("name"),
-                name="unique_vitamin_name_case_insensitive",
-            ),
-            UniqueConstraint(
-                Upper("atc_code"),
-                name="unique_vitamin_atc_code_case_insensitive",
-            ),
-            UniqueConstraint(
-                Upper("chembl_id"),
-                name="unique_vitamin_chembl_id_case_insensitive",
-            ),
-        ]
-
-    @override
-    def __str__(self) -> str:
-        label: str = self.name.replace("_", " ").title()
-        if self.common_name:
-            label += f" ({self.common_name})"
-        return label
-
-
-class IngredientRefMacronutrient(models.Model):
-    ingredient_ref: ForeignKey[Any] = models.ForeignKey(
-        "IngredientRef", on_delete=models.CASCADE
-    )
-    macronutrient = models.ForeignKey(Macronutrient, on_delete=models.CASCADE)
-    amount_g = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        validators=[
-            MinValueValidator(limit_value=0, message=_("Amount cannot be negative")),
-            MaxValueValidator(limit_value=100, message=_("Amount too large")),
-        ],
-        help_text=_(
-            "Amount in g/100g of the macronutrient in the reference ingredient"
-        ),
-    )
-
-    @final
-    class Meta:
-        verbose_name = "IngredientRef Macronutrient"
-        verbose_name_plural = "IngredientRef Macronutrients"
-        ordering = ["ingredient_ref", "macronutrient"]
-
-    @override
-    def __str__(self) -> str:
-        return f"{self.ingredient_ref} {self.macronutrient} amount"
-
-
-class IngredientRef(models.Model):
-    name = models.CharField(max_length=255, unique=True)
-
-    macronutrients = models.ManyToManyField(  # pyright: ignore[reportUnknownVariableType]
-        Macronutrient, through="IngredientRefMacronutrient"
+    off_key = models.CharField(
+        max_length=50,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text=_("OpenFoodFacts nutriment key, e.g. saturated-fat."),
     )
 
     if TYPE_CHECKING:
-        # Static type hint for Pyright
-        ingredientrefmacronutrient_set: models.manager.RelatedManager[
-            "IngredientRefMacronutrient"
+        components: RelatedManager["NutrientComponent"]
+
+    class Meta:
+        ordering = ["display_order", "code"]
+
+    @override
+    def __str__(self) -> str:
+        return f"{self.name} ({self.unit})"
+
+    @property
+    def name(self) -> str:
+        """The name in the language being served."""
+        return self.name_fr if (get_language() or "").startswith("fr") else self.name_en
+
+
+class NutrientComponent(models.Model):
+    """
+    One term of a derived nutrient: derived = sum of factor x component.
+
+    The factor carries any unit conversion between the two. Vitamin A in
+    retinol equivalents, for instance, is retinol x 1 + beta-carotene x 1/6.
+    """
+
+    derived_id: str
+    component_id: str
+
+    derived = models.ForeignKey(
+        Nutrient, on_delete=models.CASCADE, related_name="components"
+    )
+    component = models.ForeignKey(Nutrient, on_delete=models.PROTECT, related_name="+")
+    factor = models.DecimalField(max_digits=12, decimal_places=6)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["derived", "component"], name="unique_nutrient_component"
+            ),
         ]
 
     @override
     def __str__(self) -> str:
-        label: str = self.name.replace("_", " ").title()
-        return label
+        return f"{self.derived_id} = {self.factor} x {self.component_id}"
+
+
+class Product(models.Model):
+    barcode = EAN13Field(primary_key=True)
+    name = models.CharField(max_length=100)
+    image = models.ImageField(upload_to="images/products/", null=True, blank=True)
+    description = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    group_level_1 = models.CharField(max_length=100, blank=True)
+    group_level_2 = models.CharField(max_length=100, blank=True)
+
+    if TYPE_CHECKING:
+        declared_nutrients: RelatedManager["ProductNutrient"]
+        ingredients: RelatedManager["Ingredient"]
+
+    @override
+    def __str__(self) -> str:
+        return self.name.replace("_", " ").title()
+
+
+class ProductNutrient(models.Model):
+    """
+    A value from the product's nutrition label.
+
+    Declared values are the reference for the product, and what amounts
+    computed from its ingredients are checked against.
+    """
+
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="declared_nutrients"
+    )
+    nutrient = models.ForeignKey(Nutrient, on_delete=models.PROTECT, related_name="+")
+    # Per 100 g, in the nutrient's unit.
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=4,
+        validators=[MinValueValidator(0, message=_("Amount cannot be negative"))],
+    )
+
+    class Meta:
+        ordering = ["nutrient__display_order", "nutrient__code"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["product", "nutrient"], name="unique_declared_nutrient"
+            ),
+        ]
+
+    @override
+    def __str__(self) -> str:
+        return f"{self.product}: {self.amount} {self.nutrient}"
 
 
 class Ingredient(models.Model):
-    id: int  # type hint
-    parent_id: int | None  # type hint
+    id: int
+    parent_id: int | None
+    reference_id: int | None
 
-    name = models.CharField(max_length=255)
-
-    # Opionnal link to a reference ingredient
-    reference = models.ForeignKey(
-        IngredientRef,
-        null=True,
-        on_delete=models.SET_NULL,
-        related_name="usages",
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="ingredients"
     )
-
-    # Type of "GeneratedField" is unknownbasedpyrightreportUnknownMemberType
-    # Check for new released since Dec 02 2025
-    # Oct 18 2025 : Add types for GeneratedField
-    # https://pypi.org/project/django-types/#history
-    # https://github.com/sbdchd/django-types/commits/main/django-stubs
-    # https://github.com/sbdchd/django-types/commit/4c797933800599c905a32bc16131aa7925e2390b
-    has_reference = models.GeneratedField(  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue, reportUnknownVariableType]
-        expression=models.Q(reference__isnull=False),
-        output_field=models.BooleanField(),
-        db_persist=True,
-    )
-
-    product: models.ForeignKey[Any] = models.ForeignKey(
-        "Product",
-        on_delete=models.CASCADE,
-        related_name="ingredients",
-    )
-
+    # Sub-ingredients: "Dattes 7% (dattes, farine de riz)" is one ingredient
+    # with two children.
     parent = models.ForeignKey(
         "self",
         null=True,
@@ -173,27 +189,43 @@ class Ingredient(models.Model):
         on_delete=models.CASCADE,
         related_name="sub_ingredients",
     )
-
-    # Static type hint for Pyright/Mypy to recognize the reverse relation manager
-    # This allows obj.children.all() to be correctly typed
-    if TYPE_CHECKING:
-        sub_ingredients: RelatedManager["Ingredient"]
-
-    # Percentage in the product
+    name = models.CharField(max_length=255)
     percentage = models.DecimalField(
         null=True,
+        blank=True,
         max_digits=5,
         decimal_places=2,
         validators=[
-            MinValueValidator(
-                limit_value=0, message=_("Percentage cannot be negative")
-            ),
-            MaxValueValidator(limit_value=100, message=_("Percentage too large")),
+            MinValueValidator(0, message=_("Percentage cannot be negative")),
+            MaxValueValidator(100, message=_("Percentage too large")),
         ],
-        help_text=_("Percentage of the ingredient in the product"),
+        help_text=_("Share of the product, as declared on the label."),
+    )
+    off_id = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text=_("OpenFoodFacts taxonomy id, e.g. en:oat-flakes."),
+    )
+    # As OpenFoodFacts gives them. Kept for reference only: nothing links an
+    # ingredient to a reference ingredient automatically.
+    off_ciqual_food_code = models.CharField(max_length=10, blank=True, default="")
+    off_ciqual_proxy_food_code = models.CharField(max_length=10, blank=True, default="")
+    reference = models.ForeignKey(
+        "ReferenceIngredient",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="usages",
     )
 
+    if TYPE_CHECKING:
+        sub_ingredients: RelatedManager["Ingredient"]
+
     class Meta:
+        # The order the label lists them in, which is the order they are
+        # created in.
+        ordering = ["id"]
         constraints = [
             models.UniqueConstraint(
                 fields=["product", "parent", "name"],
@@ -208,137 +240,111 @@ class Ingredient(models.Model):
 
     @override
     def __str__(self) -> str:
-        label: str = self.name.replace("_", " ").title()
-        return label
+        return self.name
 
 
-@final
-class Product(models.Model):
-    barcode = EAN13Field(primary_key=True)
-    name = models.CharField(max_length=100)
-    image = models.ImageField(upload_to="images/products/", null=True, blank=True)
-    description = models.TextField(blank=True, default="")
-    created_at = models.DateTimeField(auto_now_add=True)
-    group_level_1 = models.CharField(max_length=100, blank=True)
-    group_level_2 = models.CharField(max_length=100, blank=True)
+class Source(models.Model):
+    """A dataset composition data comes from, e.g. the CIQUAL 2020 table."""
 
-    # ------------------------------------------------------------------------
-    # Nutritional values -----------------------------------------------------
-    # ------------------------------------------------------------------------
-    # 🔹 Energy
-    energy_kj = models.IntegerField(
-        validators=[
-            MinValueValidator(limit_value=0, message=_("Energy cannot be negative")),
-            MaxValueValidator(
-                limit_value=100_000, message=_("Energy seems too high")
-            ),  # ajuster selon contexte
-        ],
-        help_text=_("Energy in kJ/100g of the product"),
+    code = models.SlugField(unique=True, max_length=50)
+    name = models.CharField(max_length=255)
+    version = models.CharField(max_length=50, blank=True)
+    url = models.URLField(blank=True)
+    attribution = models.TextField(
+        blank=True,
+        help_text=_("What the licence requires to be shown wherever its data is used."),
     )
-
-    # 🔹 Macronutrients
-    macronutrients = models.ManyToManyField(  # pyright: ignore[reportUnknownVariableType]
-        to=Macronutrient,
-        through="ProductMacronutrient",
-        related_name="products",
-    )
-
-    # Type hint for the reverse relation manager created by the ManyToMany 'through'
-    # table. This is purely for static analysis (Pyright/Mypy) as Django populates this
-    # attribute at runtime.
-    if TYPE_CHECKING:
-        productmacronutrient_set: RelatedManager["ProductMacronutrient"]
-
-    # 🔹 Vitamins
-    vitamins = models.ManyToManyField(  # pyright: ignore[reportUnknownVariableType]
-        to=Vitamin,
-        through="ProductVitamin",
-        related_name="products",
-    )
-    # ------------------------------------------------------------------------
-
-    if TYPE_CHECKING:
-        # Reverse side of Ingredient.product (related_name="ingredients").
-        ingredients: RelatedManager["Ingredient"]
 
     @override
     def __str__(self) -> str:
-        label: str = self.name.replace("_", " ").title()
-        return label
+        return f"{self.name} {self.version}".strip()
 
 
-@final
-class ProductVitamin(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    vitamin = models.ForeignKey(Vitamin, on_delete=models.CASCADE)
-    # QuantityField unit_choices does not show the human-readable representation
-    # in the form, so I use a custom unit_choices, tell me if I'm wrong or if
-    # there is a better way to do it :)
-    usual_unit = models.CharField(
+class SourceFood(models.Model):
+    """One food as a source publishes it, e.g. CIQUAL 20009 "Carotte, crue"."""
+
+    source = models.ForeignKey(Source, on_delete=models.PROTECT, related_name="foods")
+    code = models.CharField(
+        max_length=50, help_text=_("The food's identifier in its source.")
+    )
+    name_fr = models.CharField(max_length=255, blank=True)
+    name_en = models.CharField(max_length=255, blank=True)
+    food_group = models.CharField(max_length=255, blank=True)
+
+    if TYPE_CHECKING:
+        nutrients: RelatedManager["SourceFoodNutrient"]
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["source", "code"], name="unique_food_per_source"
+            ),
+        ]
+
+    @override
+    def __str__(self) -> str:
+        return f"{self.name_fr or self.name_en} ({self.source.code} {self.code})"
+
+
+class SourceFoodNutrient(models.Model):
+    """An amount exactly as its source publishes it."""
+
+    class Qualifier(models.TextChoices):
+        EXACT = "exact", _("Exact")
+        LESS_THAN = "less_than", _("Below the detection limit")
+        TRACES = "traces", _("Traces")
+
+    food = models.ForeignKey(
+        SourceFood, on_delete=models.CASCADE, related_name="nutrients"
+    )
+    nutrient = models.ForeignKey(Nutrient, on_delete=models.PROTECT, related_name="+")
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0, message=_("Amount cannot be negative"))],
+        help_text=_(
+            "Empty when the source did not measure it. Below the detection "
+            "limit, this is the limit."
+        ),
+    )
+    qualifier = models.CharField(
+        max_length=10, choices=Qualifier.choices, default=Qualifier.EXACT
+    )
+    confidence = models.CharField(
         max_length=5,
-        choices=VITAMIN_UNIT_CHOICES,
-        default=DEFAULT_VITAMIN_UNIT,
-        help_text=_("Unit used for this vitamin"),
-    )
-    amount_ug = models.DecimalField(
-        max_digits=10,
-        decimal_places=3,  # Precision until 0.001 µg, should be enough for vitamins
-        validators=[
-            MinValueValidator(limit_value=0, message=_("Amount cannot be negative")),
-            MaxValueValidator(limit_value=1_000_000, message=_("Amount too large")),
-        ],
-        help_text=_(
-            "Amount in µg/100g (canonical unit µg) of the vitamin in the product"
-        ),
+        blank=True,
+        help_text=_("The source's own grade, e.g. CIQUAL's A (best) to D."),
     )
 
-    @final
     class Meta:
-        verbose_name = "Product Vitamin"
-        verbose_name_plural = "Product Vitamins"
-        ordering = ["product", "vitamin"]
-        # A custom "through" table gets no uniqueness from Django, and the
-        # constraint only exists if it is declared here, inside Meta.
         constraints = [
             models.UniqueConstraint(
-                fields=["product", "vitamin"], name="unique_product_vitamin"
+                fields=["food", "nutrient"], name="unique_nutrient_per_source_food"
             ),
         ]
 
     @override
     def __str__(self) -> str:
-        return f"{self.product} {self.vitamin} amount"
+        return f"{self.food}: {self.amount} {self.nutrient}"
 
 
-@final
-class ProductMacronutrient(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    macronutrient = models.ForeignKey(Macronutrient, on_delete=models.CASCADE)
-    amount_g = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        validators=[
-            MinValueValidator(limit_value=0, message=_("Amount cannot be negative")),
-            MaxValueValidator(limit_value=100, message=_("Amount too large")),
-        ],
-        help_text=_(
-            "Amount in g/100g (canonical unit g) of the macronutrient in the product"
-        ),
+class ReferenceIngredient(models.Model):
+    """
+    A curated ingredient, e.g. "carotte crue".
+
+    Its composition is aggregated from the source foods it draws on, so that
+    more sources make it more complete and more reliable.
+    """
+
+    name_fr = models.CharField(max_length=255, unique=True)
+    name_en = models.CharField(max_length=255, blank=True)
+    description = models.TextField(blank=True)
+    source_foods: "models.ManyToManyField[SourceFood, Any]" = models.ManyToManyField(
+        SourceFood, blank=True, related_name="reference_ingredients"
     )
-
-    @final
-    class Meta:
-        verbose_name = "Product Macronutrient"
-        verbose_name_plural = "Product Macronutrients"
-        ordering = ["product", "macronutrient"]
-        # See ProductVitamin.Meta.
-        constraints = [
-            models.UniqueConstraint(
-                fields=["product", "macronutrient"],
-                name="unique_product_macronutrient",
-            ),
-        ]
 
     @override
     def __str__(self) -> str:
-        return f"{self.product.name} {self.macronutrient.name} amount"
+        return self.name_fr

@@ -5,7 +5,7 @@
 // barcode buttons, the macronutrient chart and the ingredients tree.
 import { initBarcodeActions } from './form/barcode-actions.js';
 import { initIngredientsTable } from './form/ingredients-table.js';
-import { initMacronutrientsGraph } from './form/macronutrients-graph.js';
+import { initNutrientChart } from './form/nutrient-chart.js';
 import { initPlotlyTheme } from './form/plotly-theme.js';
 
 // Modules are deferred, so the document may already be parsed.
@@ -18,14 +18,15 @@ function ready(callback) {
 }
 
 ready(() => {
-  // Translated server-side (see product_form_labels in opennutrilab/products/views.py),
-  // handed over the same way ProductListView does for the React list.
-  const labels = JSON.parse(
-    document.getElementById('product-form-labels').textContent,
+  // Built and translated server-side (see product_form_config in
+  // opennutrilab/products/views.py), handed over the same way ProductListView
+  // does for the React list.
+  const config = JSON.parse(
+    document.getElementById('product-form-config').textContent,
   );
 
-  initBarcodeActions(labels.barcodeActions);
+  initBarcodeActions(config.barcodeActions);
   initPlotlyTheme();
-  initMacronutrientsGraph(labels.macronutrientsGraph);
-  initIngredientsTable(labels.ingredientsTable);
+  initNutrientChart(config.nutrientChart);
+  initIngredientsTable(config.ingredientsTable);
 });

@@ -1,319 +1,175 @@
+from decimal import Decimal
+
 import pytest
 from django.db import IntegrityError
 from django.db import transaction
+from django.db.models import ProtectedError
+from django.utils import translation
 
-from opennutrilab.products.models import Macronutrient
+from opennutrilab.products.models import Ingredient
+from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Product
-from opennutrilab.products.models import ProductMacronutrient
-from opennutrilab.products.models import ProductVitamin
-from opennutrilab.products.models import Vitamin
+from opennutrilab.products.models import ProductNutrient
+from opennutrilab.products.models import ReferenceIngredient
+from opennutrilab.products.models import Source
+from opennutrilab.products.models import SourceFood
+from opennutrilab.products.models import SourceFoodNutrient
+
+BARCODE = "3229820794556"
+
+
+@pytest.fixture
+def product(db: None) -> Product:
+    return Product.objects.create(barcode=BARCODE, name="muesli protéines")
+
+
+@pytest.fixture
+def ciqual_carrot(db: None) -> SourceFood:
+    ciqual = Source.objects.create(code="ciqual-2020", name="CIQUAL", version="2020")
+    return SourceFood.objects.create(
+        source=ciqual, code="20009", name_fr="Carotte, crue", name_en="Carrot, raw"
+    )
 
 
 # ----------------------------------------------------------------------------
-# Macronutrient model tests --------------------------------------------------
+# Nutrient catalogue
 # ----------------------------------------------------------------------------
 @pytest.mark.django_db
-def test_macronutrient_reference_data():
-    expected_names = {
-        "fat",
-        "saturated_fat",
-        "carbohydrates",
-        "sugars",
-        "fiber",
-        "proteins",
-    }
-    existing_names = set(Macronutrient.objects.values_list("name", flat=True))
-    missing = expected_names - existing_names
-    assert not missing, f"Missing macronutrients in DB: {missing}"
+def test_the_label_declaration_is_in_the_catalogue():
+    """The eight nutrients of the EU nutrition declaration, seeded by migration."""
+    label = Nutrient.objects.filter(on_label=True)
+
+    assert [(n.code, n.unit, n.parent_id) for n in label] == [
+        ("energy", "kJ", None),
+        ("fat", "g", None),
+        ("saturated_fat", "g", "fat"),
+        ("carbohydrates", "g", None),
+        ("sugars", "g", "carbohydrates"),
+        ("fiber", "g", None),
+        ("proteins", "g", None),
+        ("salt", "g", None),
+    ]
+    # Protein as labels compute it (nitrogen x 6.25), not CIQUAL's default.
+    assert Nutrient.objects.get(code="proteins").ciqual_code == "25003"
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize(
-    argnames=("name", "description", "expected"),
-    argvalues=[
-        # Basic name without underscore or description
-        ("simplemacro", "", "Simplemacro"),
-        # Name with single underscore
-        ("macro_withoneunderscore", "", "Macro Withoneunderscore"),
-        # Name with multiple underscores
-        ("macro_with_multiple_underscores", "", "Macro With Multiple Underscores"),
-        # Name with description only
-        ("macrowithdescription", "g/100g", "Macrowithdescription (g/100g)"),
-        # Combination underscores and description
-        (
-            "macro_with_underscores_and_description",
-            "mg",
-            "Macro With Underscores And Description (mg)",
-        ),
-        # Name with description text
-        ("simplemacro", "per serving", "Simplemacro (per serving)"),
-    ],
-)
-def test_macronutrient_str(name: str, description: str, expected: str):
-    """
-    Test __str__ formatting for Macronutrient:
-    - replaces underscores with spaces
-    - applies title casing
-    - appends description if present
-    """
-    m = Macronutrient.objects.create(
-        name=name,
-        description=description or "",
-    )
-    assert str(m) == expected
+def test_a_nutrient_is_named_in_the_language_served():
+    salt = Nutrient.objects.get(code="salt")
+
+    with translation.override("fr-fr"):
+        assert salt.name == "Sel"
+        assert str(salt) == "Sel (g)"
+    with translation.override("en-us"):
+        assert salt.name == "Salt"
 
 
 @pytest.mark.django_db
-def test_macronutrient_primary_key_case_insensitive_uniqueness():
-    # Initial creation
-    Macronutrient.objects.create(name="macrotest")
-
-    # Test exact duplicate
-    with transaction.atomic(), pytest.raises(IntegrityError):
-        Macronutrient.objects.create(name="Macrotest")
-
-    # Test case-insensitive duplicate
-    with transaction.atomic(), pytest.raises(IntegrityError):
-        Macronutrient.objects.create(name="Macrotest")
+def test_a_parent_nutrient_cannot_be_deleted_from_under_its_children():
+    with pytest.raises(ProtectedError):
+        Nutrient.objects.get(code="fat").delete()
 
 
 # ----------------------------------------------------------------------------
-# Vitamin model tests --------------------------------------------------------
+# Products and their declared values
 # ----------------------------------------------------------------------------
 @pytest.mark.django_db
-@pytest.mark.parametrize(
-    argnames=("name", "common_name", "expected"),
-    argvalues=[
-        # Without common_name
-        ("vitatest", "", "Vitatest"),
-        # With common_name
-        ("vitatest", "Vitamin B1", "Vitatest (Vitamin B1)"),
-    ],
-)
-def test_vitamin_str(name: str, common_name: str, expected: str):
-    """
-    Test __str__ formatting for Vitamin:
-    - shows name
-    - appends common_name in parentheses if present
-    """
-    m = Vitamin.objects.create(
-        name=name,
-        common_name=common_name or "",
-        atc_code="A11DA01",
-        chembl_id="CHEMBL1547",
-    )
-    assert str(m) == expected
-
-
-@pytest.mark.django_db
-def test_vitamin_name_case_insensitive_uniqueness():
-    Vitamin.objects.create(
-        name="vitatest",
-        atc_code="A11DA01",
-        chembl_id="CHEMBL1547",
-    )
-    with transaction.atomic(), pytest.raises(IntegrityError):
-        Vitamin.objects.create(
-            name="Vitatest",  # same name, different case
-            atc_code="A11DA02",
-            chembl_id="CHEMBL1548",
-        )
-
-
-@pytest.mark.django_db
-def test_vitamin_atc_code_case_insensitive_uniqueness():
-    Vitamin.objects.create(
-        name="vitatest",
-        atc_code="A11DA01",
-        chembl_id="CHEMBL1547",
-    )
-    with transaction.atomic(), pytest.raises(IntegrityError):
-        Vitamin.objects.create(
-            name="othervitatest",
-            atc_code="a11da01",  # same ATC code, lowercase
-            chembl_id="CHEMBL1548",
-        )
-
-
-@pytest.mark.django_db
-def test_vitamin_chembl_id_case_insensitive_uniqueness():
-    Vitamin.objects.create(
-        name="vitatest",
-        atc_code="A11DA01",
-        chembl_id="CHEMBL1547",
-    )
-    with transaction.atomic(), pytest.raises(IntegrityError):
-        Vitamin.objects.create(
-            name="othervitatest",
-            atc_code="A11DA02",
-            chembl_id="chembl1547",  # same ChEMBL, lowercase
-        )
-
-
-@pytest.mark.django_db
-def test_vitamin_default_unit_in_form_applied():
-    from opennutrilab.products.models import DEFAULT_VITAMIN_UNIT
-
-    vitamin = Vitamin.objects.create(
-        name="thiamine",
-        atc_code="A11DA01",
-        chembl_id="CHEMBL1547",
-    )
-    assert vitamin.default_unit_in_form == DEFAULT_VITAMIN_UNIT
-
-
-@pytest.mark.django_db
-def test_vitamin_default_unit_in_form_with_custom_choice():
-    # choose a different unit from the choices
-    from opennutrilab.products.models import VITAMIN_UNIT_CHOICES
-
-    custom_unit = VITAMIN_UNIT_CHOICES[0][0]
-    vitamin = Vitamin.objects.create(
-        name="riboflavine",
-        atc_code="A11DA02",
-        chembl_id="CHEMBL1548",
-        default_unit_in_form=custom_unit,
-    )
-    assert vitamin.default_unit_in_form == custom_unit
-
-
-@pytest.mark.django_db
-def test_vitamin_name_max_length():
-    long_name = "A" * 100
-    vitamin = Vitamin.objects.create(
-        name=long_name,
-        atc_code="A11DA03",
-        chembl_id="CHEMBL1549",
-    )
-    assert vitamin.name == long_name
-
-
-@pytest.mark.django_db
-def test_vitamin_common_name_optional():
-    vitamin = Vitamin.objects.create(
-        name="niacine",
-        atc_code="A11DA04",
-        chembl_id="CHEMBL1550",
-    )
-    assert vitamin.common_name == ""  # blank=True → empty string by default
-
-
-# ----------------------------------------------------------------------------
-# Product model tests -----------------------------------------------------------
-# ----------------------------------------------------------------------------
-@pytest.mark.django_db
-def test_product_str() -> None:
-    from opennutrilab.products.models import Product
-
-    product = Product.objects.create(
-        barcode="3229820794556", name="muesli protéines", energy_kj=100
-    )
+def test_product_str(product: Product):
     assert str(product) == "Muesli Protéines"
 
 
-# ----------------------------------------------------------------------------
-# ProductVitamin model tests ----------------------------------------------------
-# ----------------------------------------------------------------------------
 @pytest.mark.django_db
-def test_productvitamin_str_representation() -> None:
-    product = Product.objects.create(
-        barcode="3229820794556", name="Apple", energy_kj=100
+def test_a_nutrient_is_declared_once_per_product(product: Product):
+    salt = Nutrient.objects.get(code="salt")
+    ProductNutrient.objects.create(
+        product=product, nutrient=salt, amount=Decimal("0.03")
     )
-    vitamin = Vitamin.objects.create(
-        name="Ascorbic acid",
-        common_name="Vitamin C",
-        atc_code="A11GA01",
-        chembl_id="CHEMBL196",
-    )
-    fv = ProductVitamin.objects.create(
-        product=product, vitamin=vitamin, amount_ug=50_000
-    )
-
-    assert str(fv) == "Apple Ascorbic Acid (Vitamin C) amount"
-
-
-@pytest.mark.django_db
-def test_productvitamin_unique_per_product() -> None:
-    product = Product.objects.create(
-        barcode="3229820794556", name="Apple", energy_kj=100
-    )
-    vitamin = Vitamin.objects.create(
-        name="Ascorbic acid", atc_code="A11GA01", chembl_id="CHEMBL196"
-    )
-    ProductVitamin.objects.create(product=product, vitamin=vitamin, amount_ug=1)
 
     with transaction.atomic(), pytest.raises(IntegrityError):
-        ProductVitamin.objects.create(product=product, vitamin=vitamin, amount_ug=2)
-
-
-# ----------------------------------------------------------------------------
-# ProductMacronutrient model tests ----------------------------------------------
-# ----------------------------------------------------------------------------
-@pytest.mark.django_db
-def test_productmacronutrient_str_representation() -> None:
-    product = Product.objects.create(
-        barcode="3229820794557", name="BananaTest", energy_kj=100
-    )
-    macro = Macronutrient.objects.create(name="ProteinsTest")
-    fm = ProductMacronutrient.objects.create(
-        product=product, macronutrient=macro, amount_g=2.0
-    )
-
-    assert str(fm) == "BananaTest ProteinsTest amount"
+        ProductNutrient.objects.create(product=product, nutrient=salt, amount=1)
 
 
 @pytest.mark.django_db
-def test_productmacronutrient_unique_per_product() -> None:
-    product = Product.objects.create(
-        barcode="3229820794556", name="Apple", energy_kj=100
+def test_declared_values_go_with_their_product(product: Product):
+    ProductNutrient.objects.create(
+        product=product, nutrient=Nutrient.objects.get(code="fat"), amount=9
     )
-    fat = Macronutrient.objects.get(name="fat")
-    ProductMacronutrient.objects.create(product=product, macronutrient=fat, amount_g=1)
 
+    product.delete()
+
+    assert not ProductNutrient.objects.exists()
+
+
+# ----------------------------------------------------------------------------
+# Ingredients
+# ----------------------------------------------------------------------------
+@pytest.mark.django_db
+def test_ingredients_form_a_tree(product: Product):
+    dates = Ingredient.objects.create(product=product, name="Dattes", percentage=7)
+    Ingredient.objects.create(product=product, parent=dates, name="farine de riz")
+
+    assert [i.name for i in dates.sub_ingredients.all()] == ["farine de riz"]
+    assert str(dates) == "Dattes"
+
+
+@pytest.mark.django_db
+def test_removing_a_reference_ingredient_keeps_the_ingredient(product: Product):
+    oats = ReferenceIngredient.objects.create(name_fr="flocons d'avoine")
+    ingredient = Ingredient.objects.create(
+        product=product, name="Flocons d'avoine", reference=oats
+    )
+
+    oats.delete()
+
+    ingredient.refresh_from_db()
+    assert ingredient.reference is None
+
+
+# ----------------------------------------------------------------------------
+# Sources and reference ingredients
+# ----------------------------------------------------------------------------
+@pytest.mark.django_db
+def test_a_source_lists_each_of_its_foods_once(ciqual_carrot: SourceFood):
     with transaction.atomic(), pytest.raises(IntegrityError):
-        ProductMacronutrient.objects.create(
-            product=product, macronutrient=fat, amount_g=2
-        )
+        SourceFood.objects.create(source=ciqual_carrot.source, code="20009")
 
 
-# ----------------------------------------------------------------------------
-# IngredientRef model tests -----------------------------------------------------------
-# ----------------------------------------------------------------------------
 @pytest.mark.django_db
-def test_ingredientref_str() -> None:
-    from opennutrilab.products.models import IngredientRef
-
-    ingredientref = IngredientRef.objects.create(name="raisins secs")
-    assert str(ingredientref) == "Raisins Secs"
-
-
-# ----------------------------------------------------------------------------
-# IngredientRefMacronutrient model tests -------------------------------------
-# ----------------------------------------------------------------------------
-@pytest.mark.django_db
-def test_ingredientrefmacronutrient_str_representation() -> None:
-    from opennutrilab.products.models import IngredientRef
-    from opennutrilab.products.models import IngredientRefMacronutrient
-    from opennutrilab.products.models import Macronutrient
-
-    ingredientref = IngredientRef.objects.create(name="raisins secs")
-    macro = Macronutrient.objects.create(name="ProteinsTest")
-    fm = IngredientRefMacronutrient.objects.create(
-        ingredient_ref=ingredientref, macronutrient=macro, amount_g=2.0
+def test_a_source_value_keeps_how_the_source_published_it(ciqual_carrot: SourceFood):
+    """CIQUAL "-" (not measured), "< 0,5" and "traces" all have to survive."""
+    vitamin_d = Nutrient.objects.create(
+        code="vitamin_d",
+        name_en="Vitamin D",
+        name_fr="Vitamine D",
+        unit="µg",
+        group="vitamin",
+    )
+    not_measured = SourceFoodNutrient.objects.create(
+        food=ciqual_carrot, nutrient=vitamin_d, amount=None
+    )
+    below_limit = SourceFoodNutrient.objects.create(
+        food=ciqual_carrot,
+        nutrient=Nutrient.objects.get(code="salt"),
+        amount=Decimal("0.5"),
+        qualifier=SourceFoodNutrient.Qualifier.LESS_THAN,
+        confidence="B",
     )
 
-    assert str(fm) == "Raisins Secs Proteinstest amount"
+    assert not_measured.amount is None
+    assert not_measured.qualifier == SourceFoodNutrient.Qualifier.EXACT
+    below_limit.refresh_from_db()
+    assert (below_limit.qualifier, below_limit.confidence) == ("less_than", "B")
 
 
-# ----------------------------------------------------------------------------
-# Ingredient model tests -----------------------------------------------------------
-# ----------------------------------------------------------------------------
 @pytest.mark.django_db
-def test_ingredient_str() -> None:
-    from opennutrilab.products.models import Ingredient
+def test_a_reference_ingredient_draws_on_several_source_foods(
+    ciqual_carrot: SourceFood,
+):
+    other = Source.objects.create(code="manual", name="Saisie manuelle")
+    measured = SourceFood.objects.create(source=other, code="1", name_fr="Carotte")
+    carrot = ReferenceIngredient.objects.create(name_fr="carotte crue")
 
-    parent_product = Product.objects.create(
-        barcode="3242272270157", name="Fruit Mix", energy_kj=100
-    )
-    ingredient = Ingredient.objects.create(name="raisins secs", product=parent_product)
-    assert str(ingredient) == "Raisins Secs"
+    carrot.source_foods.add(ciqual_carrot, measured)
+
+    assert set(carrot.source_foods.all()) == {ciqual_carrot, measured}
+    assert str(carrot) == "carotte crue"

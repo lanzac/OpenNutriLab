@@ -16,18 +16,20 @@ from vanilla import DeleteView
 from vanilla import ListView
 from vanilla import UpdateView
 
-from .api.openfoodfacts.schemas import product_schema_to_form_data
 from .api.openfoodfacts.services import OFFError
 from .api.openfoodfacts.services import OFFProductNotFoundError
+from .api.openfoodfacts.services import declared_nutrients_from_off
 from .api.openfoodfacts.services import fetch_from_off
 from .api.openfoodfacts.services import to_ingredient_inputs
 from .api.schemas.inbound import IngredientInput
 from .api.schemas.inbound import validate_off_image_url
 from .forms import INGREDIENTS_JSON
 from .forms import ProductForm
+from .forms import nutrient_field
 from .models import Ingredient
+from .models import Nutrient
 from .models import Product
-from .services.product_services import references_by_lowercase_name
+from .services.product_services import plain_amount
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +91,8 @@ class ProductFormViewMixin:
         )
         if form.image_fetch_failed:
             report_image_fetch_failure(self.request, barcode=form.instance.barcode)
+        for warning in form.declared_value_warnings:
+            messages.warning(self.request, warning)
         return response
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
@@ -97,7 +101,7 @@ class ProductFormViewMixin:
             super().get_context_data(**kwargs),  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
         )
         form = cast("ProductForm", context["form"])
-        context["product_form_labels"] = product_form_labels()
+        context["product_form_config"] = product_form_config()
         context["ingredient_rows"] = ingredient_rows_for(form)
         return context
 
@@ -164,42 +168,37 @@ class ProductDeleteView(UserPassesTestMixin, DeleteView):
 # Utilities
 
 
-def product_form_labels() -> dict[str, Any]:
+def product_form_config() -> dict[str, Any]:
     """
-    Translated strings for the vanilla-JS parts of the product form.
+    What the vanilla-JS parts of the product form need from the server.
 
     Handed to the page as one |json_script blob (see product_form.html),
     consumed by frontend/src/apps/products/form-entry.js and passed down to
-    the ingredients table, the macronutrients chart and the barcode actions.
-    Same reasoning as ProductListView.product_list_props: translating here
-    keeps the .po catalogue the single source of truth instead of growing a
-    parallel JS-side one.
-
-    Several keys reuse the exact English text already translated elsewhere
-    on this page (the "Fat" / "of which Saturates" family from
-    ProductForm._add_nutritional_value_fields, "Name" from ProductForm.Meta.
-    labels): gettext matches by literal string, so no new .po entries are
-    needed for those, and the chart's wording for saturated fat and sugars
-    stays consistent with the input fields right next to it.
+    the ingredients table, the nutrient chart and the barcode actions. Text
+    is translated here, so the .po catalogue stays the single source of truth
+    instead of growing a parallel JS-side one.
     """
     return {
         "ingredientsTable": {
             "name": _("Name"),
             "percentage": _("Percentage"),
-            "recognized": _("Recognized"),
+            "ciqual": _("CIQUAL code (OpenFoodFacts)"),
+            "reference": _("Reference ingredient"),
         },
-        # Keyed like Macronutrient.name (see the migration that seeds it:
-        # products/migrations/0006_alter_macronutrient_labels_and_more.py),
-        # not like the display label, so the chart's structure survives
-        # translation. "others" has no corresponding row: it is the chart's
-        # own synthetic remainder slice.
-        "macronutrientsGraph": {
-            "fat": _("Fat"),
-            "saturatedFat": _("of which Saturates"),
-            "carbohydrates": _("Carbohydrates"),
-            "sugars": _("of which Sugars"),
-            "fiber": _("Fiber"),
-            "proteins": _("Proteins"),
+        "nutrientChart": {
+            # One slice per declared mass nutrient, straight from the
+            # catalogue: parents and children are linked by code, so the
+            # chart's structure does not depend on the displayed language.
+            "slices": [
+                {
+                    "code": n.code,
+                    "field": nutrient_field(n.code),
+                    "parent": n.parent_id,
+                    "label": n.name,
+                }
+                for n in Nutrient.objects.filter(on_label=True, unit=Nutrient.Unit.GRAM)
+            ],
+            # The chart's own remainder slice, with no nutrient behind it.
             "others": _("Others"),
         },
         "barcodeActions": {
@@ -258,10 +257,18 @@ def initial_from_off(request: HttpRequest, barcode: str) -> dict[str, Any] | Non
         report_off_failure(request, barcode=barcode, error=e)
         return None
 
-    initial: dict[str, Any] = product_schema_to_form_data(fetched).dict()
-    image_url = initial.pop("image_url", None)
+    initial: dict[str, Any] = {
+        "barcode": fetched.barcode,
+        "name": fetched.name,
+        "description": fetched.description or "",
+        "group_level_1": fetched.group_level_1 or "",
+        "group_level_2": fetched.group_level_2 or "",
+    }
+    # Values from the label, converted to each nutrient's unit.
+    for code, amount in declared_nutrients_from_off(fetched.nutriments).items():
+        initial[nutrient_field(code)] = plain_amount(amount)
     try:
-        initial["off_image_url"] = validate_off_image_url(image_url)
+        initial["off_image_url"] = validate_off_image_url(fetched.image_url)
     except ValueError:
         # A photo hosted somewhere the services refuse to download from.
         initial["off_image_url"] = None
@@ -281,26 +288,29 @@ def ingredient_rows_for(form: ProductForm) -> list[dict[str, Any]]:
     """
     from_off = form.off_ingredients_for_display()
     if from_off is not None:
-        return ingredient_rows_from_inputs(
-            from_off, set(references_by_lowercase_name(from_off))
-        )
+        return ingredient_rows_from_inputs(from_off)
     if form.is_edit:
         return ingredient_rows_from_db(form.instance)
     return []
 
 
-def ingredient_rows_from_inputs(
-    items: list[IngredientInput], reference_names: set[str]
-) -> list[dict[str, Any]]:
+def _ciqual_label(food_code: str, proxy_food_code: str) -> str:
+    """OpenFoodFacts' CIQUAL code for an ingredient, marking a proxy as such."""
+    if food_code:
+        return food_code
+    return f"{proxy_food_code} (proxy)" if proxy_food_code else ""
+
+
+def ingredient_rows_from_inputs(items: list[IngredientInput]) -> list[dict[str, Any]]:
     return [
         {
             "name": item.name,
             "percentage": item.percentage,
-            "has_reference": item.name.strip().lower() in reference_names,
-            "ingredients": (
-                ingredient_rows_from_inputs(item.sub_ingredients, reference_names)
-                or None
+            "ciqual": _ciqual_label(
+                item.off_ciqual_food_code, item.off_ciqual_proxy_food_code
             ),
+            "reference": None,
+            "ingredients": ingredient_rows_from_inputs(item.sub_ingredients) or None,
         }
         for item in items
     ]
@@ -308,13 +318,20 @@ def ingredient_rows_from_inputs(
 
 def ingredient_rows_from_db(product: Product) -> list[dict[str, Any]]:
     """The stored ingredient tree, in one query."""
-    ingredients = list(Ingredient.objects.filter(product=product).order_by("id"))
+    ingredients = list(
+        Ingredient.objects.filter(product=product)
+        .select_related("reference")
+        .order_by("id")
+    )
     rows: dict[int, dict[str, Any]] = {
         ingredient.id: {
             "name": ingredient.name,
             "percentage": ingredient.percentage,
-            # GeneratedField has no type in django-types yet (see the model).
-            "has_reference": ingredient.has_reference,  # pyright: ignore[reportUnknownMemberType]
+            "ciqual": _ciqual_label(
+                ingredient.off_ciqual_food_code,
+                ingredient.off_ciqual_proxy_food_code,
+            ),
+            "reference": ingredient.reference.name_fr if ingredient.reference else None,
             "ingredients": None,
         }
         for ingredient in ingredients

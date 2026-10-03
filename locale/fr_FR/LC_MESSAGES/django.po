@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-03 15:31+0000\n"
+"POT-Creation-Date: 2026-10-03 17:21+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,6 +21,206 @@ msgstr "Anglais"
 
 msgid "French"
 msgstr "Français"
+
+msgid "EAN-13 must be 13 digits."
+msgstr "Le code EAN-13 doit comporter 13 chiffres."
+
+msgid "Invalid EAN-13 checksum."
+msgstr "Somme de contrôle EAN-13 invalide."
+
+msgid "Photo"
+msgstr "Photo"
+
+msgid "Barcode"
+msgstr "Code barre"
+
+msgid "Name"
+msgstr "Nom"
+
+msgid "Description"
+msgstr "Description"
+
+msgid "Loading macronutrients graph..."
+msgstr "Chargement du graphe des macronutriments..."
+
+msgid "Loading ingredients table..."
+msgstr "Chargement du tableau des ingrédients..."
+
+msgid "Enter the 13-digit EAN code from the packaging."
+msgstr "Entrez le code EAN à 13 chiffres figurant sur l'emballage."
+
+msgid "Nutritional values (per 100g)"
+msgstr "Valeurs nutritionnelles (pour 100g)"
+
+msgid "Ingredients"
+msgstr "Ingrédients"
+
+msgid "save"
+msgstr ""
+
+msgid "Save"
+msgstr "Sauvergarder"
+
+msgid "Cancel"
+msgstr "Annuler"
+
+msgid "Fetch data"
+msgstr "Récupérer les données"
+
+msgid "Reset data"
+msgstr "Réinitialiser les données"
+
+msgid ""
+"The data fetched from OpenFoodFacts could not be used. Please fetch it again."
+msgstr ""
+"Les données récupérées sur OpenFoodFacts n'ont pas pu être utilisées. "
+"Veuillez les récupérer à nouveau."
+
+msgid "Energy"
+msgstr "Énergie"
+
+msgid "Macronutrient"
+msgstr "Macronutriment"
+
+msgid "Mineral"
+msgstr "Minéral"
+
+msgid "Vitamin"
+msgstr "Vitamine"
+
+#, fuzzy
+#| msgid "Others"
+msgid "Other"
+msgstr "Autres"
+
+msgid "The nutrient this one is part of: sugars are carbohydrates."
+msgstr "Le nutriment dont celui-ci fait partie : les sucres sont des glucides."
+
+msgid "Part of the nutrition declaration the product form asks for."
+msgstr "Fait partie de la déclaration nutritionnelle demandée par le formulaire produit."
+
+msgid "Code of the matching constituent in the CIQUAL table."
+msgstr "Code du constituant correspondant dans la table CIQUAL."
+
+msgid "OpenFoodFacts nutriment key, e.g. saturated-fat."
+msgstr "Clé du nutriment dans OpenFoodFacts, par exemple saturated-fat."
+
+msgid "Amount cannot be negative"
+msgstr "La quantité ne peut pas être négative"
+
+msgid "Percentage cannot be negative"
+msgstr "Le pourcentage ne peut pas être négatif"
+
+msgid "Percentage too large"
+msgstr "Le pourcentage est trop élevé"
+
+msgid "Share of the product, as declared on the label."
+msgstr "Part dans le produit, telle que déclarée sur l'étiquette."
+
+msgid "OpenFoodFacts taxonomy id, e.g. en:oat-flakes."
+msgstr "Identifiant de taxonomie OpenFoodFacts, par exemple en:oat-flakes."
+
+msgid "What the licence requires to be shown wherever its data is used."
+msgstr "Ce que la licence impose d'afficher partout où ses données sont utilisées."
+
+msgid "The food's identifier in its source."
+msgstr "L'identifiant de l'aliment dans sa source."
+
+msgid "Exact"
+msgstr "Exacte"
+
+msgid "Below the detection limit"
+msgstr "Sous le seuil de détection"
+
+msgid "Traces"
+msgstr "Traces"
+
+msgid ""
+"Empty when the source did not measure it. Below the detection limit, this is "
+"the limit."
+msgstr "Vide quand la source ne l'a pas mesuré. Sous le seuil de détection, c'est ce seuil."
+
+msgid "The source's own grade, e.g. CIQUAL's A (best) to D."
+msgstr "L'indice propre à la source, par exemple de A (meilleur) à D pour CIQUAL."
+
+#, python-format
+msgid ""
+"%(part)s (%(part_amount)s %(unit)s) exceed %(whole)s (%(whole_amount)s "
+"%(unit)s)."
+msgstr "%(part)s (%(part_amount)s %(unit)s) dépasse %(whole)s (%(whole_amount)s %(unit)s)."
+
+#, python-format
+msgid ""
+"The amounts add up to %(total)s g, more than the 100 g they are given for."
+msgstr "Les quantités totalisent %(total)s g, plus que les 100 g auxquels elles se rapportent."
+
+msgid "Product name"
+msgstr "Nom du produit"
+
+msgid "Created at"
+msgstr "Créé le"
+
+msgid "Actions"
+msgstr "Actions"
+
+msgid "Edit"
+msgstr "Éditer"
+
+msgid "Delete"
+msgstr "Supprimer"
+
+msgid "Edit and Delete product"
+msgstr "Éditer et Supprimer un produit"
+
+msgid "Loading…"
+msgstr "Chargement…"
+
+msgid "Failed to load products."
+msgstr "Échec du chargement des produits."
+
+#, python-format
+msgid "Delete \"%(name)s\"?"
+msgstr "Supprimer « %(name)s » ?"
+
+msgid "Percentage"
+msgstr "Pourcentage"
+
+msgid "CIQUAL code (OpenFoodFacts)"
+msgstr "Code CIQUAL (OpenFoodFacts)"
+
+msgid "Reference ingredient"
+msgstr "Ingrédient de référence"
+
+msgid "Others"
+msgstr "Autres"
+
+msgid "Please enter a barcode."
+msgstr "Veuillez entrer un code-barres."
+
+#, python-format
+msgid ""
+"Barcode %(barcode)s was not found in OpenFoodFacts. Please fill in the "
+"details by hand."
+msgstr ""
+"Le code-barres %(barcode)s est introuvable dans OpenFoodFacts. Veuillez "
+"saisir les informations à la main."
+
+#, python-format
+msgid ""
+"OpenFoodFacts could not be reached for barcode %(barcode)s. Please try "
+"again, or fill in the details by hand."
+msgstr ""
+"OpenFoodFacts n'a pas pu être joint pour le code-barres %(barcode)s. "
+"Veuillez réessayer, ou saisir les informations à la main."
+
+#, python-format
+msgid ""
+"Product %(barcode)s was saved, but its photo could not be downloaded from "
+"OpenFoodFacts. Please try again, or upload one by hand."
+msgstr ""
+"Le produit %(barcode)s a été enregistré, mais sa photo n'a pas pu être "
+"téléchargée depuis OpenFoodFacts. Veuillez réessayer, ou en téléverser une à "
+"la main."
 
 msgid "Sign In"
 msgstr "S'identifier"
@@ -104,181 +304,56 @@ msgstr "Nom de l'utilisateur"
 msgid "Information successfully updated"
 msgstr "Informations mises à jour avec succès"
 
-msgid "EAN-13 must be 13 digits."
-msgstr "Le code EAN-13 doit comporter 13 chiffres."
+#~ msgid "Fat"
+#~ msgstr "Matières grasses"
 
-msgid "Invalid EAN-13 checksum."
-msgstr "Somme de contrôle EAN-13 invalide."
+#~ msgid "of which Saturates"
+#~ msgstr "dont graisses saturées"
 
-msgid "Photo"
-msgstr "Photo"
+#~ msgid "Carbohydrates"
+#~ msgstr "Glucides"
 
-msgid "Barcode"
-msgstr "Code barre"
+#~ msgid "of which Sugars"
+#~ msgstr "dont sucres"
 
-msgid "Name"
-msgstr "Nom"
+#~ msgid "Fiber"
+#~ msgstr "Fibres"
 
-msgid "Description"
-msgstr "Description"
+#~ msgid "Proteins"
+#~ msgstr "Protéines"
 
-msgid "Energy"
-msgstr "Énergie"
+#~ msgid "Amount too large"
+#~ msgstr "La quantité est trop élevée"
 
-msgid "Loading macronutrients graph..."
-msgstr "Chargement du graphe des macronutriments..."
+#~ msgid "Amount in g/100g of the macronutrient in the reference ingredient"
+#~ msgstr "Quantité en g/100g du macronutriment dans l’ingrédient de référence"
 
-msgid "Loading ingredients table..."
-msgstr "Chargement du tableau des ingrédients..."
+#~ msgid "Percentage of the ingredient in the product"
+#~ msgstr "Pourcentage de l’ingrédient dans le produit"
 
-msgid "Enter the 13-digit EAN code from the packaging."
-msgstr "Entrez le code EAN à 13 chiffres figurant sur l'emballage."
+#~ msgid "Energy cannot be negative"
+#~ msgstr "L’énergie ne peut pas être négative"
 
-msgid "Nutritional values (per 100g)"
-msgstr "Valeurs nutritionnelles (pour 100g)"
+#~ msgid "Energy seems too high"
+#~ msgstr "L’énergie semble trop élevée"
 
-msgid "Ingredients"
-msgstr "Ingrédients"
+#~ msgid "Energy in kJ/100g of the product"
+#~ msgstr "Énergie en kJ/100g du produit"
 
-msgid "save"
-msgstr ""
+#~ msgid "Unit used for this vitamin"
+#~ msgstr "Unité utilisée pour cette vitamine"
 
-msgid "Save"
-msgstr "Sauvergarder"
+#~ msgid "Amount in µg/100g (canonical unit µg) of the vitamin in the product"
+#~ msgstr ""
+#~ "Quantité en µg/100g (unité canonique µg) de la vitamine dans le produit"
 
-msgid "Cancel"
-msgstr "Annuler"
+#~ msgid ""
+#~ "Amount in g/100g (canonical unit g) of the macronutrient in the product"
+#~ msgstr ""
+#~ "Quantité en g/100g (unité canonique g) du macronutriment dans le produit"
 
-msgid "Fetch data"
-msgstr "Récupérer les données"
-
-msgid "Reset data"
-msgstr "Réinitialiser les données"
-
-msgid "Fat"
-msgstr "Matières grasses"
-
-msgid "of which Saturates"
-msgstr "dont graisses saturées"
-
-msgid "Carbohydrates"
-msgstr "Glucides"
-
-msgid "of which Sugars"
-msgstr "dont sucres"
-
-msgid "Fiber"
-msgstr "Fibres"
-
-msgid "Proteins"
-msgstr "Protéines"
-
-msgid ""
-"The data fetched from OpenFoodFacts could not be used. Please fetch it again."
-msgstr "Les données récupérées sur OpenFoodFacts n'ont pas pu être utilisées. Veuillez les récupérer à nouveau."
-
-msgid "Amount cannot be negative"
-msgstr "La quantité ne peut pas être négative"
-
-msgid "Amount too large"
-msgstr "La quantité est trop élevée"
-
-msgid "Amount in g/100g of the macronutrient in the reference ingredient"
-msgstr "Quantité en g/100g du macronutriment dans l’ingrédient de référence"
-
-msgid "Percentage cannot be negative"
-msgstr "Le pourcentage ne peut pas être négatif"
-
-msgid "Percentage too large"
-msgstr "Le pourcentage est trop élevé"
-
-msgid "Percentage of the ingredient in the product"
-msgstr "Pourcentage de l’ingrédient dans le produit"
-
-msgid "Energy cannot be negative"
-msgstr "L’énergie ne peut pas être négative"
-
-msgid "Energy seems too high"
-msgstr "L’énergie semble trop élevée"
-
-msgid "Energy in kJ/100g of the product"
-msgstr "Énergie en kJ/100g du produit"
-
-msgid "Unit used for this vitamin"
-msgstr "Unité utilisée pour cette vitamine"
-
-msgid "Amount in µg/100g (canonical unit µg) of the vitamin in the product"
-msgstr ""
-"Quantité en µg/100g (unité canonique µg) de la vitamine dans le produit"
-
-msgid "Amount in g/100g (canonical unit g) of the macronutrient in the product"
-msgstr ""
-"Quantité en g/100g (unité canonique g) du macronutriment dans le produit"
-
-msgid "Product name"
-msgstr "Nom du produit"
-
-msgid "Created at"
-msgstr "Créé le"
-
-msgid "Actions"
-msgstr "Actions"
-
-msgid "Edit"
-msgstr "Éditer"
-
-msgid "Delete"
-msgstr "Supprimer"
-
-msgid "Edit and Delete product"
-msgstr "Éditer et Supprimer un produit"
-
-msgid "Loading…"
-msgstr "Chargement…"
-
-msgid "Failed to load products."
-msgstr "Échec du chargement des produits."
-
-#, python-format
-msgid "Delete \"%(name)s\"?"
-msgstr "Supprimer « %(name)s » ?"
-
-msgid "Percentage"
-msgstr "Pourcentage"
-
-msgid "Recognized"
-msgstr "Reconnu"
-
-msgid "Others"
-msgstr "Autres"
-
-msgid "Please enter a barcode."
-msgstr "Veuillez entrer un code-barres."
-
-#, python-format
-msgid ""
-"Barcode %(barcode)s was not found in OpenFoodFacts. Please fill in the "
-"details by hand."
-msgstr ""
-"Le code-barres %(barcode)s est introuvable dans OpenFoodFacts. Veuillez "
-"saisir les informations à la main."
-
-#, python-format
-msgid ""
-"OpenFoodFacts could not be reached for barcode %(barcode)s. Please try "
-"again, or fill in the details by hand."
-msgstr ""
-"OpenFoodFacts n'a pas pu être joint pour le code-barres %(barcode)s. "
-"Veuillez réessayer, ou saisir les informations à la main."
-
-#, python-format
-msgid ""
-"Product %(barcode)s was saved, but its photo could not be downloaded from "
-"OpenFoodFacts. Please try again, or upload one by hand."
-msgstr ""
-"Le produit %(barcode)s a été enregistré, mais sa photo n'a pas pu être "
-"téléchargée depuis OpenFoodFacts. Veuillez réessayer, ou en téléverser une à "
-"la main."
+#~ msgid "Recognized"
+#~ msgstr "Reconnu"
 
 #~ msgid "No data found"
 #~ msgstr "Aucune donnée"

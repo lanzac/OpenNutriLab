@@ -8,6 +8,7 @@ ORM does not enforce on its own.
 """
 
 from decimal import Decimal
+from typing import Annotated
 from urllib.parse import urlparse
 
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -32,36 +33,19 @@ def validate_off_image_url(url: str | None) -> str | None:
     return url
 
 
-def _check_unique_names(
-    items: list["MacronutrientInput"],
-) -> list["MacronutrientInput"]:
-    names = [item.name for item in items]
-    if len(names) != len(set(names)):
-        msg = "Each macronutrient can only be given once."
-        raise ValueError(msg)
-    return items
-
-
-class MacronutrientInput(Schema):
-    """One macronutrient amount, per 100 g of product."""
-
-    name: str
-    amount_g: Decimal = Field(ge=0, le=100, max_digits=5, decimal_places=2)
-
-
-class NutritionalValuesInput(Schema):
-    energy_kj: int = Field(ge=0, le=100_000)
-    macronutrients: list[MacronutrientInput] = []
-
-    @field_validator("macronutrients")
-    @classmethod
-    def unique_names(cls, items: list[MacronutrientInput]) -> list[MacronutrientInput]:
-        return _check_unique_names(items)
+# An amount per 100 g, in its nutrient's unit (Nutrient.unit), with the
+# precision the database keeps.
+NutrientAmount = Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=4)]
 
 
 class IngredientInput(Schema):
     name: str = Field(min_length=1, max_length=255)
+    # As declared on the label; never an estimate.
     percentage: Decimal | None = Field(default=None, ge=0, le=100)
+    # Raw OpenFoodFacts data, stored for reference only.
+    off_id: str = Field(default="", max_length=255)
+    off_ciqual_food_code: str = Field(default="", max_length=10)
+    off_ciqual_proxy_food_code: str = Field(default="", max_length=10)
 
     # https://django-ninja.dev/guides/response/?h=self#self-referencing-schemes
     sub_ingredients: list["IngredientInput"] = []
@@ -77,7 +61,8 @@ class ProductCreate(Schema):
     description: str = ""
     group_level_1: str = Field(default="", max_length=100)
     group_level_2: str = Field(default="", max_length=100)
-    nutritional_values: NutritionalValuesInput
+    # Values declared on the nutrition label, keyed by Nutrient.code.
+    nutrients: dict[str, NutrientAmount] = {}
     ingredients: list[IngredientInput] = []
 
     @field_validator("barcode")
@@ -98,22 +83,11 @@ class ProductCreate(Schema):
 
 
 # -------------------------------------------------------------
-# UPDATE SCHEMAS (PATCH) - every field is optional, for partial updates.
-# A field left out (None) is not touched. A list that is given replaces the
-# stored one entirely: an empty macronutrient list clears them all.
+# UPDATE SCHEMA (PATCH) - every field is optional, for partial updates.
+# A field left out (None) is not touched. In `nutrients`, a code left out is
+# not touched either, and a code set to null clears that value. A list of
+# ingredients that is given replaces the stored tree.
 # -------------------------------------------------------------
-
-
-class NutritionalValuesUpdate(Schema):
-    energy_kj: int | None = Field(default=None, ge=0, le=100_000)
-    macronutrients: list[MacronutrientInput] | None = None
-
-    @field_validator("macronutrients")
-    @classmethod
-    def unique_names(
-        cls, items: list[MacronutrientInput] | None
-    ) -> list[MacronutrientInput] | None:
-        return None if items is None else _check_unique_names(items)
 
 
 class ProductUpdate(Schema):
@@ -123,7 +97,7 @@ class ProductUpdate(Schema):
     image_url: str | None = None
     group_level_1: str | None = Field(default=None, max_length=100)
     group_level_2: str | None = Field(default=None, max_length=100)
-    nutritional_values: NutritionalValuesUpdate | None = None
+    nutrients: dict[str, NutrientAmount | None] | None = None
     ingredients: list[IngredientInput] | None = None
 
     @field_validator("image_url")

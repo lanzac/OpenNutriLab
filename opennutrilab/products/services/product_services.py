@@ -8,6 +8,8 @@ so a product saved from either ends up exactly the same.
 
 import io
 import logging
+from collections.abc import Mapping
+from decimal import Decimal
 from pathlib import PurePath
 from typing import NamedTuple
 from typing import cast
@@ -20,19 +22,17 @@ from django.core.files.uploadedfile import UploadedFile
 from django.db import IntegrityError
 from django.db import models
 from django.db import transaction
-from django.db.models.functions import Lower
+from django.utils.translation import gettext as _
 
 from opennutrilab.products.api.openfoodfacts.services import OFF_HEADERS
 from opennutrilab.products.api.schemas.inbound import OFF_IMAGE_HOSTS
 from opennutrilab.products.api.schemas.inbound import IngredientInput
-from opennutrilab.products.api.schemas.inbound import MacronutrientInput
 from opennutrilab.products.api.schemas.inbound import ProductCreate
 from opennutrilab.products.api.schemas.inbound import ProductUpdate
 from opennutrilab.products.models import Ingredient
-from opennutrilab.products.models import IngredientRef
-from opennutrilab.products.models import Macronutrient
+from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Product
-from opennutrilab.products.models import ProductMacronutrient
+from opennutrilab.products.models import ProductNutrient
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +43,8 @@ class ProductAlreadyExistsError(Exception):
     """A product with this barcode is already stored."""
 
 
-class UnknownMacronutrientError(Exception):
-    """The payload names a macronutrient the database does not know."""
+class UnknownNutrientError(Exception):
+    """The payload names a nutrient code the catalogue does not know."""
 
 
 class ProductWrite(NamedTuple):
@@ -61,7 +61,7 @@ def create_product(
     data: ProductCreate, *, image: UploadedFile | None = None
 ) -> ProductWrite:
     """
-    Create a product with its macronutrients and ingredients.
+    Create a product with its declared nutrients and ingredients.
 
     `image` is a file the user uploaded; it wins over `data.image_url`.
     """
@@ -75,12 +75,11 @@ def create_product(
                 description=data.description,
                 group_level_1=data.group_level_1,
                 group_level_2=data.group_level_2,
-                energy_kj=data.nutritional_values.energy_kj,
             )
         except IntegrityError as e:
             raise ProductAlreadyExistsError(data.barcode) from e
 
-        _replace_macronutrients(product, data.nutritional_values.macronutrients)
+        _set_declared_nutrients(product, dict(data.nutrients))
         _replace_ingredients(product, data.ingredients)
 
     # Outside the transaction: a slow or failed download must not hold it
@@ -95,14 +94,14 @@ def update_product(
     """
     Apply a partial update: what `data` leaves out (None) is not touched.
 
-    A macronutrient or ingredient list that is given replaces the stored one.
+    In `data.nutrients`, a code left out is not touched and a code set to None
+    clears that value. An ingredient list that is given replaces the tree.
     """
     with transaction.atomic():
         _apply_fields(product, data)
 
-        nutritional_values = data.nutritional_values
-        if nutritional_values and nutritional_values.macronutrients is not None:
-            _replace_macronutrients(product, nutritional_values.macronutrients)
+        if data.nutrients is not None:
+            _set_declared_nutrients(product, data.nutrients)
 
         if data.ingredients is not None:
             _replace_ingredients(product, data.ingredients)
@@ -123,50 +122,62 @@ def _apply_fields(product: Product, data: ProductUpdate) -> None:
             setattr(product, field, value)
             update_fields.append(field)
 
-    if data.nutritional_values and data.nutritional_values.energy_kj is not None:
-        product.energy_kj = data.nutritional_values.energy_kj
-        update_fields.append("energy_kj")
-
     if update_fields:
         product.save(update_fields=update_fields)
 
 
-def _replace_macronutrients(product: Product, items: list[MacronutrientInput]) -> None:
+def _set_declared_nutrients(
+    product: Product, values: Mapping[str, Decimal | None]
+) -> None:
     """
-    Make `items` the product's complete set of macronutrient amounts.
+    Store the label values given, keyed by Nutrient.code.
 
-    One left out is removed; an amount of 0 is a measurement and is kept.
+    None clears a value; an amount of 0 is a measurement and is kept. Codes
+    left out are not touched.
     """
-    names = [item.name for item in items]
-    known = {m.name: m for m in Macronutrient.objects.filter(name__in=names)}
-    unknown = sorted(set(names) - known.keys())
+    known = {n.code: n for n in Nutrient.objects.filter(code__in=values)}
+    unknown = sorted(set(values) - known.keys())
     if unknown:
-        msg = f"Unknown macronutrients: {', '.join(unknown)}"
-        raise UnknownMacronutrientError(msg)
+        msg = f"Unknown nutrients: {', '.join(unknown)}"
+        raise UnknownNutrientError(msg)
 
-    ProductMacronutrient.objects.filter(product=product).exclude(
-        macronutrient__in=names
-    ).delete()
-    for item in items:
-        ProductMacronutrient.objects.update_or_create(
-            product=product,
-            macronutrient=known[item.name],
-            defaults={"amount_g": item.amount_g},
-        )
+    for code, amount in values.items():
+        if amount is None:
+            ProductNutrient.objects.filter(
+                product=product, nutrient=known[code]
+            ).delete()
+        else:
+            ProductNutrient.objects.update_or_create(
+                product=product, nutrient=known[code], defaults={"amount": amount}
+            )
 
 
 def _replace_ingredients(product: Product, items: list[IngredientInput]) -> None:
-    """Replace the product's ingredient tree with `items`."""
+    """
+    Replace the product's ingredient tree with `items`.
+
+    Links to reference ingredients are set by hand, so they are carried over
+    to the new tree for any ingredient that is still there (same OFF id, or
+    same name when there is none): reloading a product from OpenFoodFacts must
+    not undo that curation.
+    """
+    links = {
+        _link_key(i.off_id, i.name): i.reference_id
+        for i in product.ingredients.exclude(reference=None)
+    }
     product.ingredients.all().delete()
-    references = references_by_lowercase_name(items)
-    _create_ingredients(product, items, parent=None, references=references)
+    _create_ingredients(product, items, parent=None, links=links)
+
+
+def _link_key(off_id: str, name: str) -> str:
+    return off_id or name.strip().lower()
 
 
 def _create_ingredients(
     product: Product,
     items: list[IngredientInput],
     parent: Ingredient | None,
-    references: dict[str, IngredientRef],
+    links: dict[str, int | None],
 ) -> None:
     for item in items:
         name = item.name.strip()
@@ -179,35 +190,71 @@ def _create_ingredients(
             name=name,
             defaults={
                 "percentage": item.percentage,
-                "reference": references.get(name.lower()),
+                "off_id": item.off_id,
+                "off_ciqual_food_code": item.off_ciqual_food_code,
+                "off_ciqual_proxy_food_code": item.off_ciqual_proxy_food_code,
+                "reference_id": links.get(_link_key(item.off_id, name)),
             },
         )
-        _create_ingredients(product, item.sub_ingredients, ingredient, references)
+        _create_ingredients(product, item.sub_ingredients, ingredient, links)
 
 
-def references_by_lowercase_name(
-    items: list[IngredientInput],
-) -> dict[str, IngredientRef]:
+# -------------------------
+# Consistency of declared values
+# -------------------------
+def declared_value_warnings(values: Mapping[str, Decimal]) -> list[str]:
     """
-    Reference ingredients for every name in the tree, in one query.
+    Inconsistencies in label values, as messages for the user.
 
-    Matched without regard to case. The product form's "recognized" column
-    uses this same function (products.views), so what it shows as recognized
-    is what gets linked.
+    Warnings only, never errors: the label is the reference, and its own
+    rounding can make a value slightly exceed another. An inconsistency is
+    still worth a look - a typo, or a label to correct on OpenFoodFacts.
     """
-    names: set[str] = set()
-    stack = list(items)
-    while stack:
-        item = stack.pop()
-        names.add(item.name.strip().lower())
-        stack.extend(item.sub_ingredients)
+    nutrients = {n.code: n for n in Nutrient.objects.filter(code__in=values)}
+    warnings: list[str] = []
 
-    if not names:
-        return {}
-    matches = IngredientRef.objects.annotate(lower_name=Lower("name")).filter(
-        lower_name__in=names
+    for code, amount in values.items():
+        nutrient = nutrients[code]
+        parent_amount = values.get(nutrient.parent_id or "")
+        if parent_amount is not None and amount > parent_amount:
+            parent = nutrients[cast("str", nutrient.parent_id)]
+            warnings.append(
+                _(
+                    "%(part)s (%(part_amount)s %(unit)s) exceed "
+                    "%(whole)s (%(whole_amount)s %(unit)s)."
+                )
+                % {
+                    "part": nutrient.name,
+                    "part_amount": plain_amount(amount),
+                    "whole": parent.name,
+                    "whole_amount": plain_amount(parent_amount),
+                    "unit": nutrient.unit,
+                }
+            )
+
+    total = sum(
+        (
+            amount
+            for code, amount in values.items()
+            if Nutrient.Unit(nutrients[code].unit) is Nutrient.Unit.GRAM
+            and nutrients[code].parent_id is None
+        ),
+        Decimal(0),
     )
-    return {ref.lower_name: ref for ref in matches}  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
+    if total > 100:  # noqa: PLR2004
+        warnings.append(
+            _(
+                "The amounts add up to %(total)s g, "
+                "more than the 100 g they are given for."
+            )
+            % {"total": plain_amount(total)}
+        )
+    return warnings
+
+
+def plain_amount(amount: Decimal) -> str:
+    """9.4000 as "9.4", 100 as "100" (normalize() alone gives "1E+2")."""
+    return format(amount.normalize(), "f")
 
 
 # -------------------------

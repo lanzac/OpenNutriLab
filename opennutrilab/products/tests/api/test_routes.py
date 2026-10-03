@@ -22,10 +22,7 @@ def _minimal_payload(barcode: str, name: str) -> dict[str, Any]:
         "description": "",
         "group_level_1": "",
         "group_level_2": "",
-        "nutritional_values": {
-            "energy_kj": 100,
-            "macronutrients": [],
-        },
+        "nutrients": {"energy": 100, "fat": "9.4"},
     }
 
 
@@ -154,7 +151,11 @@ def test_get_product(api_client: Client, products_two: tuple[Product, Product]):
     assert response.status_code == HTTPStatus.OK
     data = response.json()
     assert (data["barcode"], data["name"]) == (p1.barcode, p1.name)
-    assert "nutritional_values" in data
+    # Declared values carry their unit.
+    assert {(n["code"], n["unit"], n["amount"]) for n in data["nutrients"]} == {
+        ("energy", "kJ", "100.0000"),
+        ("fat", "g", "9.4000"),
+    }
 
 
 @pytest.mark.django_db
@@ -163,12 +164,14 @@ def test_update_product(api_client: Client, products_two: tuple[Product, Product
 
     response = api_client.patch(
         f"{API}{p1.barcode}",
-        {"name": "Updated Name", "nutritional_values": {"macronutrients": []}},
+        {"name": "Updated Name", "nutrients": {"fat": None, "salt": "0.03"}},
         content_type="application/json",
     )
 
     assert response.status_code == HTTPStatus.OK
     assert response.json()["name"] == "Updated Name"
+    # fat: null clears it; salt: added; energy: left out, so untouched.
+    assert {n["code"] for n in response.json()["nutrients"]} == {"energy", "salt"}
     p1.refresh_from_db()
     assert p1.name == "Updated Name"
 
@@ -199,11 +202,9 @@ def test_create_product_refuses_an_existing_barcode(
 
 
 @pytest.mark.django_db
-def test_create_product_rejects_an_unknown_macronutrient(api_client: Client):
+def test_create_product_rejects_an_unknown_nutrient(api_client: Client):
     payload = _minimal_payload("3017620422003", "Nutella")
-    payload["nutritional_values"]["macronutrients"] = [
-        {"name": "unobtainium", "amount_g": 1}
-    ]
+    payload["nutrients"] = {"unobtainium": 1}
 
     response = api_client.post(API, payload, content_type="application/json")
 
@@ -239,7 +240,7 @@ def test_staff_delete_a_product_with_a_leading_zero(staff_client: Client):
     # EAN-13 codes may start with 0. The path parameter used to be typed int,
     # which turned "0123456789012" into 123456789012 and missed the product.
     barcode = "0123456789012"
-    Product.objects.create(barcode=barcode, name="Leading zero", energy_kj=100)
+    Product.objects.create(barcode=barcode, name="Leading zero")
 
     response = staff_client.delete(f"{API}{barcode}")
 

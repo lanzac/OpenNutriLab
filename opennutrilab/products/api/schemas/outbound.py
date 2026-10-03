@@ -2,66 +2,67 @@ from datetime import datetime
 from decimal import Decimal
 
 from django.db.models import QuerySet
-from ninja import Field
 from ninja import ModelSchema
 from ninja import Schema
-from pydantic import AliasPath
 
 from opennutrilab.products.models import Ingredient
-from opennutrilab.products.models import IngredientRef
 from opennutrilab.products.models import Product
-from opennutrilab.products.models import ProductMacronutrient
+from opennutrilab.products.models import ProductNutrient
 
 # More information on : Regulation (EU) No 1169/2011
 # https://eur-lex.europa.eu/eli/reg/2011/1169/oj?locale=fr
 
 
-# --- Ingredient Reference Schemas ---
-
-
-class IngredientRefOut(ModelSchema):
-    class Meta:
-        model = IngredientRef
-        fields = ["name"]
-
-
 class IngredientOut(ModelSchema):
     name: str
+    # As declared on the label.
     percentage: Decimal | None = None
+    off_id: str
+    off_ciqual_food_code: str
+    off_ciqual_proxy_food_code: str
+    # The curated reference ingredient it is linked to, by name.
+    reference: str | None = None
 
     # https://django-ninja.dev/guides/response/?h=self#self-referencing-schemes
     sub_ingredients: list["IngredientOut"] = []
-    reference: IngredientRefOut | None = None
 
     class Meta:
         model = Ingredient
-        fields: list[str] = ["name", "percentage", "reference", "has_reference"]
+        fields: list[str] = [
+            "name",
+            "percentage",
+            "off_id",
+            "off_ciqual_food_code",
+            "off_ciqual_proxy_food_code",
+        ]
+
+    @staticmethod
+    def resolve_reference(obj: Ingredient) -> str | None:
+        return obj.reference.name_fr if obj.reference else None
 
 
 IngredientOut.model_rebuild()  # Important for self-referencing schemas
 
 
-class ProductMacronutrientOut(ModelSchema):
-    # We tell Pydantic to look deep into the related 'macronutrient' object
-    name: str = Field(validation_alias=AliasPath("macronutrient", "name"))
-    description: str | None = Field(
-        default=None, validation_alias=AliasPath("macronutrient", "description")
-    )
+class DeclaredNutrientOut(Schema):
+    """One value of the nutrition label, per 100 g."""
 
-    amount_g: Decimal | None
+    code: str
+    name: str
+    unit: str
+    amount: Decimal
 
-    class Meta:
-        model = ProductMacronutrient
-        fields = ["amount_g"]
+    @staticmethod
+    def resolve_code(obj: ProductNutrient) -> str:
+        return obj.nutrient.code
 
+    @staticmethod
+    def resolve_name(obj: ProductNutrient) -> str:
+        return obj.nutrient.name
 
-class NutritionalValuesOut(Schema):
-    """
-    A simple wrapper schema to group energy_kj and macronutrients together.
-    """
-
-    energy_kj: int
-    macronutrients: list[ProductMacronutrientOut] = []
+    @staticmethod
+    def resolve_unit(obj: ProductNutrient) -> str:
+        return obj.nutrient.unit
 
 
 class ProductListItemOut(ModelSchema):
@@ -84,7 +85,8 @@ class ProductOut(ModelSchema):
     group_level_1: str
     group_level_2: str
 
-    nutritional_values: NutritionalValuesOut
+    # Values declared on the label, in catalogue order.
+    nutrients: list[DeclaredNutrientOut] = []
 
     # Field name is exactly the same as the related_name in the Product model,
     # so that Django Ninja can automatically resolve it.
@@ -104,16 +106,8 @@ class ProductOut(ModelSchema):
 
     @staticmethod
     def resolve_ingredients(obj: Product) -> QuerySet[Ingredient]:
-        return obj.ingredients.filter(parent__isnull=True).all()
+        return obj.ingredients.filter(parent__isnull=True).select_related("reference")
 
     @staticmethod
-    def resolve_nutritional_values(obj: Product) -> NutritionalValuesOut:
-        """
-        Combines the energy_kj field from Product and the prefetched macronutrients.
-        """
-        return {  # pyright: ignore[reportUnknownVariableType, reportReturnType]
-            "energy_kj": obj.energy_kj,  # pyright: ignore[reportUnknownMemberType]
-            "macronutrients": list[ProductMacronutrient](
-                obj.productmacronutrient_set.all()
-            ),
-        }
+    def resolve_nutrients(obj: Product) -> QuerySet[ProductNutrient]:
+        return obj.declared_nutrients.select_related("nutrient")

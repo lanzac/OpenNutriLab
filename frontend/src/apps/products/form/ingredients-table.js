@@ -5,9 +5,10 @@ import { TabulatorFull as Tabulator } from 'tabulator-tables';
 import 'tabulator-tables/dist/css/tabulator_bootstrap5.min.css';
 
 /**
- * @param {{ name: string, percentage: string, recognized: string }} labels
- *   Column titles, translated server-side (see product_form_labels in
- *   opennutrilab/products/views.py) so the .po catalogue stays the single source of truth.
+ * @param {{ name: string, percentage: string, ciqual: string, reference: string }} labels
+ *   Column titles, translated server-side (see product_form_config in
+ *   opennutrilab/products/views.py) so the .po catalogue stays the single
+ *   source of truth.
  */
 export function initIngredientsTable(labels) {
   const tableDiv = document.getElementById('ingredients_table');
@@ -41,12 +42,10 @@ export function initIngredientsTable(labels) {
             : '';
         },
       },
-      {
-        title: labels.recognized,
-        field: 'has_reference',
-        hozAlign: 'center',
-        formatter: 'tickCross',
-      },
+      // As OpenFoodFacts gives it, for information: it links nothing.
+      { title: labels.ciqual, field: 'ciqual', responsive: 3 },
+      // The curated reference ingredient, once one is linked by hand.
+      { title: labels.reference, field: 'reference', responsive: 3 },
     ],
     dataTreeChildField: 'ingredients',
   });

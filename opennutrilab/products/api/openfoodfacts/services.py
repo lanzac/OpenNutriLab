@@ -1,5 +1,7 @@
 from decimal import Decimal
+from decimal import InvalidOperation
 from http import HTTPStatus
+from typing import Any
 
 import requests
 from pydantic import ValidationError
@@ -9,6 +11,7 @@ from opennutrilab.products.api.openfoodfacts.schemas import OFFProductAPIRespons
 from opennutrilab.products.api.openfoodfacts.schemas import OFFProductSchema
 from opennutrilab.products.api.openfoodfacts.schemas import StatusEnum
 from opennutrilab.products.api.schemas.inbound import IngredientInput
+from opennutrilab.products.models import Nutrient
 
 
 class OFFError(Exception):
@@ -136,7 +139,48 @@ def to_ingredient_inputs(
             IngredientInput(
                 name=name[:255],
                 percentage=None if percentage is None else Decimal(str(percentage)),
+                off_id=ingredient.off_id[:255],
+                off_ciqual_food_code=(ingredient.ciqual_food_code or "")[:10],
+                off_ciqual_proxy_food_code=(ingredient.ciqual_proxy_food_code or "")[
+                    :10
+                ],
                 sub_ingredients=to_ingredient_inputs(ingredient.ingredients),
             )
         )
     return inputs
+
+
+# OpenFoodFacts stores every mass nutrient in grams: vitamin D of 3.4 µg is
+# 3.4e-06. Factors from grams to each catalogue unit.
+_FROM_GRAMS = {
+    Nutrient.Unit.GRAM: Decimal(1),
+    Nutrient.Unit.MILLIGRAM: Decimal(1_000),
+    Nutrient.Unit.MICROGRAM: Decimal(1_000_000),
+}
+_FOUR_PLACES = Decimal("0.0001")
+
+
+def declared_nutrients_from_off(nutriments: dict[str, Any]) -> dict[str, Decimal]:
+    """
+    Label values from an OpenFoodFacts product, keyed by Nutrient.code.
+
+    Each catalogue nutrient with an off_key is read from `<off_key>_100g` and
+    converted to its own unit. Energy is already in kJ. Missing, unreadable
+    and negative values are left out.
+    """
+    values: dict[str, Decimal] = {}
+    for nutrient in Nutrient.objects.exclude(off_key=None):
+        raw = nutriments.get(f"{nutrient.off_key}_100g")
+        if raw is None or raw == "":
+            continue
+        try:
+            amount = Decimal(str(raw))
+        except InvalidOperation:
+            continue
+        if not amount.is_finite() or amount < 0:
+            continue
+        unit = Nutrient.Unit(nutrient.unit)
+        if unit is not Nutrient.Unit.KILOJOULE:
+            amount *= _FROM_GRAMS[unit]
+        values[nutrient.code] = amount.quantize(_FOUR_PLACES)
+    return values

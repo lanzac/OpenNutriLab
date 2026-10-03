@@ -33,6 +33,6 @@
   </div>
   {# Rows for the Tabulator tree, see ingredients-table.js. #}
   {{ ingredient_rows|json_script:"ingredients-data" }}
-  {{ product_form_labels|json_script:"product-form-labels" }}
+  {{ product_form_config|json_script:"product-form-config" }}
   {% vite_asset 'src/apps/products/form-entry.js' %}
 {% endblock content %}

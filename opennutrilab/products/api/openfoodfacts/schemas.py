@@ -1,12 +1,10 @@
 # https://world.openfoodfacts.org/files/redocly/api-v3.redoc-static.html#schema/shape
-# https://world.openfoodfacts.org/files/redocly/api-v3.redoc-static.html#schema/shape
 from enum import StrEnum
+from typing import Any
 
 from ninja import Field
 from ninja import Schema
-from pydantic import AliasPath
 from pydantic import ConfigDict
-from pydantic import field_validator
 
 
 class OFFIngredientSchema(Schema):
@@ -17,7 +15,16 @@ class OFFIngredientSchema(Schema):
     )
 
     name: str = Field(default="", validation_alias="text")
+    # `percent` is the share declared on the label. OFF's own `percent_estimate`
+    # is deliberately not read: estimates are computed in-house.
     percentage: float | None = Field(default=None, validation_alias="percent")
+    off_id: str = Field(default="", validation_alias="id")
+    ciqual_food_code: str | None = Field(
+        default=None, validation_alias="ciqual_food_code"
+    )
+    ciqual_proxy_food_code: str | None = Field(
+        default=None, validation_alias="ciqual_proxy_food_code"
+    )
     # https://django-ninja.dev/guides/response/?h=self#self-referencing-schemes
     ingredients: list["OFFIngredientSchema"] | None = Field(
         default=None, validation_alias="ingredients"
@@ -25,25 +32,6 @@ class OFFIngredientSchema(Schema):
 
 
 OFFIngredientSchema.model_rebuild()
-
-
-class OFFMacronutrientsSchema(Schema):
-    model_config = ConfigDict(
-        from_attributes=True,  # allows to create from Django objects
-        populate_by_name=True,  # allow us to use names even with alias defined
-        extra="ignore",  # ignore _state, id, product_id, etc
-    )
-
-    fat: float | None = Field(default=None, validation_alias="fat_100g")
-    saturated_fat: float | None = Field(
-        default=None, validation_alias="saturated-fat_100g"
-    )
-    carbohydrates: float | None = Field(
-        default=None, validation_alias="carbohydrates_100g"
-    )
-    sugars: float | None = Field(default=None, validation_alias="sugars_100g")
-    fiber: float | None = Field(default=None, validation_alias="fiber_100g")
-    proteins: float | None = Field(default=None, validation_alias="proteins_100g")
 
 
 class OFFProductSchema(Schema):
@@ -57,29 +45,16 @@ class OFFProductSchema(Schema):
     name: str = Field(default="", validation_alias="product_name")
     image_url: str | None = Field(default=None, validation_alias="image_small_url")
     description: str | None = Field(default=None, validation_alias="categories")
-    energy_kj: int | None = Field(
-        default=None, validation_alias=AliasPath("nutriments", "energy_100g")
-    )
-    macronutrients: OFFMacronutrientsSchema | None = Field(
-        default=None, validation_alias="nutriments"
+    # Label values, raw: `<key>_100g` in grams for masses, `energy_100g` in kJ.
+    # Read through each Nutrient's off_key (see services.declared_nutrients_from_off).
+    nutriments: dict[str, Any] = Field(
+        default_factory=dict, validation_alias="nutriments"
     )
     ingredients: list[OFFIngredientSchema] | None = Field(
         default=None, validation_alias="ingredients"
     )
     group_level_1: str | None = Field(default=None, validation_alias="pnns_groups_1")
     group_level_2: str | None = Field(default=None, validation_alias="pnns_groups_2")
-
-    @field_validator("energy_kj", mode="before")
-    @classmethod
-    def round_energy(cls, value: object) -> object:
-        """
-        OFF reports `energy_100g` as a float, while `Product.energy_kj` is an
-        IntegerField. Rounding here keeps a fractional value from failing
-        validation; sub-joule precision is meaningless for a 100 g serving.
-        """
-        if isinstance(value, float):
-            return round(value)
-        return value
 
 
 # ---- ENUMS ----
@@ -149,49 +124,3 @@ class OFFProductAPIResponseSchema(Schema):
     warnings: list[WarningOrError] | None = None
     errors: list[WarningOrError] | None = None
     product: OFFProductSchema | None = None
-
-
-class ProductFormSchema(Schema):
-    """Schema used to map product data into ProductForm initial data."""
-
-    barcode: str
-    name: str
-    image_url: str | None = None
-    description: str | None = None
-    energy_kj: int | None = None
-    macronutrients_fat: float | None = Field(default=None, alias="macronutrients.fat")
-    macronutrients_saturated_fat: float | None = Field(
-        default=None,
-        alias="macronutrients.saturated_fat",
-    )
-    macronutrients_carbohydrates: float | None = Field(
-        default=None,
-        alias="macronutrients.carbohydrates",
-    )
-    macronutrients_sugars: float | None = Field(
-        default=None,
-        alias="macronutrients.sugars",
-    )
-    macronutrients_fiber: float | None = Field(
-        default=None,
-        alias="macronutrients.fiber",
-    )
-    macronutrients_proteins: float | None = Field(
-        default=None,
-        alias="macronutrients.proteins",
-    )
-    group_level_1: str | None = None
-    group_level_2: str | None = None
-
-    model_config = {
-        # Allow validating only by alias names
-        "validate_by_name": False,
-        "validate_by_alias": True,
-        "extra": "ignore",
-    }
-
-
-def product_schema_to_form_data(
-    product: OFFProductSchema,
-) -> ProductFormSchema:
-    return ProductFormSchema.model_validate(product, by_alias=True)

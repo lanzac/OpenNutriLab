@@ -26,7 +26,6 @@ def test_delete_product_image_signal():
             barcode="123456",
             name="Apple",
             image=uploaded_file,
-            energy_kj=100,
         )
 
         # Delete the instance (triggers post_delete signal)

@@ -16,7 +16,6 @@ from django.utils import translation
 from PIL import Image
 
 from opennutrilab.products.api.openfoodfacts.schemas import OFFIngredientSchema
-from opennutrilab.products.api.openfoodfacts.schemas import OFFMacronutrientsSchema
 from opennutrilab.products.api.openfoodfacts.schemas import OFFProductSchema
 from opennutrilab.products.api.openfoodfacts.services import OFFError
 from opennutrilab.products.api.openfoodfacts.services import OFFProductNotFoundError
@@ -24,8 +23,9 @@ from opennutrilab.products.api.schemas.inbound import IngredientInput
 from opennutrilab.products.api.schemas.inbound import ProductCreate
 from opennutrilab.products.forms import ProductForm
 from opennutrilab.products.models import Ingredient
-from opennutrilab.products.models import IngredientRef
 from opennutrilab.products.models import Product
+from opennutrilab.products.models import ProductNutrient
+from opennutrilab.products.models import ReferenceIngredient
 from opennutrilab.products.services.product_services import create_product
 from opennutrilab.products.views import ingredient_rows_from_db
 from opennutrilab.products.views import ingredient_rows_from_inputs
@@ -47,10 +47,14 @@ def off_product(**overrides: Any) -> OFFProductSchema:
         "barcode": NUTELLA,
         "name": "Nutella",
         "image_url": IMAGE_URL,
-        "energy_kj": 2252,
-        "macronutrients": OFFMacronutrientsSchema(fat=30.9, sugars=56.3),
+        "nutriments": {"energy_100g": 2252, "fat_100g": 30.9, "sugars_100g": 56.3},
         "ingredients": [
-            OFFIngredientSchema(name="Sucre", percentage=56.3),
+            OFFIngredientSchema(
+                name="Sucre",
+                percentage=56.3,
+                off_id="en:sugar",
+                ciqual_food_code="31016",
+            ),
             OFFIngredientSchema(
                 name="Lait", ingredients=[OFFIngredientSchema(name="lait écrémé")]
             ),
@@ -145,7 +149,6 @@ class TestProductListView:
             group_level_1="Fruits",
             group_level_2="Fresh",
             description="A beautiful apple",
-            energy_kj=100,
         )
 
         url: str = reverse("list_products")
@@ -268,7 +271,9 @@ class TestProductCreateView:
         form: ProductForm = response.context["form"]
         mock_fetch_from_off.assert_called_once_with(query_barcode=NUTELLA)
         assert form["name"].value() == "Nutella"
-        assert form["macronutrients_sugars"].value() == 56.3  # noqa: PLR2004
+        # Converted to each nutrient's unit, shown without trailing zeros.
+        assert form["nutrient_sugars"].value() == "56.3"
+        assert form["nutrient_energy"].value() == "2252"
         assert form["off_barcode"].value() == NUTELLA
         assert form["off_image_url"].value() == IMAGE_URL
         carried = json.loads(form["off_ingredients"].value())
@@ -340,7 +345,6 @@ class TestProductCreateView:
             form,
             barcode=NUTELLA,
             name="Nutella",
-            energy_kj=1,
             off_barcode=NUTELLA,
             off_ingredients="not json",
         )
@@ -365,7 +369,6 @@ class TestProductEditView:
         product = Product.objects.create(
             barcode="1234567890123",
             name="Stored Product",
-            energy_kj=10,
         )
         mock_fetch_from_off.side_effect = OFFProductNotFoundError("Product not found.")
 
@@ -385,7 +388,6 @@ class TestProductEditView:
                 {
                     "barcode": NUTELLA,
                     "name": "Nutella",
-                    "nutritional_values": {"energy_kj": 1},
                     "ingredients": [{"name": "Sucre"}, {"name": "Cacao"}],
                 }
             )
@@ -414,9 +416,7 @@ class TestProductEditView:
         The photo lives on a separate OFF host that can time out on its own:
         the product is saved anyway, with a notice to add the photo by hand.
         """
-        product = Product.objects.create(
-            barcode=NUTELLA, name="Stored Product", energy_kj=10
-        )
+        product = Product.objects.create(barcode=NUTELLA, name="Stored Product")
         mock_fetch_from_off.return_value = off_product()
         mock_get.side_effect = requests.ConnectTimeout("timed out")
         url = reverse("edit_product", args=[product.pk])
@@ -436,7 +436,7 @@ class TestProductEditView:
 
     def test_a_tampered_barcode_is_ignored(self, client: Client):
         """The barcode is the primary key: editing must never move a product."""
-        product = Product.objects.create(barcode=NUTELLA, name="Nutella", energy_kj=1)
+        product = Product.objects.create(barcode=NUTELLA, name="Nutella")
         url = reverse("edit_product", args=[product.pk])
         form = client.get(url).context["form"]
 
@@ -474,7 +474,7 @@ class TestProductDeleteView:
 
     def test_signed_in_non_staff_cannot_delete(self, user: User):
         """The catalogue is shared by every user."""
-        product = Product.objects.create(barcode=NUTELLA, name="N", energy_kj=1)
+        product = Product.objects.create(barcode=NUTELLA, name="N")
         client = Client()
         client.force_login(user)
 
@@ -489,9 +489,7 @@ class TestProductDeleteView:
         client-side; there is no confirmation page to GET. Rendering one used
         to crash with TemplateDoesNotExist.
         """
-        product = Product.objects.create(
-            barcode="3229820794556", name="Apple", energy_kj=100
-        )
+        product = Product.objects.create(barcode="3229820794556", name="Apple")
         url = reverse("delete_product", kwargs={"pk": product.pk})
 
         response: HttpResponse = client.get(url)
@@ -500,9 +498,7 @@ class TestProductDeleteView:
         assert Product.objects.filter(pk=product.pk).exists()
 
     def test_post_deletes_and_redirects_to_the_list(self, client: Client):
-        product = Product.objects.create(
-            barcode="3229820794556", name="Apple", energy_kj=100
-        )
+        product = Product.objects.create(barcode="3229820794556", name="Apple")
         url = reverse("delete_product", kwargs={"pk": product.pk})
 
         response: HttpResponse = client.post(url)
@@ -525,7 +521,7 @@ def build_view_url(viewname: str, product: Product | None = None) -> str:
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("viewname", ["create_product", "edit_product"])
-def test_product_form_pages_hand_labels_to_the_scripts(
+def test_product_form_pages_hand_config_to_the_scripts(
     client: Client,
     viewname: str,
 ) -> None:
@@ -534,7 +530,6 @@ def test_product_form_pages_hand_labels_to_the_scripts(
         product = Product.objects.create(
             barcode="1234567890123",
             name="Test Product",
-            energy_kj=100,
         )
 
     url: str = build_view_url(viewname, product)
@@ -542,33 +537,75 @@ def test_product_form_pages_hand_labels_to_the_scripts(
     response: HttpResponse = client.get(path=url)
 
     assert response.status_code == 200  # noqa: PLR2004
-    # form-entry.js reads its translated strings from this json_script blob
-    # and has no other configuration to receive from the server.
-    assert 'id="product-form-labels"' in response.content.decode()
+    # form-entry.js reads its configuration and translated strings from this
+    # json_script blob.
+    assert 'id="product-form-config"' in response.content.decode()
 
 
 @pytest.mark.django_db
-def test_rows_from_inputs_mark_references_regardless_of_case():
-    """Same matching as the services use to link them (see their tests)."""
-    items = [IngredientInput(name="Sucre"), IngredientInput(name="Farine")]
+def test_the_chart_is_configured_from_the_catalogue(client: Client):
+    """Mass nutrients of the label, linked by code, named in the page language."""
+    with translation.override("fr-fr"):
+        response: HttpResponse = client.get(
+            reverse("create_product"), headers={"accept-language": "fr"}
+        )
 
-    rows = ingredient_rows_from_inputs(items, reference_names={"sucre"})
+    chart = response.context["product_form_config"]["nutrientChart"]
+    assert [(s["code"], s["parent"]) for s in chart["slices"]] == [
+        ("fat", None),
+        ("saturated_fat", "fat"),
+        ("carbohydrates", None),
+        ("sugars", "carbohydrates"),
+        ("fiber", None),
+        ("proteins", None),
+        ("salt", None),
+    ]
+    assert chart["slices"][-1]["label"] == "Sel"
+    assert chart["slices"][0]["field"] == "nutrient_fat"
 
-    assert [(r["name"], r["has_reference"]) for r in rows] == [
-        ("Sucre", True),
-        ("Farine", False),
+
+@pytest.mark.django_db
+def test_inconsistent_values_are_saved_and_reported(client: Client):
+    form = client.get(reverse("create_product")).context["form"]
+    data = submitted(
+        form,
+        barcode=NUTELLA,
+        name="N",
+        nutrient_carbohydrates="9.9",
+        nutrient_sugars="10",
+    )
+
+    response: HttpResponse = client.post(reverse("create_product"), data, follow=True)
+
+    assert ProductNutrient.objects.filter(product_id=NUTELLA).count() == 2  # noqa: PLR2004
+    notices = [str(m) for m in response.context["messages"]]
+    assert any("exceed" in n for n in notices), notices
+
+
+@pytest.mark.django_db
+def test_rows_from_inputs_show_off_ciqual_codes_marking_proxies():
+    items = [
+        IngredientInput(name="Flocons d'avoine", off_ciqual_food_code="9311"),
+        IngredientInput(name="Flocons de blé", off_ciqual_proxy_food_code="9410"),
+        IngredientInput(name="Soja"),
+    ]
+
+    rows = ingredient_rows_from_inputs(items)
+
+    assert [(r["name"], r["ciqual"], r["reference"]) for r in rows] == [
+        ("Flocons d'avoine", "9311", None),
+        ("Flocons de blé", "9410 (proxy)", None),
+        ("Soja", "", None),
     ]
 
 
 @pytest.mark.django_db
 def test_rows_from_db_rebuild_the_tree(django_assert_num_queries: Any):
-    IngredientRef.objects.create(name="lait")
     product = create_product(
         ProductCreate.model_validate(
             {
                 "barcode": NUTELLA,
                 "name": "Nutella",
-                "nutritional_values": {"energy_kj": 1},
                 "ingredients": [
                     {"name": "Sucre", "percentage": "56.3"},
                     {"name": "Lait en poudre", "sub_ingredients": [{"name": "Lait"}]},
@@ -576,13 +613,15 @@ def test_rows_from_db_rebuild_the_tree(django_assert_num_queries: Any):
             }
         )
     ).product
+    milk = ReferenceIngredient.objects.create(name_fr="lait")
+    product.ingredients.filter(name="Lait").update(reference=milk)
 
     with django_assert_num_queries(1):
         rows = ingredient_rows_from_db(product)
 
     assert [r["name"] for r in rows] == ["Sucre", "Lait en poudre"]
     assert rows[0]["ingredients"] is None
-    assert [(c["name"], c["has_reference"]) for c in rows[1]["ingredients"]] == [
-        ("Lait", True)
+    assert [(c["name"], c["reference"]) for c in rows[1]["ingredients"]] == [
+        ("Lait", "lait")
     ]
     assert Ingredient.objects.filter(product=product).count() == 3  # noqa: PLR2004

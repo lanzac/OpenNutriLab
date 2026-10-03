@@ -3,11 +3,11 @@ from typing import Any
 
 from crispy_bootstrap5.bootstrap5 import BS5Accordion
 from crispy_bootstrap5.bootstrap5 import FloatingField
+from crispy_forms.bootstrap import AppendedText
 
 # https://django-crispy-forms.readthedocs.io/en/latest/layouts.html
 from crispy_forms.bootstrap import FieldWithButtons
 from crispy_forms.bootstrap import FormActions
-from crispy_forms.bootstrap import PrependedText
 from crispy_forms.bootstrap import StrictButton
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import HTML
@@ -28,10 +28,11 @@ from opennutrilab.products.api.schemas.inbound import IngredientInput
 from opennutrilab.products.api.schemas.inbound import ProductCreate
 from opennutrilab.products.api.schemas.inbound import ProductUpdate
 from opennutrilab.products.services import product_services
+from opennutrilab.products.services.product_services import plain_amount
 
-from .models import Macronutrient
+from .models import Nutrient
 from .models import Product
-from .models import ProductMacronutrient
+from .models import ProductNutrient
 
 if TYPE_CHECKING:
     from decimal import Decimal
@@ -40,6 +41,11 @@ if TYPE_CHECKING:
 
 # How the ingredient tree travels in the off_ingredients hidden field.
 INGREDIENTS_JSON = TypeAdapter(list[IngredientInput])
+
+
+def nutrient_field(code: str) -> str:
+    """The form field holding the declared amount of nutrient `code`."""
+    return f"nutrient_{code}"
 
 
 class ProductForm(forms.ModelForm):
@@ -66,13 +72,12 @@ class ProductForm(forms.ModelForm):
 
     class Meta:
         model = Product
-        # Nutritional values defined in this form: energy_kj here, plus one
-        # field per Macronutrient row, added in __init__.
+        # Plus one field per nutrient of the label declaration, from the
+        # catalogue (see _add_nutrient_fields).
         fields: list[str] = [
             "barcode",
             "name",
             "description",
-            "energy_kj",
             "group_level_1",
             "group_level_2",
         ]
@@ -85,7 +90,6 @@ class ProductForm(forms.ModelForm):
             "barcode": _("Barcode"),
             "name": _("Name"),
             "description": _("Description"),
-            "energy_kj": _("Energy"),
         }
 
     def __init__(
@@ -100,7 +104,8 @@ class ProductForm(forms.ModelForm):
         # while cleaning anyway.
         self.is_edit: bool = not self.instance._state.adding  # noqa: SLF001
         self.image_fetch_failed = False
-        self._macronutrients = list(Macronutrient.objects.all())
+        self.declared_value_warnings: list[str] = []
+        self.label_nutrients = list(Nutrient.objects.filter(on_label=True))
 
         # Configure Graph container template
         macronutrients_graph_container_template: SafeText = render_to_string(
@@ -141,7 +146,7 @@ class ProductForm(forms.ModelForm):
         barcode_field: FieldWithButtons = self._get_barcode_field_layout()
 
         # 🔹 Nutritional values
-        self._add_nutritional_value_fields()  # Add dynamic fields (macronutrients)
+        self._add_nutrient_fields()
 
         # 🔹 Get the "nutritional values" layouts (that include fields) that will
         # be send to the form.
@@ -232,45 +237,32 @@ class ProductForm(forms.ModelForm):
             ),
         )
 
-    def _add_nutritional_value_fields(self) -> None:
-        """Add energy_kj + macronutrient fields to self.fields."""
-        # Energy field is already in the form, so no need to clone here
-
-        _("Fat")
-        _("of which Saturates")
-        _("Carbohydrates")
-        _("of which Sugars")
-        _("Fiber")
-        _("Proteins")
-
+    def _add_nutrient_fields(self) -> None:
+        """One field per nutrient of the label declaration, from the catalogue."""
         stored: dict[str, Decimal] = {}
         if self.is_edit:
             stored = dict(
-                ProductMacronutrient.objects.filter(product=self.instance).values_list(
-                    "macronutrient_id", "amount_g"
+                ProductNutrient.objects.filter(product=self.instance).values_list(
+                    "nutrient_id", "amount"
                 )
             )
-
-        for macronutrient in self._macronutrients:
-            form_field: forms.Field = ProductMacronutrient._meta.get_field(  # noqa: SLF001
-                field_name="amount_g",
-            ).formfield(
+        for nutrient in self.label_nutrients:
+            amount = stored.get(nutrient.code)
+            self.fields[nutrient_field(nutrient.code)] = forms.DecimalField(
+                label=nutrient.name,
                 required=False,
+                min_value=0,
+                max_digits=12,
+                decimal_places=4,
+                initial=None if amount is None else plain_amount(amount),
             )
-            form_field.label = _(str(macronutrient))
-            form_field.initial = stored.get(macronutrient.name)
-            self.fields[macronutrient.name_in_form] = form_field
 
     def _get_nutritional_values_layout(self) -> list[Field]:
-        """Return crispy-forms layout for energy_kj + macronutrients."""
-        layout_fields: list[Field] = [
-            PrependedText(field="energy_kj", text="", css_class="plot-input")
+        """Return crispy-forms layout for the declared nutrients, with units."""
+        return [
+            AppendedText(nutrient_field(n.code), n.unit, css_class="plot-input")
+            for n in self.label_nutrients
         ]
-        layout_fields += [
-            PrependedText(field=m.name_in_form, text="", css_class="plot-input")
-            for m in self._macronutrients
-        ]
-        return layout_fields
 
     def clean(self) -> dict[str, Any]:
         cleaned: dict[str, Any] = super().clean()
@@ -304,23 +296,20 @@ class ProductForm(forms.ModelForm):
             "group_level_1": cleaned.get("group_level_1") or "",
             "group_level_2": cleaned.get("group_level_2") or "",
             "image_url": (cleaned.get("off_image_url") or None) if from_off else None,
-            "nutritional_values": {
-                "energy_kj": cleaned["energy_kj"],
-                # The complete set: an empty field drops that macronutrient,
-                # and 0 is stored as a measurement.
-                "macronutrients": [
-                    {"name": m.name, "amount_g": cleaned[m.name_in_form]}
-                    for m in self._macronutrients
-                    if cleaned.get(m.name_in_form) is not None
-                ],
-            },
+        }
+        # An empty field means "unknown" and clears the value; 0 is stored as a
+        # measurement.
+        nutrients = {
+            n.code: cleaned.get(nutrient_field(n.code)) for n in self.label_nutrients
         }
         if self.is_edit:
+            payload["nutrients"] = nutrients
             # None leaves the stored ingredients alone: they are replaced only
             # when this page was loaded from OpenFoodFacts ("Reset data").
             payload["ingredients"] = ingredients
             return ProductUpdate.model_validate(payload)
         payload["barcode"] = barcode
+        payload["nutrients"] = {c: v for c, v in nutrients.items() if v is not None}
         payload["ingredients"] = ingredients or []
         return ProductCreate.model_validate(payload)
 
@@ -337,6 +326,13 @@ class ProductForm(forms.ModelForm):
             result = product_services.create_product(self.write_data, image=photo)
         self.instance = result.product
         self.image_fetch_failed = result.image_fetch_failed
+        self.declared_value_warnings = product_services.declared_value_warnings(
+            {
+                n.code: value
+                for n in self.label_nutrients
+                if (value := self.cleaned_data.get(nutrient_field(n.code))) is not None
+            }
+        )
         return result.product
 
     # ------------------------------------------------------------------------

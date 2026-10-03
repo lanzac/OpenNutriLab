@@ -10,14 +10,13 @@ import pytest
 from requests import RequestException
 
 from opennutrilab.products.api.openfoodfacts.schemas import OFFIngredientSchema
-from opennutrilab.products.api.openfoodfacts.schemas import OFFMacronutrientsSchema
 from opennutrilab.products.api.openfoodfacts.schemas import OFFProductSchema
-from opennutrilab.products.api.openfoodfacts.schemas import ProductFormSchema
-from opennutrilab.products.api.openfoodfacts.schemas import product_schema_to_form_data
 from opennutrilab.products.api.openfoodfacts.services import OFFError
 from opennutrilab.products.api.openfoodfacts.services import OFFProductNotFoundError
+from opennutrilab.products.api.openfoodfacts.services import declared_nutrients_from_off
 from opennutrilab.products.api.openfoodfacts.services import fetch_from_off
 from opennutrilab.products.api.openfoodfacts.services import to_ingredient_inputs
+from opennutrilab.products.models import Nutrient
 
 # A product recorded from OpenFoodFacts (API v2: the envelope differs from
 # the v3 one fetch_from_off reads, but the "product" object has the same shape).
@@ -33,12 +32,14 @@ def test_product_schema_parses_a_recorded_off_product():
 
     assert product.barcode == "3229820794556"
     assert product.name == "Muesli Protéines"
-    assert product.energy_kj == 1598  # noqa: PLR2004
-    assert product.macronutrients is not None
-    assert product.macronutrients.fat == 12  # noqa: PLR2004
+    assert product.nutriments["fat_100g"] == 12  # noqa: PLR2004
     assert product.group_level_1 == "Cereals and potatoes"
     assert product.ingredients is not None
     assert len(product.ingredients) == 7  # noqa: PLR2004
+    oats = product.ingredients[1]
+    # The label's declared share, and OFF's raw identifiers - not its
+    # estimates (percent_estimate is not read at all).
+    assert (oats.off_id, oats.ciqual_food_code) == ("en:oat-flakes", "9311")
 
 
 def test_fetch_product():
@@ -73,10 +74,7 @@ def test_fetch_product():
         # The rest will have their value by default
         barcode="999999",
         name="Remote Product",
-        macronutrients=OFFMacronutrientsSchema(
-            fat=3.0,
-            proteins=1.5,
-        ),
+        nutriments={"fat_100g": 3.0, "proteins_100g": 1.5},
     )
 
     assert isinstance(product, OFFProductSchema)
@@ -359,32 +357,60 @@ def test_fetch_product_accepts_normalized_upca_barcode():
     assert product.barcode == "0013764027053"
 
 
-def test_fetch_product_rounds_fractional_energy():
-    """
-    OFF sends `energy_100g` as a float while Product.energy_kj is an
-    IntegerField, so an unrounded value failed schema validation with a 500.
-    """
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {
-        "status": "success",
-        "product": {
-            "code": "999999",
-            "product_name": "Remote Product",
-            "nutriments": {"energy_100g": 1443.5},
-        },
-        "errors": [],
-        "warnings": [],
-        "result": {"id": "product_found", "name": "Product found"},
+@pytest.mark.django_db
+def test_declared_values_are_read_through_the_catalogue_off_keys():
+    """Recorded muesli: energy is kJ in OFF, masses are grams."""
+    with RECORDED_PRODUCT.open(encoding="utf-8") as f:
+        nutriments = json.load(f)["product"]["nutriments"]
+
+    values = declared_nutrients_from_off(nutriments)
+
+    assert values == {
+        "energy": Decimal(1598),
+        "fat": Decimal(12),
+        "saturated_fat": Decimal("1.9"),
+        "carbohydrates": Decimal(41),
+        "sugars": Decimal(11),
+        "fiber": Decimal(13),
+        "proteins": Decimal(21),
+        "salt": Decimal("0.03"),
     }
 
-    with patch(
-        "opennutrilab.products.api.openfoodfacts.services.requests.get",
-        return_value=mock_response,
-    ):
-        product: OFFProductSchema = fetch_from_off("999999")
 
-    assert product.energy_kj == 1444  # noqa: PLR2004
+@pytest.mark.django_db
+def test_declared_values_are_converted_from_grams_to_each_unit():
+    """OFF stores 3.4 µg of vitamin D as 3.4e-06 g."""
+    Nutrient.objects.create(
+        code="vitamin_d",
+        name_en="Vitamin D",
+        name_fr="Vitamine D",
+        unit="µg",
+        group="vitamin",
+        off_key="vitamin-d",
+    )
+    Nutrient.objects.create(
+        code="iron",
+        name_en="Iron",
+        name_fr="Fer",
+        unit="mg",
+        group="mineral",
+        off_key="iron",
+    )
+
+    values = declared_nutrients_from_off(
+        {"vitamin-d_100g": 3.4e-06, "iron_100g": 0.012}
+    )
+
+    assert values == {"vitamin_d": Decimal("3.4"), "iron": Decimal(12)}
+
+
+@pytest.mark.django_db
+def test_unusable_declared_values_are_left_out():
+    values = declared_nutrients_from_off(
+        {"fat_100g": "", "sugars_100g": "n/a", "salt_100g": -1, "fiber_100g": None}
+    )
+
+    assert values == {}
 
 
 def test_fetch_product_barcode_mismatch():
@@ -414,34 +440,13 @@ def test_fetch_product_barcode_mismatch():
         fetch_from_off("999999")
 
 
-def test_product_schema_to_form_data():
-    """Test conversion from ProductSchema to ProductFormSchema."""
-    product = OFFProductSchema(
-        barcode="123456",
-        name="Test Product",
-        image_url="https://example.com/image.jpg",
-        macronutrients=OFFMacronutrientsSchema(
-            fat=10.0,
-            carbohydrates=20.0,
-            proteins=5.0,
-        ),
-    )
-    form_data: ProductFormSchema = product_schema_to_form_data(product)
-
-    assert isinstance(form_data, ProductFormSchema)
-    assert form_data.barcode == "123456"
-    assert form_data.name == "Test Product"
-    assert form_data.image_url == "https://example.com/image.jpg"
-    assert form_data.macronutrients_fat == 10.0  # noqa: PLR2004
-    assert form_data.macronutrients_carbohydrates == 20.0  # noqa: PLR2004
-    assert form_data.macronutrients_proteins == 5.0  # noqa: PLR2004
-
-
 def test_to_ingredient_inputs_keeps_the_tree():
     ingredients = [
         OFFIngredientSchema(name="Sucre", percentage=56.3),
         OFFIngredientSchema(
             name="Lait écrémé en poudre",
+            off_id="en:skimmed-milk-powder",
+            ciqual_proxy_food_code="19054",
             ingredients=[OFFIngredientSchema(name=" lait ", percentage=8.7)],
         ),
     ]
@@ -454,6 +459,10 @@ def test_to_ingredient_inputs_keeps_the_tree():
     assert [(c.name, c.percentage) for c in inputs[1].sub_ingredients] == [
         ("lait", Decimal("8.7"))
     ]
+    assert (inputs[1].off_id, inputs[1].off_ciqual_proxy_food_code) == (
+        "en:skimmed-milk-powder",
+        "19054",
+    )
 
 
 def test_to_ingredient_inputs_drops_what_could_not_be_saved():

@@ -32,7 +32,7 @@ def create_product(request: HttpRequest, data: ProductCreate) -> Product:
         return product_services.create_product(data).product
     except product_services.ProductAlreadyExistsError as e:
         raise HttpError(409, f"A product with barcode {data.barcode} exists.") from e
-    except product_services.UnknownMacronutrientError as e:
+    except product_services.UnknownNutrientError as e:
         raise HttpError(422, str(e)) from e
 
 
@@ -43,7 +43,7 @@ def update_product(
     product = get_object_or_404(Product, barcode=product_id)
     try:
         return product_services.update_product(product, data).product
-    except product_services.UnknownMacronutrientError as e:
+    except product_services.UnknownNutrientError as e:
         raise HttpError(422, str(e)) from e
 
 
