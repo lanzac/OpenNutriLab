@@ -1,7 +1,5 @@
-# products/tests/test_product_services_logic.py
 from __future__ import annotations
 
-import io
 from decimal import Decimal
 from typing import TYPE_CHECKING
 from typing import Any
@@ -10,278 +8,251 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
+import requests
 from django.core.files.storage import Storage
-from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.files.uploadedfile import UploadedFile
 from django.db.models.fields.files import ImageFieldFile
 
-from products.api.schemas.inbound import IngredientInput
-from products.api.schemas.inbound import MacronutrientInput
-from products.api.schemas.inbound import NutritionalValuesUpdate
 from products.api.schemas.inbound import ProductCreate
 from products.api.schemas.inbound import ProductUpdate
 from products.models import Ingredient
 from products.models import IngredientRef
-from products.models import Macronutrient
 from products.models import Product
 from products.models import ProductMacronutrient
-
-# Import your code under test
-from products.services.product_services import DEFAULT_IMAGE_NAME
-from products.services.product_services import apply_product_update_fields
+from products.services.product_services import ProductAlreadyExistsError
+from products.services.product_services import UnknownMacronutrientError
 from products.services.product_services import create_product
+from products.services.product_services import download_image
 from products.services.product_services import save_image_overwrite
-from products.services.product_services import sync_product_image
-from products.services.product_services import sync_product_ingredients_update
-from products.services.product_services import sync_product_macronutrients_update
 from products.services.product_services import update_product
-from products.services.product_services import upsert_product_ingredients
-from products.services.product_services import upsert_product_macronutrients
 
 if TYPE_CHECKING:
     from django.db.models import FileField
     from django.db.models import Model
 
+BARCODE = "3017620422003"
+IMAGE_URL = (
+    "https://images.openfoodfacts.org/images/products/301/762/042/2003/front.jpg"
+)
 
-# -----------------------
-# Fixtures / small helpers
-# -----------------------
-def minimal_payload(barcode: str, name: str, energy_kj: int) -> dict[str, Any]:
-    return {
-        "barcode": barcode,
-        "name": name,
-        "description": "",
-        "group_level_1": "",
-        "group_level_2": "",
+
+def create_payload(**overrides: Any) -> ProductCreate:
+    payload: dict[str, Any] = {
+        "barcode": BARCODE,
+        "name": "Nutella",
+        "description": "Spread",
         "nutritional_values": {
-            "energy_kj": energy_kj,
-            "macronutrients": [],
+            "energy_kj": 2252,
+            "macronutrients": [
+                {"name": "fat", "amount_g": "30.9"},
+                {"name": "sugars", "amount_g": "56.3"},
+            ],
         },
+        "ingredients": [
+            {
+                "name": "Sucre",
+                "percentage": "56.3",
+            },
+            {
+                "name": "Lait écrémé en poudre",
+                "sub_ingredients": [{"name": "lait", "percentage": "8.7"}],
+            },
+        ],
     }
+    payload.update(overrides)
+    return ProductCreate.model_validate(payload)
 
 
-@pytest.fixture
-def simple_macros() -> dict[str, Macronutrient]:
-    """Create canonical macronutrients for tests."""
-    Macronutrient.objects.all().delete()
-    carb = Macronutrient.objects.create(name="Carbohydrate")
-    fat = Macronutrient.objects.create(name="Fat")
-    protein = Macronutrient.objects.create(name="Protein")
-    return {"carb": carb, "fat": fat, "protein": protein}
-
-
-REFERENCE_BARCODE = "4006381333931"
-REFERENCE_NAME = "Apple"
-REFERENCE_ENERGY_KJ = 50
-
-
-@pytest.fixture
-def product():
-    """Return a persisted Product instance simple to use in tests."""
-    Product.objects.all().delete()
-    return Product.objects.create(
-        barcode=REFERENCE_BARCODE,
-        name=REFERENCE_NAME,
-        energy_kj=REFERENCE_ENERGY_KJ,
-    )
-
-
-def build_uploaded_file(
-    content: bytes = b"img", filename: str = "img.jpg"
-) -> InMemoryUploadedFile:
-    """
-    Build a simple InMemoryUploadedFile useful for save_image_overwrite tests.
-    """
-    fp = io.BytesIO(content)
-    fp.seek(0)
-    return InMemoryUploadedFile(
-        fp,
-        field_name="image",
-        name=filename,
-        content_type="image/jpeg",
-        size=len(content),
-        charset=None,
-    )
-
-
-# -----------------------
-# Unit tests : simple helpers
-# -----------------------
-@pytest.mark.django_db
-def test_apply_product_update_fields_updates_simple_fields(product: Product):
-    data = ProductUpdate.model_validate(
-        minimal_payload(
-            barcode=REFERENCE_BARCODE,
-            name="New name",  # New name
-            energy_kj=100,  # New energy
+def amounts(product: Product) -> dict[str, Decimal]:
+    return dict(
+        ProductMacronutrient.objects.filter(product=product).values_list(
+            "macronutrient__name", "amount_g"
         )
     )
-    data.group_level_1 = "G1"  # New group level 1
 
-    apply_product_update_fields(product, data)
-    product.refresh_from_db()
-    assert product.name == "New name"
-    assert product.group_level_1 == "G1"
-    # assert product.energy =
-    # description should remain the initial default (empty or whatever original)
-    # We don't expect change because description was None in data
-    # (if product started with "", remain "")
-    assert product.description == "" or product.description is not None
+
+def ok_image_response(content: bytes = b"jpeg-bytes") -> MagicMock:
+    response = MagicMock()
+    response.content = content
+    response.headers = {"Content-Type": "image/jpeg"}
+    return response
+
+
+@pytest.fixture
+def product() -> Product:
+    return create_product(create_payload()).product
+
+
+# -----------------------
+# create_product
+# -----------------------
+@pytest.mark.django_db
+def test_create_product_writes_fields_macronutrients_and_ingredient_tree():
+    result = create_product(create_payload())
+    product = Product.objects.get(pk=BARCODE)
+
+    assert result.product == product
+    assert result.image_fetch_failed is False
+    assert (product.name, product.description, product.energy_kj) == (
+        "Nutella",
+        "Spread",
+        2252,
+    )
+    assert amounts(product) == {"fat": Decimal("30.90"), "sugars": Decimal("56.30")}
+
+    roots = Ingredient.objects.filter(product=product, parent=None).order_by("id")
+    assert [i.name for i in roots] == ["Sucre", "Lait écrémé en poudre"]
+    child = Ingredient.objects.get(product=product, parent=roots[1])
+    assert (child.name, child.percentage) == ("lait", Decimal("8.70"))
 
 
 @pytest.mark.django_db
-def test_apply_product_update_fields_updates_energy_kj(product: Product):
-    data = ProductUpdate.model_validate(
-        minimal_payload("4006381333931", "New name", 11)
-    )
-    data.nutritional_values = NutritionalValuesUpdate.model_validate(
-        {
-            "energy_kj": 12,
-            "macronutrients": [],
+def test_create_product_refuses_an_existing_barcode(product: Product):
+    """
+    Product(...).save() with an existing primary key silently UPDATEs, so a
+    second create used to overwrite the stored product.
+    """
+    with pytest.raises(ProductAlreadyExistsError):
+        create_product(create_payload(name="Someone else's"))
+
+    assert Product.objects.get(pk=BARCODE).name == "Nutella"
+
+
+@pytest.mark.django_db
+def test_create_product_with_an_unknown_macronutrient_writes_nothing():
+    payload = create_payload(
+        nutritional_values={
+            "energy_kj": 1,
+            "macronutrients": [{"name": "unobtainium", "amount_g": "1"}],
         }
     )
 
-    apply_product_update_fields(product, data)
+    with pytest.raises(UnknownMacronutrientError, match="unobtainium"):
+        create_product(payload)
+
+    assert not Product.objects.filter(pk=BARCODE).exists()
+
+
+@pytest.mark.django_db
+def test_create_product_links_references_regardless_of_case():
+    """Same rule as the form's "recognized" column, which ignores case."""
+    sugar = IngredientRef.objects.create(name="sucre")
+
+    product = create_product(create_payload()).product
+
+    assert Ingredient.objects.get(product=product, name="Sucre").reference == sugar
+
+
+# -----------------------
+# update_product
+# -----------------------
+@pytest.mark.django_db
+def test_update_product_only_touches_what_is_given(product: Product):
+    ingredient_ids = set(product.ingredients.values_list("id", flat=True))
+
+    update_product(product, ProductUpdate(name="Renamed"))
+
     product.refresh_from_db()
-    assert product.energy_kj == 12  # noqa: PLR2004
+    assert product.name == "Renamed"
+    assert product.description == "Spread"
+    assert amounts(product) == {"fat": Decimal("30.90"), "sugars": Decimal("56.30")}
+    # Not recreated: same rows, same ids.
+    assert set(product.ingredients.values_list("id", flat=True)) == ingredient_ids
 
 
 @pytest.mark.django_db
-def test_upsert_product_macronutrients_creates_and_updates(
-    product: Product, simple_macros: dict[str, Macronutrient]
-):
-    macros = simple_macros
-    product.productmacronutrient_set.all().delete()
-
-    # create two amounts: carb (2.5), fat (1.0)
-    items = [
-        MacronutrientInput(name=macros["carb"].name, amount_g=Decimal("2.5")),
-        MacronutrientInput(name=macros["fat"].name, amount_g=Decimal("1.0")),
-    ]
-    upsert_product_macronutrients(product, items)
-
-    assert ProductMacronutrient.objects.filter(product=product).count() == 2  # noqa: PLR2004
-
-    # update existing: change carb amount
-    items2 = [MacronutrientInput(name=macros["carb"].name, amount_g=Decimal("3.0"))]
-    upsert_product_macronutrients(product, items2)
-    pm = ProductMacronutrient.objects.get(product=product, macronutrient=macros["carb"])
-    assert pm.amount_g == Decimal("3.0")
-
-
-@pytest.mark.django_db
-def test_sync_product_macronutrients_update_none_and_empty(
-    product: Product, simple_macros: dict[str, Macronutrient]
-):
-    macros = simple_macros
-
-    ProductMacronutrient.objects.create(
-        product=product,
-        macronutrient=macros["carb"],
-        amount_g=Decimal("1.2"),
+def test_update_product_replaces_the_macronutrient_set(product: Product):
+    data = ProductUpdate.model_validate(
+        {
+            "nutritional_values": {
+                "energy_kj": 100,
+                "macronutrients": [
+                    {"name": "sugars", "amount_g": "0"},
+                    {"name": "proteins", "amount_g": "6.3"},
+                ],
+            }
+        }
     )
 
-    with patch(
-        "products.services.product_services.upsert_product_macronutrients"
-    ) as upsert_mock:
-        # None -> no change
-        sync_product_macronutrients_update(product, macronutrients_list=None)
-        upsert_mock.assert_not_called()
-        assert ProductMacronutrient.objects.filter(product=product).count() == 1
+    update_product(product, data)
 
-        # [] -> delete
-        sync_product_macronutrients_update(product, macronutrients_list=[])
-        upsert_mock.assert_not_called()
-        assert ProductMacronutrient.objects.filter(product=product).count() == 0
-
-        # filled list -> upsert
-        macronutrients_list = [
-            MacronutrientInput(
-                name=macros["fat"].name,
-                amount_g=Decimal("0.5"),
-            )
-        ]
-
-        sync_product_macronutrients_update(product, macronutrients_list)
-
-        upsert_mock.assert_called_once_with(product, macronutrients_list)
+    product.refresh_from_db()
+    assert product.energy_kj == 100  # noqa: PLR2004
+    # fat was left out, so it is removed; 0 g of sugar is kept.
+    assert amounts(product) == {"sugars": Decimal("0.00"), "proteins": Decimal("6.30")}
 
 
 @pytest.mark.django_db
-def test_upsert_and_sync_ingredients_recursive(product: Product):
-    # Prep existing IngredientRef so upsert picks it up as reference
-    IngredientRef.objects.create(name="SaltRef")
+def test_update_product_with_an_empty_macronutrient_list_clears_them(
+    product: Product,
+):
+    data = ProductUpdate.model_validate({"nutritional_values": {"macronutrients": []}})
 
-    # build nested input
-    nested = [
-        IngredientInput(
-            name="SaltRef",
-            percentage=None,
-            sub_ingredients=[
-                IngredientInput(name="SubA", percentage=None, sub_ingredients=[])
-            ],
-        )
-    ]
+    update_product(product, data)
 
-    # ensure starting clean
-    Ingredient.objects.filter(product=product).delete()
-    upsert_product_ingredients(product, nested)
+    assert amounts(product) == {}
 
-    # root ingredient created
-    roots = Ingredient.objects.filter(product=product, parent__isnull=True)
-    assert roots.count() == 1
-    root = roots.first()
-    # sub created
-    subs = Ingredient.objects.filter(product=product, parent=root)
-    assert subs.count() == 1
 
-    # now test sync with empty list clears
-    sync_product_ingredients_update(product, ingredients_list=[])
-    assert Ingredient.objects.filter(product=product).count() == 0
+@pytest.mark.django_db
+def test_update_product_replaces_the_ingredient_tree_when_given(product: Product):
+    data = ProductUpdate.model_validate({"ingredients": [{"name": "Cacao"}]})
 
-    # test sync with filled list recreates
-    sync_product_ingredients_update(product, ingredients_list=nested)
-    assert Ingredient.objects.filter(product=product).count() == 2  # noqa: PLR2004
+    update_product(product, data)
+
+    assert list(product.ingredients.values_list("name", flat=True)) == ["Cacao"]
 
 
 # -----------------------
-# Image helpers tests (mock storage)
+# Images
 # -----------------------
-class DummyStorage:
-    """A tiny dummy storage to intercept calls from save_image_overwrite."""
+@pytest.mark.django_db
+def test_create_product_downloads_the_photo_named_after_the_barcode():
+    with patch(
+        "products.services.product_services.requests.get",
+        return_value=ok_image_response(),
+    ) as get:
+        result = create_product(create_payload(image_url=IMAGE_URL))
 
-    def __init__(self) -> None:
-        self.saved: dict[str, bytes] = {}
-        self.existing: set[str] = set()
-
-    def exists(self, name: str) -> bool:
-        return name in self.existing
-
-    def delete(self, name: str) -> None:
-        self.existing.discard(name)
-        self.saved.pop(name, None)
-
-    def save(
-        self, name: str, content: UploadedFile, max_length: int | None = None
-    ) -> str:
-        content.seek(0)
-        self.saved[name] = content.read()
-        self.existing.add(name)
-        return name
+    assert get.call_args.args == (IMAGE_URL,)
+    assert result.image_fetch_failed is False
+    assert result.product.image.name == f"images/products/{BARCODE}.jpg"
+    assert result.product.image.read() == b"jpeg-bytes"
 
 
-class DummyFieldFile:
-    """Simplified stand-in for product.image to intercept delete/save calls."""
+@pytest.mark.django_db
+def test_failed_photo_download_still_saves_the_product():
+    with patch(
+        "products.services.product_services.requests.get",
+        side_effect=requests.ConnectTimeout("images host unreachable"),
+    ):
+        result = create_product(create_payload(image_url=IMAGE_URL))
 
-    def __init__(self, name: str | None = None) -> None:
-        self.name: str | None = name
+    assert result.image_fetch_failed is True
+    assert Product.objects.filter(pk=BARCODE).exists()
+    assert not result.product.image
 
-    def delete(self, save: bool = True) -> None:  # noqa: FBT001, FBT002
-        self.name = None
 
-    def save(self, name: str, uploaded_file: UploadedFile, save: bool = True) -> None:  # noqa: FBT001, FBT002
-        self.name = name
+@pytest.mark.django_db
+def test_an_uploaded_photo_wins_over_the_url():
+    upload = SimpleUploadedFile("my photo.PNG", b"png-bytes", content_type="image/png")
+
+    with patch("products.services.product_services.requests.get") as get:
+        result = create_product(create_payload(image_url=IMAGE_URL), image=upload)
+
+    get.assert_not_called()
+    assert result.product.image.name == f"images/products/{BARCODE}.png"
+
+
+def test_download_image_refuses_hosts_other_than_openfoodfacts():
+    """The schemas reject these URLs too; the function must not rely on it."""
+    with (
+        patch("products.services.product_services.requests.get") as get,
+        pytest.raises(ValueError, match="Refusing"),
+    ):
+        download_image("http://redis:6379/", filename="x.jpg")
+
+    get.assert_not_called()
 
 
 @pytest.mark.django_db
@@ -410,130 +381,3 @@ def test_save_image_overwrite_deletes_existing_file_at_target_path(
 
     # verify that delete was called for the existing file at the target path
     storage_mock.delete.assert_any_call("images/new.jpg")
-
-
-@pytest.mark.django_db
-def test_sync_product_image_no_url(monkeypatch: pytest.MonkeyPatch, product: Product):
-    save_mock = MagicMock()
-    fetch_mock = MagicMock()
-
-    monkeypatch.setattr(
-        "products.services.product_services.save_image_overwrite", save_mock
-    )
-    monkeypatch.setattr(
-        "products.services.product_services.fetch_image_as_uploaded_file", fetch_mock
-    )
-
-    sync_product_image(product, image_url=None, barcode="0000")
-
-    save_mock.assert_not_called()
-    fetch_mock.assert_not_called()
-
-
-@pytest.mark.django_db
-def test_sync_product_image_calls_save_with_expected_filename(
-    monkeypatch: pytest.MonkeyPatch, product: Product
-):
-    barcode = "0123456789"
-    image_url = "https://example.com/img.jpg"
-    expected_filename = DEFAULT_IMAGE_NAME.format(barcode=barcode)
-
-    captured = {}
-
-    def fake_fetch(image_url: str, filename: str):
-        captured["image_url"] = image_url
-        captured["filename"] = filename
-        # retourner un vrai InMemoryUploadedFile-like (SimpleUploadedFile suffit)
-        return SimpleUploadedFile(filename, b"imagedata", content_type="image/jpeg")
-
-    monkeypatch.setattr(
-        "products.services.product_services.fetch_image_as_uploaded_file",
-        fake_fetch,
-    )
-
-    save_mock = MagicMock()
-    monkeypatch.setattr(
-        "products.services.product_services.save_image_overwrite",
-        save_mock,
-    )
-
-    sync_product_image(product, image_url=image_url, barcode=barcode)
-
-    # fetch_image_as_uploaded_file should be called with the provided URL and the
-    # expected filename
-    assert captured["image_url"] == image_url
-    assert captured["filename"] == expected_filename
-
-    # save_image_overwrite should be called with the product and an uploaded file
-    # with the expected filename
-    save_mock.assert_called_once()
-    called_product, uploaded_file = save_mock.call_args[0]
-    assert called_product is product
-    assert hasattr(uploaded_file, "name")
-    assert uploaded_file.name == expected_filename
-
-
-# -----------------------
-# High-level create / update (integration-like)
-# -----------------------
-@pytest.mark.django_db
-def test_create_product_full_flow(
-    monkeypatch: pytest.MonkeyPatch, simple_macros: dict[str, Macronutrient]
-):
-    # Build a minimal payload accepted by ProductCreate (use dict form expected)
-    payload: dict[str, str | dict[str, int | list[Any]] | list[Any]] = {
-        "barcode": REFERENCE_BARCODE,  # presumed valid EAN in your system
-        "name": "Created",
-        "description": "",
-        "group_level_1": "",
-        "group_level_2": "",
-        "nutritional_values": {"energy_kj": 10, "macronutrients": []},
-        "ingredients": [],
-    }
-
-    # Prevent actual image download during create_product
-    def fake_fetch_image_as_uploaded_file(
-        image_url: str,
-        filename: str,
-    ) -> InMemoryUploadedFile | None:
-        return None
-
-    monkeypatch.setattr(
-        "products.services.product_services.fetch_image_as_uploaded_file",
-        fake_fetch_image_as_uploaded_file,
-    )
-    monkeypatch.setattr(
-        "products.services.product_services.default_storage", DummyStorage()
-    )
-
-    created = create_product(ProductCreate.model_validate(payload))
-    assert Product.objects.filter(barcode=created.barcode).exists()
-
-
-@pytest.mark.django_db
-def test_update_product_full_flow(monkeypatch: pytest.MonkeyPatch, product: Product):
-    p = product
-    # prepare update payload: change name and energy_kj
-    payload = {
-        "name": "Updated via service",
-        "nutritional_values": {"energy_kj": 22},
-    }
-
-    def fake_fetch_image_as_uploaded_file(
-        image_url: str,
-        filename: str,
-    ) -> InMemoryUploadedFile | None:
-        return None
-
-    monkeypatch.setattr(
-        "products.services.product_services.fetch_image_as_uploaded_file",
-        fake_fetch_image_as_uploaded_file,
-    )
-    monkeypatch.setattr(
-        "products.services.product_services.default_storage", DummyStorage()
-    )
-
-    update_product(p, ProductUpdate.model_validate(payload))
-    p.refresh_from_db()
-    assert p.name == "Updated via service"
-    assert p.energy_kj == 22  # noqa: PLR2004

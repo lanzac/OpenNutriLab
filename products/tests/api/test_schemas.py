@@ -1,7 +1,7 @@
 from typing import Any
 
 import pytest
-from ninja.errors import ValidationError as NinjaValidationError
+from pydantic import ValidationError
 
 from products.api.schemas.inbound import ProductCreate
 
@@ -21,7 +21,7 @@ def _minimal_payload(barcode: str, name: str) -> dict[str, Any]:
 
 
 def test_barcode_valid():
-    valid_barcode = "4006381333931"  # EAN13 valide
+    valid_barcode = "4006381333931"  # valid EAN-13
 
     schema = ProductCreate.model_validate(
         _minimal_payload(valid_barcode, "Test Product")
@@ -31,8 +31,8 @@ def test_barcode_valid():
 
 
 def test_barcode_invalid():
-    invalid_barcode = "1234567890123"  # checksum invalide
+    invalid_barcode = "1234567890123"  # wrong checksum
 
-    with pytest.raises(NinjaValidationError) as exc_info:
+    with pytest.raises(ValidationError) as exc_info:
         ProductCreate.model_validate(_minimal_payload(invalid_barcode, "Test Product"))
     assert "Invalid EAN-13 checksum." in str(exc_info.value)

@@ -1,10 +1,29 @@
-from typing import cast
+"""
+The only code that writes products.
 
+The API routes and the product form both describe the change as a
+ProductCreate or ProductUpdate (products.api.schemas.inbound) and hand it here,
+so a product saved from either ends up exactly the same.
+"""
+
+import io
+import logging
+from pathlib import PurePath
+from typing import NamedTuple
+from typing import cast
+from urllib.parse import urlparse
+
+import requests
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.core.files.uploadedfile import UploadedFile
+from django.db import IntegrityError
 from django.db import models
 from django.db import transaction
+from django.db.models.functions import Lower
 
+from products.api.openfoodfacts.services import OFF_HEADERS
+from products.api.schemas.inbound import OFF_IMAGE_HOSTS
 from products.api.schemas.inbound import IngredientInput
 from products.api.schemas.inbound import MacronutrientInput
 from products.api.schemas.inbound import ProductCreate
@@ -14,35 +33,96 @@ from products.models import IngredientRef
 from products.models import Macronutrient
 from products.models import Product
 from products.models import ProductMacronutrient
-from products.utils import fetch_image_as_uploaded_file
 
-DEFAULT_IMAGE_NAME = "{barcode}.jpg"
+logger = logging.getLogger(__name__)
+
+IMAGE_DOWNLOAD_TIMEOUT = 10  # seconds
+
+
+class ProductAlreadyExistsError(Exception):
+    """A product with this barcode is already stored."""
+
+
+class UnknownMacronutrientError(Exception):
+    """The payload names a macronutrient the database does not know."""
+
+
+class ProductWrite(NamedTuple):
+    product: Product
+    # True when a photo was asked for by URL and could not be downloaded. The
+    # product itself is saved either way.
+    image_fetch_failed: bool = False
 
 
 # -------------------------
-# Field application helpers
+# High-level create / update
 # -------------------------
-def apply_product_update_fields(product: Product, data: ProductUpdate) -> None:
+def create_product(
+    data: ProductCreate, *, image: UploadedFile | None = None
+) -> ProductWrite:
     """
-    Apply partial updates from ProductUpdate.
-    Only provided fields are written to DB.
-    """
-    simple_fields: list[str] = [
-        "name",
-        "description",
-        "group_level_1",
-        "group_level_2",
-    ]
+    Create a product with its macronutrients and ingredients.
 
+    `image` is a file the user uploaded; it wins over `data.image_url`.
+    """
+    with transaction.atomic():
+        try:
+            # create() forces an INSERT. Product(...).save() with an existing
+            # primary key would silently UPDATE that product instead.
+            product = Product.objects.create(
+                barcode=data.barcode,
+                name=data.name,
+                description=data.description,
+                group_level_1=data.group_level_1,
+                group_level_2=data.group_level_2,
+                energy_kj=data.nutritional_values.energy_kj,
+            )
+        except IntegrityError as e:
+            raise ProductAlreadyExistsError(data.barcode) from e
+
+        _replace_macronutrients(product, data.nutritional_values.macronutrients)
+        _replace_ingredients(product, data.ingredients)
+
+    # Outside the transaction: a slow or failed download must not hold it
+    # open, nor roll the product back.
+    image_ok = _attach_image(product, upload=image, url=data.image_url)
+    return ProductWrite(product, image_fetch_failed=not image_ok)
+
+
+def update_product(
+    product: Product, data: ProductUpdate, *, image: UploadedFile | None = None
+) -> ProductWrite:
+    """
+    Apply a partial update: what `data` leaves out (None) is not touched.
+
+    A macronutrient or ingredient list that is given replaces the stored one.
+    """
+    with transaction.atomic():
+        _apply_fields(product, data)
+
+        nutritional_values = data.nutritional_values
+        if nutritional_values and nutritional_values.macronutrients is not None:
+            _replace_macronutrients(product, nutritional_values.macronutrients)
+
+        if data.ingredients is not None:
+            _replace_ingredients(product, data.ingredients)
+
+    image_ok = _attach_image(product, upload=image, url=data.image_url)
+    return ProductWrite(product, image_fetch_failed=not image_ok)
+
+
+# -------------------------
+# Fields and relations
+# -------------------------
+def _apply_fields(product: Product, data: ProductUpdate) -> None:
     update_fields: list[str] = []
 
-    for field in simple_fields:
+    for field in ("name", "description", "group_level_1", "group_level_2"):
         value = getattr(data, field)
         if value is not None:
             setattr(product, field, value)
             update_fields.append(field)
 
-    # Handle nested nutritional values separately
     if data.nutritional_values and data.nutritional_values.energy_kj is not None:
         product.energy_kj = data.nutritional_values.energy_kj
         update_fields.append("energy_kj")
@@ -51,91 +131,146 @@ def apply_product_update_fields(product: Product, data: ProductUpdate) -> None:
         product.save(update_fields=update_fields)
 
 
-# -------------------------------------
-# Relations sync helpers (create/update)
-# -------------------------------------
-def upsert_product_macronutrients(
-    product: Product, macronutrients_list: list[MacronutrientInput]
-) -> None:
-    """Simple upsert loop suitable for small lists (create & update)."""
-    for item in macronutrients_list:
-        macro_obj = Macronutrient.objects.get(name=item.name)
+def _replace_macronutrients(product: Product, items: list[MacronutrientInput]) -> None:
+    """
+    Make `items` the product's complete set of macronutrient amounts.
+
+    One left out is removed; an amount of 0 is a measurement and is kept.
+    """
+    names = [item.name for item in items]
+    known = {m.name: m for m in Macronutrient.objects.filter(name__in=names)}
+    unknown = sorted(set(names) - known.keys())
+    if unknown:
+        msg = f"Unknown macronutrients: {', '.join(unknown)}"
+        raise UnknownMacronutrientError(msg)
+
+    ProductMacronutrient.objects.filter(product=product).exclude(
+        macronutrient__in=names
+    ).delete()
+    for item in items:
         ProductMacronutrient.objects.update_or_create(
             product=product,
-            macronutrient=macro_obj,
+            macronutrient=known[item.name],
             defaults={"amount_g": item.amount_g},
         )
 
 
-def sync_product_macronutrients_update(
-    product: Product, macronutrients_list: list[MacronutrientInput] | None
-) -> None:
-    """
-    Sync macronutrients on update: if list is provided, perform upsert.
-    If None -> do nothing (partial update won't touch existing macronutrients).
-    If you want to clear all macronutrients, pass an empty list (then delete).
-    """
-    if macronutrients_list is None:
-        return
-
-    # If the client provided an empty list, that likely means "clear"
-    if not macronutrients_list:
-        ProductMacronutrient.objects.filter(product=product).delete()
-        return
-
-    # Otherwise upsert the provided ones
-    upsert_product_macronutrients(product, macronutrients_list)
+def _replace_ingredients(product: Product, items: list[IngredientInput]) -> None:
+    """Replace the product's ingredient tree with `items`."""
+    product.ingredients.all().delete()
+    references = _references_by_lowercase_name(items)
+    _create_ingredients(product, items, parent=None, references=references)
 
 
-def upsert_product_ingredients(
+def _create_ingredients(
     product: Product,
-    ingredients_list: list[IngredientInput],
-    parent: Ingredient | None = None,
+    items: list[IngredientInput],
+    parent: Ingredient | None,
+    references: dict[str, IngredientRef],
 ) -> None:
-    """
-    Create or update ingredients recursively (used on create and when recreating).
-    """
-    for ing in ingredients_list or []:
-        name = ing.name.strip()
-        reference = IngredientRef.objects.filter(name=name).first()
+    for item in items:
+        name = item.name.strip()
+        # update_or_create rather than create: OpenFoodFacts sometimes lists
+        # the same ingredient twice under one parent, which the unique
+        # constraints on Ingredient would reject. The last occurrence wins.
         ingredient, _created = Ingredient.objects.update_or_create(
             product=product,
             parent=parent,
             name=name,
             defaults={
-                "percentage": getattr(ing, "percentage", None),
-                "reference": reference,
+                "percentage": item.percentage,
+                "reference": references.get(name.lower()),
             },
         )
-        subingredients: list[IngredientInput] = (
-            getattr(ing, "sub_ingredients", []) or []
+        _create_ingredients(product, item.sub_ingredients, ingredient, references)
+
+
+def _references_by_lowercase_name(
+    items: list[IngredientInput],
+) -> dict[str, IngredientRef]:
+    """
+    Reference ingredients for every name in the tree, in one query.
+
+    Matched without regard to case, like the "recognized" column the product
+    form shows (see products.views.ingredient_rows_from_inputs).
+    """
+    names: set[str] = set()
+    stack = list(items)
+    while stack:
+        item = stack.pop()
+        names.add(item.name.strip().lower())
+        stack.extend(item.sub_ingredients)
+
+    if not names:
+        return {}
+    matches = IngredientRef.objects.annotate(lower_name=Lower("name")).filter(
+        lower_name__in=names
+    )
+    return {ref.lower_name: ref for ref in matches}  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
+
+
+# -------------------------
+# Image handling
+# -------------------------
+def _attach_image(
+    product: Product, *, upload: UploadedFile | None, url: str | None
+) -> bool:
+    """
+    Store the uploaded photo, or else download the one at `url`.
+
+    Returns False only when a download was needed and failed.
+    """
+    if upload is not None:
+        suffix = PurePath(upload.name or "").suffix.lower() or ".jpg"
+        upload.name = f"{product.barcode}{suffix}"
+        save_image_overwrite(product, upload)
+        return True
+
+    if url:
+        downloaded = download_image(url, filename=f"{product.barcode}.jpg")
+        if downloaded is None:
+            return False
+        save_image_overwrite(product, downloaded)
+
+    return True
+
+
+def download_image(url: str, filename: str) -> InMemoryUploadedFile | None:
+    """
+    Download a product photo from OpenFoodFacts, or None if that fails.
+
+    OpenFoodFacts serves images from a different host than its API, which can
+    be unreachable while the API answers; a failure here must not lose the
+    rest of the product.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or parsed.hostname not in OFF_IMAGE_HOSTS:
+        # The inbound schemas already reject such URLs; this keeps the function
+        # safe on its own.
+        msg = f"Refusing to download an image from {url}"
+        raise ValueError(msg)
+
+    try:
+        response = requests.get(
+            url, timeout=IMAGE_DOWNLOAD_TIMEOUT, headers=OFF_HEADERS
         )
-        if subingredients:
-            upsert_product_ingredients(product, subingredients, parent=ingredient)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        logger.warning("Failed to download product image from %s: %s", url, e)
+        return None
+
+    content = response.content
+    return InMemoryUploadedFile(
+        file=io.BytesIO(content),
+        field_name="image",
+        name=filename,
+        content_type=response.headers.get("Content-Type", "image/jpeg"),
+        size=len(content),
+        charset=None,
+    )
 
 
-def sync_product_ingredients_update(
-    product: Product, ingredients_list: list[IngredientInput] | None
-) -> None:
-    """
-    Sync ingredients on update. If None -> don't touch. If empty list -> delete all.
-    Simpler approach: when client provides ingredients, we delete existing and recreate.
-    """
-    if ingredients_list is None:
-        return
-
-    # Delete existing (clean slate), then recreate (keeps the logic simple)
-    Ingredient.objects.filter(product=product).delete()
-    if ingredients_list:
-        upsert_product_ingredients(product, ingredients_list)
-
-
-# -------------------------
-# Image handling helpers
-# -------------------------
-def save_image_overwrite(
-    product: Product, uploaded_file: InMemoryUploadedFile | None
-) -> None:
+def save_image_overwrite(product: Product, uploaded_file: UploadedFile | None) -> None:
     """
     Save an uploaded file to the Product's image field, overwriting any existing file.
 
@@ -146,7 +281,7 @@ def save_image_overwrite(
 
     Args:
         product: Product instance (unsaved or existing)
-        uploaded_file: InMemoryUploadedFile or None. If None, does nothing.
+        uploaded_file: The file to store. If None, does nothing.
     """
     if not uploaded_file:
         return
@@ -167,58 +302,3 @@ def save_image_overwrite(
 
     # Assign and save
     product.image.save(uploaded_file.name, uploaded_file, save=True)
-
-
-def sync_product_image(product: Product, image_url: str | None, barcode: str) -> None:
-    """Download image if provided and save it, overwriting existing image cleanly."""
-    if not image_url:
-        return
-
-    filename = DEFAULT_IMAGE_NAME.format(barcode=barcode)
-    uploaded_file = fetch_image_as_uploaded_file(image_url=image_url, filename=filename)
-    save_image_overwrite(product, uploaded_file)
-
-
-# -------------------------
-# High-level create / update
-# -------------------------
-def create_product(data: ProductCreate) -> Product:
-    with transaction.atomic():
-        # create minimal product to ensure PK exists (upload_to might need it)
-        product = Product(
-            barcode=data.barcode,
-            name=data.name,
-            description=data.description,
-            group_level_1=data.group_level_1,
-            group_level_2=data.group_level_2,
-            energy_kj=data.nutritional_values.energy_kj,
-        )
-
-        product.save()
-
-        # relations (create semantics)
-        upsert_product_macronutrients(product, data.nutritional_values.macronutrients)
-        upsert_product_ingredients(product, data.ingredients)
-
-    # image outside tx (download can fail without rolling back DB)
-    sync_product_image(product, getattr(data, "image_url", None), data.barcode)
-    return product
-
-
-def update_product(product: Product, data: ProductUpdate) -> Product:
-    with transaction.atomic():
-        # partial field update
-        apply_product_update_fields(product, data)
-
-        # relations: only touch those provided by the client
-        sync_product_macronutrients_update(
-            product,
-            getattr(data.nutritional_values, "macronutrients", None)
-            if data.nutritional_values
-            else None,
-        )
-        sync_product_ingredients_update(product, data.ingredients)
-
-    # image handling (outside tx)
-    sync_product_image(product, getattr(data, "image_url", None), product.barcode)
-    return product

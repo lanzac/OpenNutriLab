@@ -46,7 +46,7 @@ def products_two() -> tuple[Product, Product]:
 
     p1 = product_services.create_product(ProductCreate.model_validate(p1_payload))
     p2 = product_services.create_product(ProductCreate.model_validate(p2_payload))
-    return p1, p2
+    return p1.product, p2.product
 
 
 @pytest.mark.django_db
@@ -119,3 +119,42 @@ def test_delete_product_with_a_leading_zero(api_client: TestClient):
 
     assert resp.status_code == 200  # noqa: PLR2004
     assert not Product.objects.filter(barcode=barcode).exists()
+
+
+@pytest.mark.django_db
+def test_create_product_refuses_an_existing_barcode(
+    api_client: TestClient, products_two: tuple[Product, Product]
+):
+    p1, _ = products_two
+    payload = _minimal_payload(p1.barcode, "Overwrite attempt")
+
+    resp = api_client.post("/", json=payload)  # pyright: ignore[reportUnknownMemberType]
+
+    assert resp.status_code == 409  # noqa: PLR2004
+    p1.refresh_from_db()
+    assert p1.name == "TestProd One"
+
+
+@pytest.mark.django_db
+def test_create_product_rejects_an_unknown_macronutrient(api_client: TestClient):
+    payload = _minimal_payload("3017620422003", "Nutella")
+    payload["nutritional_values"]["macronutrients"] = [
+        {"name": "unobtainium", "amount_g": 1}
+    ]
+
+    resp = api_client.post("/", json=payload)  # pyright: ignore[reportUnknownMemberType]
+
+    assert resp.status_code == 422  # noqa: PLR2004
+    assert not Product.objects.filter(barcode="3017620422003").exists()
+
+
+@pytest.mark.django_db
+def test_create_product_rejects_an_image_url_outside_openfoodfacts(
+    api_client: TestClient,
+):
+    payload = _minimal_payload("3017620422003", "Nutella")
+    payload["image_url"] = "http://redis:6379/"
+
+    resp = api_client.post("/", json=payload)  # pyright: ignore[reportUnknownMemberType]
+
+    assert resp.status_code == 422  # noqa: PLR2004
