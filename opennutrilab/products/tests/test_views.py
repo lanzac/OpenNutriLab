@@ -600,6 +600,50 @@ def test_rows_from_inputs_show_off_ciqual_codes_marking_proxies():
 
 
 @pytest.mark.django_db
+def test_rows_link_ciqual_codes_to_the_ciqual_site():
+    items = [
+        IngredientInput(name="Flocons d'avoine", off_ciqual_food_code="9311"),
+        IngredientInput(name="Flocons de blé", off_ciqual_proxy_food_code="9410"),
+        IngredientInput(name="Soja"),
+        IngredientInput(name="Piège", off_ciqual_food_code="1/2#3"),
+    ]
+
+    rows = ingredient_rows_from_inputs(items)
+
+    assert [r["ciqual_url"] for r in rows] == [
+        "https://ciqual.anses.fr/#/aliments/9311",
+        "https://ciqual.anses.fr/#/aliments/9410",
+        None,
+        "https://ciqual.anses.fr/#/aliments/1%2F2%233",
+    ]
+
+
+@pytest.mark.django_db
+def test_rows_from_db_link_ciqual_codes():
+    product = create_product(
+        ProductCreate.model_validate(
+            {
+                "barcode": NUTELLA,
+                "name": "Nutella",
+                "ingredients": [
+                    {"name": "Sucre", "off_ciqual_food_code": "31016"},
+                    {"name": "Lait", "off_ciqual_proxy_food_code": "19051"},
+                    {"name": "Arôme"},
+                ],
+            }
+        )
+    ).product
+
+    rows = ingredient_rows_from_db(product)
+
+    assert [(r["name"], r["ciqual_url"]) for r in rows] == [
+        ("Sucre", "https://ciqual.anses.fr/#/aliments/31016"),
+        ("Lait", "https://ciqual.anses.fr/#/aliments/19051"),
+        ("Arôme", None),
+    ]
+
+
+@pytest.mark.django_db
 def test_rows_from_db_rebuild_the_tree(django_assert_num_queries: Any):
     product = create_product(
         ProductCreate.model_validate(

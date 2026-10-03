@@ -5,6 +5,25 @@ import { TabulatorFull as Tabulator } from 'tabulator-tables';
 import 'tabulator-tables/dist/css/tabulator_bootstrap5.min.css';
 
 /**
+ * Content of a CIQUAL cell: the code as a link to its sheet on the CIQUAL
+ * site, or nothing when the ingredient has no code. Built with the DOM API so
+ * a code is never read as HTML.
+ *
+ * @param {string | null | undefined} label The code as shown, e.g. "9410 (proxy)".
+ * @param {string | null | undefined} url Where its sheet is, from the view.
+ * @returns {HTMLAnchorElement | string}
+ */
+export function ciqualCell(label, url) {
+  if (!url) return '';
+  const link = document.createElement('a');
+  link.href = url;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.textContent = label ?? '';
+  return link;
+}
+
+/**
  * @param {{ name: string, percentage: string, ciqual: string, reference: string }} labels
  *   Column titles, translated server-side (see product_form_config in
  *   opennutrilab/products/views.py) so the .po catalogue stays the single
@@ -42,8 +61,15 @@ export function initIngredientsTable(labels) {
             : '';
         },
       },
-      // As OpenFoodFacts gives it, for information: it links nothing.
-      { title: labels.ciqual, field: 'ciqual', responsive: 3 },
+      // As OpenFoodFacts gives it, for information: it links no reference
+      // ingredient, but opens the code's sheet on the CIQUAL site to check it.
+      {
+        title: labels.ciqual,
+        field: 'ciqual',
+        responsive: 3,
+        formatter: (cell) =>
+          ciqualCell(cell.getValue(), cell.getRow().getData().ciqual_url),
+      },
       // The curated reference ingredient, once one is linked by hand.
       { title: labels.reference, field: 'reference', responsive: 3 },
     ],

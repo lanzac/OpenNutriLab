@@ -1,6 +1,7 @@
 import logging
 from typing import Any
 from typing import cast
+from urllib.parse import quote
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -32,6 +33,10 @@ from .models import Product
 from .services.product_services import plain_amount
 
 logger = logging.getLogger(__name__)
+
+# The CIQUAL site is a single-page app: the fragment is its route, and it
+# shows an empty sheet, not an error, for a code it does not know.
+CIQUAL_FOOD_URL = "https://ciqual.anses.fr/#/aliments/{code}"
 
 
 class ProductListView(LoginRequiredMixin, ListView):
@@ -301,12 +306,21 @@ def _ciqual_label(food_code: str, proxy_food_code: str) -> str:
     return f"{proxy_food_code} (proxy)" if proxy_food_code else ""
 
 
+def _ciqual_url(food_code: str, proxy_food_code: str) -> str | None:
+    """The CIQUAL site's sheet for the code _ciqual_label shows, if there is one."""
+    code = food_code or proxy_food_code
+    return CIQUAL_FOOD_URL.format(code=quote(code, safe="")) if code else None
+
+
 def ingredient_rows_from_inputs(items: list[IngredientInput]) -> list[dict[str, Any]]:
     return [
         {
             "name": item.name,
             "percentage": item.percentage,
             "ciqual": _ciqual_label(
+                item.off_ciqual_food_code, item.off_ciqual_proxy_food_code
+            ),
+            "ciqual_url": _ciqual_url(
                 item.off_ciqual_food_code, item.off_ciqual_proxy_food_code
             ),
             "reference": None,
@@ -328,6 +342,10 @@ def ingredient_rows_from_db(product: Product) -> list[dict[str, Any]]:
             "name": ingredient.name,
             "percentage": ingredient.percentage,
             "ciqual": _ciqual_label(
+                ingredient.off_ciqual_food_code,
+                ingredient.off_ciqual_proxy_food_code,
+            ),
+            "ciqual_url": _ciqual_url(
                 ingredient.off_ciqual_food_code,
                 ingredient.off_ciqual_proxy_food_code,
             ),
