@@ -3,6 +3,43 @@
 Planned changes that are decided but not started, and why. Remove an entry
 once it is done.
 
+## Estimate a product's nutrients from its ingredients
+
+The core feature: deduce a product's vitamins (and minerals, fatty acids...)
+from its ingredients, each linked to a reference ingredient whose
+composition is known, and check the result against the values the label
+declares. The data model is in place (`opennutrilab/products/models.py`);
+none of the following is built yet.
+
+- **Reference data.** Import the CIQUAL table (ANSES, open licence: its
+  attribution must be shown) as a `Source` with its `SourceFood` entries.
+  Its values must keep their meaning: "-" is _not measured_ (empty, never
+  0), "< x" is below the detection limit, "traces" is traces, and each value
+  has a confidence grade A to D. Other sources will follow.
+- **Reference ingredients.** Curated (`ReferenceIngredient`, e.g. "carotte
+  crue"), each drawing on several source foods. The rule that aggregates
+  their values into one composition - weighting by confidence, for
+  instance - is to be decided.
+- **Linking ingredients.** How a product ingredient gets its reference
+  ingredient is to be designed. OpenFoodFacts' CIQUAL code is stored on
+  each ingredient as raw data and may serve as a hint; nothing links
+  automatically today.
+- **Undeclared percentages.** Most ingredients have no percentage on the
+  label. Estimate them in-house - not from OpenFoodFacts' own estimates -
+  for instance from the label order (decreasing weight), the declared
+  percentages, and the declared nutrition values the result must match.
+- **Sub-ingredients.** Decide how a tree is computed: typically the finest
+  level that is linked to a reference, without counting a parent and its
+  children twice. Labels also vary on whether a sub-ingredient's
+  percentage is of its parent or of the whole product.
+- **Derived nutrients.** Fill `NutrientComponent`: vitamin A in retinol
+  equivalents (retinol + beta-carotene / 6, as CIQUAL gives them
+  separately), vitamin K (K1 + K2), and others.
+- **Reporting.** Every estimate comes with its coverage (the share of the
+  product with a known composition) and its comparison with the declared
+  values. Processing (drying, cooking) changes compositions and destroys
+  part of some vitamins: the result stays an estimate.
+
 ## Upgrade to Django 6.0, for background tasks
 
 The project is on Django 5.2 (`django<6.0` in `pyproject.toml`).
