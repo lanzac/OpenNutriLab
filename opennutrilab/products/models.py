@@ -5,6 +5,8 @@ Products, their ingredients, and the nutrient data behind them.
   with its unit. All amounts are per 100 g, in that unit.
 - Product and ProductNutrient: what a product's nutrition label declares.
 - Ingredient: a product's ingredient tree, as its label lists it.
+- IngredientTaxon: OpenFoodFacts' ingredient taxonomy, the source of the
+  normalized (English) names Ingredient.name holds.
 - Source, SourceFood and SourceFoodNutrient: composition data exactly as a
   food composition table publishes it (CIQUAL first), with its qualifiers
   and confidence grades.
@@ -12,6 +14,7 @@ Products, their ingredients, and the nutrient data behind them.
   number of source foods. Product ingredients link to it.
 """
 
+from collections.abc import Iterable
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import override
@@ -189,6 +192,8 @@ class Ingredient(models.Model):
         on_delete=models.CASCADE,
         related_name="sub_ingredients",
     )
+    # The normalized English name when the taxonomy has one (IngredientTaxon);
+    # otherwise what the label says, or what the user typed.
     name = models.CharField(max_length=255)
     percentage = models.DecimalField(
         null=True,
@@ -241,6 +246,56 @@ class Ingredient(models.Model):
     @override
     def __str__(self) -> str:
         return self.name
+
+
+class IngredientTaxon(models.Model):
+    """
+    An entry of OpenFoodFacts' ingredient taxonomy, e.g. `en:oat-flakes`.
+
+    What OFF returns as an ingredient's `text` is the wording of the label, in
+    the product's language. The taxonomy is where its normalized names are:
+    Ingredient.name is taken from here. Loaded by `manage.py
+    import_off_taxonomy`.
+
+    Ingredient.off_id is the key, and not a foreign key: it is raw OFF data
+    that does not always match a row here (none for an ingredient typed by
+    hand, an id OFF has renamed since, an ingredient the taxonomy does not
+    know), and a foreign key could not hold those.
+    """
+
+    off_id = models.CharField(max_length=255, unique=True)
+    # Blank when the taxonomy has no name in that language: an ingredient OFF
+    # does not know in English has an id prefixed by the label's language,
+    # e.g. `fr:oignon-et-ail-en-poudre`.
+    name_en = models.CharField(max_length=255, blank=True)
+    name_fr = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["off_id"]
+
+    @override
+    def __str__(self) -> str:
+        return f"{self.off_id} ({self.name_en or self.name_fr})"
+
+    @classmethod
+    def display_names(cls, off_ids: Iterable[str]) -> dict[str, str]:
+        """
+        Names to show instead of Ingredient.name, by OFF id.
+
+        Ingredient.name is the English one, so only French has anything to
+        replace it with: the taxonomy's French names while French is being
+        served (as Nutrient.name does), and nothing, without a query, in any
+        other language. An id the taxonomy does not know, or has no French
+        name for, is absent: its Ingredient.name is all there is.
+        """
+        ids = {off_id for off_id in off_ids if off_id}
+        if not ids or not (get_language() or "").startswith("fr"):
+            return {}
+        return dict(
+            cls.objects.filter(off_id__in=ids)
+            .exclude(name_fr="")
+            .values_list("off_id", "name_fr")
+        )
 
 
 class Source(models.Model):

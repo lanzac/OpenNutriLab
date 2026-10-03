@@ -23,6 +23,7 @@ from opennutrilab.products.api.schemas.inbound import IngredientInput
 from opennutrilab.products.api.schemas.inbound import ProductCreate
 from opennutrilab.products.forms import ProductForm
 from opennutrilab.products.models import Ingredient
+from opennutrilab.products.models import IngredientTaxon
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductNutrient
 from opennutrilab.products.models import ReferenceIngredient
@@ -669,3 +670,91 @@ def test_rows_from_db_rebuild_the_tree(django_assert_num_queries: Any):
         ("Lait", "lait")
     ]
     assert Ingredient.objects.filter(product=product).count() == 3  # noqa: PLR2004
+
+
+@pytest.fixture
+def taxonomy(db) -> None:
+    IngredientTaxon.objects.bulk_create(
+        [
+            IngredientTaxon(
+                off_id="en:oat-flakes", name_en="oat flakes", name_fr="flocons d'avoine"
+            ),
+            IngredientTaxon(off_id="en:date", name_en="date", name_fr="datte"),
+            # Known, but with no French name.
+            IngredientTaxon(off_id="en:soya", name_en="soya"),
+        ]
+    )
+
+
+def test_rows_from_inputs_show_the_french_name_while_french_is_served(
+    taxonomy, django_assert_num_queries: Any
+):
+    items = [
+        IngredientInput(name="oat flakes", off_id="en:oat-flakes"),
+        IngredientInput(
+            name="date",
+            off_id="en:date",
+            sub_ingredients=[IngredientInput(name="date", off_id="en:date")],
+        ),
+        IngredientInput(name="soya", off_id="en:soya"),
+        # Not in the taxonomy, or typed by hand: the name there is.
+        IngredientInput(name="Sel rose", off_id="fr:sel-rose"),
+        IngredientInput(name="Épices"),
+    ]
+
+    with translation.override("fr-fr"), django_assert_num_queries(1):
+        rows = ingredient_rows_from_inputs(items)
+
+    assert [r["name"] for r in rows] == [
+        "flocons d'avoine",
+        "datte",
+        "soya",
+        "Sel rose",
+        "Épices",
+    ]
+    assert [c["name"] for c in rows[1]["ingredients"]] == ["datte"]
+
+
+def test_rows_from_inputs_keep_the_english_name_in_other_languages(
+    taxonomy, django_assert_num_queries: Any
+):
+    items = [IngredientInput(name="oat flakes", off_id="en:oat-flakes")]
+
+    with translation.override("en-us"), django_assert_num_queries(0):
+        rows = ingredient_rows_from_inputs(items)
+
+    assert [r["name"] for r in rows] == ["oat flakes"]
+
+
+def test_rows_from_db_show_the_french_name_while_french_is_served(
+    taxonomy, django_assert_num_queries: Any
+):
+    product = create_product(
+        ProductCreate.model_validate(
+            {
+                "barcode": NUTELLA,
+                "name": "Muesli",
+                "ingredients": [
+                    {
+                        "name": "date",
+                        "off_id": "en:date",
+                        "sub_ingredients": [
+                            {"name": "oat flakes", "off_id": "en:oat-flakes"}
+                        ],
+                    },
+                    {"name": "Épices"},
+                ],
+            }
+        )
+    ).product
+
+    with translation.override("fr-fr"), django_assert_num_queries(2):
+        rows = ingredient_rows_from_db(product)
+    with translation.override("en-us"):
+        english_rows = ingredient_rows_from_db(product)
+
+    assert [r["name"] for r in rows] == ["datte", "Épices"]
+    assert [c["name"] for c in rows[0]["ingredients"]] == ["flocons d'avoine"]
+    assert [r["name"] for r in english_rows] == ["date", "Épices"]
+    # Only what is shown is translated: what is stored stays English.
+    assert Ingredient.objects.filter(product=product, name="date").exists()

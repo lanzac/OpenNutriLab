@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
+from django.core.management import call_command
 from requests import RequestException
 
 from opennutrilab.products.api.openfoodfacts.schemas import OFFIngredientSchema
@@ -21,6 +22,9 @@ from opennutrilab.products.models import Nutrient
 # A product recorded from OpenFoodFacts (API v2: the envelope differs from
 # the v3 one fetch_from_off reads, but the "product" object has the same shape).
 RECORDED_PRODUCT = Path(__file__).parent / "data" / "3229820794556.json"
+# Extract of OFF's ingredient taxonomy: the entries of that product, plus ones
+# with no English name.
+TAXONOMY_EXTRACT = Path(__file__).parent / "data" / "off_ingredients_taxonomy.json"
 
 
 def test_product_schema_parses_a_recorded_off_product():
@@ -440,7 +444,75 @@ def test_fetch_product_barcode_mismatch():
         fetch_from_off("999999")
 
 
-def test_to_ingredient_inputs_keeps_the_tree():
+@pytest.fixture
+def taxonomy(db) -> None:
+    call_command("import_off_taxonomy", path=TAXONOMY_EXTRACT)
+
+
+def test_ingredients_are_named_by_the_taxonomy_in_english(
+    taxonomy, django_assert_num_queries
+):
+    """
+    Ingredient names are the taxonomy's, not the label's French wording, and
+    the whole tree is resolved in one query.
+    """
+    with RECORDED_PRODUCT.open(encoding="utf-8") as f:
+        product = OFFProductSchema.model_validate(json.load(f)["product"])
+
+    with django_assert_num_queries(1):
+        inputs = to_ingredient_inputs(product.ingredients)
+
+    assert [i.name for i in inputs] == [
+        "soya",
+        "oat flakes",
+        "wheat flakes",
+        "raisin",
+        "date",
+        # The product was recorded before OFF renamed `en:red-fruits` to
+        # `en:red-fruit`: an id the taxonomy no longer has keeps the label.
+        "fruits rouges",
+        "buckwheat grain",
+    ]
+    dates = inputs[4]
+    assert [c.name for c in dates.sub_ingredients] == ["date", "rice flour"]
+    # The OFF id stays as given, whatever the name.
+    assert inputs[1].off_id == "en:oat-flakes"
+
+
+def test_an_ingredient_the_taxonomy_has_no_english_name_for_keeps_its_label(
+    taxonomy,
+):
+    ingredients = [
+        # In the taxonomy, but only named in French.
+        OFFIngredientSchema(
+            name="Oignon et ail en poudre", off_id="fr:oignon-et-ail-en-poudre"
+        ),
+        # Not in the taxonomy at all.
+        OFFIngredientSchema(name="Sel rose", off_id="fr:sel-rose"),
+        # No OFF id: a label the taxonomy cannot recognize.
+        OFFIngredientSchema(name="Épices"),
+    ]
+
+    inputs = to_ingredient_inputs(ingredients)
+
+    assert [i.name for i in inputs] == ["Oignon et ail en poudre", "Sel rose", "Épices"]
+
+
+def test_ingredients_keep_their_label_while_the_taxonomy_is_not_loaded(db):
+    inputs = to_ingredient_inputs(
+        [OFFIngredientSchema(name="Flocons d'avoine", off_id="en:oat-flakes")]
+    )
+
+    assert [i.name for i in inputs] == ["Flocons d'avoine"]
+
+
+def test_an_ingredient_with_no_label_is_named_by_the_taxonomy(taxonomy):
+    inputs = to_ingredient_inputs([OFFIngredientSchema(name="", off_id="en:date")])
+
+    assert [i.name for i in inputs] == ["date"]
+
+
+def test_to_ingredient_inputs_keeps_the_tree(db):
     ingredients = [
         OFFIngredientSchema(name="Sucre", percentage=56.3),
         OFFIngredientSchema(

@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from .models import Ingredient
+from .models import IngredientTaxon
 from .models import Nutrient
 from .models import NutrientComponent
 from .models import Product
@@ -89,6 +90,13 @@ class SourceFoodAdmin(admin.ModelAdmin[SourceFood]):
     list_filter = ("source",)
     search_fields = ("code", "name_fr", "name_en")
     inlines = (SourceFoodNutrientInline,)
+
+
+@admin.register(IngredientTaxon)
+class IngredientTaxonAdmin(admin.ModelAdmin[IngredientTaxon]):
+    # Loaded by `manage.py import_off_taxonomy`, which overwrites edits made here.
+    list_display = ("off_id", "name_en", "name_fr")
+    search_fields = ("off_id", "name_en", "name_fr")
 
 
 @admin.register(ReferenceIngredient)

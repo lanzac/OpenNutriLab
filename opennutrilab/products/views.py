@@ -28,6 +28,7 @@ from .forms import INGREDIENTS_JSON
 from .forms import ProductForm
 from .forms import nutrient_field
 from .models import Ingredient
+from .models import IngredientTaxon
 from .models import Nutrient
 from .models import Product
 from .services.product_services import plain_amount
@@ -312,10 +313,26 @@ def _ciqual_url(food_code: str, proxy_food_code: str) -> str | None:
     return CIQUAL_FOOD_URL.format(code=quote(code, safe="")) if code else None
 
 
+def _input_off_ids(items: list[IngredientInput]) -> set[str]:
+    ids: set[str] = set()
+    for item in items:
+        ids.add(item.off_id)
+        ids |= _input_off_ids(item.sub_ingredients)
+    return ids
+
+
 def ingredient_rows_from_inputs(items: list[IngredientInput]) -> list[dict[str, Any]]:
+    return _rows_from_inputs(
+        items, IngredientTaxon.display_names(_input_off_ids(items))
+    )
+
+
+def _rows_from_inputs(
+    items: list[IngredientInput], display_names: dict[str, str]
+) -> list[dict[str, Any]]:
     return [
         {
-            "name": item.name,
+            "name": display_names.get(item.off_id, item.name),
             "percentage": item.percentage,
             "ciqual": _ciqual_label(
                 item.off_ciqual_food_code, item.off_ciqual_proxy_food_code
@@ -324,22 +341,24 @@ def ingredient_rows_from_inputs(items: list[IngredientInput]) -> list[dict[str, 
                 item.off_ciqual_food_code, item.off_ciqual_proxy_food_code
             ),
             "reference": None,
-            "ingredients": ingredient_rows_from_inputs(item.sub_ingredients) or None,
+            "ingredients": _rows_from_inputs(item.sub_ingredients, display_names)
+            or None,
         }
         for item in items
     ]
 
 
 def ingredient_rows_from_db(product: Product) -> list[dict[str, Any]]:
-    """The stored ingredient tree, in one query."""
+    """The stored ingredient tree, in one query (two while French is served)."""
     ingredients = list(
         Ingredient.objects.filter(product=product)
         .select_related("reference")
         .order_by("id")
     )
+    display_names = IngredientTaxon.display_names(i.off_id for i in ingredients)
     rows: dict[int, dict[str, Any]] = {
         ingredient.id: {
-            "name": ingredient.name,
+            "name": display_names.get(ingredient.off_id, ingredient.name),
             "percentage": ingredient.percentage,
             "ciqual": _ciqual_label(
                 ingredient.off_ciqual_food_code,

@@ -87,6 +87,17 @@ Create the first account:
 just prod-manage createsuperuser
 ```
 
+Load OpenFoodFacts' ingredient taxonomy, which gives ingredients their
+normalized English names (it downloads about 3 MB, takes a few seconds, and can
+be run again at any time to refresh it):
+
+```sh
+just prod-manage import_off_taxonomy
+```
+
+Until it has run, ingredients fetched from OpenFoodFacts keep the wording of
+their label instead.
+
 Watch the first boot; Caddy logs the certificate it obtains:
 
 ```sh

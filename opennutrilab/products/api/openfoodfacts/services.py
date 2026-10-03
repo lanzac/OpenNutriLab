@@ -11,6 +11,7 @@ from opennutrilab.products.api.openfoodfacts.schemas import OFFProductAPIRespons
 from opennutrilab.products.api.openfoodfacts.schemas import OFFProductSchema
 from opennutrilab.products.api.openfoodfacts.schemas import StatusEnum
 from opennutrilab.products.api.schemas.inbound import IngredientInput
+from opennutrilab.products.models import IngredientTaxon
 from opennutrilab.products.models import Nutrient
 
 
@@ -117,19 +118,51 @@ def fetch_from_off(
     return product
 
 
+def _off_ids(ingredients: list[OFFIngredientSchema] | None) -> set[str]:
+    ids: set[str] = set()
+    for ingredient in ingredients or []:
+        if ingredient.off_id:
+            ids.add(ingredient.off_id[:255])
+        ids |= _off_ids(ingredient.ingredients)
+    return ids
+
+
 def to_ingredient_inputs(
     ingredients: list[OFFIngredientSchema] | None,
 ) -> list[IngredientInput]:
     """
     OpenFoodFacts' ingredient tree, as the services expect it.
 
+    An ingredient is named by the taxonomy's English name for its OFF id (see
+    IngredientTaxon), not by OFF's `text`, which is the label's wording in the
+    product's language. The label's wording is the fallback when the taxonomy
+    has no English name for it, or has not been loaded.
+
     OFF sometimes lists an ingredient with no text, or a percentage outside
     0-100 (an estimate gone wrong); the first is dropped and the second
     forgotten, rather than making the whole product unsavable.
     """
+    ids = _off_ids(ingredients)
+    english_names = (
+        dict(
+            IngredientTaxon.objects.filter(off_id__in=ids)
+            .exclude(name_en="")
+            .values_list("off_id", "name_en")
+        )
+        if ids
+        else {}
+    )
+    return _ingredient_inputs(ingredients, english_names)
+
+
+def _ingredient_inputs(
+    ingredients: list[OFFIngredientSchema] | None,
+    english_names: dict[str, str],
+) -> list[IngredientInput]:
     inputs: list[IngredientInput] = []
     for ingredient in ingredients or []:
-        name = ingredient.name.strip()
+        off_id = ingredient.off_id[:255]
+        name = english_names.get(off_id) or ingredient.name.strip()
         if not name:
             continue
         percentage = ingredient.percentage
@@ -139,12 +172,14 @@ def to_ingredient_inputs(
             IngredientInput(
                 name=name[:255],
                 percentage=None if percentage is None else Decimal(str(percentage)),
-                off_id=ingredient.off_id[:255],
+                off_id=off_id,
                 off_ciqual_food_code=(ingredient.ciqual_food_code or "")[:10],
                 off_ciqual_proxy_food_code=(ingredient.ciqual_proxy_food_code or "")[
                     :10
                 ],
-                sub_ingredients=to_ingredient_inputs(ingredient.ingredients),
+                sub_ingredients=_ingredient_inputs(
+                    ingredient.ingredients, english_names
+                ),
             )
         )
     return inputs

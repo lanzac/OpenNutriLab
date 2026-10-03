@@ -1,0 +1,145 @@
+{
+  "en:blackcurrant": {
+    "ciqual_food_code": {
+      "en": "13007"
+    },
+    "name": {
+      "de": "schwarze Johannisbeere",
+      "en": "blackcurrant",
+      "fi": "mustaherukka",
+      "fr": "cassis",
+      "it": "ribes nero"
+    }
+  },
+  "en:buckwheat-grain": {
+    "name": {
+      "en": "buckwheat grain",
+      "fr": "graines de sarrasin",
+      "it": "chicchi di grano saraceno"
+    }
+  },
+  "en:date": {
+    "ciqual_food_code": {
+      "en": "13011"
+    },
+    "name": {
+      "de": "Dattel",
+      "en": "date",
+      "fi": "taateli",
+      "fr": "datte",
+      "it": "dattero"
+    }
+  },
+  "en:grape": {
+    "ciqual_food_code": {
+      "en": "13112"
+    },
+    "name": {
+      "de": "Traube",
+      "en": "grape",
+      "fi": "viinirypäle",
+      "fr": "raisin",
+      "it": "uva"
+    }
+  },
+  "en:oat-flakes": {
+    "ciqual_food_code": {
+      "en": "9311"
+    },
+    "name": {
+      "de": "haferflocken",
+      "en": "oat flakes",
+      "fi": "kaurahiutale",
+      "fr": "flocons d'avoine",
+      "it": "fiocchi di avena"
+    }
+  },
+  "en:raisin": {
+    "ciqual_food_code": {
+      "en": "13046"
+    },
+    "name": {
+      "de": "Rosine",
+      "en": "raisin",
+      "fi": "rusina",
+      "fr": "raisin sec",
+      "it": "Uva passa"
+    }
+  },
+  "en:redcurrant": {
+    "ciqual_food_code": {
+      "en": "13019"
+    },
+    "name": {
+      "de": "rote Johannisbeere",
+      "en": "redcurrant",
+      "fi": "Punaherukka",
+      "fr": "groseille",
+      "it": "ribes rosso"
+    }
+  },
+  "en:rice-flour": {
+    "ciqual_food_code": {
+      "en": "9520"
+    },
+    "name": {
+      "de": "Reismehl",
+      "en": "rice flour",
+      "fi": "riisijauho",
+      "fr": "farine de riz",
+      "it": "farina di riso"
+    }
+  },
+  "en:soya": {
+    "name": {
+      "de": "Soja",
+      "en": "soya",
+      "fi": "soija",
+      "fr": "soja",
+      "it": "soia"
+    }
+  },
+  "en:strawberry": {
+    "ciqual_food_code": {
+      "en": "13014"
+    },
+    "name": {
+      "de": "Erdbeere",
+      "en": "strawberry",
+      "fi": "mansikka",
+      "fr": "fraise",
+      "it": "fragola"
+    }
+  },
+  "en:sunflower-oil": {
+    "ciqual_food_code": {
+      "en": "17440"
+    },
+    "name": {
+      "de": "Sonnenblumenöl",
+      "en": "sunflower oil",
+      "fi": "auringonkukkaöljy",
+      "fr": "huile de tournesol",
+      "it": "olio di girasole"
+    }
+  },
+  "en:wheat-flakes": {
+    "name": {
+      "de": "Weizenflocken",
+      "en": "wheat flakes",
+      "fi": "vehnähiutale",
+      "fr": "flocons de blé",
+      "it": "fiocchi di frumento"
+    }
+  },
+  "fi:rapsi-ja-auringonkukkaöljy": {
+    "name": {
+      "fi": "rapsi- ja auringonkukkaöljy"
+    }
+  },
+  "fr:oignon-et-ail-en-poudre": {
+    "name": {
+      "fr": "oignon et ail en poudre"
+    }
+  }
+}
