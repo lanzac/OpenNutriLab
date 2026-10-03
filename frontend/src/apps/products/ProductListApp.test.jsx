@@ -33,12 +33,13 @@ function stubFetchSuccess(products = [RICE]) {
 
 const CSRF_TOKEN = 'test-csrf-token';
 
-function renderList() {
+function renderList({ canDelete = true } = {}) {
   return render(
     <ProductListApp
       labels={labels}
       csrfToken={CSRF_TOKEN}
       languageCode="fr-fr"
+      canDelete={canDelete}
     />,
   );
 }
@@ -101,6 +102,17 @@ describe('ProductListApp', () => {
     const field = document.querySelector('[name="csrfmiddlewaretoken"]');
     expect(field).not.toBeNull();
     expect(field.value).toBe(CSRF_TOKEN);
+  });
+
+  it('offers no delete button to users who may not delete', async () => {
+    // Deleting is reserved to staff server-side; the list must not offer a
+    // button that can only end in a 403.
+    stubFetchSuccess();
+    renderList({ canDelete: false });
+
+    await waitFor(() => expect(screen.getByText('Rice')).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: /Supprimer/ })).toBeNull();
+    expect(screen.getByRole('link', { name: /Éditer/ })).toBeInTheDocument();
   });
 
   it('formats dates with the language Django is serving', async () => {

@@ -17,9 +17,10 @@ const productDeleteUrl = (barcode) => `/products/${barcode}/delete/`;
  * catalogue stays the single source of truth; `csrfToken`, which cannot come
  * from the cookie because CSRF_COOKIE_HTTPONLY hides it from JS; and
  * `languageCode`, so dates follow the language Django is serving rather than
- * the browser's own locale.
+ * the browser's own locale; and `canDelete`, true for staff only, who are
+ * the only ones the server lets delete (see ProductDeleteView).
  */
-export function ProductListApp({ labels, csrfToken, languageCode }) {
+export function ProductListApp({ labels, csrfToken, languageCode, canDelete }) {
   const [products, setProducts] = useState(null);
   const [error, setError] = useState(null);
 
@@ -82,29 +83,31 @@ export function ProductListApp({ labels, csrfToken, languageCode }) {
                 >
                   <i className="fa-regular fa-pen-to-square" /> {labels.edit}
                 </a>
-                <form
-                  method="post"
-                  action={productDeleteUrl(product.barcode)}
-                  className="d-inline"
-                  onSubmit={(event) => {
-                    const message = labels.confirmDelete.replace(
-                      '%(name)s',
-                      product.name,
-                    );
-                    if (!window.confirm(message)) {
-                      event.preventDefault();
-                    }
-                  }}
-                >
-                  <input
-                    type="hidden"
-                    name="csrfmiddlewaretoken"
-                    value={csrfToken}
-                  />
-                  <button type="submit" className="btn btn-danger">
-                    <i className="fa-regular fa-trash-can" /> {labels.delete}
-                  </button>
-                </form>
+                {canDelete && (
+                  <form
+                    method="post"
+                    action={productDeleteUrl(product.barcode)}
+                    className="d-inline"
+                    onSubmit={(event) => {
+                      const message = labels.confirmDelete.replace(
+                        '%(name)s',
+                        product.name,
+                      );
+                      if (!window.confirm(message)) {
+                        event.preventDefault();
+                      }
+                    }}
+                  >
+                    <input
+                      type="hidden"
+                      name="csrfmiddlewaretoken"
+                      value={csrfToken}
+                    />
+                    <button type="submit" className="btn btn-danger">
+                      <i className="fa-regular fa-trash-can" /> {labels.delete}
+                    </button>
+                  </form>
+                )}
               </div>
             </td>
           </tr>

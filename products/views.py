@@ -2,6 +2,8 @@ import logging
 from typing import Any
 
 from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import UserPassesTestMixin
 from django.http import HttpRequest
 from django.middleware.csrf import get_token
 from django.urls import reverse_lazy
@@ -28,7 +30,7 @@ from .services.product_services import references_by_lowercase_name
 logger = logging.getLogger(__name__)
 
 
-class ProductListView(ListView):
+class ProductListView(LoginRequiredMixin, ListView):
     model = Product
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
@@ -53,6 +55,9 @@ class ProductListView(ListView):
         context["product_list_props"] = {
             "csrfToken": get_token(self.request),
             "languageCode": get_language(),
+            # Only staff may delete (see ProductDeleteView); the list hides
+            # the button from everyone else.
+            "canDelete": self.request.user.is_staff,
             "labels": {
                 "productName": _("Product name"),
                 "createdAt": _("Created at"),
@@ -88,7 +93,7 @@ class ProductFormViewMixin:
         return context
 
 
-class ProductCreateView(ProductFormViewMixin, CreateView):
+class ProductCreateView(LoginRequiredMixin, ProductFormViewMixin, CreateView):
     model = Product
     form_class = ProductForm
     success_url = reverse_lazy("list_products")
@@ -109,7 +114,7 @@ class ProductCreateView(ProductFormViewMixin, CreateView):
         return ProductForm(data=data, files=files, initial=initial, **kwargs)
 
 
-class ProductEditView(ProductFormViewMixin, UpdateView):
+class ProductEditView(LoginRequiredMixin, ProductFormViewMixin, UpdateView):
     model = Product
     form_class = ProductForm
     success_url = reverse_lazy("list_products")
@@ -132,9 +137,16 @@ class ProductEditView(ProductFormViewMixin, UpdateView):
         return ProductForm(data=data, files=files, initial=initial, **kwargs)
 
 
-class ProductDeleteView(DeleteView):
+class ProductDeleteView(UserPassesTestMixin, DeleteView):
     model = Product
     success_url = reverse_lazy("list_products")
+
+    def test_func(self) -> bool:
+        # The catalogue is shared by every user, so removing a product is
+        # reserved to staff. Anonymous visitors are sent to the login page,
+        # other signed-in users get a 403.
+        return self.request.user.is_staff
+
     # The product list POSTs here after its own confirm() prompt. A GET would
     # render a confirmation template that does not exist, so refuse it.
     http_method_names = ["post"]

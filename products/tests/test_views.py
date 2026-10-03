@@ -15,6 +15,8 @@ from django.urls import reverse
 from django.utils import translation
 from PIL import Image
 
+from opennutrilab.users.models import User
+from opennutrilab.users.tests.factories import UserFactory
 from products.api.openfoodfacts.schemas import OFFIngredientSchema
 from products.api.openfoodfacts.schemas import OFFMacronutrientsSchema
 from products.api.openfoodfacts.schemas import OFFProductSchema
@@ -73,6 +75,12 @@ def png_upload(name: str = "mine.png") -> SimpleUploadedFile:
     buffer = io.BytesIO()
     Image.new("RGB", (2, 2), "red").save(buffer, format="PNG")
     return SimpleUploadedFile(name, buffer.getvalue(), content_type="image/png")
+
+
+@pytest.fixture(autouse=True)
+def _signed_in(client: Client, user: User) -> None:
+    """Every product page needs a signed-in user; tests opt out explicitly."""
+    client.force_login(user)
 
 
 def ok_image_response() -> MagicMock:
@@ -439,7 +447,42 @@ class TestProductEditView:
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("url_name", ["list_products", "create_product"])
+def test_product_pages_send_anonymous_visitors_to_sign_in(url_name: str):
+    url = reverse(url_name)
+
+    response: HttpResponse = Client().get(url)
+
+    assert response.status_code == HTTPStatus.FOUND
+    assert response["Location"] == f"{reverse('account_login')}?next={url}"
+
+
+@pytest.mark.django_db
+def test_the_list_offers_delete_to_staff_only(client: Client):
+    url = reverse("list_products")
+    assert client.get(url).context["product_list_props"]["canDelete"] is False
+
+    client.force_login(UserFactory(is_staff=True))
+    assert client.get(url).context["product_list_props"]["canDelete"] is True
+
+
+@pytest.mark.django_db
 class TestProductDeleteView:
+    @pytest.fixture(autouse=True)
+    def _staff(self, client: Client) -> None:
+        client.force_login(UserFactory(is_staff=True))
+
+    def test_signed_in_non_staff_cannot_delete(self, user: User):
+        """The catalogue is shared by every user."""
+        product = Product.objects.create(barcode=NUTELLA, name="N", energy_kj=1)
+        client = Client()
+        client.force_login(user)
+
+        response: HttpResponse = client.post(reverse("delete_product", args=[NUTELLA]))
+
+        assert response.status_code == HTTPStatus.FORBIDDEN
+        assert Product.objects.filter(pk=product.pk).exists()
+
     def test_get_is_not_allowed(self, client: Client):
         """
         Deleting is a POST from the product list, which asks for confirmation
