@@ -137,6 +137,12 @@ msgid ""
 "the limit."
 msgstr "Vide quand la source ne l'a pas mesuré. Sous le seuil de détection, c'est ce seuil."
 
+msgid "The lowest value the source's data gives, when it says."
+msgstr "La plus petite valeur que donnent les données de la source, quand elle l'indique."
+
+msgid "The highest value the source's data gives, when it says."
+msgstr "La plus grande valeur que donnent les données de la source, quand elle l'indique."
+
 msgid "The source's own grade, e.g. CIQUAL's A (best) to D."
 msgstr "L'indice propre à la source, par exemple de A (meilleur) à D pour CIQUAL."
 

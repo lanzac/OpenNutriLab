@@ -82,7 +82,7 @@ class SourceFoodNutrientInline(admin.TabularInline[SourceFoodNutrient]):
 @admin.register(SourceFood)
 class SourceFoodAdmin(admin.ModelAdmin[SourceFood]):
     list_display = ("code", "name_fr", "name_en", "source", "food_group")
-    list_filter = ("source",)
+    list_filter = ("source", "food_group", "food_subgroup")
     search_fields = ("code", "name_fr", "name_en")
     inlines = (SourceFoodNutrientInline,)
 

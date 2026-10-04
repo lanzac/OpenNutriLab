@@ -325,6 +325,7 @@ class SourceFood(models.Model):
     name_fr = models.CharField(max_length=255, blank=True)
     name_en = models.CharField(max_length=255, blank=True)
     food_group = models.CharField(max_length=255, blank=True)
+    food_subgroup = models.CharField(max_length=255, blank=True)
 
     if TYPE_CHECKING:
         nutrients: RelatedManager["SourceFoodNutrient"]
@@ -353,9 +354,11 @@ class SourceFoodNutrient(models.Model):
         SourceFood, on_delete=models.CASCADE, related_name="nutrients"
     )
     nutrient = models.ForeignKey(Nutrient, on_delete=models.PROTECT, related_name="+")
+    # Per 100 g, in the nutrient's unit, with the digits the source gives (CIQUAL
+    # has up to six decimals).
     amount = models.DecimalField(
-        max_digits=12,
-        decimal_places=4,
+        max_digits=14,
+        decimal_places=6,
         null=True,
         blank=True,
         validators=[MinValueValidator(0, message=_("Amount cannot be negative"))],
@@ -363,6 +366,23 @@ class SourceFoodNutrient(models.Model):
             "Empty when the source did not measure it. Below the detection "
             "limit, this is the limit."
         ),
+    )
+    # The range the source's own data spans, when it gives one.
+    minimum = models.DecimalField(
+        max_digits=14,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0, message=_("Amount cannot be negative"))],
+        help_text=_("The lowest value the source's data gives, when it says."),
+    )
+    maximum = models.DecimalField(
+        max_digits=14,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0, message=_("Amount cannot be negative"))],
+        help_text=_("The highest value the source's data gives, when it says."),
     )
     qualifier = models.CharField(
         max_length=10, choices=Qualifier.choices, default=Qualifier.EXACT

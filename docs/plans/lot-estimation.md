@@ -1,7 +1,7 @@
 # Plan: nutrient estimation batch
 
-Status: step 1 (ingredient identity) is done, 2026-10-04; the rest is planned,
-not started (written 2026-10-03, after lot 2 merged; revised 2026-10-04: how
+Status: steps 1 (ingredient identity) and 2 (CIQUAL import) are done,
+2026-10-04; the rest is planned, not started (written 2026-10-03, after lot 2 merged; revised 2026-10-04: how
 an ingredient is linked to its reference changed, see the ground rules,
 decisions 8-11 and step 1).
 Goal and constraints are in `docs/roadmap.md` ("Estimate a product's
@@ -200,7 +200,19 @@ written.
      reference per distinct name.
    - Do this on a clean tree: it touches files that still carry uncommitted
      work (the label percentages), and the two should be separate commits.
-2. **CIQUAL import**: `manage.py import_ciqual <path>`.
+2. **CIQUAL import** (done): `manage.py import_ciqual [--path DIR]`.
+   - Done as planned, with these differences. The file is CIQUAL 2025, read
+     from a directory of the four XML files, or downloaded to a temporary one
+     (about 70 MB, several minutes), never committed. The values keep up to six
+     decimals, and a value's minimum and maximum are stored when the source
+     gives them (19 % of the numbers). A food has a sub-group as well as a
+     group. 72 of the 74 constituents are nutrients (`off_key` left empty on
+     the new ones, since the OFF import reads every nutrient that has one):
+     the two in kcal repeat the kJ ones. The exclusions are the groups 00 and
+     01, the sub-group 1001 and 16 single foods: 501 left out, 2,983
+     imported, 214,776 values, in under 30 seconds. The code is in
+     `services/ciqual_import.py` and `services/ciqual_constituents.py`.
+   - What follows is the plan as written.
    - Leave out prepared dishes and prepared products (decision 11).
    - Create or update the `Source` with its attribution text and version.
    - Upsert `SourceFood` on (source, code), and `SourceFoodNutrient`.

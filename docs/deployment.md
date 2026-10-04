@@ -98,6 +98,21 @@ just prod-manage import_off_taxonomy
 Until it has run, ingredients fetched from OpenFoodFacts keep the wording of
 their label instead.
 
+Load ANSES' CIQUAL food composition table, the reference data nutrient
+estimates are built on (licence Etalab 2.0: the attribution it stores must be
+shown wherever its data is). It downloads about 70 MB, which takes several
+minutes, then writes about 215,000 values in under a minute. Prepared dishes,
+sauces and stocks are left out. It can be run again at any time, and adds
+nothing twice:
+
+```sh
+just prod-manage import_ciqual
+```
+
+To avoid the download, give it a directory that holds the four XML files of a
+release (`alim`, `alim_grp`, `compo` and `const`, each named with its date,
+from https://doi.org/10.57745/RDMHWY) with `--path`.
+
 Watch the first boot; Caddy logs the certificate it obtains:
 
 ```sh

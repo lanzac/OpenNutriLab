@@ -8,15 +8,13 @@ once it is done.
 The core feature: deduce a product's vitamins (and minerals, fatty acids...)
 from its ingredients, each linked to a reference ingredient whose
 composition is known, and check the result against the values the label
-declares. The data model is in place (`opennutrilab/products/models.py`);
-none of the following is built yet.
+declares. The data model is in place (`opennutrilab/products/models.py`), the
+CIQUAL table is imported and an ingredient is linked to its reference; the
+rest of the following is not built yet.
 
-- **Reference data.** Import the CIQUAL table (ANSES, open licence: its
-  attribution must be shown) as a `Source` with its `SourceFood` entries.
-  Its values must keep their meaning: "-" is _not measured_ (empty, never
-  0), "< x" is below the detection limit, "traces" is traces, and each value
-  has a confidence grade A to D. Prepared dishes are left out: they are not
-  ingredients. Other sources will follow.
+- **Reference data.** The CIQUAL 2025 table is imported (`manage.py
+import_ciqual`). Other sources will follow, each with its own importer and
+  the attribution its licence requires.
 - **Reference ingredients.** Curated (`ReferenceIngredient`, e.g. "carotte
   crue"), each drawing on several source foods. The rule that aggregates
   their values into one composition - weighting by confidence, for
