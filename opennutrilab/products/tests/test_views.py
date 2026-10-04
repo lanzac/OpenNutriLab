@@ -1,5 +1,6 @@
 import io
 import json
+from decimal import Decimal
 from http import HTTPStatus
 from typing import TYPE_CHECKING
 from typing import Any
@@ -27,6 +28,8 @@ from opennutrilab.products.models import IngredientTaxon
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductNutrient
 from opennutrilab.products.models import ReferenceIngredient
+from opennutrilab.products.models import Source
+from opennutrilab.products.models import SourceFood
 from opennutrilab.products.services.product_services import create_product
 from opennutrilab.products.views import ingredient_rows_from_db
 from opennutrilab.products.views import ingredient_rows_from_inputs
@@ -302,9 +305,10 @@ class TestProductCreateView:
         mock_fetch_from_off.assert_not_called()
         product = Product.objects.get(pk=NUTELLA)
         assert product.name == "Nutella"
-        assert list(
-            product.ingredients.filter(parent=None).values_list("name", flat=True)
-        ) == ["Sucre", "Lait"]
+        assert [str(i) for i in product.ingredients.filter(parent=None)] == [
+            "Sucre",
+            "Lait",
+        ]
         assert mock_get.call_args.args == (IMAGE_URL,)
         assert product.image.name == f"images/products/{NUTELLA}.jpg"
 
@@ -429,9 +433,10 @@ class TestProductEditView:
 
         product.refresh_from_db()
         assert product.name == "Nutella"
-        assert list(
-            product.ingredients.filter(parent=None).values_list("name", flat=True)
-        ) == ["Sucre", "Lait"]
+        assert [str(i) for i in product.ingredients.filter(parent=None)] == [
+            "Sucre",
+            "Lait",
+        ]
         assert not product.image
         notices = [str(m) for m in response.context["messages"]]
         assert any("could not be downloaded" in n for n in notices), notices
@@ -584,20 +589,38 @@ def test_inconsistent_values_are_saved_and_reported(client: Client):
     assert any("exceed" in n for n in notices), notices
 
 
+CIQUAL_SHEET = "https://ciqual.anses.fr/#/aliments/{}"
+
+
+@pytest.fixture
+def ciqual(db: None) -> Source:
+    return Source.objects.create(code="ciqual-2020", name="CIQUAL", version="2020")
+
+
+def reference_with_foods(name: str, source: Source, *codes: str) -> ReferenceIngredient:
+    reference = ReferenceIngredient.objects.create(name_en=name)
+    reference.source_foods.add(
+        *(SourceFood.objects.create(source=source, code=code) for code in codes)
+    )
+    return reference
+
+
 @pytest.mark.django_db
 def test_rows_from_inputs_show_off_ciqual_codes_marking_proxies():
+    """Nothing is curated yet for these, so OFF's own codes are what there is."""
     items = [
         IngredientInput(name="Flocons d'avoine", off_ciqual_food_code="9311"),
         IngredientInput(name="Flocons de blé", off_ciqual_proxy_food_code="9410"),
         IngredientInput(name="Soja"),
     ]
 
-    rows = ingredient_rows_from_inputs(items)
+    with translation.override("en-us"):
+        rows = ingredient_rows_from_inputs(items)
 
     assert [(r["name"], r["ciqual"], r["reference"]) for r in rows] == [
-        ("Flocons d'avoine", "9311", None),
-        ("Flocons de blé", "9410 (proxy)", None),
-        ("Soja", "", None),
+        ("Flocons d'avoine", "9311", "New"),
+        ("Flocons de blé", "9410 (proxy)", "New"),
+        ("Soja", "", "New"),
     ]
 
 
@@ -621,55 +644,85 @@ def test_rows_link_ciqual_codes_to_the_ciqual_site():
 
 
 @pytest.mark.django_db
-def test_rows_from_db_link_ciqual_codes():
+def test_rows_from_inputs_show_an_existing_reference_as_it_is(ciqual: Source):
+    """Its own name, status and CIQUAL foods, not what OpenFoodFacts said."""
+    oats = reference_with_foods("oat flakes", ciqual, "9311")
+    oats.status = ReferenceIngredient.Status.CURATED
+    oats.save()
+    items = [IngredientInput(name="Oat Flakes", off_ciqual_food_code="0000")]
+
+    with translation.override("en-us"):
+        rows = ingredient_rows_from_inputs(items)
+
+    assert [
+        (r["name"], r["ciqual"], r["ciqual_url"], r["reference"]) for r in rows
+    ] == [("oat flakes", "9311", CIQUAL_SHEET.format("9311"), "Curated")]
+
+
+@pytest.mark.django_db
+def test_rows_from_db_show_the_references_ciqual_codes(ciqual: Source):
+    sugar = reference_with_foods("sugar", ciqual, "31016")
+    milk = reference_with_foods("milk", ciqual, "19054", "19051")
+    flavour = ReferenceIngredient.objects.create(name_en="flavour")
+    # A food of another source is not a CIQUAL code.
+    other = Source.objects.create(code="manual", name="Saisie manuelle")
+    flavour.source_foods.add(SourceFood.objects.create(source=other, code="1"))
     product = create_product(
         ProductCreate.model_validate(
             {
                 "barcode": NUTELLA,
                 "name": "Nutella",
                 "ingredients": [
-                    {"name": "Sucre", "off_ciqual_food_code": "31016"},
-                    {"name": "Lait", "off_ciqual_proxy_food_code": "19051"},
-                    {"name": "Arôme"},
+                    {"name": "sugar"},
+                    {"name": "milk"},
+                    {"name": "flavour"},
                 ],
             }
         )
     ).product
+    assert {i.reference for i in product.ingredients.all()} == {sugar, milk, flavour}
 
     rows = ingredient_rows_from_db(product)
 
-    assert [(r["name"], r["ciqual_url"]) for r in rows] == [
-        ("Sucre", "https://ciqual.anses.fr/#/aliments/31016"),
-        ("Lait", "https://ciqual.anses.fr/#/aliments/19051"),
-        ("Arôme", None),
+    # Several codes: shown, but no single sheet to link.
+    assert [(r["name"], r["ciqual"], r["ciqual_url"]) for r in rows] == [
+        ("sugar", "31016", CIQUAL_SHEET.format("31016")),
+        ("milk", "19051, 19054", None),
+        ("flavour", "", None),
     ]
 
 
 @pytest.mark.django_db
-def test_rows_from_db_rebuild_the_tree(django_assert_num_queries: Any):
+def test_rows_from_db_rebuild_the_tree(
+    ciqual: Source, django_assert_max_num_queries: Any
+):
+    milk = reference_with_foods("milk", ciqual, "19054")
+    milk.status = ReferenceIngredient.Status.CURATED
+    milk.save()
     product = create_product(
         ProductCreate.model_validate(
             {
                 "barcode": NUTELLA,
                 "name": "Nutella",
                 "ingredients": [
-                    {"name": "Sucre", "percentage": "56.3"},
-                    {"name": "Lait en poudre", "sub_ingredients": [{"name": "Lait"}]},
+                    {"name": "Sugar", "percentage": "56.3"},
+                    {"name": "Milk powder", "sub_ingredients": [{"name": "milk"}]},
                 ],
             }
         )
     ).product
-    milk = ReferenceIngredient.objects.create(name_fr="lait")
-    product.ingredients.filter(name="Lait").update(reference=milk)
 
-    with django_assert_num_queries(1):
+    with translation.override("en-us"), django_assert_max_num_queries(3):
         rows = ingredient_rows_from_db(product)
 
-    assert [r["name"] for r in rows] == ["Sucre", "Lait en poudre"]
+    assert [r["name"] for r in rows] == ["Sugar", "Milk powder"]
+    assert [r["percentage"] for r in rows] == [Decimal("56.30"), None]
     assert rows[0]["ingredients"] is None
     assert [(c["name"], c["reference"]) for c in rows[1]["ingredients"]] == [
-        ("Lait", "lait")
+        ("milk", "Curated")
     ]
+    # A reference created for a name nobody had is still to review.
+    assert [r["reference"] for r in rows] == ["To review", "To review"]
     assert Ingredient.objects.filter(product=product).count() == 3  # noqa: PLR2004
 
 
@@ -690,6 +743,7 @@ def taxonomy(db) -> None:
 def test_rows_from_inputs_show_the_french_name_while_french_is_served(
     taxonomy, django_assert_num_queries: Any
 ):
+    """For ingredients no reference has the name of yet."""
     items = [
         IngredientInput(name="oat flakes", off_id="en:oat-flakes"),
         IngredientInput(
@@ -703,7 +757,8 @@ def test_rows_from_inputs_show_the_french_name_while_french_is_served(
         IngredientInput(name="Épices"),
     ]
 
-    with translation.override("fr-fr"), django_assert_num_queries(1):
+    # One query to look the references up, one for the French names.
+    with translation.override("fr-fr"), django_assert_num_queries(2):
         rows = ingredient_rows_from_inputs(items)
 
     assert [r["name"] for r in rows] == [
@@ -721,15 +776,16 @@ def test_rows_from_inputs_keep_the_english_name_in_other_languages(
 ):
     items = [IngredientInput(name="oat flakes", off_id="en:oat-flakes")]
 
-    with translation.override("en-us"), django_assert_num_queries(0):
+    with translation.override("en-us"), django_assert_num_queries(1):
         rows = ingredient_rows_from_inputs(items)
 
     assert [r["name"] for r in rows] == ["oat flakes"]
 
 
-def test_rows_from_db_show_the_french_name_while_french_is_served(
-    taxonomy, django_assert_num_queries: Any
+def test_rows_from_db_show_the_name_in_the_language_served(
+    taxonomy, django_assert_max_num_queries: Any
 ):
+    """The French name was taken from the taxonomy when the reference was created."""
     product = create_product(
         ProductCreate.model_validate(
             {
@@ -749,7 +805,7 @@ def test_rows_from_db_show_the_french_name_while_french_is_served(
         )
     ).product
 
-    with translation.override("fr-fr"), django_assert_num_queries(2):
+    with translation.override("fr-fr"), django_assert_max_num_queries(3):
         rows = ingredient_rows_from_db(product)
     with translation.override("en-us"):
         english_rows = ingredient_rows_from_db(product)
@@ -757,5 +813,4 @@ def test_rows_from_db_show_the_french_name_while_french_is_served(
     assert [r["name"] for r in rows] == ["datte", "Épices"]
     assert [c["name"] for c in rows[0]["ingredients"]] == ["flocons d'avoine"]
     assert [r["name"] for r in english_rows] == ["date", "Épices"]
-    # Only what is shown is translated: what is stored stays English.
-    assert Ingredient.objects.filter(product=product, name="date").exists()
+    assert ReferenceIngredient.objects.get(name_en="date").name_fr == "datte"

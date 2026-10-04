@@ -33,6 +33,9 @@ from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductNutrient
+from opennutrilab.products.models import ReferenceIngredient
+from opennutrilab.products.services.reference_services import name_key
+from opennutrilab.products.services.reference_services import resolve_references
 
 logger = logging.getLogger(__name__)
 
@@ -156,47 +159,33 @@ def _replace_ingredients(product: Product, items: list[IngredientInput]) -> None
     """
     Replace the product's ingredient tree with `items`.
 
-    Links to reference ingredients are set by hand, so they are carried over
-    to the new tree for any ingredient that is still there (same OFF id, or
-    same name when there is none): reloading a product from OpenFoodFacts must
-    not undo that curation.
+    Each ingredient is the reference ingredient that has its name, created
+    when none has (see reference_services). Nothing of the old tree needs
+    carrying over: the name finds the same reference again.
     """
-    links = {
-        _link_key(i.off_id, i.name): i.reference_id
-        for i in product.ingredients.exclude(reference=None)
-    }
+    references = resolve_references(items)
     product.ingredients.all().delete()
-    _create_ingredients(product, items, parent=None, links=links)
-
-
-def _link_key(off_id: str, name: str) -> str:
-    return off_id or name.strip().lower()
+    _create_ingredients(product, items, parent=None, references=references)
 
 
 def _create_ingredients(
     product: Product,
     items: list[IngredientInput],
     parent: Ingredient | None,
-    links: dict[str, int | None],
+    references: dict[str, ReferenceIngredient],
 ) -> None:
     for item in items:
-        name = item.name.strip()
-        # update_or_create rather than create: OpenFoodFacts sometimes lists
-        # the same ingredient twice under one parent, which the unique
-        # constraints on Ingredient would reject. The last occurrence wins.
+        # update_or_create rather than create: an ingredient can be listed
+        # twice under one parent (OpenFoodFacts sometimes does), which the
+        # unique constraints on Ingredient would reject. The last occurrence
+        # wins.
         ingredient, _created = Ingredient.objects.update_or_create(
             product=product,
             parent=parent,
-            name=name,
-            defaults={
-                "percentage": item.percentage,
-                "off_id": item.off_id,
-                "off_ciqual_food_code": item.off_ciqual_food_code,
-                "off_ciqual_proxy_food_code": item.off_ciqual_proxy_food_code,
-                "reference_id": links.get(_link_key(item.off_id, name)),
-            },
+            reference=references[name_key(item.name)],
+            defaults={"percentage": item.percentage},
         )
-        _create_ingredients(product, item.sub_ingredients, ingredient, links)
+        _create_ingredients(product, item.sub_ingredients, ingredient, references)
 
 
 # -------------------------

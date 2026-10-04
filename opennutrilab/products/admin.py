@@ -49,21 +49,16 @@ class ProductAdmin(admin.ModelAdmin[Product]):
 
 @admin.register(Ingredient)
 class IngredientAdmin(admin.ModelAdmin[Ingredient]):
-    list_display = (
-        "indented_name",
-        "product",
-        "percentage",
-        "off_ciqual_food_code",
-        "reference",
-    )
+    list_display = ("indented_name", "product", "percentage")
     list_filter = ("product",)
+    list_select_related = ("product", "reference")
     autocomplete_fields = ("reference",)
     ordering = ("id",)
 
     @admin.display(description="Ingredient (hierarchical)")
     def indented_name(self, obj: Ingredient) -> str:
         indent = "— " * self.get_level(obj)
-        return f"{indent}{obj.name}"
+        return f"{indent}{obj.reference}"
 
     def get_level(self, obj: Ingredient) -> int:
         level = 0
@@ -101,6 +96,7 @@ class IngredientTaxonAdmin(admin.ModelAdmin[IngredientTaxon]):
 
 @admin.register(ReferenceIngredient)
 class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
-    list_display = ("name_fr", "name_en")
+    list_display = ("name_en", "name_fr", "status")
+    list_filter = ("status",)
     search_fields = ("name_fr", "name_en")
     autocomplete_fields = ("source_foods",)

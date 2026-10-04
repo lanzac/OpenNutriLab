@@ -24,10 +24,11 @@ none of the following is built yet.
 - **Linking ingredients.** An ingredient is its reference ingredient:
   `Ingredient` keeps no name and no OpenFoodFacts data, only the link, found
   by the ingredient's normalized name among the references' own (unique)
-  names. A name that matches nothing creates a reference marked _to review_,
-  seeded with OFF's CIQUAL code when that code is a known food. OFF's codes
-  are suggestions, never trusted. Nothing of this is built yet; the plan is
-  in `docs/plans/lot-estimation.md`.
+  names, and a name that matches nothing creates a reference marked _to
+  review_. That is built. What is missing: the CIQUAL import, so that a
+  created reference can be seeded with OFF's CIQUAL code when it is a known
+  food (OFF's codes are suggestions, never trusted), and the tools to curate
+  the references to review. The plan is in `docs/plans/lot-estimation.md`.
 - **Undeclared percentages.** Most ingredients have no percentage on the
   label. Estimate them in-house - not from OpenFoodFacts' own estimates -
   for instance from the label order (decreasing weight), the declared

@@ -1,8 +1,9 @@
 # Plan: nutrient estimation batch
 
-Status: planned, not started (written 2026-10-03, after lot 2 merged;
-revised 2026-10-04: how an ingredient is linked to its reference changed, see
-the ground rules, decisions 8-11 and step 1).
+Status: step 1 (ingredient identity) is done, 2026-10-04; the rest is planned,
+not started (written 2026-10-03, after lot 2 merged; revised 2026-10-04: how
+an ingredient is linked to its reference changed, see the ground rules,
+decisions 8-11 and step 1).
 Goal and constraints are in `docs/roadmap.md` ("Estimate a product's
 nutrients from its ingredients"); this file is the execution plan.
 
@@ -113,7 +114,9 @@ written.
 
 8. **Lookup key and normalization of the name.** Which name is searched in
    the references, and who produces it? _Recommendation:_ search
-   `name_en` and `name_fr`, case and accent insensitive. For now the
+   `name_en` and `name_fr`, whatever the case (accents are not folded: that
+   needs a Postgres extension or stored keys, to add if names typed by hand
+   show the need). For now the
    normalized name is OFF's taxonomy name (`IngredientTaxon`), behind one
    function (`normalized_name(item)`). The user is considering doing the
    normalization in-house later: that stays possible without touching the
@@ -143,7 +146,19 @@ written.
 
 ## Steps (one commit or more each, tests with each)
 
-1. **Ingredient identity**: an ingredient is its reference.
+1. **Ingredient identity** (done): an ingredient is its reference.
+   - Done as planned, with these differences. The lookup is
+     `find_references` and the creation `resolve_references`, both in
+     batches, in `services/reference_services.py`. The table on the product
+     page has a column for the reference's status in place of the reference's
+     name, and its CIQUAL column shows the codes of the reference's CIQUAL
+     source foods, or OFF's own code for a row not saved yet. Until CIQUAL
+     is imported (step 2), a saved ingredient shows no CIQUAL code: OFF's
+     code is only in the reference's `description`. Migrations 0004 and 0005
+     convert existing ingredients: one reference per distinct name, French
+     name from the taxonomy, and a second ingredient that lands on the same
+     reference under one parent is dropped.
+   - What follows is the plan as written.
    - `Ingredient` loses `name`, `off_id`, `off_ciqual_food_code` and
      `off_ciqual_proxy_food_code`. `reference` becomes required, with
      `PROTECT` (a reference in use cannot be deleted). The unique

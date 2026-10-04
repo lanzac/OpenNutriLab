@@ -1,4 +1,5 @@
 import logging
+from decimal import Decimal
 from typing import Any
 from typing import cast
 from urllib.parse import quote
@@ -6,6 +7,7 @@ from urllib.parse import quote
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.mixins import UserPassesTestMixin
+from django.db.models import prefetch_related_objects
 from django.http import HttpRequest
 from django.http import HttpResponseRedirect
 from django.middleware.csrf import get_token
@@ -31,7 +33,12 @@ from .models import Ingredient
 from .models import IngredientTaxon
 from .models import Nutrient
 from .models import Product
+from .models import ReferenceIngredient
 from .services.product_services import plain_amount
+from .services.reference_services import CIQUAL_SOURCE_PREFIX
+from .services.reference_services import find_references
+from .services.reference_services import name_key
+from .services.reference_services import walk_ingredients
 
 logger = logging.getLogger(__name__)
 
@@ -188,8 +195,8 @@ def product_form_config() -> dict[str, Any]:
         "ingredientsTable": {
             "name": _("Name"),
             "percentage": _("Percentage"),
-            "ciqual": _("CIQUAL code (OpenFoodFacts)"),
-            "reference": _("Reference ingredient"),
+            "ciqual": _("CIQUAL code"),
+            "reference": _("Reference status"),
         },
         "nutrientChart": {
             # One slice per declared mass nutrient, straight from the
@@ -313,64 +320,109 @@ def _ciqual_url(food_code: str, proxy_food_code: str) -> str | None:
     return CIQUAL_FOOD_URL.format(code=quote(code, safe="")) if code else None
 
 
-def _input_off_ids(items: list[IngredientInput]) -> set[str]:
-    ids: set[str] = set()
-    for item in items:
-        ids.add(item.off_id)
-        ids |= _input_off_ids(item.sub_ingredients)
-    return ids
+def _reference_ciqual(reference: ReferenceIngredient) -> tuple[str, str | None]:
+    """
+    The CIQUAL codes of the foods a reference draws on, and where to check them.
+
+    The sheet is linked only when there is one code: with several, a single
+    link would pass for the others. Needs source_foods__source prefetched.
+    """
+    codes = sorted(
+        food.code
+        for food in reference.source_foods.all()
+        if food.source.code.startswith(CIQUAL_SOURCE_PREFIX)
+    )
+    url = _ciqual_url(codes[0], "") if len(codes) == 1 else None
+    return ", ".join(codes), url
+
+
+def _row(
+    name: str,
+    percentage: Decimal | None,
+    ciqual: tuple[str, str | None],
+    status: str,
+) -> dict[str, Any]:
+    return {
+        "name": name,
+        "percentage": percentage,
+        "ciqual": ciqual[0],
+        "ciqual_url": ciqual[1],
+        "reference": status,
+        "ingredients": None,
+    }
+
+
+def _status_label(reference: ReferenceIngredient) -> str:
+    return str(ReferenceIngredient.Status(reference.status).label)
 
 
 def ingredient_rows_from_inputs(items: list[IngredientInput]) -> list[dict[str, Any]]:
-    return _rows_from_inputs(
-        items, IngredientTaxon.display_names(_input_off_ids(items))
-    )
+    """
+    Rows for an OpenFoodFacts tree that is not saved yet.
+
+    An ingredient whose name a reference already has is shown as that
+    reference. Any other will get a new one when the product is saved: it is
+    shown by its name (in French when the taxonomy has one while French is
+    served), with OpenFoodFacts' CIQUAL code, and marked new.
+    """
+    flat = list(walk_ingredients(items))
+    references = find_references(item.name for item in flat)
+    prefetch_related_objects(list(references.values()), "source_foods__source")
+    display_names = IngredientTaxon.display_names(item.off_id for item in flat)
+    return _rows_from_inputs(items, references, display_names)
 
 
 def _rows_from_inputs(
-    items: list[IngredientInput], display_names: dict[str, str]
+    items: list[IngredientInput],
+    references: dict[str, ReferenceIngredient],
+    display_names: dict[str, str],
 ) -> list[dict[str, Any]]:
-    return [
-        {
-            "name": display_names.get(item.off_id, item.name),
-            "percentage": item.percentage,
-            "ciqual": _ciqual_label(
-                item.off_ciqual_food_code, item.off_ciqual_proxy_food_code
-            ),
-            "ciqual_url": _ciqual_url(
-                item.off_ciqual_food_code, item.off_ciqual_proxy_food_code
-            ),
-            "reference": None,
-            "ingredients": _rows_from_inputs(item.sub_ingredients, display_names)
-            or None,
-        }
-        for item in items
-    ]
+    rows: list[dict[str, Any]] = []
+    for item in items:
+        reference = references.get(name_key(item.name))
+        if reference is None:
+            row = _row(
+                display_names.get(item.off_id, item.name),
+                item.percentage,
+                (
+                    _ciqual_label(
+                        item.off_ciqual_food_code, item.off_ciqual_proxy_food_code
+                    ),
+                    _ciqual_url(
+                        item.off_ciqual_food_code, item.off_ciqual_proxy_food_code
+                    ),
+                ),
+                _("New"),
+            )
+        else:
+            row = _row(
+                reference.name,
+                item.percentage,
+                _reference_ciqual(reference),
+                _status_label(reference),
+            )
+        row["ingredients"] = (
+            _rows_from_inputs(item.sub_ingredients, references, display_names) or None
+        )
+        rows.append(row)
+    return rows
 
 
 def ingredient_rows_from_db(product: Product) -> list[dict[str, Any]]:
-    """The stored ingredient tree, in one query (two while French is served)."""
+    """The stored ingredient tree, in a few queries however many there are."""
     ingredients = list(
         Ingredient.objects.filter(product=product)
         .select_related("reference")
+        .prefetch_related("reference__source_foods__source")
         .order_by("id")
     )
-    display_names = IngredientTaxon.display_names(i.off_id for i in ingredients)
-    rows: dict[int, dict[str, Any]] = {
-        ingredient.id: {
-            "name": display_names.get(ingredient.off_id, ingredient.name),
-            "percentage": ingredient.percentage,
-            "ciqual": _ciqual_label(
-                ingredient.off_ciqual_food_code,
-                ingredient.off_ciqual_proxy_food_code,
-            ),
-            "ciqual_url": _ciqual_url(
-                ingredient.off_ciqual_food_code,
-                ingredient.off_ciqual_proxy_food_code,
-            ),
-            "reference": ingredient.reference.name_fr if ingredient.reference else None,
-            "ingredients": None,
-        }
+    rows = {
+        ingredient.id: _row(
+            ingredient.reference.name,
+            ingredient.percentage,
+            _reference_ciqual(ingredient.reference),
+            _status_label(ingredient.reference),
+        )
         for ingredient in ingredients
     }
     roots: list[dict[str, Any]] = []

@@ -96,13 +96,9 @@ def test_create_product_writes_fields_declared_values_and_ingredient_tree():
     }
 
     roots = Ingredient.objects.filter(product=product, parent=None).order_by("id")
-    assert [i.name for i in roots] == ["Sucre", "Lait écrémé en poudre"]
-    assert (roots[1].off_id, roots[1].off_ciqual_food_code) == (
-        "en:skimmed-milk-powder",
-        "19054",
-    )
+    assert [str(i) for i in roots] == ["Sucre", "Lait écrémé en poudre"]
     child = Ingredient.objects.get(product=product, parent=roots[1])
-    assert (child.name, child.percentage) == ("lait", Decimal("8.70"))
+    assert (str(child), child.percentage) == ("lait", Decimal("8.70"))
 
 
 @pytest.mark.django_db
@@ -128,13 +124,42 @@ def test_create_product_with_an_unknown_nutrient_writes_nothing():
 
 
 @pytest.mark.django_db
-def test_nothing_links_an_ingredient_to_a_reference_by_itself():
-    """OFF's CIQUAL code is stored for reference; linking is done by hand."""
-    ReferenceIngredient.objects.create(name_fr="sucre")
+def test_an_ingredient_is_the_reference_that_has_its_name():
+    sugar = ReferenceIngredient.objects.create(name_fr="sucre")
 
+    product = create_product(
+        create_payload(ingredients=[{"name": "SUCRE", "percentage": "56.3"}])
+    ).product
+
+    assert [i.reference for i in product.ingredients.all()] == [sugar]
+    assert ReferenceIngredient.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_an_ingredient_no_reference_has_the_name_of_gets_one_to_review():
     product = create_product(create_payload()).product
 
-    assert not product.ingredients.exclude(reference=None).exists()
+    references = ReferenceIngredient.objects.order_by("id")
+    assert [r.name_en for r in references] == ["Sucre", "Lait écrémé en poudre", "lait"]
+    assert {r.status for r in references} == {ReferenceIngredient.Status.TO_REVIEW}
+    assert [i.reference for i in product.ingredients.order_by("id")] == [
+        references[0],
+        references[1],
+        references[2],
+    ]
+
+
+@pytest.mark.django_db
+def test_a_new_reference_is_not_kept_when_the_product_is_not():
+    """The references are created before the ingredients that use them."""
+    with (
+        patch.object(Ingredient.objects, "update_or_create", side_effect=RuntimeError),
+        pytest.raises(RuntimeError),
+    ):
+        create_product(create_payload(ingredients=[{"name": "Noisettes"}]))
+
+    assert not ReferenceIngredient.objects.exists()
+    assert not Product.objects.filter(pk=BARCODE).exists()
 
 
 # -----------------------
@@ -177,23 +202,24 @@ def test_update_product_replaces_the_ingredient_tree_when_given(product: Product
 
     update_product(product, data)
 
-    assert list(product.ingredients.values_list("name", flat=True)) == ["Cacao"]
+    assert [str(i) for i in product.ingredients.all()] == ["Cacao"]
 
 
 @pytest.mark.django_db
-def test_replacing_the_tree_keeps_links_made_by_hand(product: Product):
+def test_replacing_the_tree_gives_each_ingredient_the_reference_with_its_name(
+    product: Product,
+):
     """
-    Reloading a product from OpenFoodFacts must not undo curation: a link to
-    a reference ingredient follows the ingredient (same OFF id, or same name).
+    The name finds the same reference again, so nothing needs carrying over
+    from the old tree, and a name no reference has gets a new one.
     """
-    sugar = ReferenceIngredient.objects.create(name_fr="sucre")
-    milk = ReferenceIngredient.objects.create(name_fr="lait")
-    product.ingredients.filter(name="Sucre").update(reference=sugar)
-    product.ingredients.filter(name="lait").update(reference=milk)
+    sugar = ReferenceIngredient.objects.get(name_en="Sucre")
+    milk = ReferenceIngredient.objects.get(name_en="lait")
+    before = ReferenceIngredient.objects.count()
     data = ProductUpdate.model_validate(
         {
             "ingredients": [
-                {"name": "Sucre de canne", "off_id": "en:sugar"},
+                {"name": "sucre"},
                 {"name": "Noisettes"},
                 {"name": "Lait", "sub_ingredients": []},
             ]
@@ -202,8 +228,30 @@ def test_replacing_the_tree_keeps_links_made_by_hand(product: Product):
 
     update_product(product, data)
 
-    links = dict(product.ingredients.values_list("name", "reference"))
-    assert links == {"Sucre de canne": sugar.pk, "Noisettes": None, "Lait": milk.pk}
+    links = [i.reference for i in product.ingredients.order_by("id")]
+    assert links[0] == sugar
+    assert links[2] == milk
+    assert links[1].name_en == "Noisettes"
+    assert ReferenceIngredient.objects.count() == before + 1
+
+
+@pytest.mark.django_db
+def test_an_ingredient_listed_twice_under_one_parent_is_kept_once(product: Product):
+    """OpenFoodFacts sometimes does: the last one wins, as there is one row."""
+    data = ProductUpdate.model_validate(
+        {
+            "ingredients": [
+                {"name": "Sugar", "percentage": "5"},
+                {"name": "sugar", "percentage": "6"},
+            ]
+        }
+    )
+
+    update_product(product, data)
+
+    assert [(str(i), i.percentage) for i in product.ingredients.all()] == [
+        ("Sugar", Decimal("6.00"))
+    ]
 
 
 # -----------------------

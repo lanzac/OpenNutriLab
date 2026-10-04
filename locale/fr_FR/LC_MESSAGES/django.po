@@ -117,9 +117,6 @@ msgstr "Le pourcentage est trop élevé"
 msgid "Share of the product, as declared on the label."
 msgstr "Part dans le produit, telle que déclarée sur l'étiquette."
 
-msgid "OpenFoodFacts taxonomy id, e.g. en:oat-flakes."
-msgstr "Identifiant de taxonomie OpenFoodFacts, par exemple en:oat-flakes."
-
 msgid "What the licence requires to be shown wherever its data is used."
 msgstr "Ce que la licence impose d'afficher partout où ses données sont utilisées."
 
@@ -142,6 +139,15 @@ msgstr "Vide quand la source ne l'a pas mesuré. Sous le seuil de détection, c'
 
 msgid "The source's own grade, e.g. CIQUAL's A (best) to D."
 msgstr "L'indice propre à la source, par exemple de A (meilleur) à D pour CIQUAL."
+
+msgid "To review"
+msgstr "À relire"
+
+msgid "Curated"
+msgstr "Validée"
+
+msgid "Notes for whoever curates it, such as what it was created from."
+msgstr "Notes pour qui la relit, par exemple ce dont elle a été créée."
 
 #, python-format
 msgid ""
@@ -185,11 +191,11 @@ msgstr "Supprimer « %(name)s » ?"
 msgid "Percentage"
 msgstr "Pourcentage"
 
-msgid "CIQUAL code (OpenFoodFacts)"
-msgstr "Code CIQUAL (OpenFoodFacts)"
+msgid "CIQUAL code"
+msgstr "Code CIQUAL"
 
-msgid "Reference ingredient"
-msgstr "Ingrédient de référence"
+msgid "Reference status"
+msgstr "État de la référence"
 
 msgid "Others"
 msgstr "Autres"
@@ -221,6 +227,9 @@ msgstr ""
 "Le produit %(barcode)s a été enregistré, mais sa photo n'a pas pu être "
 "téléchargée depuis OpenFoodFacts. Veuillez réessayer, ou en téléverser une à "
 "la main."
+
+msgid "New"
+msgstr "Nouvelle"
 
 msgid "Sign In"
 msgstr "S'identifier"
@@ -342,6 +351,15 @@ msgstr "Informations mises à jour avec succès"
 
 #~ msgid "Unit used for this vitamin"
 #~ msgstr "Unité utilisée pour cette vitamine"
+
+#~ msgid "OpenFoodFacts taxonomy id, e.g. en:oat-flakes."
+#~ msgstr "Identifiant de taxonomie OpenFoodFacts, par exemple en:oat-flakes."
+
+#~ msgid "CIQUAL code (OpenFoodFacts)"
+#~ msgstr "Code CIQUAL (OpenFoodFacts)"
+
+#~ msgid "Reference ingredient"
+#~ msgstr "Ingrédient de référence"
 
 #~ msgid "Amount in µg/100g (canonical unit µg) of the vitamin in the product"
 #~ msgstr ""

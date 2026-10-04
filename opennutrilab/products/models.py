@@ -4,9 +4,11 @@ Products, their ingredients, and the nutrient data behind them.
 - Nutrient: the one catalogue every amount below refers to, each nutrient
   with its unit. All amounts are per 100 g, in that unit.
 - Product and ProductNutrient: what a product's nutrition label declares.
-- Ingredient: a product's ingredient tree, as its label lists it.
-- IngredientTaxon: OpenFoodFacts' ingredient taxonomy, the source of the
-  normalized (English) names Ingredient.name holds.
+- Ingredient: a product's ingredient tree, as its label lists it. Each one is
+  its reference ingredient and has no name of its own.
+- IngredientTaxon: OpenFoodFacts' ingredient taxonomy, a dictionary of
+  normalized (English) names and their French ones, used when an OFF product
+  is imported. Nothing links to it.
 - Source, SourceFood and SourceFoodNutrient: composition data exactly as a
   food composition table publishes it (CIQUAL first), with its qualifiers
   and confidence grades.
@@ -22,6 +24,7 @@ from typing import override
 from django.core.validators import MaxValueValidator
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models.functions import Lower
 from django.utils.translation import get_language
 from django.utils.translation import gettext_lazy as _
 
@@ -176,9 +179,17 @@ class ProductNutrient(models.Model):
 
 
 class Ingredient(models.Model):
+    """
+    An ingredient of a product, which is its reference ingredient.
+
+    It has no name and keeps nothing OpenFoodFacts says about it: the name is
+    the reference's, and what OFF gave only served to find or create that
+    reference (see services.reference_services).
+    """
+
     id: int
     parent_id: int | None
-    reference_id: int | None
+    reference_id: int
 
     product = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="ingredients"
@@ -192,9 +203,11 @@ class Ingredient(models.Model):
         on_delete=models.CASCADE,
         related_name="sub_ingredients",
     )
-    # The normalized English name when the taxonomy has one (IngredientTaxon);
-    # otherwise what the label says, or what the user typed.
-    name = models.CharField(max_length=255)
+    # Always set, and protected: a reference in use cannot be deleted. An
+    # ingredient no reference has the name of gets one created, to review.
+    reference: "models.ForeignKey[ReferenceIngredient]" = models.ForeignKey(
+        "ReferenceIngredient", on_delete=models.PROTECT, related_name="usages"
+    )
     # Declared, never estimated: the OpenFoodFacts import keeps a percentage
     # only if the label's text says it, and estimates are computed on demand,
     # not stored here. A declared figure is rounded to its last digit (33 is
@@ -210,23 +223,6 @@ class Ingredient(models.Model):
         ],
         help_text=_("Share of the product, as declared on the label."),
     )
-    off_id = models.CharField(
-        max_length=255,
-        blank=True,
-        default="",
-        help_text=_("OpenFoodFacts taxonomy id, e.g. en:oat-flakes."),
-    )
-    # As OpenFoodFacts gives them. Kept for reference only: nothing links an
-    # ingredient to a reference ingredient automatically.
-    off_ciqual_food_code = models.CharField(max_length=10, blank=True, default="")
-    off_ciqual_proxy_food_code = models.CharField(max_length=10, blank=True, default="")
-    reference = models.ForeignKey(
-        "ReferenceIngredient",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="usages",
-    )
 
     if TYPE_CHECKING:
         sub_ingredients: RelatedManager["Ingredient"]
@@ -237,11 +233,11 @@ class Ingredient(models.Model):
         ordering = ["id"]
         constraints = [
             models.UniqueConstraint(
-                fields=["product", "parent", "name"],
+                fields=["product", "parent", "reference"],
                 name="unique_ingredient_per_product_parent",
             ),
             models.UniqueConstraint(
-                fields=["product", "name"],
+                fields=["product", "reference"],
                 condition=models.Q(parent__isnull=True),
                 name="unique_root_ingredient_per_product",
             ),
@@ -249,7 +245,7 @@ class Ingredient(models.Model):
 
     @override
     def __str__(self) -> str:
-        return self.name
+        return str(self.reference)
 
 
 class IngredientTaxon(models.Model):
@@ -257,14 +253,14 @@ class IngredientTaxon(models.Model):
     An entry of OpenFoodFacts' ingredient taxonomy, e.g. `en:oat-flakes`.
 
     What OFF returns as an ingredient's `text` is the wording of the label, in
-    the product's language. The taxonomy is where its normalized names are:
-    Ingredient.name is taken from here. Loaded by `manage.py
+    the product's language. The taxonomy is where its normalized names are: an
+    imported ingredient is named from here, and a reference ingredient created
+    for it takes its French name from here. Loaded by `manage.py
     import_off_taxonomy`.
 
-    Ingredient.off_id is the key, and not a foreign key: it is raw OFF data
-    that does not always match a row here (none for an ingredient typed by
-    hand, an id OFF has renamed since, an ingredient the taxonomy does not
-    know), and a foreign key could not hold those.
+    Nothing links to it. It is OFF's data, which does not always match what is
+    curated (an id OFF has renamed since, an ingredient the taxonomy does not
+    know), so the reference ingredients stay apart from it.
     """
 
     off_id = models.CharField(max_length=255, unique=True)
@@ -284,13 +280,13 @@ class IngredientTaxon(models.Model):
     @classmethod
     def display_names(cls, off_ids: Iterable[str]) -> dict[str, str]:
         """
-        Names to show instead of Ingredient.name, by OFF id.
+        French names to show for imported ingredients, by OFF id.
 
-        Ingredient.name is the English one, so only French has anything to
-        replace it with: the taxonomy's French names while French is being
-        served (as Nutrient.name does), and nothing, without a query, in any
-        other language. An id the taxonomy does not know, or has no French
-        name for, is absent: its Ingredient.name is all there is.
+        An imported ingredient is named in English, so only French has
+        anything to replace it with: the taxonomy's French names while French
+        is being served (as Nutrient.name does), and nothing, without a query,
+        in any other language. An id the taxonomy does not know, or has no
+        French name for, is absent: the imported name is all there is.
         """
         ids = {off_id for off_id in off_ids if off_id}
         if not ids or not (get_language() or "").startswith("fr"):
@@ -389,21 +385,68 @@ class SourceFoodNutrient(models.Model):
         return f"{self.food}: {self.amount} {self.nutrient}"
 
 
+_HAS_A_NAME = ~models.Q(name_en="") | ~models.Q(name_fr="")
+
+
 class ReferenceIngredient(models.Model):
     """
     A curated ingredient, e.g. "carotte crue".
 
     Its composition is aggregated from the source foods it draws on, so that
     more sources make it more complete and more reliable.
+
+    A product's ingredient is one of these: it is found by its name, searched
+    in `name_en` and `name_fr`. Each name is unique when filled, whatever its
+    case, so a name leads to one reference at most. A name no reference has
+    creates one, to review (see services.reference_services).
     """
 
-    name_fr = models.CharField(max_length=255, unique=True)
+    class Status(models.TextChoices):
+        TO_REVIEW = "to_review", _("To review")
+        CURATED = "curated", _("Curated")
+
+    name_fr = models.CharField(max_length=255, blank=True)
     name_en = models.CharField(max_length=255, blank=True)
-    description = models.TextField(blank=True)
+    description = models.TextField(
+        blank=True,
+        help_text=_("Notes for whoever curates it, such as what it was created from."),
+    )
+    status = models.CharField(
+        max_length=10, choices=Status.choices, default=Status.TO_REVIEW
+    )
     source_foods: "models.ManyToManyField[SourceFood, Any]" = models.ManyToManyField(
         SourceFood, blank=True, related_name="reference_ingredients"
     )
 
+    if TYPE_CHECKING:
+        usages: RelatedManager["Ingredient"]
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                Lower("name_en"),
+                condition=~models.Q(name_en=""),
+                name="unique_reference_name_en",
+            ),
+            models.UniqueConstraint(
+                Lower("name_fr"),
+                condition=~models.Q(name_fr=""),
+                name="unique_reference_name_fr",
+            ),
+            # django-stubs still types `check`, which Django 5.1 renamed.
+            models.CheckConstraint(  # pyright: ignore[reportCallIssue]
+                condition=_HAS_A_NAME,  # pyright: ignore[reportCallIssue]
+                name="reference_has_a_name",
+            ),
+        ]
+
     @override
     def __str__(self) -> str:
-        return self.name_fr
+        return self.name
+
+    @property
+    def name(self) -> str:
+        """The name in the language being served, whichever one is filled."""
+        if (get_language() or "").startswith("fr"):
+            return self.name_fr or self.name_en
+        return self.name_en or self.name_fr

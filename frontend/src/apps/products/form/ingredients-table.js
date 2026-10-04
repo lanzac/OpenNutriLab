@@ -6,20 +6,26 @@ import 'tabulator-tables/dist/css/tabulator_bootstrap5.min.css';
 
 /**
  * Content of a CIQUAL cell: the code as a link to its sheet on the CIQUAL
- * site, or nothing when the ingredient has no code. Built with the DOM API so
- * a code is never read as HTML.
+ * site, or as plain text when there is no single sheet to link (several codes),
+ * or nothing when the ingredient has no code. Built with the DOM API so a code
+ * is never read as HTML.
  *
  * @param {string | null | undefined} label The code as shown, e.g. "9410 (proxy)".
  * @param {string | null | undefined} url Where its sheet is, from the view.
- * @returns {HTMLAnchorElement | string}
+ * @returns {HTMLAnchorElement | HTMLSpanElement | string}
  */
 export function ciqualCell(label, url) {
-  if (!url) return '';
+  if (!label) return '';
+  if (!url) {
+    const text = document.createElement('span');
+    text.textContent = label;
+    return text;
+  }
   const link = document.createElement('a');
   link.href = url;
   link.target = '_blank';
   link.rel = 'noopener noreferrer';
-  link.textContent = label ?? '';
+  link.textContent = label;
   return link;
 }
 
@@ -61,8 +67,9 @@ export function initIngredientsTable(labels) {
             : '';
         },
       },
-      // As OpenFoodFacts gives it, for information: it links no reference
-      // ingredient, but opens the code's sheet on the CIQUAL site to check it.
+      // The CIQUAL codes of the foods the reference draws on, or OpenFoodFacts'
+      // own for an ingredient that is not saved yet, to check on the CIQUAL
+      // site.
       {
         title: labels.ciqual,
         field: 'ciqual',
@@ -70,7 +77,7 @@ export function initIngredientsTable(labels) {
         formatter: (cell) =>
           ciqualCell(cell.getValue(), cell.getRow().getData().ciqual_url),
       },
-      // The curated reference ingredient, once one is linked by hand.
+      // Whether the reference ingredient is curated, still to review, or new.
       { title: labels.reference, field: 'reference', responsive: 3 },
     ],
     dataTreeChildField: 'ingredients',

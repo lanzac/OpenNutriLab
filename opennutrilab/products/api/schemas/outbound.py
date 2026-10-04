@@ -1,6 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
+from django.db.models import Prefetch
 from django.db.models import QuerySet
 from ninja import ModelSchema
 from ninja import Schema
@@ -8,37 +9,38 @@ from ninja import Schema
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductNutrient
+from opennutrilab.products.models import ReferenceIngredient
 
 # More information on : Regulation (EU) No 1169/2011
 # https://eur-lex.europa.eu/eli/reg/2011/1169/oj?locale=fr
 
 
-class IngredientOut(ModelSchema):
-    name: str
-    # As declared on the label.
-    percentage: Decimal | None = None
-    off_id: str
-    off_ciqual_food_code: str
-    off_ciqual_proxy_food_code: str
-    # The curated reference ingredient it is linked to, by name.
-    reference: str | None = None
+class ReferenceOut(ModelSchema):
+    """The reference ingredient an ingredient is, named in the language served."""
 
-    # https://django-ninja.dev/guides/response/?h=self#self-referencing-schemes
-    sub_ingredients: list["IngredientOut"] = []
+    name: str
 
     class Meta:
-        model = Ingredient
-        fields: list[str] = [
-            "name",
-            "percentage",
-            "off_id",
-            "off_ciqual_food_code",
-            "off_ciqual_proxy_food_code",
-        ]
+        model = ReferenceIngredient
+        fields: list[str] = ["id", "status"]
 
-    @staticmethod
-    def resolve_reference(obj: Ingredient) -> str | None:
-        return obj.reference.name_fr if obj.reference else None
+
+# How many levels of sub-ingredients a product's tree is loaded with in one go.
+SUB_INGREDIENT_LEVELS = 3
+
+
+class IngredientOut(Schema):
+    # As declared on the label.
+    percentage: Decimal | None = None
+    reference: ReferenceOut
+
+    # https://django-ninja.dev/guides/response/?h=self#self-referencing-schemes
+    # Read from the related manager, with no resolver: below the first level
+    # ninja hands a resolver an object it has already wrapped, and the
+    # AttributeError that follows reads as "field missing", so the children
+    # would silently be [] (see ProductOut.resolve_ingredients for how they
+    # are loaded).
+    sub_ingredients: list["IngredientOut"] = []
 
 
 IngredientOut.model_rebuild()  # Important for self-referencing schemas
@@ -106,7 +108,26 @@ class ProductOut(ModelSchema):
 
     @staticmethod
     def resolve_ingredients(obj: Product) -> QuerySet[Ingredient]:
-        return obj.ingredients.filter(parent__isnull=True).select_related("reference")
+        """
+        The top-level ingredients, with their references and sub-ingredients.
+
+        A tree is read one level per query, however many ingredients it has,
+        down to the depth labels reach in practice; anything deeper is loaded
+        lazily.
+        """
+        path = "sub_ingredients"
+        levels: list[Prefetch[Ingredient]] = [
+            Prefetch(
+                "__".join([path] * depth),
+                queryset=Ingredient.objects.select_related("reference"),
+            )
+            for depth in range(1, SUB_INGREDIENT_LEVELS + 1)
+        ]
+        return (
+            obj.ingredients.filter(parent__isnull=True)
+            .select_related("reference")
+            .prefetch_related(*levels)
+        )
 
     @staticmethod
     def resolve_nutrients(obj: Product) -> QuerySet[ProductNutrient]:

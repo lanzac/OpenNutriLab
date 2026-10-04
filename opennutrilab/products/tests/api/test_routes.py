@@ -6,7 +6,9 @@ from allauth.account.models import EmailAddress
 from django.test import Client
 
 from opennutrilab.products.api.schemas.inbound import ProductCreate
+from opennutrilab.products.api.schemas.outbound import ProductOut
 from opennutrilab.products.models import Product
+from opennutrilab.products.models import ReferenceIngredient
 from opennutrilab.products.services import product_services
 from opennutrilab.users.models import User
 from opennutrilab.users.tests.factories import UserFactory
@@ -156,6 +158,79 @@ def test_get_product(api_client: Client, products_two: tuple[Product, Product]):
         ("energy", "kJ", "100.0000"),
         ("fat", "g", "9.4000"),
     }
+
+
+@pytest.mark.django_db
+def test_an_ingredient_is_served_as_its_reference(api_client: Client):
+    """No name and no OpenFoodFacts data of its own: the reference says it all."""
+    payload = _minimal_payload("3297760097969", "Created Via API")
+    payload["ingredients"] = [
+        {
+            "name": "Dates",
+            "percentage": "7",
+            "sub_ingredients": [{"name": "rice flour"}],
+        }
+    ]
+    api_client.post(API, payload, content_type="application/json")
+    ReferenceIngredient.objects.filter(name_en="rice flour").update(
+        status=ReferenceIngredient.Status.CURATED
+    )
+
+    response = api_client.get(f"{API}{payload['barcode']}")
+
+    [dates] = response.json()["ingredients"]
+    assert set(dates) == {"percentage", "reference", "sub_ingredients"}
+    assert dates["percentage"] == "7.00"
+    assert dates["reference"] == {
+        "id": ReferenceIngredient.objects.get(name_en="Dates").pk,
+        "name": "Dates",
+        "status": "to_review",
+    }
+    [rice] = dates["sub_ingredients"]
+    assert (rice["reference"]["name"], rice["reference"]["status"]) == (
+        "rice flour",
+        "curated",
+    )
+
+
+@pytest.mark.django_db
+def test_a_products_tree_is_read_in_a_fixed_number_of_queries(
+    django_assert_max_num_queries: Any,
+):
+    """One per level, not one per ingredient (or per reference)."""
+    product = product_services.create_product(
+        ProductCreate.model_validate(
+            {
+                **_minimal_payload("3297760097969", "Tree"),
+                "ingredients": [
+                    {
+                        "name": "A",
+                        "sub_ingredients": [
+                            {"name": "B", "sub_ingredients": [{"name": "C"}]},
+                            {"name": "D"},
+                        ],
+                    },
+                    {"name": "E"},
+                    {"name": "F", "sub_ingredients": [{"name": "G"}]},
+                ],
+            }
+        )
+    ).product
+
+    # The product's nutrients, the top level, then one query per level below.
+    with django_assert_max_num_queries(5):
+        tree = ProductOut.from_orm(product).model_dump()["ingredients"]
+
+    def names(ingredients: list[dict[str, Any]]) -> list[Any]:
+        return [
+            (i["reference"]["name"], names(i["sub_ingredients"])) for i in ingredients
+        ]
+
+    assert names(tree) == [
+        ("A", [("B", [("C", [])]), ("D", [])]),
+        ("E", []),
+        ("F", [("G", [])]),
+    ]
 
 
 @pytest.mark.django_db

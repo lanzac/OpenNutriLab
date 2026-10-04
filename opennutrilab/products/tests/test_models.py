@@ -105,24 +105,60 @@ def test_declared_values_go_with_their_product(product: Product):
 # ----------------------------------------------------------------------------
 @pytest.mark.django_db
 def test_ingredients_form_a_tree(product: Product):
-    dates = Ingredient.objects.create(product=product, name="Dattes", percentage=7)
-    Ingredient.objects.create(product=product, parent=dates, name="farine de riz")
+    dates = Ingredient.objects.create(
+        product=product,
+        reference=ReferenceIngredient.objects.create(name_en="dates"),
+        percentage=7,
+    )
+    Ingredient.objects.create(
+        product=product,
+        parent=dates,
+        reference=ReferenceIngredient.objects.create(name_en="rice flour"),
+    )
 
-    assert [i.name for i in dates.sub_ingredients.all()] == ["farine de riz"]
-    assert str(dates) == "Dattes"
+    assert [str(i) for i in dates.sub_ingredients.all()] == ["rice flour"]
+    assert str(dates) == "dates"
 
 
 @pytest.mark.django_db
-def test_removing_a_reference_ingredient_keeps_the_ingredient(product: Product):
-    oats = ReferenceIngredient.objects.create(name_fr="flocons d'avoine")
-    ingredient = Ingredient.objects.create(
-        product=product, name="Flocons d'avoine", reference=oats
+def test_an_ingredient_has_no_name_of_its_own(product: Product):
+    """It is its reference: the name is the reference's, in the language served."""
+    oats = ReferenceIngredient.objects.create(
+        name_en="oat flakes", name_fr="flocons d'avoine"
     )
+    ingredient = Ingredient.objects.create(product=product, reference=oats)
 
-    oats.delete()
+    with translation.override("fr-fr"):
+        assert str(ingredient) == "flocons d'avoine"
+    with translation.override("en-us"):
+        assert str(ingredient) == "oat flakes"
+
+
+@pytest.mark.django_db
+def test_a_reference_ingredient_in_use_cannot_be_removed(product: Product):
+    oats = ReferenceIngredient.objects.create(name_fr="flocons d'avoine")
+    ingredient = Ingredient.objects.create(product=product, reference=oats)
+
+    with pytest.raises(ProtectedError):
+        oats.delete()
 
     ingredient.refresh_from_db()
-    assert ingredient.reference is None
+    assert ingredient.reference == oats
+
+
+@pytest.mark.django_db
+def test_a_product_lists_a_reference_once_per_parent(product: Product):
+    sugar = ReferenceIngredient.objects.create(name_en="sugar")
+    cocoa = ReferenceIngredient.objects.create(name_en="cocoa")
+    Ingredient.objects.create(product=product, reference=sugar)
+    chocolate = Ingredient.objects.create(product=product, reference=cocoa)
+    # The same reference under another parent is a different ingredient.
+    Ingredient.objects.create(product=product, parent=chocolate, reference=sugar)
+
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        Ingredient.objects.create(product=product, reference=sugar)
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        Ingredient.objects.create(product=product, parent=chocolate, reference=sugar)
 
 
 # ----------------------------------------------------------------------------
@@ -173,3 +209,58 @@ def test_a_reference_ingredient_draws_on_several_source_foods(
 
     assert set(carrot.source_foods.all()) == {ciqual_carrot, measured}
     assert str(carrot) == "carotte crue"
+
+
+@pytest.mark.django_db
+def test_a_reference_ingredient_is_to_review_until_curated():
+    assert (
+        ReferenceIngredient.objects.create(name_en="carrot").status
+        == ReferenceIngredient.Status.TO_REVIEW
+    )
+
+
+@pytest.mark.django_db
+def test_a_reference_ingredient_name_is_unique_whatever_its_case():
+    ReferenceIngredient.objects.create(name_en="Carrot", name_fr="Carotte")
+
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        ReferenceIngredient.objects.create(name_en="carrot")
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        ReferenceIngredient.objects.create(name_en="grated carrot", name_fr="carotte")
+
+
+@pytest.mark.django_db
+def test_a_reference_ingredient_may_lack_one_of_its_names():
+    """A name OpenFoodFacts has no French for: blank names do not collide."""
+    ReferenceIngredient.objects.create(name_en="carrot")
+    ReferenceIngredient.objects.create(name_en="oat flakes")
+    ReferenceIngredient.objects.create(name_fr="flocons")
+    ReferenceIngredient.objects.create(name_fr="sucre")
+
+    assert ReferenceIngredient.objects.count() == 4  # noqa: PLR2004
+
+
+@pytest.mark.django_db
+def test_a_reference_ingredient_needs_a_name():
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        ReferenceIngredient.objects.create()
+
+
+@pytest.mark.django_db
+def test_a_reference_ingredient_is_named_in_the_language_served():
+    both = ReferenceIngredient.objects.create(name_en="carrot", name_fr="carotte")
+    only_english = ReferenceIngredient.objects.create(name_en="oat flakes")
+    only_french = ReferenceIngredient.objects.create(name_fr="sucre")
+
+    with translation.override("fr-fr"):
+        assert [r.name for r in (both, only_english, only_french)] == [
+            "carotte",
+            "oat flakes",
+            "sucre",
+        ]
+    with translation.override("en-us"):
+        assert [r.name for r in (both, only_english, only_french)] == [
+            "carrot",
+            "oat flakes",
+            "sucre",
+        ]
