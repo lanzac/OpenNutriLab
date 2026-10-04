@@ -7,36 +7,6 @@ from ninja import Schema
 from pydantic import ConfigDict
 
 
-class OFFIngredientSchema(Schema):
-    model_config = ConfigDict(
-        from_attributes=True,  # allows to create from Django objects
-        populate_by_name=True,  # allow us to use names even with alias defined
-        extra="ignore",  # ignore _state, id, product_id, etc
-    )
-
-    name: str = Field(default="", validation_alias="text")
-    # `percent` is a candidate for the share the label declares: OFF rescales
-    # the label's percentages when they do not add up to 100, and does not say
-    # so. It is checked against the label's text (see label_percentages)
-    # before it is used. OFF's own `percent_estimate` is deliberately not read:
-    # estimates are computed in-house.
-    percentage: float | None = Field(default=None, validation_alias="percent")
-    off_id: str = Field(default="", validation_alias="id")
-    ciqual_food_code: str | None = Field(
-        default=None, validation_alias="ciqual_food_code"
-    )
-    ciqual_proxy_food_code: str | None = Field(
-        default=None, validation_alias="ciqual_proxy_food_code"
-    )
-    # https://django-ninja.dev/guides/response/?h=self#self-referencing-schemes
-    ingredients: list["OFFIngredientSchema"] | None = Field(
-        default=None, validation_alias="ingredients"
-    )
-
-
-OFFIngredientSchema.model_rebuild()
-
-
 class OFFProductSchema(Schema):
     model_config = ConfigDict(
         from_attributes=True,  # allows to create from Django objects
@@ -53,16 +23,14 @@ class OFFProductSchema(Schema):
     nutriments: dict[str, Any] = Field(
         default_factory=dict, validation_alias="nutriments"
     )
-    ingredients: list[OFFIngredientSchema] | None = Field(
-        default=None, validation_alias="ingredients"
-    )
-    # The product's main ingredient list, the text `ingredients` was parsed
-    # from (in `ingredients_lc`; other languages are translations that may
-    # describe another version of the recipe). Not stored: it only serves to
-    # check the percentages, see label_percentages.
+    # The ingredient list as the label prints it, and its language. The only
+    # thing read of an ingredient: OpenFoodFacts' own parsing of it drops what its
+    # taxonomy has no word for (see services.label_parser), so its `ingredients`
+    # are not read at all. Not stored.
     ingredients_text: str | None = Field(
         default=None, validation_alias="ingredients_text"
     )
+    ingredients_lc: str | None = Field(default=None, validation_alias="ingredients_lc")
     group_level_1: str | None = Field(default=None, validation_alias="pnns_groups_1")
     group_level_2: str | None = Field(default=None, validation_alias="pnns_groups_2")
 

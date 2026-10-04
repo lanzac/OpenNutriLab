@@ -6,17 +6,14 @@ from typing import Any
 import requests
 from pydantic import ValidationError
 
-from opennutrilab.products.api.openfoodfacts.label_percentages import (
-    declared_percentages,
-)
-from opennutrilab.products.api.openfoodfacts.label_percentages import percentages_in
-from opennutrilab.products.api.openfoodfacts.schemas import OFFIngredientSchema
 from opennutrilab.products.api.openfoodfacts.schemas import OFFProductAPIResponseSchema
 from opennutrilab.products.api.openfoodfacts.schemas import OFFProductSchema
 from opennutrilab.products.api.openfoodfacts.schemas import StatusEnum
 from opennutrilab.products.api.schemas.inbound import IngredientInput
-from opennutrilab.products.models import IngredientTaxon
 from opennutrilab.products.models import Nutrient
+from opennutrilab.products.services.label_parser import LabelItem
+from opennutrilab.products.services.label_parser import LabelWarning
+from opennutrilab.products.services.label_parser import read_label
 
 
 class OFFError(Exception):
@@ -122,77 +119,28 @@ def fetch_from_off(
     return product
 
 
-def _off_ids(ingredients: list[OFFIngredientSchema] | None) -> set[str]:
-    ids: set[str] = set()
-    for ingredient in ingredients or []:
-        if ingredient.off_id:
-            ids.add(ingredient.off_id[:255])
-        ids |= _off_ids(ingredient.ingredients)
-    return ids
-
-
-def to_ingredient_inputs(
-    ingredients: list[OFFIngredientSchema] | None,
-    label_text: str,
-) -> list[IngredientInput]:
+def ingredient_inputs_from_label(
+    text: str | None, language: str | None
+) -> tuple[list[IngredientInput], list[LabelWarning]]:
     """
-    OpenFoodFacts' ingredient tree, as the services expect it.
+    The ingredients a label's text lists, ready to save, and what looks wrong in it.
 
-    `label_text` is the ingredient list the tree was parsed from. An ingredient's
-    percentage is what that text declares, never OFF's own figure: OFF rescales
-    the label's percentages without saying so, and a percentage the text does not
-    back is left out (see label_percentages).
-
-    An ingredient is named by the taxonomy's English name for its OFF id (see
-    IngredientTaxon), not by OFF's `text`, which is the label's wording in the
-    product's language. The label's wording is the fallback when the taxonomy
-    has no English name for it, or has not been loaded.
-
-    OFF sometimes lists an ingredient with no text, or a percentage outside
-    0-100 (an estimate gone wrong); the first is dropped and the second
-    forgotten, rather than making the whole product unsavable.
+    Only the text is read (see services.label_parser), in the language
+    OpenFoodFacts says it is in. A text that looks badly read gives no
+    ingredient and a warning that says so.
     """
-    ids = _off_ids(ingredients)
-    english_names = (
-        dict(
-            IngredientTaxon.objects.filter(off_id__in=ids)
-            .exclude(name_en="")
-            .values_list("off_id", "name_en")
-        )
-        if ids
-        else {}
+    reading = read_label(text)
+    code = (language or "").strip().lower()
+    return [_ingredient_input(item, code) for item in reading.items], reading.warnings
+
+
+def _ingredient_input(item: LabelItem, language: str) -> IngredientInput:
+    return IngredientInput(
+        name=item.name[:255],
+        percentage=item.percentage,
+        language=language[:10],
+        sub_ingredients=[_ingredient_input(part, language) for part in item.parts],
     )
-    return _ingredient_inputs(ingredients, english_names, percentages_in(label_text))
-
-
-def _ingredient_inputs(
-    ingredients: list[OFFIngredientSchema] | None,
-    english_names: dict[str, str],
-    label_numbers: tuple[Decimal, ...],
-) -> list[IngredientInput]:
-    siblings = ingredients or []
-    declared = declared_percentages([i.percentage for i in siblings], label_numbers)
-    inputs: list[IngredientInput] = []
-    for ingredient, percentage in zip(siblings, declared, strict=True):
-        off_id = ingredient.off_id[:255]
-        name = english_names.get(off_id) or ingredient.name.strip()
-        if not name:
-            continue
-        inputs.append(
-            IngredientInput(
-                name=name[:255],
-                percentage=percentage,
-                off_id=off_id,
-                off_ciqual_food_code=(ingredient.ciqual_food_code or "")[:10],
-                off_ciqual_proxy_food_code=(ingredient.ciqual_proxy_food_code or "")[
-                    :10
-                ],
-                sub_ingredients=_ingredient_inputs(
-                    ingredient.ingredients, english_names, label_numbers
-                ),
-            )
-        )
-    return inputs
 
 
 # OpenFoodFacts stores every mass nutrient in grams: vitamin D of 3.4 µg is

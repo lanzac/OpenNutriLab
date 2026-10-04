@@ -7,16 +7,16 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
-from django.core.management import call_command
 from requests import RequestException
 
-from opennutrilab.products.api.openfoodfacts.schemas import OFFIngredientSchema
 from opennutrilab.products.api.openfoodfacts.schemas import OFFProductSchema
 from opennutrilab.products.api.openfoodfacts.services import OFFError
 from opennutrilab.products.api.openfoodfacts.services import OFFProductNotFoundError
 from opennutrilab.products.api.openfoodfacts.services import declared_nutrients_from_off
 from opennutrilab.products.api.openfoodfacts.services import fetch_from_off
-from opennutrilab.products.api.openfoodfacts.services import to_ingredient_inputs
+from opennutrilab.products.api.openfoodfacts.services import (
+    ingredient_inputs_from_label,
+)
 from opennutrilab.products.models import Nutrient
 
 # A product recorded from OpenFoodFacts (API v2: the envelope differs from
@@ -24,7 +24,6 @@ from opennutrilab.products.models import Nutrient
 RECORDED_PRODUCT = Path(__file__).parent / "data" / "3229820794556.json"
 # Extract of OFF's ingredient taxonomy: the entries of that product, plus ones
 # with no English name.
-TAXONOMY_EXTRACT = Path(__file__).parent / "data" / "off_ingredients_taxonomy.json"
 
 
 def test_product_schema_parses_a_recorded_off_product():
@@ -38,14 +37,12 @@ def test_product_schema_parses_a_recorded_off_product():
     assert product.name == "Muesli Protéines"
     assert product.nutriments["fat_100g"] == 12  # noqa: PLR2004
     assert product.group_level_1 == "Cereals and potatoes"
-    assert product.ingredients is not None
-    assert len(product.ingredients) == 7  # noqa: PLR2004
-    oats = product.ingredients[1]
-    # OFF's raw identifiers - not its estimates (percent_estimate is not read
-    # at all). `percent` is only a candidate, checked against the label text.
-    assert (oats.off_id, oats.ciqual_food_code) == ("en:oat-flakes", "9311")
+    # The ingredients are read from the label's text and its language, and OFF's
+    # own parsing of them is not read at all.
+    assert product.ingredients_lc == "fr"
     assert product.ingredients_text is not None
     assert product.ingredients_text.startswith("Flocons de soja* 33%, ")
+    assert not hasattr(product, "ingredients")
 
 
 def test_fetch_product():
@@ -446,172 +443,72 @@ def test_fetch_product_barcode_mismatch():
         fetch_from_off("999999")
 
 
-@pytest.fixture
-def taxonomy(db) -> None:
-    call_command("import_off_taxonomy", path=TAXONOMY_EXTRACT)
-
-
-def test_ingredients_are_named_by_the_taxonomy_in_english(
-    taxonomy, django_assert_num_queries
-):
+def test_the_recorded_muesli_is_read_from_its_label_and_loses_nothing():
     """
-    Ingredient names are the taxonomy's, not the label's French wording, and
-    the whole tree is resolved in one query.
+    OFF's own list for this product says "soja", "fruits rouges" and (in the
+    live product) leaves out the buckwheat: the words that tell flakes from
+    beans, and freeze-dried from raw, are only in the label.
     """
     with RECORDED_PRODUCT.open(encoding="utf-8") as f:
-        product = OFFProductSchema.model_validate(json.load(f)["product"])
+        payload: dict[str, Any] = json.load(f)["product"]
+    assert payload["ingredients"][0]["text"] == "soja"
+    product = OFFProductSchema.model_validate(payload)
 
-    with django_assert_num_queries(1):
-        inputs = to_ingredient_inputs(
-            product.ingredients, product.ingredients_text or ""
-        )
-
-    assert [i.name for i in inputs] == [
-        "soya",
-        "oat flakes",
-        "wheat flakes",
-        "raisin",
-        "date",
-        # The product was recorded before OFF renamed `en:red-fruits` to
-        # `en:red-fruit`: an id the taxonomy no longer has keeps the label.
-        "fruits rouges",
-        "buckwheat grain",
-    ]
-    dates = inputs[4]
-    assert [c.name for c in dates.sub_ingredients] == ["date", "rice flour"]
-    # The OFF id stays as given, whatever the name.
-    assert inputs[1].off_id == "en:oat-flakes"
-
-
-def test_an_ingredient_the_taxonomy_has_no_english_name_for_keeps_its_label(
-    taxonomy,
-):
-    ingredients = [
-        # In the taxonomy, but only named in French.
-        OFFIngredientSchema(
-            name="Oignon et ail en poudre", off_id="fr:oignon-et-ail-en-poudre"
-        ),
-        # Not in the taxonomy at all.
-        OFFIngredientSchema(name="Sel rose", off_id="fr:sel-rose"),
-        # No OFF id: a label the taxonomy cannot recognize.
-        OFFIngredientSchema(name="Épices"),
-    ]
-
-    inputs = to_ingredient_inputs(ingredients, "")
-
-    assert [i.name for i in inputs] == ["Oignon et ail en poudre", "Sel rose", "Épices"]
-
-
-def test_ingredients_keep_their_label_while_the_taxonomy_is_not_loaded(db):
-    inputs = to_ingredient_inputs(
-        [OFFIngredientSchema(name="Flocons d'avoine", off_id="en:oat-flakes")], ""
+    inputs, warnings = ingredient_inputs_from_label(
+        product.ingredients_text, product.ingredients_lc
     )
 
-    assert [i.name for i in inputs] == ["Flocons d'avoine"]
-
-
-def test_an_ingredient_with_no_label_is_named_by_the_taxonomy(taxonomy):
-    inputs = to_ingredient_inputs([OFFIngredientSchema(name="", off_id="en:date")], "")
-
-    assert [i.name for i in inputs] == ["date"]
-
-
-def test_to_ingredient_inputs_keeps_the_tree(db):
-    ingredients = [
-        OFFIngredientSchema(name="Sucre", percentage=56.3),
-        OFFIngredientSchema(
-            name="Lait écrémé en poudre",
-            off_id="en:skimmed-milk-powder",
-            ciqual_proxy_food_code="19054",
-            ingredients=[OFFIngredientSchema(name=" lait ", percentage=8.7)],
-        ),
-    ]
-
-    inputs = to_ingredient_inputs(
-        ingredients, "Sucre 56,3 %, lait écrémé en poudre (lait 8,7%)"
-    )
-
-    assert [i.name for i in inputs] == ["Sucre", "Lait écrémé en poudre"]
-    assert inputs[0].percentage == Decimal("56.3")
-    assert inputs[0].sub_ingredients == []
-    assert [(c.name, c.percentage) for c in inputs[1].sub_ingredients] == [
-        ("lait", Decimal("8.7"))
-    ]
-    assert (inputs[1].off_id, inputs[1].off_ciqual_proxy_food_code) == (
-        "en:skimmed-milk-powder",
-        "19054",
-    )
-
-
-def test_to_ingredient_inputs_drops_what_could_not_be_saved():
-    """
-    OFF data that would fail the schemas must not make the product
-    unsavable: nameless ingredients are dropped, impossible percentages
-    forgotten.
-    """
-    ingredients = [
-        OFFIngredientSchema(name="   "),
-        OFFIngredientSchema(name="Concentrate", percentage=180.0),
-        OFFIngredientSchema(name="Water", percentage=-1.0),
-    ]
-
-    inputs = to_ingredient_inputs(ingredients, "Concentrate 180%, water")
-
+    assert warnings == []
     assert [(i.name, i.percentage) for i in inputs] == [
-        ("Concentrate", None),
-        ("Water", None),
+        ("flocons de soja", Decimal(33)),
+        ("flocons d'avoine", Decimal(26)),
+        ("flocons de blé", Decimal(25)),
+        ("raisins secs", Decimal(8)),
+        ("dattes", Decimal(5)),
+        ("fruits rouges lyophilisés", Decimal("1.4")),
+        ("graines de sarrasin", Decimal(1)),
+    ]
+    assert {i.language for i in inputs} == {"fr"}
+    assert [c.name for c in inputs[3].sub_ingredients] == [
+        "raisins",
+        "huile de tournesol",
     ]
 
 
-def test_to_ingredient_inputs_of_nothing():
-    assert to_ingredient_inputs(None, "") == []
-
-
-@pytest.mark.django_db
-def test_percentages_are_the_label_s_even_where_off_rescaled_them():
-    """
-    The recorded muesli declares 33, 26, 25, 8, 5, 1.4 and 1 %, 99.4 in all, and
-    OFF returns each of them divided by 0.994. Only the label's figures are kept.
-    """
-    with RECORDED_PRODUCT.open(encoding="utf-8") as f:
-        product = OFFProductSchema.model_validate(json.load(f)["product"])
-    assert product.ingredients is not None
-    off_percentage = product.ingredients[0].percentage
-    assert off_percentage is not None
-    assert round(off_percentage, 3) == 33.199  # noqa: PLR2004
-
-    inputs = to_ingredient_inputs(product.ingredients, product.ingredients_text or "")
-
-    assert [i.percentage for i in inputs] == [
-        Decimal(declared) for declared in ("33", "26", "25", "8", "5", "1.4", "1")
-    ]
-    # OFF gives the sub-ingredients no `percent`, and the label no figure.
-    assert [c.percentage for i in inputs for c in i.sub_ingredients] == [None] * 7
-
-
-def test_percentages_are_checked_against_the_main_ingredient_list():
-    """
-    OFF parsed the tree from the product's main list, here the Italian one: its
-    figures are the label's, whatever other languages say.
-    """
-    ingredients = [
-        OFFIngredientSchema(name="Polpa di pomodoro", percentage=70.0),
-        OFFIngredientSchema(name="Cipolla"),
-        OFFIngredientSchema(name="Peperoncino", percentage=0.1),
-    ]
-
-    inputs = to_ingredient_inputs(
-        ingredients, "Polpa di pomodoro 70%, cipolla, peperoncino 0,1%"
+def test_the_ingredients_come_with_the_percentages_the_label_prints():
+    inputs, _warnings = ingredient_inputs_from_label(
+        "Polpa di pomodoro 70%, cipolla, peperoncino 0,1%", "it"
     )
 
-    assert [i.percentage for i in inputs] == [Decimal(70), None, Decimal("0.1")]
+    assert [(i.name, i.percentage, i.language) for i in inputs] == [
+        ("polpa di pomodoro", Decimal(70), "it"),
+        ("cipolla", None, "it"),
+        ("peperoncino", Decimal("0.1"), "it"),
+    ]
 
 
-def test_a_percentage_the_label_does_not_declare_is_left_out():
-    ingredients = [OFFIngredientSchema(name="Sucre", percentage=56.3)]
+def test_a_text_that_looks_badly_read_gives_no_ingredient_and_says_why():
+    inputs, warnings = ingredient_inputs_from_label(
+        "Sucre, émulsifiants : lécithines [SOJA), vanilline", "fr"
+    )
 
-    assert to_ingredient_inputs(ingredients, "Sucre, lait")[0].percentage is None
-    assert to_ingredient_inputs(ingredients, "")[0].percentage is None
+    assert inputs == []
+    assert [w.stops_reading for w in warnings] == [True]
+    assert "[SOJA)" in warnings[0].message()
+
+
+@pytest.mark.parametrize("text", [None, ""])
+def test_a_product_without_a_list_gives_no_ingredient_and_a_warning(text: str | None):
+    inputs, warnings = ingredient_inputs_from_label(text, "fr")
+
+    assert inputs == []
+    assert [w.stops_reading for w in warnings] == [False]
+
+
+def test_a_name_longer_than_an_ingredient_can_have_is_cut():
+    inputs, _warnings = ingredient_inputs_from_label("a" * 300 + " b, sel", "fr")
+
+    assert len(inputs[0].name) == 255  # noqa: PLR2004
 
 
 def test_fetch_from_off_identifies_the_client():

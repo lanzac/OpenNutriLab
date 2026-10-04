@@ -23,7 +23,7 @@ from .api.openfoodfacts.services import OFFError
 from .api.openfoodfacts.services import OFFProductNotFoundError
 from .api.openfoodfacts.services import declared_nutrients_from_off
 from .api.openfoodfacts.services import fetch_from_off
-from .api.openfoodfacts.services import to_ingredient_inputs
+from .api.openfoodfacts.services import ingredient_inputs_from_label
 from .api.schemas.inbound import IngredientInput
 from .api.schemas.inbound import validate_off_image_url
 from .forms import INGREDIENTS_JSON
@@ -34,6 +34,7 @@ from .models import IngredientTaxon
 from .models import Nutrient
 from .models import Product
 from .models import ReferenceIngredient
+from .services.label_parser import LabelWarning
 from .services.product_services import plain_amount
 from .services.reference_services import CIQUAL_SOURCE_PREFIX
 from .services.reference_services import existing_references
@@ -242,6 +243,36 @@ def report_off_failure(request: HttpRequest, barcode: str, error: OFFError) -> N
     messages.warning(request, text % {"barcode": barcode})
 
 
+def report_label_warnings(
+    request: HttpRequest, barcode: str, warnings: list[LabelWarning]
+) -> None:
+    """
+    Tell the user what looks wrong in the ingredient list OpenFoodFacts has.
+
+    When the text looks badly read nothing was imported, and the one thing to
+    do is correct it on OpenFoodFacts and load the product again.
+    """
+    stopping = [w for w in warnings if w.stops_reading]
+    if stopping:
+        messages.warning(
+            request,
+            _(
+                "The ingredient list OpenFoodFacts has for barcode %(barcode)s "
+                "looks badly read, so no ingredient was imported: %(problems)s "
+                "Correct the text on OpenFoodFacts "
+                "(https://world.openfoodfacts.org/product/%(barcode)s), "
+                "then load the product again."
+            )
+            % {
+                "barcode": barcode,
+                "problems": " ".join(f"{w.message()}." for w in stopping),
+            },
+        )
+    for warning in warnings:
+        if not warning.stops_reading:
+            messages.warning(request, warning.message())
+
+
 def report_image_fetch_failure(request: HttpRequest, barcode: str) -> None:
     """
     Tell the user the product was saved but its OpenFoodFacts image was not.
@@ -286,9 +317,12 @@ def initial_from_off(request: HttpRequest, barcode: str) -> dict[str, Any] | Non
         # A photo hosted somewhere the services refuse to download from.
         initial["off_image_url"] = None
     initial["off_barcode"] = fetched.barcode
-    initial["off_ingredients"] = INGREDIENTS_JSON.dump_json(
-        to_ingredient_inputs(fetched.ingredients, fetched.ingredients_text or "")
-    ).decode()
+    # The ingredients are read from the label's text, and nothing else.
+    ingredients, warnings = ingredient_inputs_from_label(
+        fetched.ingredients_text, fetched.ingredients_lc
+    )
+    report_label_warnings(request, fetched.barcode, warnings)
+    initial["off_ingredients"] = INGREDIENTS_JSON.dump_json(ingredients).decode()
     return initial
 
 

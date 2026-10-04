@@ -15,11 +15,21 @@ nutrients from its ingredients"); this file is the execution plan.
   More sources will be aggregated later, so nothing may assume one source.
 - The values declared on the label are the reference. The computation is
   validated against them.
-- Ingredient percentages are the label's own figures. The OFF import keeps an
-  OFF `percent` only if the product's main ingredient list declares it, as it
-  stands or as the number OFF rescaled it from (OFF rescales without saying
-  so); see `label_percentages.py`. `Ingredient.percentage` is therefore always
-  declared, and a null one is unknown, never estimated.
+- **Ingredients are read from the label's text, and nothing else is trusted**
+  (decided 2026-10-04). OpenFoodFacts' own parsing of the list drops what its
+  taxonomy has no word for: on the muesli it turned "Flocons de soja" into
+  "soja", "Fruits rouges lyophilisés" into "Fruits rouges" and left out
+  "Graines de sarrasin", and those words tell flakes from beans and
+  freeze-dried from raw. So `ingredients_text` is read here
+  (`services/label_parser.py`), with its language, and OFF's `ingredients` are
+  not read at all. Percentages are therefore the label's own figures as they
+  are written: `Ingredient.percentage` is always declared, and a null one is
+  unknown, never estimated. Nothing is corrected or guessed: a text that looks
+  badly read (brackets that do not match, a letter taken for a digit, the
+  nutrition table in the list, a sentence for an ingredient, an empty place
+  between commas) gives no ingredient and a warning that says why, and the
+  text is corrected on OpenFoodFacts, then the product loaded again.
+  Percentages over 100 in total are only a warning.
 - Uncertainty is part of the result, not a caveat. Every figure is an
   interval: a declared value is rounded to its last digit (33 % is 32.5-33.5,
   1.4 % is 1.35-1.45), and that margin is carried through to the estimate.
@@ -42,8 +52,10 @@ nutrients from its ingredients"); this file is the execution plan.
   that every ingredient always has one. Curating it is a human task.
 - OFF's CIQUAL codes are suggestions, not data: they only seed the source of
   a reference created on the fly (decision 9), and a proxy code never does.
-  `IngredientTaxon` is a dictionary used at import (normalized names,
-  translations), no longer linked to the models.
+  `IngredientTaxon` is a dictionary (the English and French names of what a
+  label names, and a CIQUAL hint), no longer linked to the models: it gives a
+  wording its English name when it knows it, and nothing is guessed when it
+  does not.
 - Test product: muesli `3229820794556`. The dev database can be reset.
 
 ## Decisions to take at the start of the session

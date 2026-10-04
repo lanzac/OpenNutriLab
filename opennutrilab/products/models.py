@@ -6,9 +6,9 @@ Products, their ingredients, and the nutrient data behind them.
 - Product and ProductNutrient: what a product's nutrition label declares.
 - Ingredient: a product's ingredient tree, as its label lists it. Each one is
   its reference ingredient and has no name of its own.
-- IngredientTaxon: OpenFoodFacts' ingredient taxonomy, a dictionary of
-  normalized (English) names and their French ones, used when an OFF product
-  is imported. Nothing links to it.
+- IngredientTaxon: OpenFoodFacts' ingredient taxonomy, a dictionary of the
+  English and French names of what a label names, with a CIQUAL hint. It gives
+  a wording its English name, and proposes foods. Nothing links to it.
 - Source, SourceFood and SourceFoodNutrient: composition data exactly as a
   food composition table publishes it (CIQUAL first), with its qualifiers
   and confidence grades.
@@ -260,10 +260,10 @@ class IngredientTaxon(models.Model):
     """
     An entry of OpenFoodFacts' ingredient taxonomy, e.g. `en:oat-flakes`.
 
-    What OFF returns as an ingredient's `text` is the wording of the label, in
-    the product's language. The taxonomy is where its normalized names are: an
-    imported ingredient is named from here, and a reference ingredient created
-    for it takes its French name from here. Loaded by `manage.py
+    A dictionary: the English and French names of what a label names. An
+    ingredient is read from the label's text, not from OFF's own parsing of it,
+    and this is only where a wording is given its English name (and a reference
+    created for it its other name) when the taxonomy has it. Loaded by `manage.py
     import_off_taxonomy`.
 
     Nothing links to it. It is OFF's data, which does not always match what is

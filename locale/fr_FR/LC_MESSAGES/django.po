@@ -460,6 +460,46 @@ msgstr "Marquer aussi les références reliées comme validées (celles sans nom
 msgid "Link the ticked references"
 msgstr "Relier les références cochées"
 
+msgid "There is no ingredient list."
+msgstr "Il n'y a pas de liste d'ingrédients."
+
+msgid "No ingredient could be read from the list."
+msgstr "Aucun ingrédient n'a pu être lu dans la liste."
+
+#, python-format
+msgid "Parentheses or brackets that do not match: %(detail)s"
+msgstr "Parenthèses ou crochets qui ne se correspondent pas : %(detail)s"
+
+#, python-format
+msgid "Characters or words that look badly read: %(detail)s"
+msgstr "Caractères ou mots qui semblent mal lus : %(detail)s"
+
+#, python-format
+msgid "Text that does not belong to a list of ingredients: %(detail)s"
+msgstr "Texte qui n'appartient pas à une liste d'ingrédients : %(detail)s"
+
+#, python-format
+msgid "An ingredient that is a whole sentence: %(detail)s"
+msgstr "Un ingrédient qui est une phrase entière : %(detail)s"
+
+#, python-format
+msgid "An ingredient of one or two letters: %(detail)s"
+msgstr "Un ingrédient d'une ou deux lettres : %(detail)s"
+
+msgid "An empty place between two commas."
+msgstr "Un vide entre deux virgules."
+
+msgid "A long text with no separator, read as a single ingredient."
+msgstr "Un long texte sans séparateur, lu comme un seul ingrédient."
+
+#, python-format
+msgid "The percentages add up to more than 100: %(detail)s"
+msgstr "Les pourcentages totalisent plus de 100 : %(detail)s"
+
+#, python-format
+msgid "The ingredient list OpenFoodFacts has for barcode %(barcode)s looks badly read, so no ingredient was imported: %(problems)s Correct the text on OpenFoodFacts (https://world.openfoodfacts.org/product/%(barcode)s), then load the product again."
+msgstr "La liste d'ingrédients qu'OpenFoodFacts a pour le code-barres %(barcode)s semble mal lue, donc aucun ingrédient n'a été importé : %(problems)s Corrigez le texte sur OpenFoodFacts (https://world.openfoodfacts.org/product/%(barcode)s), puis rechargez le produit."
+
 #~ msgid "OpenFoodFacts taxonomy id, e.g. en:oat-flakes."
 #~ msgstr "Identifiant de taxonomie OpenFoodFacts, par exemple en:oat-flakes."
 

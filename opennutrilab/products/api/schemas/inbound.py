@@ -40,6 +40,9 @@ NutrientAmount = Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=4)
 
 class IngredientInput(Schema):
     name: str = Field(min_length=1, max_length=255)
+    # The language the name is in ("fr"), when it is known: it says which of the
+    # reference's two names a name that is new belongs in.
+    language: str = Field(default="", max_length=10)
     # As declared on the label; never an estimate.
     percentage: Decimal | None = Field(default=None, ge=0, le=100)
     # Raw OpenFoodFacts data, stored for reference only.

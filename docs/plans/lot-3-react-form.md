@@ -25,8 +25,9 @@ plan): Django keeps the page shell, and React owns the form.
 2. **OFF lookup endpoint.** No API route exists yet.
    _Recommendation:_ add `GET /api/v1/off/{barcode}`. It returns a
    `ProductCreate`-shaped draft, made from `fetch_from_off`,
-   `declared_nutrients_from_off` and `to_ingredient_inputs`, and nothing is
-   saved. This replaces the `off_*` hidden fields.
+   `declared_nutrients_from_off` and `ingredient_inputs_from_label`, and
+   nothing is saved. The draft carries the warnings about the ingredient list
+   (a text that looks badly read gives no ingredient), for the form to show. This replaces the `off_*` hidden fields.
 3. **Ingredient tree editor.** Options:
    - keep Tabulator, wrapped in a React component;
    - rewrite it as plain React.

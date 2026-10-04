@@ -426,3 +426,115 @@ def test_a_food_without_a_name_gives_no_reference(carrots: list[SourceFood]):
 
     with pytest.raises(ReferenceNameError, match="no name"):
         create_reference_from_foods([nameless])
+
+
+# ----------------------------------------------------------------------------
+# A label writes the plural
+# ----------------------------------------------------------------------------
+@pytest.mark.django_db
+def test_a_name_in_the_plural_finds_the_reference_in_the_singular():
+    date = ReferenceIngredient.objects.create(name_en="date", name_fr="datte")
+
+    references = resolve_references([ingredient("Dattes"), ingredient("raisins secs")])
+
+    assert references["dattes"] == date
+    assert ReferenceIngredient.objects.filter(name_fr="dattes").count() == 0
+    # Nothing is called "raisin sec" yet: that one is new, and not a duplicate.
+    assert ReferenceIngredient.objects.count() == 2  # noqa: PLR2004
+
+
+@pytest.mark.django_db
+def test_the_name_as_written_is_tried_before_its_singular():
+    """ "Cassis" must not be read as "cassi"."""
+    ReferenceIngredient.objects.create(name_fr="cassi")
+    cassis = ReferenceIngredient.objects.create(name_fr="cassis")
+
+    assert find_references(["cassis"]) == {"cassis": cassis}
+
+
+@pytest.mark.django_db
+def test_a_plural_name_is_translated_through_the_taxonomy_by_its_singular():
+    IngredientTaxon.objects.create(off_id="en:date", name_en="date", name_fr="datte")
+
+    created = resolve_references([ingredient("dattes", language="fr")])["dattes"]
+
+    # Named as the taxonomy names it, not "dattes".
+    assert (created.name_en, created.name_fr) == ("date", "datte")
+
+
+@pytest.mark.django_db
+def test_the_plural_and_the_singular_of_a_name_make_one_reference():
+    references = resolve_references([ingredient("dattes"), ingredient("datte")])
+
+    assert references["dattes"] == references["datte"]
+    assert ReferenceIngredient.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_a_name_with_the_language_it_is_in_goes_where_that_says():
+    with translation.override("en-us"):
+        created = resolve_references([ingredient("flocons de soja", language="fr")])[
+            "flocons de soja"
+        ]
+
+    assert (created.name_en, created.name_fr) == ("", "flocons de soja")
+
+
+# ----------------------------------------------------------------------------
+# "Raisin": a grape in French, a dried grape in English
+# ----------------------------------------------------------------------------
+@pytest.fixture
+def grapes(db: None) -> tuple[ReferenceIngredient, ReferenceIngredient]:
+    grape = ReferenceIngredient.objects.create(name_en="grape", name_fr="raisin")
+    dried = ReferenceIngredient.objects.create(name_en="raisin", name_fr="raisin sec")
+    return grape, dried
+
+
+@pytest.mark.django_db
+def test_a_french_label_reads_raisin_as_the_grape(
+    grapes: tuple[ReferenceIngredient, ReferenceIngredient],
+):
+    grape, dried = grapes
+
+    references = resolve_references(
+        [
+            ingredient("raisins secs", language="fr"),
+            ingredient("raisins", language="fr"),
+        ]
+    )
+
+    assert references["raisins"] == grape
+    assert references["raisins secs"] == dried
+
+
+@pytest.mark.django_db
+def test_an_english_label_reads_raisin_as_the_dried_grape(
+    grapes: tuple[ReferenceIngredient, ReferenceIngredient],
+):
+    _grape, dried = grapes
+
+    assert (
+        resolve_references([ingredient("raisins", language="en")])["raisins"] == dried
+    )
+
+
+@pytest.mark.django_db
+def test_without_a_language_english_wins_as_it_always_did(
+    grapes: tuple[ReferenceIngredient, ReferenceIngredient],
+):
+    _grape, dried = grapes
+
+    assert find_references(["raisin"])["raisin"] == dried
+
+
+@pytest.mark.django_db
+def test_a_french_wording_is_translated_through_the_french_names_of_the_taxonomy():
+    IngredientTaxon.objects.create(off_id="en:grape", name_en="grape", name_fr="raisin")
+    IngredientTaxon.objects.create(
+        off_id="en:raisin", name_en="raisin", name_fr="raisin sec"
+    )
+
+    created = resolve_references([ingredient("raisins", language="fr")])["raisins"]
+
+    # Not ambiguous in French, where only the grape is called "raisin".
+    assert (created.name_en, created.name_fr) == ("grape", "raisin")

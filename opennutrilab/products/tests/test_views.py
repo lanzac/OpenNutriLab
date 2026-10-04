@@ -16,7 +16,6 @@ from django.urls import reverse
 from django.utils import translation
 from PIL import Image
 
-from opennutrilab.products.api.openfoodfacts.schemas import OFFIngredientSchema
 from opennutrilab.products.api.openfoodfacts.schemas import OFFProductSchema
 from opennutrilab.products.api.openfoodfacts.services import OFFError
 from opennutrilab.products.api.openfoodfacts.services import OFFProductNotFoundError
@@ -53,17 +52,7 @@ def off_product(**overrides: Any) -> OFFProductSchema:
         "image_url": IMAGE_URL,
         "nutriments": {"energy_100g": 2252, "fat_100g": 30.9, "sugars_100g": 56.3},
         "ingredients_text": "Sucre 56,3 %, lait (lait écrémé)",
-        "ingredients": [
-            OFFIngredientSchema(
-                name="Sucre",
-                percentage=56.3,
-                off_id="en:sugar",
-                ciqual_food_code="31016",
-            ),
-            OFFIngredientSchema(
-                name="Lait", ingredients=[OFFIngredientSchema(name="lait écrémé")]
-            ),
-        ],
+        "ingredients_lc": "fr",
     }
     data.update(overrides)
     return OFFProductSchema(**data)
@@ -282,10 +271,68 @@ class TestProductCreateView:
         assert form["off_barcode"].value() == NUTELLA
         assert form["off_image_url"].value() == IMAGE_URL
         carried = json.loads(form["off_ingredients"].value())
-        assert [i["name"] for i in carried] == ["Sucre", "Lait"]
+        assert [i["name"] for i in carried] == ["sucre", "lait"]
+        assert carried[0]["percentage"] == "56.3"
+        assert {i["language"] for i in carried} == {"fr"}
         rows = response.context["ingredient_rows"]
-        assert [r["name"] for r in rows] == ["Sucre", "Lait"]
+        assert [r["name"] for r in rows] == ["sucre", "lait"]
         assert rows[1]["ingredients"][0]["name"] == "lait écrémé"
+
+    @patch("opennutrilab.products.views.fetch_from_off")
+    def test_a_badly_read_list_imports_no_ingredient_and_says_how_to_fix_it(
+        self, mock_fetch_from_off: MagicMock, client: Client
+    ):
+        mock_fetch_from_off.return_value = off_product(
+            ingredients_text="Sucre, émulsifiants : lécithines [SOJA), vanilline"
+        )
+
+        response: HttpResponse = client.get(
+            reverse("create_product"), {"barcode": NUTELLA}
+        )
+
+        form: ProductForm = response.context["form"]
+        assert form["name"].value() == "Nutella"  # the rest is still filled in
+        assert json.loads(form["off_ingredients"].value()) == []
+        assert response.context["ingredient_rows"] == []
+        [notice] = [str(m) for m in response.context["messages"]]
+        assert "looks badly read" in notice
+        assert "[SOJA)" in notice
+        assert f"https://world.openfoodfacts.org/product/{NUTELLA}" in notice
+
+    @patch("opennutrilab.products.views.fetch_from_off")
+    def test_percentages_over_one_hundred_are_said_but_the_list_is_kept(
+        self, mock_fetch_from_off: MagicMock, client: Client
+    ):
+        mock_fetch_from_off.return_value = off_product(
+            ingredients_text="Farine 70%, sucre 40%, sel"
+        )
+
+        response: HttpResponse = client.get(
+            reverse("create_product"), {"barcode": NUTELLA}
+        )
+
+        assert [r["name"] for r in response.context["ingredient_rows"]] == [
+            "farine",
+            "sucre",
+            "sel",
+        ]
+        [notice] = [str(m) for m in response.context["messages"]]
+        assert "add up to more than 100" in notice
+
+    @patch("opennutrilab.products.views.fetch_from_off")
+    def test_a_product_without_a_list_says_so(
+        self, mock_fetch_from_off: MagicMock, client: Client
+    ):
+        mock_fetch_from_off.return_value = off_product(ingredients_text=None)
+
+        response: HttpResponse = client.get(
+            reverse("create_product"), {"barcode": NUTELLA}
+        )
+
+        assert response.context["ingredient_rows"] == []
+        assert [str(m) for m in response.context["messages"]] == [
+            "There is no ingredient list."
+        ]
 
     @patch("opennutrilab.products.services.product_services.requests.get")
     @patch("opennutrilab.products.views.fetch_from_off")
@@ -306,8 +353,8 @@ class TestProductCreateView:
         product = Product.objects.get(pk=NUTELLA)
         assert product.name == "Nutella"
         assert [str(i) for i in product.ingredients.filter(parent=None)] == [
-            "Sucre",
-            "Lait",
+            "sucre",
+            "lait",
         ]
         assert mock_get.call_args.args == (IMAGE_URL,)
         assert product.image.name == f"images/products/{NUTELLA}.jpg"
@@ -434,8 +481,8 @@ class TestProductEditView:
         product.refresh_from_db()
         assert product.name == "Nutella"
         assert [str(i) for i in product.ingredients.filter(parent=None)] == [
-            "Sucre",
-            "Lait",
+            "sucre",
+            "lait",
         ]
         assert not product.image
         notices = [str(m) for m in response.context["messages"]]

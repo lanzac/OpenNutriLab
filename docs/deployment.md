@@ -87,16 +87,18 @@ Create the first account:
 just prod-manage createsuperuser
 ```
 
-Load OpenFoodFacts' ingredient taxonomy, which gives ingredients their
-normalized English names (it downloads about 3 MB, takes a few seconds, and can
-be run again at any time to refresh it):
+Load OpenFoodFacts' ingredient taxonomy, a dictionary that gives the English
+and French names of what a label names, and a CIQUAL hint (it downloads about
+3 MB, takes a few seconds, and can be run again at any time to refresh it):
 
 ```sh
 just prod-manage import_off_taxonomy
 ```
 
-Until it has run, ingredients fetched from OpenFoodFacts keep the wording of
-their label instead.
+Ingredients are read from the label's text, which does not need it. Until it has
+run, an ingredient has no English name (it is named as the label words it, and
+the English name is added when the reference is reviewed), and the proposals of
+CIQUAL foods lose their second signal.
 
 Load ANSES' CIQUAL food composition table, the reference data nutrient
 estimates are built on (licence Etalab 2.0: the attribution it stores must be
