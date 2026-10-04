@@ -10,9 +10,9 @@ from its ingredients, each linked to a reference ingredient whose
 composition is known, and check the result against the values the label
 declares. The data model is in place (`opennutrilab/products/models.py`), the
 CIQUAL table is imported, an ingredient is linked to its reference and the
-percentages the label does not give are estimated (as intervals, from the
-order, the declared percentages and the declared nutrition); the rest of the
-following is not built yet.
+percentages the label does not give and the nutrients of a product are
+estimated (as intervals, from the order, the declared percentages and the
+declared nutrition); the rest of the following is not built yet.
 
 - **Reference data.** The CIQUAL 2025 table is imported (`manage.py
 import_ciqual`). Other sources will follow, each with its own importer and
@@ -29,12 +29,9 @@ import_ciqual`). Other sources will follow, each with its own importer and
   created reference can be seeded with OFF's CIQUAL code when it is a known
   food (OFF's codes are suggestions, never trusted), and the tools to curate
   the references to review. The plan is in `docs/plans/lot-estimation.md`.
-- **Nutrients of a product.** From the percentages and the compositions of
-  the references. A branch of the tree uses the coarsest level that has a
-  composition, never a parent and its children together: a sub-ingredient is
-  linked to the food as sold, and its parent says what it became (dried
-  grapes, not fresh ones). Built for the percentages, still to do for the
-  nutrients.
+- **Showing the estimate.** The estimates exist in code only: they are not on
+  the product page or in the API yet (step 9 of the plan: a read-only endpoint
+  and a plain table, then the real panel in lot 3).
 - **Vitamin A on labels.** The derived vitamin A follows CIQUAL (retinol +
   beta-carotene / 12), but the regulation gives vitamin A in µg without any
   conversion (Annex XIII of Regulation 1169/2011), and the EU scientific

@@ -34,8 +34,9 @@ the ingredient has no composition of its own, and still get a percentage.
 All of these are linear rules over the percentages, so what each percentage can
 be is found exactly: its lowest and highest values among all the combinations
 that follow the rules, one linear program for each (scipy, HiGHS). The point
-value is the mean of those extreme combinations, which follows the rules as they
-do, and a declared percentage keeps its own figure when it still holds.
+value is a combination in the middle of them, which follows the rules as they
+do (see _ranges), and a declared percentage keeps its own figure when it still
+holds.
 
 When the rules cannot all hold, nothing is guessed:
 - an ingredient with no composition leaves the nutrition unused, and says which;
@@ -89,6 +90,9 @@ NUTRIENTS = (
 REQUIRED_NUTRIENTS = frozenset({"fat", "carbohydrates", "proteins"})
 
 _HUNDRED = 100.0
+# The point of a share looks in this many directions, from this seed.
+_DIRECTIONS = 32
+_SEED = 0
 # What the solver leaves of a rule that holds exactly.
 _TOLERANCE = 1e-7
 _DIGITS = Decimal("0.01")
@@ -166,22 +170,34 @@ Row = tuple[dict[int, float], float]
 
 
 @dataclass
-class _Problem:
-    """Linear rules over the columns: `ub` rows are <=, `eq` rows are =."""
+class Rules:
+    """
+    Linear rules over the columns: `ub` rows are <=, `eq` rows are =.
+
+    The rows are not to change once the rules have been solved.
+    """
 
     width: int
     ub: list[Row] = field(default_factory=list)
     eq: list[Row] = field(default_factory=list)
     bounds: list[Range] = field(default_factory=list)
+    _matrices: tuple[Matrix | None, Matrix | None] | None = field(
+        default=None, init=False, repr=False
+    )
 
     def solve(self, objective: Matrix) -> Matrix | None:
         """The columns that minimise the objective, or None if no values follow
         the rules."""
+        if self._matrices is None:
+            self._matrices = (
+                self._matrix(self.ub) if self.ub else None,
+                self._matrix(self.eq) if self.eq else None,
+            )
         result = linprog(
             objective,
-            A_ub=self._matrix(self.ub) if self.ub else None,
+            A_ub=self._matrices[0],
             b_ub=[bound for _, bound in self.ub] if self.ub else None,
-            A_eq=self._matrix(self.eq) if self.eq else None,
+            A_eq=self._matrices[1],
             b_eq=[bound for _, bound in self.eq] if self.eq else None,
             bounds=self.bounds,
             method="highs",
@@ -201,18 +217,25 @@ class _Problem:
         return matrix
 
 
-def estimate_percentages(product: Product) -> PercentageEstimate:
-    """What the label of a product says of the shares of its ingredients."""
+class Loaded(NamedTuple):
+    """A product as the estimate reads it from the database."""
+
+    nodes: list[Node]
+    label: dict[str, Range]
+    nutrient_names: dict[str, str]
+    # The whole composition of each node's reference, parallel to `nodes`.
+    compositions: list[dict[str, Estimate]]
+    # The nutrient each one is part of, by code (sugars are carbohydrates).
+    parents: dict[str, str | None]
+
+
+def load(product: Product) -> Loaded:
+    """Read a product's ingredients, their compositions and its label."""
     ingredients = list(product.ingredients.select_related("reference"))
-    catalogue = {
-        nutrient.code: nutrient
-        for nutrient in Nutrient.objects.filter(code__in=NUTRIENTS)
-    }
+    catalogue = {nutrient.code: nutrient for nutrient in Nutrient.objects.all()}
     derived = list(derived_nutrients())
-    compositions = {
-        reference.pk: _macronutrients(
-            reference_composition(reference, derived), catalogue
-        )
+    full = {
+        reference.pk: reference_composition(reference, derived)
         for reference in {i.reference_id: i.reference for i in ingredients}.values()
     }
     nodes = [
@@ -221,36 +244,69 @@ def estimate_percentages(product: Product) -> PercentageEstimate:
             parent=i.parent_id,
             name=i.reference.name,
             declared=i.percentage,
-            composition=compositions[i.reference_id],
+            composition=_macronutrients(full[i.reference_id], catalogue),
         )
         for i in ingredients
     ]
     label = {
         code: _declared_range(Decimal(amount))
         for code, amount in product.declared_nutrients.filter(
-            nutrient__in=catalogue.values()
+            nutrient__in=NUTRIENTS
         ).values_list("nutrient_id", "amount")
     }
-    return estimate(nodes, label, {c: n.name for c, n in catalogue.items()})
+    return Loaded(
+        nodes,
+        label,
+        {code: nutrient.name for code, nutrient in catalogue.items()},
+        [full[i.reference_id] for i in ingredients],
+        {code: nutrient.parent_id for code, nutrient in catalogue.items()},
+    )
 
 
-def estimate(
+def estimate_percentages(product: Product) -> PercentageEstimate:
+    """What the label of a product says of the shares of its ingredients."""
+    loaded = load(product)
+    return estimate(loaded.nodes, loaded.label, loaded.nutrient_names)
+
+
+@dataclass(frozen=True)
+class Solution:
+    """
+    What the rules left of the shares, for what is worked out from them.
+
+    `rules` are those that held, with the nutrition of the product when it was
+    used. `ranges` is the lowest and the highest value of each node, and a
+    combination that follows the rules, in the middle of them. Both are
+    None when no values follow the rules.
+    """
+
+    nodes: Sequence[Node]
+    # The nodes whose composition counts, and those that leave a branch without.
+    units: list[int]
+    without: list[int]
+    warnings: list[EstimateWarning]
+    used_nutrition: bool
+    rules: Rules | None = None
+    ranges: tuple[Matrix, Matrix, Matrix] | None = None
+
+
+def solve_shares(
     nodes: Sequence[Node],
     label: Mapping[str, Range],
     nutrient_names: Mapping[str, str] | None = None,
-) -> PercentageEstimate:
+) -> Solution:
     """
     The share each node can be, from the rules in the module's description.
 
     `label` is the interval of each nutrient of the whole product, per 100 g.
     """
     if not nodes:
-        return PercentageEstimate({}, [], used_nutrition=False)
+        return Solution(nodes, [], [], [], used_nutrition=False)
     warnings: list[EstimateWarning] = []
     tree = _tree(nodes)
     units, without = _units(nodes)
 
-    nutrition: _Problem | None = None
+    nutrition: Rules | None = None
     if not label:
         warnings.append(EstimateWarning(Problem.NO_NUTRITION))
     elif without:
@@ -259,25 +315,50 @@ def estimate(
     else:
         nutrition = _with_nutrition(tree, nodes, units, label)
 
+    rules = nutrition
     ranges = _ranges(nutrition) if nutrition is not None else None
-    used_nutrition = ranges is not None
     if ranges is None:
+        rules = tree
         ranges = _ranges(tree)
         if ranges is None:
             warnings.append(EstimateWarning(Problem.IMPOSSIBLE))
-            return PercentageEstimate({}, warnings, used_nutrition=False)
+            return Solution(nodes, units, without, warnings, used_nutrition=False)
         if nutrition is not None:
             off = _disagreeing(tree, nodes, units, label)
             names = nutrient_names or {}
             detail = ", ".join(names.get(code, code) for code in off)
             warnings.append(EstimateWarning(Problem.LABEL_DISAGREES, detail))
+    return Solution(
+        nodes,
+        units,
+        without,
+        warnings,
+        used_nutrition=rules is nutrition,
+        rules=rules,
+        ranges=ranges,
+    )
 
-    lows, highs, points = ranges
+
+def estimate(
+    nodes: Sequence[Node],
+    label: Mapping[str, Range],
+    nutrient_names: Mapping[str, str] | None = None,
+) -> PercentageEstimate:
+    """The share each node can be, as intervals. See solve_shares."""
+    return percentages_of(solve_shares(nodes, label, nutrient_names))
+
+
+def percentages_of(solution: Solution) -> PercentageEstimate:
+    if solution.ranges is None:
+        return PercentageEstimate({}, solution.warnings, used_nutrition=False)
+    lows, highs, points = solution.ranges
     percentages = {
-        node.key: _interval(node.declared, lows[i], points[i], highs[i])
-        for i, node in enumerate(nodes)
+        node.key: interval(node.declared, lows[i], points[i], highs[i])
+        for i, node in enumerate(solution.nodes)
     }
-    return PercentageEstimate(percentages, warnings, used_nutrition=used_nutrition)
+    return PercentageEstimate(
+        percentages, solution.warnings, used_nutrition=solution.used_nutrition
+    )
 
 
 def _declared_range(amount: Decimal) -> Range:
@@ -334,10 +415,10 @@ def _units(nodes: Sequence[Node]) -> tuple[list[int], list[int]]:
     return units, without
 
 
-def _tree(nodes: Sequence[Node]) -> _Problem:
+def _tree(nodes: Sequence[Node]) -> Rules:
     """The rules a label's list of ingredients gives, and no more."""
     index = {node.key: i for i, node in enumerate(nodes)}
-    problem = _Problem(len(nodes), bounds=[(0.0, _HUNDRED)] * len(nodes))
+    problem = Rules(len(nodes), bounds=[(0.0, _HUNDRED)] * len(nodes))
     siblings: defaultdict[int | None, list[int]] = defaultdict(list)
     for i, node in enumerate(nodes):
         siblings[node.parent].append(i)
@@ -372,19 +453,19 @@ def _tree(nodes: Sequence[Node]) -> _Problem:
 
 
 def _with_nutrition(
-    tree: _Problem,
+    tree: Rules,
     nodes: Sequence[Node],
     units: Sequence[int],
     label: Mapping[str, Range],
     *,
     slack: bool = False,
-) -> _Problem:
+) -> Rules:
     """
     The tree's rules and those of the nutrition. With `slack`, each nutrient has a
     column that lets it be missed, by that many times the label's rounding.
     """
     width = tree.width + (len(label) if slack else 0)
-    problem = _Problem(
+    problem = Rules(
         width,
         ub=list(tree.ub),
         eq=list(tree.eq),
@@ -407,15 +488,21 @@ def _with_nutrition(
     return problem
 
 
-def _ranges(problem: _Problem) -> tuple[Matrix, Matrix, Matrix] | None:
+def _ranges(problem: Rules) -> tuple[Matrix, Matrix, Matrix] | None:
     """
-    The lowest and highest value of each of the first columns, and the mean of
-    those extreme combinations; None if no values follow the rules.
+    The lowest and highest value of each of the first columns, and a combination
+    in the middle of those that follow the rules; None if none does.
+
+    That combination is the mean of the middles of the combinations that are most
+    and least in each of a number of directions, chosen once at random and the
+    same every time. Taking the extremes of each column alone would not do: where
+    several combinations are as extreme, the solver returns any of them, and the
+    mean leans towards the corners (three sub-ingredients of 1.4 % in order would
+    come out as 1.30, 0.06 and 0.03 instead of about 0.9, 0.4 and 0.2).
     """
     count = len(problem.bounds)
     lows = np.zeros(count)
     highs = np.zeros(count)
-    vertices: list[Matrix] = []
     for i in range(count):
         for sign in (1.0, -1.0):
             objective = np.zeros(count)
@@ -423,13 +510,23 @@ def _ranges(problem: _Problem) -> tuple[Matrix, Matrix, Matrix] | None:
             found = problem.solve(objective)
             if found is None:
                 return None
-            vertices.append(found)
             (lows if sign > 0 else highs)[i] = found[i]
-    return lows, highs, np.mean(vertices, axis=0)
+
+    generator = np.random.default_rng(_SEED)
+    middles: list[Matrix] = []
+    for _step in range(_DIRECTIONS):
+        direction = generator.normal(size=count)
+        least = problem.solve(direction)
+        most = problem.solve(-direction)
+        # The rules held for the columns above and nothing has changed since.
+        assert least is not None
+        assert most is not None
+        middles.append((least + most) / 2)
+    return lows, highs, np.mean(middles, axis=0)
 
 
 def _disagreeing(
-    tree: _Problem,
+    tree: Rules,
     nodes: Sequence[Node],
     units: Sequence[int],
     label: Mapping[str, Range],
@@ -444,7 +541,7 @@ def _disagreeing(
     return [code for k, code in enumerate(label) if found[tree.width + k] > _TOLERANCE]
 
 
-def _interval(
+def interval(
     declared: Decimal | None, low: float, point: float, high: float
 ) -> Interval:
     """Rounded outwards, since the solver is exact only to its tolerance."""

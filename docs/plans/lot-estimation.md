@@ -1,8 +1,9 @@
 # Plan: nutrient estimation batch
 
 Status: steps 1 (ingredient identity), 2 (CIQUAL import), 3 (derived
-nutrients), 4 (composition of a reference), 5 (curating the references) and 6
-(percentage estimation) are done, 2026-10-04; the rest is planned, not started
+nutrients), 4 (composition of a reference), 5 (curating the references), 6
+(percentage estimation) and 7 (nutrient computation) are done, 2026-10-04; the
+rest is planned, not started
 (written 2026-10-03, after lot 2 merged; revised 2026-10-04: how an ingredient
 is linked to its reference changed, see the ground rules, decisions 8-11 and
 step 1; which composition counts for a branch changed, see step 7).
@@ -367,14 +368,19 @@ written.
      has no composition.
    - Each percentage's lowest and highest values are two linear programs (HiGHS
      through scipy), and each `Interval(low, point, high)` is rounded outwards to
-     0.01. The point is the mean of those extreme combinations, which follows
-     the rules too, and a declared percentage keeps its own figure when it
-     still holds. **Difference from decision 4:** the point does not "best fit
-     the declared nutrition". On the muesli a fit to the label's figures moved
-     the declared soy and dates to the edge of their margin (31.5 and 7.5) and
-     put wheat and oats level, because the compositions are only as good as their
-     intervals (the manual foods are known to 15 %). The mean of the extremes
-     stays inside everything that is known.
+     0.01. The point is a combination in the middle of those that follow the
+     rules, which follows them too, and a declared percentage keeps its own
+     figure when it still holds. It is the mean, over 32 directions chosen once
+     at random (always the same seed), of the middle of the combination most and
+     the one least in that direction. The extremes of each percentage alone were
+     tried first and leaned towards the corners where several combinations are
+     as extreme (three sub-ingredients of 1.4 % in order came out 1.30, 0.06 and
+     0.03; they now come out 0.91, 0.34 and 0.18, close to the 0.86, 0.39 and
+     0.16 a uniform draw gives). **Difference from decision 4:** the point does
+     not "best fit the declared nutrition". On the muesli a fit to the label's
+     figures moved the declared soy and dates to the edge of their margin (31.5
+     and 7.5) and put wheat and oats level, because the compositions are only as
+     good as their intervals (the manual foods are known to 15 %).
    - **Difference from decision 5:** a sub-ingredient's percentage is always a
      share of its parent. The exception (a parent with no percentage and a
      value above every root's) was left out: it is ambiguous, and a reading that
@@ -397,7 +403,31 @@ written.
      declared percentages that are impossible.
    - Test against the muesli and hand-made trees: all declared, none
      declared, nested.
-7. **Nutrient computation**: `estimate_nutrients(product)`.
+7. **Nutrient computation** (done): `estimate_nutrients(product)`.
+   - Done as planned, with these details. Code: `services/nutrient_estimation.py`
+     (and `Solution`, `solve_shares` in `percentage_estimation.py`, which both
+     steps share). A nutrient's amount is its point, and its lowest and highest
+     values are linear programs over the same combinations as the percentages
+     (the label's nutrition included when it was used): the lowest content of
+     each ingredient, minimised over them, and the highest, maximised. That is
+     tighter than multiplying the ends of the percentages, which are bound to
+     each other (they add up). The point is the middle combination of step 6
+     with each ingredient's own amount, so it lies within its interval.
+   - Coverage per nutrient is the share of the 100 g, as an interval, whose
+     ingredients give a value. A nutrient missing from an ingredient is not zero:
+     the amount and the lowest figure count it as nothing (what is at least
+     there), and the highest figure is `None` unless the ingredient gives the
+     nutrient it is part of (no sugars, but carbohydrates: at most those). A
+     value of "traces" has no upper end either. An ingredient counts only if it
+     has fat, carbohydrates and proteins, as in step 6.
+   - On the muesli the label's nutrients are all given an interval that holds
+     the declared figure (energy 1416-1739 kJ for a declared 1532, protein
+     17.3-24.0 g for 21, sugars 8.0-12.2 g for 10, salt 0.012-0.021 g for 0.02),
+     as wide as the manual foods' 15 %. Its vitamins are covered for 36-38 % of
+     the product only, since soy flakes, wheat flakes and the berries have the
+     nutrition of a label and nothing else: they have to be completed to say
+     more. It takes 0.7 s on demand.
+   - What follows is the plan as written.
    - Uses the **coarsest** level of each branch that has a composition, never a
      parent and its children together (changed on 2026-10-04 from "the finest",
      which step 6 already follows). A sub-ingredient is linked to the food as it
