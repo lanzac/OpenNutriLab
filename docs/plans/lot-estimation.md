@@ -1,7 +1,8 @@
 # Plan: nutrient estimation batch
 
 Status: steps 1 (ingredient identity), 2 (CIQUAL import), 3 (derived
-nutrients) and 5 (curating the references) are done, 2026-10-04; the rest is planned, not started (written 2026-10-03, after lot 2 merged; revised 2026-10-04: how
+nutrients), 4 (composition of a reference) and 5 (curating the references)
+are done, 2026-10-04; the rest is planned, not started (written 2026-10-03, after lot 2 merged; revised 2026-10-04: how
 an ingredient is linked to its reference changed, see the ground rules,
 decisions 8-11 and step 1).
 Goal and constraints are in `docs/roadmap.md` ("Estimate a product's
@@ -274,8 +275,22 @@ written.
      vitamin E.
    - Service: `derived_amount(nutrient, amounts)`. A derived value is
      incomplete, not zero, when a component is missing.
-4. **Reference ingredient composition**:
+4. **Reference ingredient composition** (done):
    `reference_composition(ref) -> dict[code, Estimate]`.
+   - Done as planned (decision 3 as recommended), with these details. Every
+     figure is an interval. A measured amount is the range the source's own
+     data gives (CIQUAL's minimum and maximum), or else its rounding read from
+     its decimals as for a declared figure (9.3 is 9.25 to 9.35, 1100 is 1099.5
+     to 1100.5), kept at or under 100 for a nutrient in grams. "Below the
+     detection limit x" is 0 to x and counts as x / 2; "traces" is from 0 with no
+     upper end; "not measured" is not in the composition. A nutrient a food
+     lacks is derived for it first (step 3), amounts and both ends. Foods are
+     then combined per nutrient by the mean weighted by grade (A 4, B 3, C 2,
+     D 1, none 1), the interval holding all of theirs; with one food it is that
+     food's own, which was checked on the 536 measured values of the single-food
+     references of the muesli against the XML. The reference's page shows it.
+     Code: `services/reference_composition.py`.
+   - What follows is the plan as written.
    - `Estimate` holds amount, low, high, qualifier, grades and source foods.
    - Aggregation follows decision 3.
    - Admin: show the aggregated composition read-only on

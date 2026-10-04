@@ -1,4 +1,5 @@
 import re
+from decimal import Decimal
 from http import HTTPStatus
 from typing import Any
 
@@ -10,10 +11,12 @@ from django.urls import reverse
 
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import IngredientTaxon
+from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ReferenceIngredient
 from opennutrilab.products.models import Source
 from opennutrilab.products.models import SourceFood
+from opennutrilab.products.models import SourceFoodNutrient
 from opennutrilab.users.tests.factories import UserFactory
 
 pytestmark = pytest.mark.django_db
@@ -424,3 +427,48 @@ def test_proposing_needs_the_permission_to_change_references(
     )
 
     assert not cassis.source_foods.exists()
+
+
+# ----------------------------------------------------------------------------
+# The composition of a reference
+# ----------------------------------------------------------------------------
+def test_a_references_page_shows_what_its_foods_say_together(admin_client: Client):
+    ciqual = Source.objects.create(code="ciqual-2025", name="Ciqual")
+    carrot = SourceFood.objects.create(source=ciqual, code="20009", name_fr="Carotte")
+    vitamin_c = Nutrient.objects.get(code="fat")  # a label nutrient, in the catalogue
+    SourceFoodNutrient.objects.create(
+        food=carrot,
+        nutrient=vitamin_c,
+        amount=Decimal("9.3"),
+        minimum=Decimal("7.1"),
+        maximum=Decimal("11.9"),
+        confidence="B",
+    )
+    reference = ReferenceIngredient.objects.create(name_en="carrot")
+    reference.source_foods.add(carrot)
+
+    page = admin_client.get(
+        reverse("admin:products_referenceingredient_change", args=[reference.pk])
+    ).content.decode()
+
+    assert "<td>Fat</td>" in page
+    assert "<td>9.3 g</td>" in page
+    assert "<td>7.1 \u2013 11.9</td>" in page
+    assert "<td>B</td>" in page
+    assert "Carotte (ciqual-2025 20009)" in page
+
+
+def test_a_reference_with_no_value_says_so_and_the_add_form_does_not_fail(
+    admin_client: Client,
+):
+    bare = ReferenceIngredient.objects.create(name_en="bare")
+
+    page = admin_client.get(
+        reverse("admin:products_referenceingredient_change", args=[bare.pk])
+    ).content.decode()
+
+    assert "No composition" in page
+    assert (
+        admin_client.get(reverse("admin:products_referenceingredient_add")).status_code
+        == HTTPStatus.OK
+    )

@@ -16,9 +16,9 @@ rest of the following is not built yet.
 import_ciqual`). Other sources will follow, each with its own importer and
   the attribution its licence requires.
 - **Reference ingredients.** Curated (`ReferenceIngredient`, e.g. "carotte
-  crue"), each drawing on several source foods. The rule that aggregates
-  their values into one composition - weighting by confidence, for
-  instance - is to be decided.
+  crue"), each drawing on several source foods, whose values are combined into
+  one composition with an interval (built). What is missing is to use it: the
+  estimate of a product from its ingredients.
 - **Linking ingredients.** An ingredient is its reference ingredient:
   `Ingredient` keeps no name and no OpenFoodFacts data, only the link, found
   by the ingredient's normalized name among the references' own (unique)

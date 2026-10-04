@@ -365,6 +365,9 @@ class SourceFoodNutrient(models.Model):
         LESS_THAN = "less_than", _("Below the detection limit")
         TRACES = "traces", _("Traces")
 
+    food_id: int
+    nutrient_id: str
+
     food = models.ForeignKey(
         SourceFood, on_delete=models.CASCADE, related_name="nutrients"
     )

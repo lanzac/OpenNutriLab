@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Any
 
 from django.contrib import admin
@@ -27,6 +28,9 @@ from .models import ReferenceIngredient
 from .models import Source
 from .models import SourceFood
 from .models import SourceFoodNutrient
+from .services.product_services import plain_amount
+from .services.reference_composition import Estimate
+from .services.reference_composition import reference_composition
 from .services.reference_proposals import propose_foods as propose_foods_for
 from .services.reference_services import ReferenceNameError
 from .services.reference_services import create_reference_from_foods
@@ -135,6 +139,25 @@ class IngredientTaxonAdmin(admin.ModelAdmin[IngredientTaxon]):
     search_fields = ("off_id", "name_en", "name_fr")
 
 
+def _estimate_amount(estimate: Estimate, unit: str) -> str:
+    """ "9.3 mg", "Below the detection limit: 0.02 g" or "Traces"."""
+    qualifier = SourceFoodNutrient.Qualifier
+    if estimate.qualifier == qualifier.TRACES:
+        return str(qualifier.TRACES.label)
+    if estimate.qualifier == qualifier.LESS_THAN:
+        limit = plain_amount(estimate.high or Decimal(0))
+        return f"{qualifier.LESS_THAN.label}: {limit} {unit}"
+    if estimate.amount is None:
+        return "-"
+    return f"{plain_amount(estimate.amount)} {unit}"
+
+
+def _estimate_range(estimate: Estimate) -> str:
+    low = "?" if estimate.low is None else plain_amount(estimate.low)
+    high = "?" if estimate.high is None else plain_amount(estimate.high)
+    return f"{low} \u2013 {high}"
+
+
 class HasSourceFoodsFilter(admin.SimpleListFilter):
     title = gettext_lazy("source foods")
     parameter_name = "source_foods"
@@ -174,8 +197,9 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
         "description",
         "source_foods",
         "suggested_foods",
+        "composition",
     )
-    readonly_fields = ("suggested_foods",)
+    readonly_fields = ("suggested_foods", "composition")
     actions = ("propose_foods", "mark_curated")
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[ReferenceIngredient]:
@@ -219,6 +243,43 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
                         food.source.code,
                     )
                     for food in foods
+                ),
+            ),
+        )
+
+    @admin.display(description=gettext_lazy("Composition"))
+    def composition(self, obj: ReferenceIngredient) -> str | SafeString:
+        """What the foods say together (see services.reference_composition)."""
+        if obj.pk is None:
+            return "-"
+        estimates = reference_composition(obj)
+        if not estimates:
+            return _("No composition: no source food gives any value.")
+        nutrients = Nutrient.objects.in_bulk(list(estimates))
+        ordered = sorted(
+            estimates.items(), key=lambda e: (nutrients[e[0]].display_order, e[0])
+        )
+        return format_html(
+            '<div style="max-height: 28em; overflow: auto"><table>'
+            "<thead><tr><th>{}</th><th>{}</th><th>{}</th><th>{}</th><th>{}</th></tr>"
+            "</thead><tbody>{}</tbody></table></div>",
+            _("Nutrient"),
+            _("Amount per 100 g"),
+            _("Range"),
+            _("Grades"),
+            _("Foods"),
+            format_html_join(
+                "",
+                "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
+                (
+                    (
+                        nutrients[code].name,
+                        _estimate_amount(estimate, nutrients[code].unit),
+                        _estimate_range(estimate),
+                        ", ".join(estimate.grades),
+                        ", ".join(str(food) for food in estimate.foods),
+                    )
+                    for code, estimate in ordered
                 ),
             ),
         )

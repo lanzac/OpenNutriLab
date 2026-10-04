@@ -500,6 +500,27 @@ msgstr "Les pourcentages totalisent plus de 100 : %(detail)s"
 msgid "The ingredient list OpenFoodFacts has for barcode %(barcode)s looks badly read, so no ingredient was imported: %(problems)s Correct the text on OpenFoodFacts (https://world.openfoodfacts.org/product/%(barcode)s), then load the product again."
 msgstr "La liste d'ingrédients qu'OpenFoodFacts a pour le code-barres %(barcode)s semble mal lue, donc aucun ingrédient n'a été importé : %(problems)s Corrigez le texte sur OpenFoodFacts (https://world.openfoodfacts.org/product/%(barcode)s), puis rechargez le produit."
 
+msgid "Composition"
+msgstr "Composition"
+
+msgid "No composition: no source food gives any value."
+msgstr "Pas de composition : aucun aliment source ne donne de valeur."
+
+msgid "Nutrient"
+msgstr "Nutriment"
+
+msgid "Amount per 100 g"
+msgstr "Quantité pour 100 g"
+
+msgid "Range"
+msgstr "Intervalle"
+
+msgid "Grades"
+msgstr "Notes"
+
+msgid "Foods"
+msgstr "Aliments"
+
 #~ msgid "OpenFoodFacts taxonomy id, e.g. en:oat-flakes."
 #~ msgstr "Identifiant de taxonomie OpenFoodFacts, par exemple en:oat-flakes."
 
