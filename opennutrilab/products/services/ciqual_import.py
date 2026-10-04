@@ -11,6 +11,10 @@ measured (empty, never 0), "< x" is below the detection limit x, "traces" is
 traces, and anything else is a number with a decimal comma. Each value has a
 grade from A (best) to D, and sometimes the minimum and maximum the data spans.
 
+The nutrients that are a sum of others (vitamin A from retinol and
+beta-carotene...) are set up once the constituents are there, see
+derived_nutrients.
+
 Prepared dishes, sauces and stocks are not ingredients, so they are not
 imported (see EXCLUDED_*). Importing again updates what changed and adds
 nothing twice; a food that was imported and is now excluded is left as it is.
@@ -36,6 +40,7 @@ from opennutrilab.products.models import SourceFood
 from opennutrilab.products.models import SourceFoodNutrient
 from opennutrilab.products.services.ciqual_constituents import CONSTITUENTS
 from opennutrilab.products.services.ciqual_constituents import SKIPPED
+from opennutrilab.products.services.derived_nutrients import ensure_derivations
 
 # The table is published on recherche.data.gouv.fr; this DOI always leads to the
 # latest release.
@@ -144,6 +149,7 @@ class ImportReport:
     excluded: int
     nutrients_created: int
     values: int
+    derived: int
 
 
 # ----------------------------------------------------------------------------
@@ -384,6 +390,7 @@ def import_ciqual(
 
     with transaction.atomic():
         nutrients, created = ensure_nutrients(constituents)
+        derived = ensure_derivations()
         source, _created = Source.objects.update_or_create(
             code=f"ciqual-{files.released.year}",
             defaults={
@@ -398,7 +405,7 @@ def import_ciqual(
         values = _upsert_values(
             files.composition, food_ids, excluded, nutrients, progress
         )
-    return ImportReport(source, len(foods), len(excluded), created, values)
+    return ImportReport(source, len(foods), len(excluded), created, values, derived)
 
 
 def _upsert_foods(source: Source, foods: list[FoodRecord]) -> dict[str, int]:

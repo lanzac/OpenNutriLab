@@ -35,9 +35,10 @@ import_ciqual`). Other sources will follow, each with its own importer and
   level that is linked to a reference, without counting a parent and its
   children twice. Labels also vary on whether a sub-ingredient's
   percentage is of its parent or of the whole product.
-- **Derived nutrients.** Fill `NutrientComponent`: vitamin A in retinol
-  equivalents (retinol + beta-carotene / 6, as CIQUAL gives them
-  separately), vitamin K (K1 + K2), and others.
+- **Vitamin A on labels.** The derived vitamin A follows CIQUAL (retinol +
+  beta-carotene / 12). Check which convention EU labels use (a sixth, if the
+  regulation says so), because declared and estimated vitamin A are only
+  comparable if they are the same quantity.
 - **Reporting.** Every estimate comes with its coverage (the share of the
   product with a known composition) and its comparison with the declared
   values. Processing (drying, cooking) changes compositions and destroys

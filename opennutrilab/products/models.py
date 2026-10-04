@@ -103,8 +103,11 @@ class NutrientComponent(models.Model):
     """
     One term of a derived nutrient: derived = sum of factor x component.
 
-    The factor carries any unit conversion between the two. Vitamin A in
-    retinol equivalents, for instance, is retinol x 1 + beta-carotene x 1/6.
+    The factor carries any unit conversion between the two (sodium in mg to
+    salt in g, for instance, is x 0.0025), and is positive, so that a derived
+    amount grows with each component and its low and high ends can be derived
+    from the components' own. Which terms are used is in
+    services.derived_nutrients.
     """
 
     derived_id: str
@@ -120,6 +123,11 @@ class NutrientComponent(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["derived", "component"], name="unique_nutrient_component"
+            ),
+            # django-stubs still types `check`, which Django 5.1 renamed.
+            models.CheckConstraint(  # pyright: ignore[reportCallIssue]
+                condition=models.Q(factor__gt=0),  # pyright: ignore[reportCallIssue]
+                name="nutrient_component_factor_is_positive",
             ),
         ]
 

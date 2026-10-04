@@ -1,7 +1,7 @@
 # Plan: nutrient estimation batch
 
-Status: steps 1 (ingredient identity), 2 (CIQUAL import) and 5 (curating
-the references) are done, 2026-10-04; the rest is planned, not started (written 2026-10-03, after lot 2 merged; revised 2026-10-04: how
+Status: steps 1 (ingredient identity), 2 (CIQUAL import), 3 (derived
+nutrients) and 5 (curating the references) are done, 2026-10-04; the rest is planned, not started (written 2026-10-03, after lot 2 merged; revised 2026-10-04: how
 an ingredient is linked to its reference changed, see the ground rules,
 decisions 8-11 and step 1).
 Goal and constraints are in `docs/roadmap.md` ("Estimate a product's
@@ -225,11 +225,30 @@ written.
      against `Nutrient.unit`, and fail loudly on a mismatch.
    - Keep protein on code 25003 (N x 6.25), as seeded.
    - The command is idempotent: a second run changes nothing.
-3. **Derived nutrients**: data migration for `NutrientComponent`. To
-   re-examine first: Ciqual 2025 gives vitamin A in retinol equivalents
-   (51104), total vitamin D (52100) and folates as DFE (56702) directly, so
-   only what a source does not give needs deriving (vitamin K is still split
-   in K1 and K2).
+3. **Derived nutrients** (done): `NutrientComponent` rows and
+   `derived_amount(nutrient, amounts)`.
+   - Done after re-examining it against the data: every formula was checked
+     against the totals CIQUAL 2025 publishes. Four derivations are kept:
+     vitamin A = retinol + beta-carotene / 12 (not / 6: 953 of 960 foods agree,
+     against 346), folates in dietary equivalents = intrinsic folates + 1.7 x
+     folic acid (exact), salt = sodium x 2.5, and vitamin K = K1 + K2 (a
+     nutrient CIQUAL does not have, created by the derivations). Vitamin D as
+     D2 + D3 is not kept: CIQUAL's own total does not follow it.
+   - On CIQUAL alone they fill few gaps (salt 10 foods, vitamin A 4, vitamin K
+     81, folates 0, of 2,983): they matter for sources that give parts and not
+     totals. The terms are in `services/derived_nutrients.py`, set up by the
+     CIQUAL import (the nutrients they name only exist once it has run), and
+     a factor must be positive.
+   - `derived_amount` returns None when a component is missing, never a sum
+     that counts it as zero. `complete_with_derived` adds the derived amounts
+     a source lacks and never replaces one it gave.
+   - **Open question for the validation step:** CIQUAL's vitamin A uses the
+     twelfth, and the EU label's retinol equivalent may count beta-carotene
+     for a sixth. If it does, the declared vitamin A and the estimated one are
+     not the same quantity, and the validation needs a second derived nutrient
+     (retinol + beta-carotene / 6) to compare like with like. To check against
+     the regulation before step 8.
+   - What follows is the plan as written.
    - Vitamin A (RE) = retinol x 1 + beta-carotene x 1/6, both in µg.
    - Vitamin K = K1 + K2.
    - Review the CIQUAL list for others, for example niacin equivalents and

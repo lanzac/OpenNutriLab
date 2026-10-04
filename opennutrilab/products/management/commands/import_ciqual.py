@@ -55,6 +55,7 @@ class Command(BaseCommand):
             self.style.SUCCESS(
                 f"Imported {report.source}: {report.foods} foods "
                 f"({report.excluded} left out), {report.values} values, "
-                f"{report.nutrients_created} nutrients added."
+                f"{report.nutrients_created} nutrients added, "
+                f"{report.derived} derived."
             )
         )

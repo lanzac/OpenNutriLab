@@ -301,6 +301,8 @@ def test_nutrients_are_added_from_the_file_and_the_label_ones_are_untouched(
     } == label_names
     # 74 constituents, less the two in kcal and the eight the label already has.
     assert report.nutrients_created == 64  # noqa: PLR2004
+    # And vitamin K, which no source gives and the derivations create.
+    assert Nutrient.objects.filter(ciqual_code__isnull=True).count() == 1
 
 
 @pytest.mark.django_db
@@ -480,7 +482,7 @@ def test_the_command_imports_a_directory_and_reports(directory: Path, capsys: An
     out = capsys.readouterr().out
     assert "3 foods (3 left out)" in out
     assert "7 values" in out
-    assert "64 nutrients added" in out
+    assert "64 nutrients added, 4 derived" in out
 
 
 @pytest.mark.django_db
