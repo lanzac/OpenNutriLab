@@ -15,15 +15,19 @@ none of the following is built yet.
   attribution must be shown) as a `Source` with its `SourceFood` entries.
   Its values must keep their meaning: "-" is _not measured_ (empty, never
   0), "< x" is below the detection limit, "traces" is traces, and each value
-  has a confidence grade A to D. Other sources will follow.
+  has a confidence grade A to D. Prepared dishes are left out: they are not
+  ingredients. Other sources will follow.
 - **Reference ingredients.** Curated (`ReferenceIngredient`, e.g. "carotte
   crue"), each drawing on several source foods. The rule that aggregates
   their values into one composition - weighting by confidence, for
   instance - is to be decided.
-- **Linking ingredients.** How a product ingredient gets its reference
-  ingredient is to be designed. OpenFoodFacts' CIQUAL code is stored on
-  each ingredient as raw data and may serve as a hint; nothing links
-  automatically today.
+- **Linking ingredients.** An ingredient is its reference ingredient:
+  `Ingredient` keeps no name and no OpenFoodFacts data, only the link, found
+  by the ingredient's normalized name among the references' own (unique)
+  names. A name that matches nothing creates a reference marked _to review_,
+  seeded with OFF's CIQUAL code when that code is a known food. OFF's codes
+  are suggestions, never trusted. Nothing of this is built yet; the plan is
+  in `docs/plans/lot-estimation.md`.
 - **Undeclared percentages.** Most ingredients have no percentage on the
   label. Estimate them in-house - not from OpenFoodFacts' own estimates -
   for instance from the label order (decreasing weight), the declared
