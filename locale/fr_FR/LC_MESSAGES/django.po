@@ -12,6 +12,7 @@ msgstr ""
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -392,6 +393,72 @@ msgstr "%(count)d référence(s) n'ont pas de nom anglais et n'ont pas été mar
 #, python-format
 msgid "%(count)d reference(s) marked as curated."
 msgstr "%(count)d référence(s) marquée(s) comme validée(s)."
+
+msgid "Propose CIQUAL foods for the selected references"
+msgstr "Proposer des aliments CIQUAL pour les références sélectionnées"
+
+msgid "Propose CIQUAL foods"
+msgstr "Proposer des aliments CIQUAL"
+
+msgid "The selected references already have source foods."
+msgstr "Les références sélectionnées ont déjà des aliments sources."
+
+#, python-format
+msgid "%(linked)d reference(s) linked to a CIQUAL food, %(curated)d marked as curated."
+msgstr "%(linked)d référence(s) reliée(s) à un aliment CIQUAL, %(curated)d marquée(s) comme validée(s)."
+
+msgid "High"
+msgstr "Haute"
+
+msgid "Medium"
+msgstr "Moyenne"
+
+msgid "Low"
+msgstr "Basse"
+
+msgid "None found"
+msgstr "Aucune trouvée"
+
+msgid "Its name is the reference's name"
+msgstr "Son nom est celui de la référence"
+
+msgid "OpenFoodFacts gives this CIQUAL code"
+msgstr "OpenFoodFacts donne ce code CIQUAL"
+
+msgid "Cooked or prepared, which the reference is not"
+msgstr "Cuit ou préparé, ce que la référence n'est pas"
+
+msgid "For each reference, the foods that may be what it is, found by its name and by the CIQUAL code OpenFoodFacts gives. Nothing is linked until you apply: tick the references to link, and choose the food for each. Those where the name and OpenFoodFacts agree are ticked already."
+msgstr "Pour chaque référence, les aliments qui pourraient être ce qu'elle est, trouvés d'après son nom et d'après le code CIQUAL que donne OpenFoodFacts. Rien n'est relié tant que vous n'avez pas appliqué : cochez les références à relier et choisissez l'aliment de chacune. Celles où le nom et OpenFoodFacts s'accordent sont déjà cochées."
+
+msgid "Link"
+msgstr "Relier"
+
+msgid "Reference"
+msgstr "Référence"
+
+msgid "Confidence"
+msgstr "Confiance"
+
+msgid "Proposed foods"
+msgstr "Aliments proposés"
+
+msgid "used by %(count)s ingredient"
+msgid_plural "used by %(count)s ingredients"
+msgstr[0] "utilisée par %(count)s ingrédient"
+msgstr[1] "utilisée par %(count)s ingrédients"
+
+msgid "None of these"
+msgstr "Aucun de ceux-ci"
+
+msgid "No food found by name or by OpenFoodFacts: link one by hand in the reference's page."
+msgstr "Aucun aliment trouvé par le nom ni par OpenFoodFacts : reliez-en un à la main dans la page de la référence."
+
+msgid "Also mark the linked references as curated (those without an English name stay to review)"
+msgstr "Marquer aussi les références reliées comme validées (celles sans nom anglais restent à relire)"
+
+msgid "Link the ticked references"
+msgstr "Relier les références cochées"
 
 #~ msgid "OpenFoodFacts taxonomy id, e.g. en:oat-flakes."
 #~ msgstr "Identifiant de taxonomie OpenFoodFacts, par exemple en:oat-flakes."

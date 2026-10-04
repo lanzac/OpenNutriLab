@@ -302,10 +302,11 @@ def suggest_source_foods(
         starts |= Q(name_fr__istartswith=words[0]) | Q(name_en__istartswith=words[0])
     if not matches:
         return []
+    foods = SourceFood.objects.filter(matches)
+    if reference.pk is not None:
+        foods = foods.exclude(reference_ingredients=reference)
     return list(
-        SourceFood.objects.filter(matches)
-        .exclude(reference_ingredients=reference)
-        .select_related("source")
+        foods.select_related("source")
         .annotate(
             starts_with=Case(When(starts, then=Value(0)), default=Value(1)),
             name_length=Length("name_fr"),

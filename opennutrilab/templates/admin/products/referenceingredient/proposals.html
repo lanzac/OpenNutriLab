@@ -1,0 +1,158 @@
+{% extends "admin/base_site.html" %}
+
+{% load i18n admin_urls %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+    .proposals td {
+      vertical-align: top;
+    }
+
+    .proposals ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .proposals li {
+      margin-bottom: 6px;
+    }
+
+    .proposals .why {
+      color: var(--body-quiet-color);
+      font-size: 0.9em;
+      margin-left: 22px;
+    }
+
+    .proposals .warn {
+      color: var(--error-fg);
+    }
+
+    .badge {
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.9em;
+      white-space: nowrap;
+    }
+
+    .badge-high {
+      background: var(--message-success-bg);
+    }
+
+    .badge-medium {
+      background: var(--message-warning-bg);
+    }
+
+    .badge-low,
+    .badge-none {
+      background: var(--message-error-bg);
+    }
+  </style>
+{% endblock extrastyle %}
+{% block breadcrumbs %}
+  <div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% translate "Home" %}</a>
+    › <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+    › <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+    › {% translate "Propose CIQUAL foods" %}
+  </div>
+{% endblock breadcrumbs %}
+{% block content %}
+  <p>
+    {% blocktranslate trimmed %}
+      For each reference, the foods that may be what it is, found by its name and by
+      the CIQUAL code OpenFoodFacts gives. Nothing is linked until you apply: tick the
+      references to link, and choose the food for each. Those where the name and
+      OpenFoodFacts agree are ticked already.
+    {% endblocktranslate %}
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="propose_foods" />
+    {% for pk in selected_ids %}<input type="hidden" name="{{ action_checkbox_name }}" value="{{ pk }}" />{% endfor %}
+    <div class="module">
+      <table class="proposals">
+        <thead>
+          <tr>
+            <th>{% translate "Link" %}</th>
+            <th>{% translate "Reference" %}</th>
+            <th>{% translate "Confidence" %}</th>
+            <th>{% translate "Proposed foods" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for proposal, uses in proposals %}
+            <tr class="{% cycle 'row1' 'row2' %}">
+              <td>
+                {% if proposal.candidates %}
+                  <input type="checkbox"
+                         name="link_{{ proposal.reference.pk }}"
+                         {% if proposal.confidence == "high" %}checked{% endif %} />
+                {% endif %}
+              </td>
+              <td>
+                <a href="{% url opts|admin_urlname:'change' proposal.reference.pk|admin_urlquote %}">
+                  <strong>{{ proposal.reference.name_en|default:"-" }}</strong>
+                  / {{ proposal.reference.name_fr|default:"-" }}
+                </a>
+                <br />
+                <small>{% blocktranslate count count=uses %}used by {{ count }} ingredient{% plural %}used by {{ count }} ingredients{% endblocktranslate %}</small>
+              </td>
+              <td>
+                <span class="badge badge-{{ proposal.confidence.value }}">{{ proposal.confidence.label }}</span>
+              </td>
+              <td>
+                {% if proposal.candidates %}
+                  <ul>
+                    {% for candidate in proposal.candidates %}
+                      <li>
+                        <label>
+                          <input type="radio"
+                                 name="choice_{{ proposal.reference.pk }}"
+                                 value="{{ candidate.food.pk }}"
+                                 {% if forloop.first %}checked{% endif %} />
+                          <strong>{{ candidate.food.code }}</strong>
+                          {{ candidate.food.name_fr|default:candidate.food.name_en }}
+                          <small>({{ candidate.food.food_subgroup|default:candidate.food.food_group }})</small>
+                        </label>
+                        <div class="why">
+                          {% for reason in candidate.reasons %}
+                            <span class="{% if reason.value == 'prepared' %}warn{% endif %}">{{ reason.label }}</span>
+                            {% if not forloop.last %};{% endif %}
+                          {% endfor %}
+                        </div>
+                      </li>
+                    {% endfor %}
+                    <li>
+                      <label>
+                        <input type="radio" name="choice_{{ proposal.reference.pk }}" value="" />
+                        {% translate "None of these" %}
+                      </label>
+                    </li>
+                  </ul>
+                {% else %}
+                  {% translate "No food found by name or by OpenFoodFacts: link one by hand in the reference's page." %}
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p>
+      <label>
+        <input type="checkbox" name="mark_curated" checked />
+        {% translate "Also mark the linked references as curated (those without an English name stay to review)" %}
+      </label>
+    </p>
+    <div class="submit-row">
+      <input type="submit"
+             name="apply"
+             class="default"
+             value="{% translate 'Link the ticked references' %}" />
+      <a href="{% url opts|admin_urlname:'changelist' %}"
+         class="button cancel-link">{% translate "Cancel" %}</a>
+    </div>
+  </form>
+{% endblock content %}

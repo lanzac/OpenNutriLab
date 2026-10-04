@@ -33,7 +33,9 @@ def test_an_entry_without_an_english_name_is_loaded_with_it_blank():
     assert (finnish.name_en, finnish.name_fr) == ("", "")
 
 
-def test_loading_again_updates_what_changed_and_adds_what_is_new(tmp_path, capsys):
+def test_loading_again_updates_what_changed_and_adds_what_is_new(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+):
     taxonomy = tmp_path / "ingredients.json"
     taxonomy.write_text(json.dumps({"en:oat": {"name": {"en": "oat"}}}))
     call_command("import_off_taxonomy", path=taxonomy)
@@ -85,7 +87,7 @@ def test_a_failed_download_is_an_error_and_loads_nothing():
     assert not IngredientTaxon.objects.exists()
 
 
-def test_a_file_that_is_not_a_taxonomy_is_an_error(tmp_path):
+def test_a_file_that_is_not_a_taxonomy_is_an_error(tmp_path: Path):
     missing = tmp_path / "missing.json"
     with pytest.raises(CommandError, match="Could not read the taxonomy"):
         call_command("import_off_taxonomy", path=missing)
@@ -99,3 +101,33 @@ def test_a_file_that_is_not_a_taxonomy_is_an_error(tmp_path):
     not_an_object.write_text("[]")
     with pytest.raises(CommandError, match="Not an OpenFoodFacts taxonomy"):
         call_command("import_off_taxonomy", path=not_an_object)
+
+
+def test_the_ciqual_codes_are_loaded_as_hints():
+    call_command("import_off_taxonomy", path=EXTRACT)
+
+    assert IngredientTaxon.objects.get(off_id="en:blackcurrant").ciqual_food_code == (
+        "13007"
+    )
+    # None given: blank, not a code.
+    buckwheat = IngredientTaxon.objects.get(off_id="en:buckwheat-grain")
+    assert (buckwheat.ciqual_food_code, buckwheat.ciqual_proxy_food_code) == ("", "")
+
+
+def test_a_proxy_code_is_kept_apart_from_the_code_of_the_food_itself(tmp_path: Path):
+    taxonomy = tmp_path / "ingredients.json"
+    taxonomy.write_text(
+        json.dumps(
+            {
+                "en:wheat-flakes": {
+                    "name": {"en": "wheat flakes"},
+                    "ciqual_proxy_food_code": {"en": "9410"},
+                }
+            }
+        )
+    )
+
+    call_command("import_off_taxonomy", path=taxonomy)
+
+    flakes = IngredientTaxon.objects.get()
+    assert (flakes.ciqual_food_code, flakes.ciqual_proxy_food_code) == ("", "9410")

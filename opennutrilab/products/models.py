@@ -268,7 +268,10 @@ class IngredientTaxon(models.Model):
 
     Nothing links to it. It is OFF's data, which does not always match what is
     curated (an id OFF has renamed since, an ingredient the taxonomy does not
-    know), so the reference ingredients stay apart from it.
+    know), so the reference ingredients stay apart from it. The CIQUAL codes it
+    gives are hints for whoever curates, and are not trusted: some are out of
+    date (9311 for oat flakes, which CIQUAL 2025 numbers 32140), and the same
+    code is given to entries that differ.
     """
 
     off_id = models.CharField(max_length=255, unique=True)
@@ -277,6 +280,10 @@ class IngredientTaxon(models.Model):
     # e.g. `fr:oignon-et-ail-en-poudre`.
     name_en = models.CharField(max_length=255, blank=True)
     name_fr = models.CharField(max_length=255, blank=True)
+    # The CIQUAL food OFF says the ingredient is, and the one it stands for when
+    # there is none that is the ingredient itself. Either may be blank.
+    ciqual_food_code = models.CharField(max_length=10, blank=True)
+    ciqual_proxy_food_code = models.CharField(max_length=10, blank=True)
 
     class Meta:
         ordering = ["off_id"]

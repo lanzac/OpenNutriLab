@@ -280,6 +280,21 @@ written.
      the selection and opens it to be named. Code: `suggest_source_foods` and
      `create_reference_from_foods` in `services/reference_services.py`, and
      `admin.py`.
+   - **Proposals to validate** (added 2026-10-04). An action on the list,
+     "Propose CIQUAL foods", shows for each selected reference without foods
+     the foods that may be what it is, why, and how sure it is, and links
+     only what is ticked, each to the food chosen (those where the two
+     signals agree are ticked already; an option marks the linked references
+     as curated). Two signals that do not depend on each other are crossed:
+     the name (CIQUAL names the thing first, "Cassis, cru"; a cooked or
+     prepared food ranks lower unless the reference is cooked; names are
+     compared within one language, since "raisin" is a grape in French and a
+     dried one in English) and the CIQUAL code OpenFoodFacts' taxonomy gives
+     (kept in `IngredientTaxon`, never trusted alone: 9311 for oat flakes is
+     not in CIQUAL 2025). High confidence is both agreeing on a plain food,
+     medium is the name alone with one plain match, low is anything else.
+     Replayed on the four links made by hand on the muesli, the top proposal
+     was the same four times. Code: `services/reference_proposals.py`.
    - What follows is the plan as written.
    - Admin worklist: the references still _to review_, most used first
      (`usages`), with their source foods. What a reference was created from

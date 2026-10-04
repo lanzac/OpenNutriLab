@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from typing import Any
+from typing import cast
 from typing import override
 
 import requests
@@ -33,15 +34,19 @@ def read_taxonomy(path: Path | None) -> dict[str, Any]:
     if not isinstance(data, dict):
         msg = "Not an OpenFoodFacts taxonomy: expected an object keyed by tag id."
         raise CommandError(msg)
-    return data
+    return cast("dict[str, Any]", data)
 
 
 def taxon_from_entry(off_id: str, entry: dict[str, Any]) -> IngredientTaxon:
-    names = entry.get("name") or {}
+    names: dict[str, Any] = entry.get("name") or {}
+    ciqual: dict[str, Any] = entry.get("ciqual_food_code") or {}
+    proxy: dict[str, Any] = entry.get("ciqual_proxy_food_code") or {}
     return IngredientTaxon(
         off_id=off_id,
         name_en=str(names.get("en", ""))[:255],
         name_fr=str(names.get("fr", ""))[:255],
+        ciqual_food_code=str(ciqual.get("en", ""))[:10],
+        ciqual_proxy_food_code=str(proxy.get("en", ""))[:10],
     )
 
 
@@ -72,7 +77,12 @@ class Command(BaseCommand):
                 batch_size=BATCH_SIZE,
                 update_conflicts=True,
                 unique_fields=["off_id"],
-                update_fields=["name_en", "name_fr"],
+                update_fields=[
+                    "name_en",
+                    "name_fr",
+                    "ciqual_food_code",
+                    "ciqual_proxy_food_code",
+                ],
             )
             added = IngredientTaxon.objects.count() - before
 

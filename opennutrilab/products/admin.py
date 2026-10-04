@@ -2,10 +2,14 @@ from typing import Any
 
 from django.contrib import admin
 from django.contrib import messages
+from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
+from django.db import transaction
 from django.db.models import Count
 from django.db.models import QuerySet
 from django.http import HttpRequest
 from django.http import HttpResponseRedirect
+from django.http.response import HttpResponseBase
+from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.html import format_html_join
@@ -23,6 +27,7 @@ from .models import ReferenceIngredient
 from .models import Source
 from .models import SourceFood
 from .models import SourceFoodNutrient
+from .services.reference_proposals import propose_foods as propose_foods_for
 from .services.reference_services import ReferenceNameError
 from .services.reference_services import create_reference_from_foods
 from .services.reference_services import suggest_source_foods
@@ -171,7 +176,7 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
         "suggested_foods",
     )
     readonly_fields = ("suggested_foods",)
-    actions = ("mark_curated",)
+    actions = ("propose_foods", "mark_curated")
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[ReferenceIngredient]:
         # Not super(): it sorts by get_ordering before the counts exist. The
@@ -216,6 +221,78 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
                     for food in foods
                 ),
             ),
+        )
+
+    @admin.action(
+        description=gettext_lazy("Propose CIQUAL foods for the selected references"),
+        permissions=["change"],
+    )
+    def propose_foods(
+        self, request: HttpRequest, queryset: QuerySet[ReferenceIngredient]
+    ) -> HttpResponseBase | None:
+        """
+        Propose a food for each selected reference that has none, to check.
+
+        Two steps on one action: the first shows a proposal per reference, the
+        second (the form's "apply") links the ones that are checked, each to
+        the food chosen. Nothing is linked without that second step.
+        """
+        waiting = list(queryset.filter(food_count=0))
+        if "apply" in request.POST:
+            self._link_proposed_foods(request, waiting)
+            return HttpResponseRedirect(request.get_full_path())
+        if not waiting:
+            self.message_user(
+                request,
+                _("The selected references already have source foods."),
+                level=messages.WARNING,
+            )
+            return None
+        context = {
+            **self.admin_site.each_context(request),
+            "title": _("Propose CIQUAL foods"),
+            "opts": self.opts,
+            "proposals": [
+                (proposal, self.used_by(proposal.reference))
+                for proposal in propose_foods_for(waiting)
+            ],
+            "selected_ids": request.POST.getlist(ACTION_CHECKBOX_NAME),
+            "action_checkbox_name": ACTION_CHECKBOX_NAME,
+        }
+        return TemplateResponse(
+            request, "admin/products/referenceingredient/proposals.html", context
+        )
+
+    def _link_proposed_foods(
+        self, request: HttpRequest, references: list[ReferenceIngredient]
+    ) -> None:
+        mark_curated = "mark_curated" in request.POST
+        linked = curated = 0
+        with transaction.atomic():
+            for reference in references:
+                if f"link_{reference.pk}" not in request.POST:
+                    continue
+                choice = request.POST.get(f"choice_{reference.pk}", "")
+                food = (
+                    SourceFood.objects.filter(pk=int(choice)).first()
+                    if choice.isdigit()
+                    else None
+                )
+                if food is None:
+                    continue
+                reference.source_foods.add(food)
+                linked += 1
+                if mark_curated and reference.name_en:
+                    reference.status = ReferenceIngredient.Status.CURATED
+                    reference.save(update_fields=["status"])
+                    curated += 1
+        self.message_user(
+            request,
+            _(
+                "%(linked)d reference(s) linked to a CIQUAL food, "
+                "%(curated)d marked as curated."
+            )
+            % {"linked": linked, "curated": curated},
         )
 
     @admin.action(description=gettext_lazy("Mark the selected references as curated"))

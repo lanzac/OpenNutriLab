@@ -1,12 +1,15 @@
+import re
 from http import HTTPStatus
 from typing import Any
 
 import pytest
+from django.contrib.auth.models import Permission
 from django.http.response import HttpResponse
 from django.test import Client
 from django.urls import reverse
 
 from opennutrilab.products.models import Ingredient
+from opennutrilab.products.models import IngredientTaxon
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ReferenceIngredient
 from opennutrilab.products.models import Source
@@ -210,3 +213,214 @@ def test_no_reference_is_created_when_one_has_the_name_and_the_curator_is_told(
 
     assert ReferenceIngredient.objects.count() == 1
     assert any("already has the name" in m for m in messages_of(response))
+
+
+# ----------------------------------------------------------------------------
+# Proposing foods for references
+# ----------------------------------------------------------------------------
+def foods_proposed(client: Client, references: list[ReferenceIngredient], **extra: Any):
+    return client.post(
+        reverse(REFERENCES),
+        {
+            "action": "propose_foods",
+            "_selected_action": [r.pk for r in references],
+            **extra,
+        },
+    )
+
+
+@pytest.fixture
+def catalogue() -> dict[str, Any]:
+    ciqual = Source.objects.create(code="ciqual-2025", name="Ciqual")
+    cassis = SourceFood.objects.create(
+        source=ciqual, code="13007", name_fr="Cassis, cru", name_en="Blackcurrant, raw"
+    )
+    soja = SourceFood.objects.create(
+        source=ciqual, code="20901", name_fr="Soja, graine entière"
+    )
+    return {
+        "cassis_food": cassis,
+        "soja_food": soja,
+        "cassis": ReferenceIngredient.objects.create(
+            name_en="blackcurrant", name_fr="cassis"
+        ),
+        "soya": ReferenceIngredient.objects.create(name_en="soya", name_fr="soja"),
+    }
+
+
+def ticked(page: str, name: str) -> bool:
+    match = re.search(rf'<input type="checkbox"\s+name="{name}"([^>]*)>', page)
+    assert match, f"no checkbox {name}"
+    return "checked" in match.group(1)
+
+
+def test_the_proposals_are_shown_and_nothing_is_linked_yet(
+    admin_client: Client, catalogue: dict[str, Any]
+):
+    IngredientTaxon.objects.create(
+        off_id="en:blackcurrant",
+        name_en="blackcurrant",
+        name_fr="cassis",
+        ciqual_food_code="13007",
+    )
+    cassis, soya = catalogue["cassis"], catalogue["soya"]
+
+    response = foods_proposed(admin_client, [cassis, soya])
+
+    page = response.content.decode()
+    assert response.status_code == HTTPStatus.OK
+    assert "Cassis, cru" in page
+    assert "OpenFoodFacts gives this CIQUAL code" in page
+    # The name and OpenFoodFacts agree for one, so it is ticked; the other, with
+    # a single signal, is not.
+    assert ticked(page, f"link_{cassis.pk}")
+    assert not ticked(page, f"link_{soya.pk}")
+    assert not cassis.source_foods.exists()
+    assert not soya.source_foods.exists()
+
+
+def test_a_reference_that_already_has_foods_is_not_proposed_again(
+    admin_client: Client, catalogue: dict[str, Any]
+):
+    cassis, soya = catalogue["cassis"], catalogue["soya"]
+    cassis.source_foods.add(catalogue["cassis_food"])
+
+    page = foods_proposed(admin_client, [cassis, soya]).content.decode()
+
+    assert f"link_{soya.pk}" in page
+    assert f"link_{cassis.pk}" not in page
+
+
+def test_references_that_all_have_foods_get_a_message_and_no_page(
+    admin_client: Client, catalogue: dict[str, Any]
+):
+    catalogue["cassis"].source_foods.add(catalogue["cassis_food"])
+
+    response = admin_client.post(
+        reverse(REFERENCES),
+        {
+            "action": "propose_foods",
+            "_selected_action": [catalogue["cassis"].pk],
+        },
+        follow=True,
+    )
+
+    assert any("already have source foods" in m for m in messages_of(response))
+
+
+def apply_proposals(
+    client: Client, references: list[ReferenceIngredient], **extra: Any
+) -> HttpResponse:
+    return client.post(
+        reverse(REFERENCES),
+        {
+            "action": "propose_foods",
+            "apply": "Link",
+            "_selected_action": [r.pk for r in references],
+            **extra,
+        },
+        follow=True,
+    )
+
+
+def test_only_the_ticked_references_are_linked_each_to_the_chosen_food(
+    admin_client: Client, catalogue: dict[str, Any]
+):
+    cassis, soya = catalogue["cassis"], catalogue["soya"]
+
+    response = apply_proposals(
+        admin_client,
+        [cassis, soya],
+        **{
+            f"link_{cassis.pk}": "on",
+            f"choice_{cassis.pk}": catalogue["cassis_food"].pk,
+            f"choice_{soya.pk}": catalogue["soja_food"].pk,  # not ticked
+        },
+    )
+
+    assert list(cassis.source_foods.all()) == [catalogue["cassis_food"]]
+    assert not soya.source_foods.exists()
+    assert any("1 reference(s) linked" in m for m in messages_of(response))
+
+
+def test_linked_references_are_marked_as_curated_when_asked_and_able(
+    admin_client: Client, catalogue: dict[str, Any]
+):
+    cassis, soya = catalogue["cassis"], catalogue["soya"]
+    nameless = ReferenceIngredient.objects.create(name_fr="oignon")
+
+    apply_proposals(
+        admin_client,
+        [cassis, soya, nameless],
+        mark_curated="on",
+        **{
+            f"link_{cassis.pk}": "on",
+            f"choice_{cassis.pk}": catalogue["cassis_food"].pk,
+            f"link_{nameless.pk}": "on",
+            f"choice_{nameless.pk}": catalogue["soja_food"].pk,
+        },
+    )
+
+    for reference in (cassis, soya, nameless):
+        reference.refresh_from_db()
+    assert cassis.status == ReferenceIngredient.Status.CURATED
+    # Linked, but without its English name it cannot be curated yet.
+    assert nameless.source_foods.count() == 1
+    assert nameless.status == ReferenceIngredient.Status.TO_REVIEW
+    assert soya.status == ReferenceIngredient.Status.TO_REVIEW
+
+
+def test_references_stay_to_review_when_marking_is_not_asked(
+    admin_client: Client, catalogue: dict[str, Any]
+):
+    cassis = catalogue["cassis"]
+
+    apply_proposals(
+        admin_client,
+        [cassis],
+        **{
+            f"link_{cassis.pk}": "on",
+            f"choice_{cassis.pk}": catalogue["cassis_food"].pk,
+        },
+    )
+
+    cassis.refresh_from_db()
+    assert cassis.source_foods.count() == 1
+    assert cassis.status == ReferenceIngredient.Status.TO_REVIEW
+
+
+@pytest.mark.parametrize("choice", ["", "none", "999999999", "1; DROP TABLE"])
+def test_a_choice_that_is_no_food_links_nothing(
+    admin_client: Client, catalogue: dict[str, Any], choice: str
+):
+    cassis = catalogue["cassis"]
+
+    apply_proposals(
+        admin_client,
+        [cassis],
+        **{f"link_{cassis.pk}": "on", f"choice_{cassis.pk}": choice},
+    )
+
+    assert not cassis.source_foods.exists()
+
+
+def test_proposing_needs_the_permission_to_change_references(
+    client: Client, catalogue: dict[str, Any]
+):
+    viewer = UserFactory(is_staff=True)
+    viewer.user_permissions.add(
+        Permission.objects.get(codename="view_referenceingredient")
+    )
+    client.force_login(viewer)
+    cassis = catalogue["cassis"]
+
+    apply_proposals(
+        client,
+        [cassis],
+        **{
+            f"link_{cassis.pk}": "on",
+            f"choice_{cassis.pk}": catalogue["cassis_food"].pk,
+        },
+    )
+
+    assert not cassis.source_foods.exists()
