@@ -18,11 +18,16 @@ models.
 from collections import defaultdict
 from collections.abc import Iterable
 from collections.abc import Iterator
+from collections.abc import Sequence
 from typing import NamedTuple
 
 from django.db import IntegrityError
 from django.db import transaction
+from django.db.models import Case
 from django.db.models import Q
+from django.db.models import Value
+from django.db.models import When
+from django.db.models.functions import Length
 from django.db.models.functions import Lower
 from django.utils.translation import get_language
 
@@ -33,6 +38,10 @@ from opennutrilab.products.models import SourceFood
 
 # What the Source of a CIQUAL table is named after (ciqual-2025, ...).
 CIQUAL_SOURCE_PREFIX = "ciqual"
+
+SUGGESTION_LIMIT = 20
+# Shorter words ("de", "la") say nothing about which food is meant.
+SUGGESTION_MIN_WORD = 3
 
 
 class Correspondence(NamedTuple):
@@ -257,3 +266,75 @@ def _creation_note(item: IngredientInput, food: SourceFood | None) -> str:
             " (not linked)."
         )
     return " ".join(notes)
+
+
+# ----------------------------------------------------------------------------
+# Curating
+# ----------------------------------------------------------------------------
+class ReferenceNameError(Exception):
+    """A reference cannot be created with the names the foods give it."""
+
+
+def suggest_source_foods(
+    reference: ReferenceIngredient, limit: int = SUGGESTION_LIMIT
+) -> list[SourceFood]:
+    """
+    The imported foods that may be what a reference is, found by its names.
+
+    A food matches when its name, in either language, has every word of one of
+    the reference's names ("carotte râpée" finds "Carotte, râpée, crue"). Those
+    whose name starts with the first word of a name come first, then the
+    shortest names, which are the plainest foods ("Huile de tournesol" before
+    "Sardine à l'huile de tournesol"). The foods the reference already draws on
+    are left out. A suggestion is only a place to start: the choice is the
+    curator's.
+    """
+    matches = Q()
+    starts = Q()
+    for name in (reference.name_en, reference.name_fr):
+        words = [w for w in clean_name(name).split() if len(w) >= SUGGESTION_MIN_WORD]
+        if not words:
+            continue
+        every_word = Q()
+        for word in words:
+            every_word &= Q(name_fr__icontains=word) | Q(name_en__icontains=word)
+        matches |= every_word
+        starts |= Q(name_fr__istartswith=words[0]) | Q(name_en__istartswith=words[0])
+    if not matches:
+        return []
+    return list(
+        SourceFood.objects.filter(matches)
+        .exclude(reference_ingredients=reference)
+        .select_related("source")
+        .annotate(
+            starts_with=Case(When(starts, then=Value(0)), default=Value(1)),
+            name_length=Length("name_fr"),
+        )
+        .order_by("starts_with", "name_length", "name_fr", "code")[:limit]
+    )
+
+
+def create_reference_from_foods(foods: Sequence[SourceFood]) -> ReferenceIngredient:
+    """
+    A reference to review that draws on these foods, named after the first.
+
+    The names are the food's own ("Carotte, crue"): the curator edits them.
+    """
+    first = foods[0]
+    name_en, name_fr = clean_name(first.name_en), clean_name(first.name_fr)
+    if not (name_en or name_fr):
+        msg = f"{first} has no name to give a reference."
+        raise ReferenceNameError(msg)
+    try:
+        with transaction.atomic():
+            reference = ReferenceIngredient.objects.create(
+                name_en=name_en,
+                name_fr=name_fr,
+                description="Created from: " + "; ".join(str(food) for food in foods),
+                status=ReferenceIngredient.Status.TO_REVIEW,
+            )
+    except IntegrityError as e:
+        msg = f"A reference already has the name of {first}."
+        raise ReferenceNameError(msg) from e
+    reference.source_foods.set(foods)
+    return reference

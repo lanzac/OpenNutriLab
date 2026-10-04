@@ -361,6 +361,38 @@ msgstr "Informations mises à jour avec succès"
 #~ msgid "Unit used for this vitamin"
 #~ msgstr "Unité utilisée pour cette vitamine"
 
+msgid "Create a reference ingredient from the selected foods"
+msgstr "Créer un ingrédient de référence à partir des aliments sélectionnés"
+
+msgid "source foods"
+msgstr "aliments sources"
+
+msgid "With source foods"
+msgstr "Avec aliments sources"
+
+msgid "Without source foods"
+msgstr "Sans aliments sources"
+
+msgid "Source foods"
+msgstr "Aliments sources"
+
+msgid "Foods that may fit"
+msgstr "Aliments qui pourraient convenir"
+
+msgid "None found by name."
+msgstr "Aucun trouvé d'après le nom."
+
+msgid "Mark the selected references as curated"
+msgstr "Marquer les références sélectionnées comme validées"
+
+#, python-format
+msgid "%(count)d reference(s) lack an English name and were not marked."
+msgstr "%(count)d référence(s) n'ont pas de nom anglais et n'ont pas été marquées."
+
+#, python-format
+msgid "%(count)d reference(s) marked as curated."
+msgstr "%(count)d référence(s) marquée(s) comme validée(s)."
+
 #~ msgid "OpenFoodFacts taxonomy id, e.g. en:oat-flakes."
 #~ msgstr "Identifiant de taxonomie OpenFoodFacts, par exemple en:oat-flakes."
 

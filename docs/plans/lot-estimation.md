@@ -1,7 +1,7 @@
 # Plan: nutrient estimation batch
 
-Status: steps 1 (ingredient identity) and 2 (CIQUAL import) are done,
-2026-10-04; the rest is planned, not started (written 2026-10-03, after lot 2 merged; revised 2026-10-04: how
+Status: steps 1 (ingredient identity), 2 (CIQUAL import) and 5 (curating
+the references) are done, 2026-10-04; the rest is planned, not started (written 2026-10-03, after lot 2 merged; revised 2026-10-04: how
 an ingredient is linked to its reference changed, see the ground rules,
 decisions 8-11 and step 1).
 Goal and constraints are in `docs/roadmap.md` ("Estimate a product's
@@ -242,7 +242,19 @@ written.
    - Aggregation follows decision 3.
    - Admin: show the aggregated composition read-only on
      `ReferenceIngredient`.
-5. **Curating the references**.
+5. **Curating the references** (done, in the admin).
+   - Done as planned, with these differences. The worklist is the list of
+     references, most used first, with the number of ingredients using each
+     and of source foods it draws on, filtered by status and by having source
+     foods. A reference's page also suggests the imported foods that may fit
+     its names (every word of a name in the food's name, the plainest first);
+     linking one is still done in the "source foods" field, which finds foods
+     by code or name. An action marks references as curated (those without an
+     English name wait), and an action on foods creates one reference from
+     the selection and opens it to be named. Code: `suggest_source_foods` and
+     `create_reference_from_foods` in `services/reference_services.py`, and
+     `admin.py`.
+   - What follows is the plan as written.
    - Admin worklist: the references still _to review_, most used first
      (`usages`), with their source foods. What a reference was created from
      (the OFF id, a proxy CIQUAL code) is read in its `description`, where

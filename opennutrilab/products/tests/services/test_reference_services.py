@@ -10,10 +10,15 @@ from opennutrilab.products.models import ReferenceIngredient
 from opennutrilab.products.models import Source
 from opennutrilab.products.models import SourceFood
 from opennutrilab.products.services import reference_services
+from opennutrilab.products.services.reference_services import ReferenceNameError
+from opennutrilab.products.services.reference_services import (
+    create_reference_from_foods,
+)
 from opennutrilab.products.services.reference_services import existing_references
 from opennutrilab.products.services.reference_services import find_references
 from opennutrilab.products.services.reference_services import name_key
 from opennutrilab.products.services.reference_services import resolve_references
+from opennutrilab.products.services.reference_services import suggest_source_foods
 
 
 def ingredient(name: str, **fields: Any) -> IngredientInput:
@@ -306,3 +311,118 @@ def test_looking_up_creates_nothing(oat_taxon: IngredientTaxon):
 
     assert found == {"flocons d'avoine": oats}
     assert ReferenceIngredient.objects.count() == 1
+
+
+# ----------------------------------------------------------------------------
+# Curating
+# ----------------------------------------------------------------------------
+@pytest.fixture
+def carrots(db: None) -> list[SourceFood]:
+    ciqual = Source.objects.create(code="ciqual-2025", name="Ciqual", version="2025")
+    return [
+        SourceFood.objects.create(
+            source=ciqual, code=code, name_fr=name_fr, name_en=name_en
+        )
+        for code, name_fr, name_en in [
+            ("20009", "Carotte, crue", "Carrot, raw"),
+            ("20010", "Carotte, râpée, crue", "Carrot, grated, raw"),
+            ("20011", "Carotte, cuite", "Carrot, boiled"),
+            ("20100", "Chou, cru", "Cabbage, raw"),
+        ]
+    ]
+
+
+@pytest.mark.django_db
+def test_foods_are_suggested_when_their_name_has_every_word_of_the_reference(
+    carrots: list[SourceFood],
+):
+    reference = ReferenceIngredient.objects.create(name_fr="carotte râpée")
+
+    assert [f.code for f in suggest_source_foods(reference)] == ["20010"]
+
+
+@pytest.mark.django_db
+def test_foods_are_suggested_by_either_name_and_in_either_language(
+    carrots: list[SourceFood],
+):
+    reference = ReferenceIngredient.objects.create(name_en="cabbage", name_fr="carotte")
+
+    assert {f.code for f in suggest_source_foods(reference)} == {
+        "20009",
+        "20010",
+        "20011",
+        "20100",
+    }
+
+
+@pytest.mark.django_db
+def test_the_plainest_foods_are_suggested_first(db: None):
+    ciqual = Source.objects.create(code="ciqual-2025", name="Ciqual", version="2025")
+    for code, name in [
+        ("1", "Biscuit sec au soja, enrichi en vitamines"),
+        ("2", "Boisson au soja"),
+        ("3", "Soja, graine, sèche"),
+        ("4", "Soja, pousses"),
+    ]:
+        SourceFood.objects.create(source=ciqual, code=code, name_fr=name)
+    reference = ReferenceIngredient.objects.create(name_fr="soja")
+
+    assert [f.code for f in suggest_source_foods(reference)] == ["4", "3", "2", "1"]
+
+
+@pytest.mark.django_db
+def test_short_words_say_nothing_about_which_food_is_meant(
+    carrots: list[SourceFood],
+):
+    reference = ReferenceIngredient.objects.create(name_fr="de la")
+
+    assert suggest_source_foods(reference) == []
+
+
+@pytest.mark.django_db
+def test_a_food_the_reference_already_draws_on_is_not_suggested(
+    carrots: list[SourceFood],
+):
+    reference = ReferenceIngredient.objects.create(name_fr="carotte")
+    reference.source_foods.add(carrots[0])
+
+    assert {f.code for f in suggest_source_foods(reference)} == {"20010", "20011"}
+
+
+@pytest.mark.django_db
+def test_suggestions_are_limited(carrots: list[SourceFood]):
+    reference = ReferenceIngredient.objects.create(name_fr="carotte")
+
+    assert len(suggest_source_foods(reference, limit=2)) == 2  # noqa: PLR2004
+
+
+@pytest.mark.django_db
+def test_a_reference_is_created_from_foods_and_named_after_the_first(
+    carrots: list[SourceFood],
+):
+    created = create_reference_from_foods(carrots[:2])
+
+    assert (created.name_en, created.name_fr) == ("Carrot, raw", "Carotte, crue")
+    assert created.status == ReferenceIngredient.Status.TO_REVIEW
+    assert set(created.source_foods.all()) == set(carrots[:2])
+    assert "20009" in created.description
+
+
+@pytest.mark.django_db
+def test_a_reference_is_not_created_when_one_has_the_name(
+    carrots: list[SourceFood],
+):
+    ReferenceIngredient.objects.create(name_en="carrot, raw")
+
+    with pytest.raises(ReferenceNameError, match="already has the name"):
+        create_reference_from_foods(carrots)
+
+    assert ReferenceIngredient.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_a_food_without_a_name_gives_no_reference(carrots: list[SourceFood]):
+    nameless = SourceFood.objects.create(source=carrots[0].source, code="1")
+
+    with pytest.raises(ReferenceNameError, match="no name"):
+        create_reference_from_foods([nameless])
