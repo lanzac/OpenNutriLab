@@ -323,6 +323,32 @@ msgstr "Nom de l'utilisateur"
 msgid "Information successfully updated"
 msgstr "Informations mises à jour avec succès"
 
+#, python-format
+msgid ""
+"The nutrition of the product was not used: no composition is known for "
+"%(detail)s."
+msgstr ""
+"La nutrition du produit n'a pas été utilisée : aucune composition n'est "
+"connue pour %(detail)s."
+
+msgid "The nutrition of the product was not used: it declares none."
+msgstr "La nutrition du produit n'a pas été utilisée : il n'en déclare aucune."
+
+#, python-format
+msgid ""
+"The nutrition of the product was not used: the compositions of its "
+"ingredients cannot give it (%(detail)s)."
+msgstr ""
+"La nutrition du produit n'a pas été utilisée : les compositions de ses "
+"ingrédients ne peuvent pas la donner (%(detail)s)."
+
+msgid ""
+"The declared percentages and the order of the ingredients contradict each "
+"other: nothing could be estimated."
+msgstr ""
+"Les pourcentages déclarés et l'ordre des ingrédients se contredisent : rien "
+"n'a pu être estimé."
+
 #~ msgid "Fat"
 #~ msgstr "Matières grasses"
 

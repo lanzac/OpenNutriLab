@@ -24,6 +24,8 @@ dependencies = [
     "hiredis>=3.2.1",
     "redis>=6.4.0",
     "psycopg[binary]>=3.2.10",
+    "scipy>=1.18.1",
+    "numpy>=2.5.3",
 ]
 
 [build-system]
@@ -60,6 +62,7 @@ dev = [
     # uv sync. The browser binaries are not a Python dependency; see
     # .devcontainer/devcontainer.json and `just playwright`.
     "playwright>=1.55.0",
+    "scipy-stubs>=1.18.1.1",
 ]
 
 # ==== pytest ====

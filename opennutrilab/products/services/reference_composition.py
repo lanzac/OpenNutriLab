@@ -124,7 +124,7 @@ def _measure(row: SourceFoodNutrient) -> _Measure | None:
         return _Measure(
             _round(amount / 2), Decimal(0), amount, Qualifier.LESS_THAN, row.confidence
         )
-    margin = _margin(amount)
+    margin = rounding_margin(amount)
     low = row.minimum if row.minimum is not None else max(Decimal(0), amount - margin)
     high = row.maximum if row.maximum is not None else amount + margin
     if row.nutrient.unit == Nutrient.Unit.GRAM.value:
@@ -134,7 +134,7 @@ def _measure(row: SourceFoodNutrient) -> _Measure | None:
     )
 
 
-def _margin(amount: Decimal) -> Decimal:
+def rounding_margin(amount: Decimal) -> Decimal:
     """
     Half of the last decimal `amount` is written with, trailing zeros ignored.
 

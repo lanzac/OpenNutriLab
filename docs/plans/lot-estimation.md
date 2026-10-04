@@ -1,10 +1,11 @@
 # Plan: nutrient estimation batch
 
 Status: steps 1 (ingredient identity), 2 (CIQUAL import), 3 (derived
-nutrients), 4 (composition of a reference) and 5 (curating the references)
-are done, 2026-10-04; the rest is planned, not started (written 2026-10-03, after lot 2 merged; revised 2026-10-04: how
-an ingredient is linked to its reference changed, see the ground rules,
-decisions 8-11 and step 1).
+nutrients), 4 (composition of a reference), 5 (curating the references) and 6
+(percentage estimation) are done, 2026-10-04; the rest is planned, not started
+(written 2026-10-03, after lot 2 merged; revised 2026-10-04: how an ingredient
+is linked to its reference changed, see the ground rules, decisions 8-11 and
+step 1; which composition counts for a branch changed, see step 7).
 Goal and constraints are in `docs/roadmap.md` ("Estimate a product's
 nutrients from its ingredients"); this file is the execution plan.
 
@@ -86,7 +87,9 @@ written.
    min and max as a range. With one source this reduces to that source.
 
 4. **Undeclared percentages.** _Recommendation:_ linear programming with
-   `scipy.optimize.linprog`. This adds scipy as a dependency.
+   `scipy.optimize.linprog`. This adds scipy as a dependency (accepted by the
+   user on 2026-10-04, with numpy; `scipy-stubs` for the types, in the dev
+   group).
    - Constraints:
      - label order means non-increasing percentages;
      - a declared percentage is an interval (see the ground rules), not a
@@ -277,6 +280,15 @@ written.
      incomplete, not zero, when a component is missing.
 4. **Reference ingredient composition** (done):
    `reference_composition(ref) -> dict[code, Estimate]`.
+   - **Foods added by hand (2026-10-04).** CIQUAL had nothing for three of the
+     muesli's ingredients, so the user created a source "Manual" and three foods
+     were added in it, each worked out from CIQUAL foods and said so in its name:
+     soy flakes from 20901 (soybean, whole), wheat flakes from 9060 (durum
+     wheat, whole, raw), and freeze-dried berries from the raw redcurrant,
+     blackcurrant and raspberry (13019, 13007, 13015) taken to 4 % water by dry
+     matter. They have the 8 nutrients of the label, grade D, and a range that is
+     the source's own widened to at least 15 %. They live in the database, as
+     the curated references do, and are not seeded by code.
    - Done as planned (decision 3 as recommended), with these details. Every
      figure is an interval. A measured amount is the range the source's own
      data gives (CIQUAL's minimum and maximum), or else its rounding read from
@@ -334,15 +346,66 @@ written.
      selection (decision 10).
    - Mark a reference as `curated` once checked.
    - The product-page UI for this belongs to lot 3. Admin is enough here.
-6. **Percentage estimation**: `estimate_percentages(product)`.
+6. **Percentage estimation** (done): `estimate_percentages(product)`.
+   - Done as planned (decisions 4 and 5), with these details and differences.
+     The code is `services/percentage_estimation.py`, and its description says
+     the rules. The unknowns are the share of the whole product of every
+     ingredient, sub-ingredients included. The rules are: the ingredients at the
+     top add up to 100 (only when one of them is undeclared, since a label that
+     declares all of them need not add up: 99.4 is rounding); the
+     sub-ingredients add up to their parent; a declared percentage holds within
+     its rounding, and a sub-ingredient's is a share of its parent; the list is
+     in non-increasing order (Regulation 1169/2011, article 18); and, for each
+     of fat, saturated fat, carbohydrates, sugars, fibre, proteins and salt of
+     the label, the lowest the compositions can make is under the label's upper
+     end and the highest is over its lower end. The compositions are intervals,
+     taken nutrient by nutrient, which keeps every rule linear: the intervals
+     that result can be wider than the truth, never narrower. Energy is not a
+     rule (a label computes it from the others), step 8 checks it. A food that
+     lacks a nutrient has it from nothing to the one it is part of (sugars are
+     carbohydrates), or to 100 g; one that lacks fat, carbohydrates or proteins
+     has no composition.
+   - Each percentage's lowest and highest values are two linear programs (HiGHS
+     through scipy), and each `Interval(low, point, high)` is rounded outwards to
+     0.01. The point is the mean of those extreme combinations, which follows
+     the rules too, and a declared percentage keeps its own figure when it
+     still holds. **Difference from decision 4:** the point does not "best fit
+     the declared nutrition". On the muesli a fit to the label's figures moved
+     the declared soy and dates to the edge of their margin (31.5 and 7.5) and
+     put wheat and oats level, because the compositions are only as good as their
+     intervals (the manual foods are known to 15 %). The mean of the extremes
+     stays inside everything that is known.
+   - **Difference from decision 5:** a sub-ingredient's percentage is always a
+     share of its parent. The exception (a parent with no percentage and a
+     value above every root's) was left out: it is ambiguous, and a reading that
+     cannot hold already gives the "contradict each other" warning.
+   - When the rules cannot all hold, nothing is guessed, and a warning says
+     why: no composition for an ingredient (named) leaves the nutrition unused;
+     a product with no declared nutrient too; a label the compositions cannot
+     give (the nutrients that are off are named) leaves it unused, and says
+     nothing of whether the label or the composition is wrong; declared
+     percentages and order that contradict each other give no estimate.
+     `used_nutrition` tells whether the label narrowed the result.
+   - On the muesli (the three missing foods added by hand in the source
+     "Manual", see step 4), with the label's order: wheat flakes 28.77-31.50
+     %, oat flakes 24.43-29.91 %, raisins 1.35-3.54 %, buckwheat 0-1.45 %. Without
+     the order they are far wider, and with the compositions as points rather
+     than intervals no combination fits the label.
+   - What follows is the plan as written.
    - Follows decisions 4 and 5.
    - Returns min, point and max per ingredient, plus warnings, for example
      declared percentages that are impossible.
    - Test against the muesli and hand-made trees: all declared, none
      declared, nested.
 7. **Nutrient computation**: `estimate_nutrients(product)`.
-   - Uses the finest level of each branch whose reference has a composition,
-     never a parent and its children together.
+   - Uses the **coarsest** level of each branch that has a composition, never a
+     parent and its children together (changed on 2026-10-04 from "the finest",
+     which step 6 already follows). A sub-ingredient is linked to the food as it
+     is sold, and a parent describes what it became: "raisins secs (raisins,
+     huile)" is dried grapes, 16 % water, while the fresh grape it is made of is
+     82 %, and the freeze-dried berries are the same story. The finest level
+     would count them for a quarter of their sugars. The sub-ingredients are used
+     when the parent has no composition.
    - Amount = sum of percentage x composition / 100, with ranges carried
      from the percentage and source ranges.
    - Coverage is computed per nutrient, because CIQUAL has holes.

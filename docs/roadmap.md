@@ -9,8 +9,10 @@ The core feature: deduce a product's vitamins (and minerals, fatty acids...)
 from its ingredients, each linked to a reference ingredient whose
 composition is known, and check the result against the values the label
 declares. The data model is in place (`opennutrilab/products/models.py`), the
-CIQUAL table is imported and an ingredient is linked to its reference; the
-rest of the following is not built yet.
+CIQUAL table is imported, an ingredient is linked to its reference and the
+percentages the label does not give are estimated (as intervals, from the
+order, the declared percentages and the declared nutrition); the rest of the
+following is not built yet.
 
 - **Reference data.** The CIQUAL 2025 table is imported (`manage.py
 import_ciqual`). Other sources will follow, each with its own importer and
@@ -27,14 +29,12 @@ import_ciqual`). Other sources will follow, each with its own importer and
   created reference can be seeded with OFF's CIQUAL code when it is a known
   food (OFF's codes are suggestions, never trusted), and the tools to curate
   the references to review. The plan is in `docs/plans/lot-estimation.md`.
-- **Undeclared percentages.** Most ingredients have no percentage on the
-  label. Estimate them in-house - not from OpenFoodFacts' own estimates -
-  for instance from the label order (decreasing weight), the declared
-  percentages, and the declared nutrition values the result must match.
-- **Sub-ingredients.** Decide how a tree is computed: typically the finest
-  level that is linked to a reference, without counting a parent and its
-  children twice. Labels also vary on whether a sub-ingredient's
-  percentage is of its parent or of the whole product.
+- **Nutrients of a product.** From the percentages and the compositions of
+  the references. A branch of the tree uses the coarsest level that has a
+  composition, never a parent and its children together: a sub-ingredient is
+  linked to the food as sold, and its parent says what it became (dried
+  grapes, not fresh ones). Built for the percentages, still to do for the
+  nutrients.
 - **Vitamin A on labels.** The derived vitamin A follows CIQUAL (retinol +
   beta-carotene / 12), but the regulation gives vitamin A in µg without any
   conversion (Annex XIII of Regulation 1169/2011), and the EU scientific
