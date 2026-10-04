@@ -243,12 +243,18 @@ written.
    - `derived_amount` returns None when a component is missing, never a sum
      that counts it as zero. `complete_with_derived` adds the derived amounts
      a source lacks and never replaces one it gave.
-   - **Open question for the validation step:** CIQUAL's vitamin A uses the
-     twelfth, and the EU label's retinol equivalent may count beta-carotene
-     for a sixth. If it does, the declared vitamin A and the estimated one are
-     not the same quantity, and the validation needs a second derived nutrient
-     (retinol + beta-carotene / 6) to compare like with like. To check against
-     the regulation before step 8.
+   - **Vitamin A on labels (checked 2026-10-04).** Regulation (EU) 1169/2011,
+     Annex XIII, gives vitamin A in µg (reference value 800) without defining
+     the retinol equivalent or any conversion: the law does not say which
+     convention a declared value follows. The EU scientific convention counts
+     beta-carotene for a sixth (from summaries of EFSA's opinion on vitamin A;
+     EFSA's page could not be opened), and CIQUAL's data for a twelfth (its
+     documentation PDF has no text, so its own wording could not be read).
+     Decision for step 8: choose neither. Compare a declared vitamin A with an
+     interval whose ends count the carotene for a twelfth and for a sixth (a
+     second derived nutrient), which is the uncertainty the convention leaves.
+     It only matters for foods whose vitamin A comes from carotene: added
+     retinol is not affected.
    - What follows is the plan as written.
    - Vitamin A (RE) = retinol x 1 + beta-carotene x 1/6, both in µg.
    - Vitamin K = K1 + K2.

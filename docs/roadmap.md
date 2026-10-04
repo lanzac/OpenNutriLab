@@ -36,9 +36,11 @@ import_ciqual`). Other sources will follow, each with its own importer and
   children twice. Labels also vary on whether a sub-ingredient's
   percentage is of its parent or of the whole product.
 - **Vitamin A on labels.** The derived vitamin A follows CIQUAL (retinol +
-  beta-carotene / 12). Check which convention EU labels use (a sixth, if the
-  regulation says so), because declared and estimated vitamin A are only
-  comparable if they are the same quantity.
+  beta-carotene / 12), but the regulation gives vitamin A in µg without any
+  conversion (Annex XIII of Regulation 1169/2011), and the EU scientific
+  convention counts beta-carotene for a sixth. When validating, compare a
+  declared vitamin A with an interval between the two, rather than choosing
+  one.
 - **Reporting.** Every estimate comes with its coverage (the share of the
   product with a known composition) and its comparison with the declared
   values. Processing (drying, cooking) changes compositions and destroys
