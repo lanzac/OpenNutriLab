@@ -15,9 +15,12 @@ and those that did not hold are not here:
   derivation matches them. The EU label's retinol equivalent may use another
   (see docs/plans/lot-estimation.md).
 - folates in dietary folate equivalents are intrinsic folates + 1.7 x folic
-  acid: exact on the 740 foods that have all three.
-- salt is sodium x 2.5, as labels compute it: the median gap with CIQUAL's salt
-  is 0.9 %.
+  acid: of the 634 foods that have all three and a non-zero value, 631 agree
+  to CIQUAL's own rounding (the other three are an average food and two
+  breakfast cereals).
+- salt is sodium x 2.5, as labels compute it: of the 2,437 foods that have both
+  and a non-zero value, 81 % agree to within 5 % (median gap 0.9 %), but not
+  those with very little sodium, where CIQUAL's rounding weighs most.
 - vitamin K is K1 + K2. CIQUAL gives no total, and K2 is measured for few
   foods, so the total is mostly incomplete.
 - Not here: vitamin D as D2 + D3, which CIQUAL's own total does not follow

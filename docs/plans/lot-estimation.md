@@ -231,7 +231,8 @@ written.
      against the totals CIQUAL 2025 publishes. Four derivations are kept:
      vitamin A = retinol + beta-carotene / 12 (not / 6: 953 of 960 foods agree,
      against 346), folates in dietary equivalents = intrinsic folates + 1.7 x
-     folic acid (exact), salt = sodium x 2.5, and vitamin K = K1 + K2 (a
+     folic acid (631 of the 634 foods with a non-zero value agree to CIQUAL's
+     rounding), salt = sodium x 2.5 (81 % of 2,437 within 5 %), and vitamin K = K1 + K2 (a
      nutrient CIQUAL does not have, created by the derivations). Vitamin D as
      D2 + D3 is not kept: CIQUAL's own total does not follow it.
    - On CIQUAL alone they fill few gaps (salt 10 foods, vitamin A 4, vitamin K
