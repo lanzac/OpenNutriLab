@@ -36,7 +36,7 @@ from .models import Product
 from .models import ReferenceIngredient
 from .services.product_services import plain_amount
 from .services.reference_services import CIQUAL_SOURCE_PREFIX
-from .services.reference_services import find_references
+from .services.reference_services import existing_references
 from .services.reference_services import name_key
 from .services.reference_services import walk_ingredients
 
@@ -366,7 +366,7 @@ def ingredient_rows_from_inputs(items: list[IngredientInput]) -> list[dict[str, 
     served), with OpenFoodFacts' CIQUAL code, and marked new.
     """
     flat = list(walk_ingredients(items))
-    references = find_references(item.name for item in flat)
+    references = existing_references(flat)
     prefetch_related_objects(list(references.values()), "source_foods__source")
     display_names = IngredientTaxon.display_names(item.off_id for item in flat)
     return _rows_from_inputs(items, references, display_names)

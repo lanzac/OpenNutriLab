@@ -149,6 +149,9 @@ msgstr "Validée"
 msgid "Notes for whoever curates it, such as what it was created from."
 msgstr "Notes pour qui la relit, par exemple ce dont elle a été créée."
 
+msgid "A curated reference needs its English name."
+msgstr "Une référence validée a besoin de son nom anglais."
+
 #, python-format
 msgid ""
 "%(part)s (%(part_amount)s %(unit)s) exceed %(whole)s (%(whole_amount)s "

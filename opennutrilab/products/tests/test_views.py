@@ -660,6 +660,24 @@ def test_rows_from_inputs_show_an_existing_reference_as_it_is(ciqual: Source):
 
 
 @pytest.mark.django_db
+def test_rows_from_inputs_find_a_reference_through_the_english_name(
+    ciqual: Source,
+):
+    """The same lookup as saving: a French name typed by hand is not new."""
+    IngredientTaxon.objects.create(
+        off_id="en:oat-flakes", name_en="oat flakes", name_fr="flocons d'avoine"
+    )
+    reference_with_foods("oat flakes", ciqual, "9311")
+
+    with translation.override("en-us"):
+        rows = ingredient_rows_from_inputs([IngredientInput(name="Flocons d'avoine")])
+
+    assert [(r["name"], r["ciqual"], r["reference"]) for r in rows] == [
+        ("oat flakes", "9311", "To review")
+    ]
+
+
+@pytest.mark.django_db
 def test_rows_from_db_show_the_references_ciqual_codes(ciqual: Source):
     sugar = reference_with_foods("sugar", ciqual, "31016")
     milk = reference_with_foods("milk", ciqual, "19054", "19051")
@@ -757,8 +775,9 @@ def test_rows_from_inputs_show_the_french_name_while_french_is_served(
         IngredientInput(name="Épices"),
     ]
 
-    # One query to look the references up, one for the French names.
-    with translation.override("fr-fr"), django_assert_num_queries(2):
+    # The references by name, the taxonomy, the references by correspondence,
+    # then the French names.
+    with translation.override("fr-fr"), django_assert_num_queries(4):
         rows = ingredient_rows_from_inputs(items)
 
     assert [r["name"] for r in rows] == [
@@ -776,7 +795,7 @@ def test_rows_from_inputs_keep_the_english_name_in_other_languages(
 ):
     items = [IngredientInput(name="oat flakes", off_id="en:oat-flakes")]
 
-    with translation.override("en-us"), django_assert_num_queries(1):
+    with translation.override("en-us"), django_assert_num_queries(3):
         rows = ingredient_rows_from_inputs(items)
 
     assert [r["name"] for r in rows] == ["oat flakes"]

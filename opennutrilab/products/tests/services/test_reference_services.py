@@ -2,6 +2,7 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
+from django.utils import translation
 
 from opennutrilab.products.api.schemas.inbound import IngredientInput
 from opennutrilab.products.models import IngredientTaxon
@@ -9,6 +10,7 @@ from opennutrilab.products.models import ReferenceIngredient
 from opennutrilab.products.models import Source
 from opennutrilab.products.models import SourceFood
 from opennutrilab.products.services import reference_services
+from opennutrilab.products.services.reference_services import existing_references
 from opennutrilab.products.services.reference_services import find_references
 from opennutrilab.products.services.reference_services import name_key
 from opennutrilab.products.services.reference_services import resolve_references
@@ -120,18 +122,19 @@ def test_a_created_reference_takes_the_taxonomys_french_name():
 
 
 @pytest.mark.django_db
-def test_a_french_name_another_reference_has_is_left_blank():
-    ReferenceIngredient.objects.create(name_en="oats", name_fr="flocons d'avoine")
+def test_a_reference_that_has_the_taxonomys_french_name_is_the_one_used():
+    """The catalogue wins: its own French name is the correspondence."""
+    mine = ReferenceIngredient.objects.create(
+        name_en="oats", name_fr="flocons d'avoine"
+    )
     IngredientTaxon.objects.create(
         off_id="en:oat-flakes", name_en="oat flakes", name_fr="Flocons d'avoine"
     )
 
-    created = resolve_references([ingredient("oat flakes", off_id="en:oat-flakes")])[
-        "oat flakes"
-    ]
+    references = resolve_references([ingredient("oat flakes", off_id="en:oat-flakes")])
 
-    assert created.name_fr == ""
-    assert ReferenceIngredient.objects.count() == 2  # noqa: PLR2004
+    assert references == {"oat flakes": mine}
+    assert ReferenceIngredient.objects.count() == 1
 
 
 @pytest.mark.django_db
@@ -190,10 +193,116 @@ def test_only_a_ciqual_food_is_linked_by_a_ciqual_code(oat_flakes: SourceFood):
 def test_a_reference_created_meanwhile_by_another_request_is_used():
     """The lookup said none, then another request created it first."""
     other_request = ReferenceIngredient.objects.create(name_en="sugar")
-    lookups = [{}, {"sugar": other_request}]
 
-    with patch.object(reference_services, "find_references", side_effect=lookups):
+    with patch.object(reference_services, "existing_references", return_value={}):
         references = resolve_references([ingredient("sugar")])
 
     assert references == {"sugar": other_request}
+    assert ReferenceIngredient.objects.count() == 1
+
+
+# ----------------------------------------------------------------------------
+# Through the English correspondence
+# ----------------------------------------------------------------------------
+@pytest.fixture
+def oat_taxon(db: None) -> IngredientTaxon:
+    return IngredientTaxon.objects.create(
+        off_id="en:oat-flakes", name_en="oat flakes", name_fr="flocons d'avoine"
+    )
+
+
+@pytest.mark.django_db
+def test_a_french_name_typed_by_hand_finds_the_reference_by_its_english_name(
+    oat_taxon: IngredientTaxon,
+):
+    oats = ReferenceIngredient.objects.create(name_en="oat flakes")
+
+    references = resolve_references([ingredient("Flocons d'avoine")])
+
+    assert references == {"flocons d'avoine": oats}
+    assert ReferenceIngredient.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_an_english_name_typed_by_hand_finds_the_reference_by_its_french_name(
+    oat_taxon: IngredientTaxon,
+):
+    oats = ReferenceIngredient.objects.create(name_fr="flocons d'avoine")
+
+    assert resolve_references([ingredient("oat flakes")]) == {"oat flakes": oats}
+    assert ReferenceIngredient.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_a_french_name_typed_by_hand_creates_a_reference_keyed_by_its_english_name(
+    oat_taxon: IngredientTaxon,
+):
+    created = resolve_references([ingredient("flocons d'avoine")])["flocons d'avoine"]
+
+    assert (created.name_en, created.name_fr) == ("oat flakes", "flocons d'avoine")
+
+
+@pytest.mark.django_db
+def test_two_names_for_one_ingredient_make_one_reference(
+    oat_taxon: IngredientTaxon,
+):
+    references = resolve_references(
+        [ingredient("oat flakes"), ingredient("Flocons d'avoine")]
+    )
+
+    assert references["oat flakes"] == references["flocons d'avoine"]
+    assert ReferenceIngredient.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_an_ambiguous_name_is_not_translated():
+    IngredientTaxon.objects.create(off_id="en:a", name_en="shallot", name_fr="échalote")
+    IngredientTaxon.objects.create(
+        off_id="en:b", name_en="eschalot", name_fr="échalote"
+    )
+
+    created = resolve_references([ingredient("échalote")])["échalote"]
+
+    assert (created.name_en, created.name_fr) == ("échalote", "")
+
+
+@pytest.mark.django_db
+def test_a_name_the_taxonomy_does_not_know_goes_where_its_language_says():
+    with translation.override("en-us"):
+        english = resolve_references([ingredient("tonka bean")])["tonka bean"]
+    with translation.override("fr-fr"):
+        french = resolve_references([ingredient("fève tonka")])["fève tonka"]
+
+    assert (english.name_en, english.name_fr) == ("tonka bean", "")
+    assert (french.name_en, french.name_fr) == ("", "fève tonka")
+
+
+@pytest.mark.django_db
+def test_an_off_id_prefix_gives_the_language_of_a_label_wording():
+    with translation.override("en-us"):
+        created = resolve_references(
+            [ingredient("oignon et ail en poudre", off_id="fr:oignon-et-ail")]
+        )["oignon et ail en poudre"]
+
+    assert (created.name_en, created.name_fr) == ("", "oignon et ail en poudre")
+
+
+@pytest.mark.django_db
+def test_a_taxon_with_one_name_only_gives_that_one(db: None):
+    IngredientTaxon.objects.create(off_id="en:ail-rose", name_fr="ail rose")
+
+    created = resolve_references([ingredient("pink garlic", off_id="en:ail-rose")])[
+        "pink garlic"
+    ]
+
+    assert (created.name_en, created.name_fr) == ("", "ail rose")
+
+
+@pytest.mark.django_db
+def test_looking_up_creates_nothing(oat_taxon: IngredientTaxon):
+    oats = ReferenceIngredient.objects.create(name_en="oat flakes")
+
+    found = existing_references([ingredient("Flocons d'avoine"), ingredient("soya")])
+
+    assert found == {"flocons d'avoine": oats}
     assert ReferenceIngredient.objects.count() == 1

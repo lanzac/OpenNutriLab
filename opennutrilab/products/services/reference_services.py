@@ -2,30 +2,44 @@
 Finding the reference ingredient an ingredient is, and creating it when none is.
 
 What a client sends for an ingredient is an IngredientInput: a name, a
-percentage, and what OpenFoodFacts said about it. Its reference ingredient is
-the one that has that name, in either language and whatever the case. When none
-has, one is created, to review, so that every ingredient has a reference.
+percentage, and what OpenFoodFacts said about it. The English name is the
+reference ingredient's key, but nothing is refused for lacking it: a name is
+looked up as it is, in either language, and if no reference has it, through
+its English correspondence, as OpenFoodFacts' taxonomy gives it ("flocons
+d'avoine" is "oat flakes"). When there is still none, one is created, to
+review, so that every ingredient has a reference.
 
-What OpenFoodFacts said (its id, its CIQUAL codes) is used only to create that
-reference, and only kept as a note in its description: OFF's data is imperfect
-and never becomes part of the curated models.
+What OpenFoodFacts said (its id, its CIQUAL codes) is used only to find the
+correspondence and to create that reference, and only kept as a note in its
+description: OFF's data is imperfect and never becomes part of the curated
+models.
 """
 
+from collections import defaultdict
 from collections.abc import Iterable
 from collections.abc import Iterator
+from typing import NamedTuple
 
 from django.db import IntegrityError
 from django.db import transaction
 from django.db.models import Q
 from django.db.models.functions import Lower
+from django.utils.translation import get_language
 
 from opennutrilab.products.api.schemas.inbound import IngredientInput
 from opennutrilab.products.models import IngredientTaxon
 from opennutrilab.products.models import ReferenceIngredient
 from opennutrilab.products.models import SourceFood
 
-# What the Source of a CIQUAL table is named after (ciqual-2020, ...).
+# What the Source of a CIQUAL table is named after (ciqual-2025, ...).
 CIQUAL_SOURCE_PREFIX = "ciqual"
+
+
+class Correspondence(NamedTuple):
+    """An ingredient's names in the OpenFoodFacts taxonomy; either may be blank."""
+
+    name_en: str
+    name_fr: str
 
 
 def clean_name(name: str) -> str:
@@ -35,6 +49,12 @@ def clean_name(name: str) -> str:
 def name_key(name: str) -> str:
     """What names are compared by: their case and spacing do not matter."""
     return clean_name(name).lower()
+
+
+def walk_ingredients(items: Iterable[IngredientInput]) -> Iterator[IngredientInput]:
+    for item in items:
+        yield item
+        yield from walk_ingredients(item.sub_ingredients)
 
 
 def find_references(names: Iterable[str]) -> dict[str, ReferenceIngredient]:
@@ -61,72 +81,153 @@ def find_references(names: Iterable[str]) -> dict[str, ReferenceIngredient]:
     return by_french | by_english
 
 
+def english_correspondences(
+    items: Iterable[IngredientInput],
+) -> dict[str, Correspondence]:
+    """
+    The names OpenFoodFacts' taxonomy gives these ingredients, by name_key.
+
+    An ingredient with an OFF id is identified by it. Any other is looked up by
+    its name, in either language, and only when the taxonomy gives that name a
+    single correspondence: a name several entries share is ambiguous and gets
+    none. An ingredient the taxonomy does not know is absent.
+    """
+    flat = list(items)
+    ids = {item.off_id for item in flat if item.off_id}
+    keys = {name_key(item.name) for item in flat} - {""}
+    taxa = list(
+        IngredientTaxon.objects.alias(
+            key_en=Lower("name_en"), key_fr=Lower("name_fr")
+        ).filter(Q(off_id__in=ids) | Q(key_en__in=keys) | Q(key_fr__in=keys))
+    )
+    by_id = {taxon.off_id: taxon for taxon in taxa}
+    by_name: defaultdict[str, set[Correspondence]] = defaultdict(set)
+    for taxon in taxa:
+        correspondence = Correspondence(
+            clean_name(taxon.name_en), clean_name(taxon.name_fr)
+        )
+        for key in {name_key(taxon.name_en), name_key(taxon.name_fr)} & keys:
+            by_name[key].add(correspondence)
+
+    found: dict[str, Correspondence] = {}
+    for item in flat:
+        key = name_key(item.name)
+        taxon = by_id.get(item.off_id)
+        if taxon is not None and (taxon.name_en or taxon.name_fr):
+            found[key] = Correspondence(
+                clean_name(taxon.name_en), clean_name(taxon.name_fr)
+            )
+        elif len(by_name.get(key, ())) == 1:
+            (found[key],) = by_name[key]
+    return found
+
+
+def existing_references(
+    items: Iterable[IngredientInput],
+) -> dict[str, ReferenceIngredient]:
+    """
+    The reference of each ingredient of these trees that has one, by name_key.
+
+    Looked up by the name as it is, then through its English correspondence.
+    Nothing is created.
+    """
+    flat = list(walk_ingredients(items))
+    found = find_references(item.name for item in flat)
+    unmatched = [item for item in flat if name_key(item.name) not in found]
+    correspondences = english_correspondences(unmatched) if unmatched else {}
+    candidates = find_references(
+        name for correspondence in correspondences.values() for name in correspondence
+    )
+    for item in unmatched:
+        key = name_key(item.name)
+        for name in correspondences.get(key, ()):
+            if name_key(name) in candidates:
+                found[key] = candidates[name_key(name)]
+                break
+    return found
+
+
 def resolve_references(
     items: Iterable[IngredientInput],
 ) -> dict[str, ReferenceIngredient]:
     """
     The reference of every ingredient of these trees, by name_key of its name.
 
-    A name no reference has creates one, so every name is in the result.
+    An ingredient no reference has the name of, in either language or through
+    its English correspondence, gets one created, so every name is in the
+    result.
     """
     flat = list(walk_ingredients(items))
-    references = find_references(item.name for item in flat)
-    for item in flat:
+    references = existing_references(flat)
+    missing = [item for item in flat if name_key(item.name) not in references]
+    correspondences = english_correspondences(missing) if missing else {}
+    for item in missing:
         key = name_key(item.name)
-        if key not in references:
-            references[key] = _create_reference(item)
+        if key in references:
+            continue  # Another ingredient of the tree created it.
+        created = _create_reference(item, correspondences.get(key))
+        references[key] = created
+        for name in (created.name_en, created.name_fr):
+            if name:
+                references.setdefault(name_key(name), created)
     return references
 
 
-def walk_ingredients(items: Iterable[IngredientInput]) -> Iterator[IngredientInput]:
-    for item in items:
-        yield item
-        yield from walk_ingredients(item.sub_ingredients)
-
-
-def _create_reference(item: IngredientInput) -> ReferenceIngredient:
+def _create_reference(
+    item: IngredientInput, correspondence: Correspondence | None
+) -> ReferenceIngredient:
     """
     A reference to review for an ingredient no reference has the name of.
 
-    The name is taken as the normalized one, which is English when it comes
-    from OpenFoodFacts' taxonomy. A name typed by hand in another language
-    lands in `name_en` too and is fixed when the reference is reviewed, since
-    names are searched in both. The French name is the taxonomy's for the OFF
-    id, when there is one and no other reference has it.
+    Its names are the taxonomy's correspondence when there is one: the English
+    name is the key and the French one is for display. Without one, the name
+    typed is all there is, and it goes where its language says (see
+    _is_french); a name in any other language lands in `name_en` and is fixed
+    when the reference is reviewed.
 
-    OFF's CIQUAL food code, when it is that of a food that was imported,
-    links the new reference to it. A proxy code never does: it is an
-    approximation, and is only noted in the description.
+    OFF's CIQUAL food code, when it is that of a food that was imported, links
+    the new reference to it. A proxy code never does: it is an approximation,
+    and is only noted in the description.
     """
-    name = clean_name(item.name)
-    name_fr = _taxonomy_french_name(item.off_id)
-    if name_fr and find_references([name_fr]):
-        name_fr = ""
+    if correspondence is not None:
+        name_en, name_fr = correspondence
+    elif _is_french(item):
+        name_en, name_fr = "", clean_name(item.name)
+    else:
+        name_en, name_fr = clean_name(item.name), ""
     food = _ciqual_food(item.off_ciqual_food_code)
     try:
         with transaction.atomic():
             reference = ReferenceIngredient.objects.create(
-                name_en=name,
+                name_en=name_en,
                 name_fr=name_fr,
                 description=_creation_note(item, food),
                 status=ReferenceIngredient.Status.TO_REVIEW,
             )
     except IntegrityError:
         # Another request created it since it was looked up.
-        existing = find_references([name]).get(name_key(name))
-        if existing is None:
-            raise
-        return existing
+        existing = find_references([name_en, name_fr])
+        for name in (name_en, name_fr):
+            if name and name_key(name) in existing:
+                return existing[name_key(name)]
+        raise
     if food is not None:
         reference.source_foods.add(food)
     return reference
 
 
-def _taxonomy_french_name(off_id: str) -> str:
-    if not off_id:
-        return ""
-    taxon = IngredientTaxon.objects.filter(off_id=off_id).first()
-    return clean_name(taxon.name_fr) if taxon else ""
+def _is_french(item: IngredientInput) -> bool:
+    """
+    Whether an ingredient's name is in French, as far as can be told.
+
+    An OFF id says it: its prefix is the language of the label wording the
+    taxonomy had no English name for. Otherwise it is the language being
+    served.
+    """
+    prefix, separator, _rest = item.off_id.partition(":")
+    if separator:
+        return prefix == "fr"
+    return (get_language() or "").startswith("fr")
 
 
 def _ciqual_food(code: str) -> SourceFood | None:

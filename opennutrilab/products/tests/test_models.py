@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import pytest
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.db import transaction
 from django.db.models import ProtectedError
@@ -264,3 +265,21 @@ def test_a_reference_ingredient_is_named_in_the_language_served():
             "oat flakes",
             "sucre",
         ]
+
+
+@pytest.mark.django_db
+def test_a_curated_reference_needs_its_english_name():
+    """It is the key: a reference to review may lack it, a curated one not."""
+    to_review = ReferenceIngredient.objects.create(name_fr="carotte")
+    curated = ReferenceIngredient.Status.CURATED
+
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        ReferenceIngredient.objects.create(name_fr="sucre", status=curated)
+    with pytest.raises(ValidationError, match="English name"):
+        ReferenceIngredient(name_fr="sucre", status=curated).full_clean()
+
+    to_review.name_en = "carrot"
+    to_review.status = curated
+    to_review.save()
+    to_review.refresh_from_db()
+    assert to_review.status == curated

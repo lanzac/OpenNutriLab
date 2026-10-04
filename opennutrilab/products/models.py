@@ -386,6 +386,7 @@ class SourceFoodNutrient(models.Model):
 
 
 _HAS_A_NAME = ~models.Q(name_en="") | ~models.Q(name_fr="")
+_CURATED_HAS_NAME_EN = ~models.Q(status="curated") | ~models.Q(name_en="")
 
 
 class ReferenceIngredient(models.Model):
@@ -437,6 +438,15 @@ class ReferenceIngredient(models.Model):
             models.CheckConstraint(  # pyright: ignore[reportCallIssue]
                 condition=_HAS_A_NAME,  # pyright: ignore[reportCallIssue]
                 name="reference_has_a_name",
+            ),
+            # The English name is the key: a reference may lack it while it
+            # is to review, but not once it is curated.
+            models.CheckConstraint(  # pyright: ignore[reportCallIssue]
+                condition=_CURATED_HAS_NAME_EN,  # pyright: ignore[reportCallIssue]
+                name="curated_reference_has_name_en",
+                violation_error_message=_(
+                    "A curated reference needs its English name."
+                ),
             ),
         ]
 

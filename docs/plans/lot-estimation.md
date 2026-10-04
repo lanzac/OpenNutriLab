@@ -51,8 +51,12 @@ nutrients from its ingredients"); this file is the execution plan.
 Each one has a recommendation. Validate or adjust them before any code is
 written.
 
-1. **CIQUAL version and file.** Check whether a version newer than 2020 is
-   out. Import the XML release, which is more stable than the xlsx.
+1. **CIQUAL version and file.** Checked on 2026-10-04: the 2020 table on
+   data.gouv.fr is marked as replaced by Ciqual 2025 (released 2025-11-19,
+   recherche.data.gouv.fr, DOI 10.57745/RDMHWY, licence Etalab 2.0): 3,484
+   foods, 74 constituents, five UTF-8 XML files (`compo` is 69 MB, `alim`
+   1.6 MB, `alim_grp`, `const`, `sources`). Import 2025. Import the XML
+   release, which is more stable than the xlsx.
    _Recommendation:_ do not commit the full file. Add a management command
    that takes a path, and commit a small extract (around 10 foods) as a test
    fixture.
@@ -112,16 +116,22 @@ written.
 
    Add a simple combined 0-1 score on top, documented in code.
 
-8. **Lookup key and normalization of the name.** Which name is searched in
-   the references, and who produces it? _Recommendation:_ search
+8. **Lookup key and normalization of the name.** Decided with the user on
+   2026-10-04, and built. The English name is the reference's key, but
+   nothing is refused for lacking it. A name is looked up as it is, in
    `name_en` and `name_fr`, whatever the case (accents are not folded: that
    needs a Postgres extension or stored keys, to add if names typed by hand
-   show the need). For now the
-   normalized name is OFF's taxonomy name (`IngredientTaxon`), behind one
-   function (`normalized_name(item)`). The user is considering doing the
-   normalization in-house later: that stays possible without touching the
-   models, since `Ingredient` stores no name. Both names are unique when not
-   blank (`name_fr` stops being required: a name OFF has no French for).
+   show the need). If no reference has it, it is looked up through its
+   English correspondence: the names OFF's taxonomy gives for the ingredient's
+   OFF id or, for a name typed by hand, for that name when the taxonomy gives
+   it a single correspondence ("flocons d'avoine" is "oat flakes"). A
+   reference created then takes the correspondence's names; without one, the
+   name typed goes in `name_fr` if it is French (by the OFF id's prefix, or
+   the language served) and in `name_en` otherwise. Both names are unique when
+   filled. A reference may lack `name_en` while it is to review, not once it
+   is curated (a check constraint). Normalizing without OFF's taxonomy would
+   mean our own dictionary of label wordings: it stays possible, since all of
+   it lives in `english_correspondences`.
 9. **Source of a reference created on the fly.** _Recommendation:_ if OFF's
    CIQUAL food code (not the proxy one) is that of a known `SourceFood`, it
    is attached to the new reference, which stays _to review_ and counts for
@@ -203,7 +213,11 @@ written.
      against `Nutrient.unit`, and fail loudly on a mismatch.
    - Keep protein on code 25003 (N x 6.25), as seeded.
    - The command is idempotent: a second run changes nothing.
-3. **Derived nutrients**: data migration for `NutrientComponent`.
+3. **Derived nutrients**: data migration for `NutrientComponent`. To
+   re-examine first: Ciqual 2025 gives vitamin A in retinol equivalents
+   (51104), total vitamin D (52100) and folates as DFE (56702) directly, so
+   only what a source does not give needs deriving (vitamin K is still split
+   in K1 and K2).
    - Vitamin A (RE) = retinol x 1 + beta-carotene x 1/6, both in µg.
    - Vitamin K = K1 + K2.
    - Review the CIQUAL list for others, for example niacin equivalents and
