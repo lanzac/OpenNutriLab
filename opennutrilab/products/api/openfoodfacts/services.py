@@ -6,6 +6,10 @@ from typing import Any
 import requests
 from pydantic import ValidationError
 
+from opennutrilab.products.api.openfoodfacts.label_percentages import (
+    declared_percentages,
+)
+from opennutrilab.products.api.openfoodfacts.label_percentages import percentages_in
 from opennutrilab.products.api.openfoodfacts.schemas import OFFIngredientSchema
 from opennutrilab.products.api.openfoodfacts.schemas import OFFProductAPIResponseSchema
 from opennutrilab.products.api.openfoodfacts.schemas import OFFProductSchema
@@ -129,9 +133,15 @@ def _off_ids(ingredients: list[OFFIngredientSchema] | None) -> set[str]:
 
 def to_ingredient_inputs(
     ingredients: list[OFFIngredientSchema] | None,
+    label_text: str,
 ) -> list[IngredientInput]:
     """
     OpenFoodFacts' ingredient tree, as the services expect it.
+
+    `label_text` is the ingredient list the tree was parsed from. An ingredient's
+    percentage is what that text declares, never OFF's own figure: OFF rescales
+    the label's percentages without saying so, and a percentage the text does not
+    back is left out (see label_percentages).
 
     An ingredient is named by the taxonomy's English name for its OFF id (see
     IngredientTaxon), not by OFF's `text`, which is the label's wording in the
@@ -152,33 +162,33 @@ def to_ingredient_inputs(
         if ids
         else {}
     )
-    return _ingredient_inputs(ingredients, english_names)
+    return _ingredient_inputs(ingredients, english_names, percentages_in(label_text))
 
 
 def _ingredient_inputs(
     ingredients: list[OFFIngredientSchema] | None,
     english_names: dict[str, str],
+    label_numbers: tuple[Decimal, ...],
 ) -> list[IngredientInput]:
+    siblings = ingredients or []
+    declared = declared_percentages([i.percentage for i in siblings], label_numbers)
     inputs: list[IngredientInput] = []
-    for ingredient in ingredients or []:
+    for ingredient, percentage in zip(siblings, declared, strict=True):
         off_id = ingredient.off_id[:255]
         name = english_names.get(off_id) or ingredient.name.strip()
         if not name:
             continue
-        percentage = ingredient.percentage
-        if percentage is not None and not 0 <= percentage <= 100:  # noqa: PLR2004
-            percentage = None
         inputs.append(
             IngredientInput(
                 name=name[:255],
-                percentage=None if percentage is None else Decimal(str(percentage)),
+                percentage=percentage,
                 off_id=off_id,
                 off_ciqual_food_code=(ingredient.ciqual_food_code or "")[:10],
                 off_ciqual_proxy_food_code=(ingredient.ciqual_proxy_food_code or "")[
                     :10
                 ],
                 sub_ingredients=_ingredient_inputs(
-                    ingredient.ingredients, english_names
+                    ingredient.ingredients, english_names, label_numbers
                 ),
             )
         )

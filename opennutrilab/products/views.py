@@ -280,7 +280,7 @@ def initial_from_off(request: HttpRequest, barcode: str) -> dict[str, Any] | Non
         initial["off_image_url"] = None
     initial["off_barcode"] = fetched.barcode
     initial["off_ingredients"] = INGREDIENTS_JSON.dump_json(
-        to_ingredient_inputs(fetched.ingredients)
+        to_ingredient_inputs(fetched.ingredients, fetched.ingredients_text or "")
     ).decode()
     return initial
 

@@ -49,6 +49,7 @@ def off_product(**overrides: Any) -> OFFProductSchema:
         "name": "Nutella",
         "image_url": IMAGE_URL,
         "nutriments": {"energy_100g": 2252, "fat_100g": 30.9, "sugars_100g": 56.3},
+        "ingredients_text": "Sucre 56,3 %, lait (lait écrémé)",
         "ingredients": [
             OFFIngredientSchema(
                 name="Sucre",

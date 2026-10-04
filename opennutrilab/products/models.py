@@ -195,6 +195,10 @@ class Ingredient(models.Model):
     # The normalized English name when the taxonomy has one (IngredientTaxon);
     # otherwise what the label says, or what the user typed.
     name = models.CharField(max_length=255)
+    # Declared, never estimated: the OpenFoodFacts import keeps a percentage
+    # only if the label's text says it, and estimates are computed on demand,
+    # not stored here. A declared figure is rounded to its last digit (33 is
+    # 32.5-33.5, 1.4 is 1.35-1.45): that margin is part of the value.
     percentage = models.DecimalField(
         null=True,
         blank=True,
