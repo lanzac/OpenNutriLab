@@ -13,7 +13,8 @@ CIQUAL table is imported, an ingredient is linked to its reference and the
 percentages the label does not give and the nutrients of a product are
 estimated (as intervals, from the order, the declared percentages and the
 declared nutrition), then checked against the label with a confidence for each
-nutrient; the rest of the following is not built yet.
+nutrient, and shown in the API and on the product page; the rest of the following
+is not built yet.
 
 - **Reference data.** The CIQUAL 2025 table is imported (`manage.py
 import_ciqual`). Other sources will follow, each with its own importer and
@@ -30,13 +31,13 @@ import_ciqual`). Other sources will follow, each with its own importer and
   created reference can be seeded with OFF's CIQUAL code when it is a known
   food (OFF's codes are suggestions, never trusted), and the tools to curate
   the references to review. The plan is in `docs/plans/lot-estimation.md`.
-- **Showing the estimate.** The estimates exist in code only: they are not on
-  the product page or in the API yet (step 9 of the plan: a read-only endpoint
-  and a plain table, then the real panel in lot 3).
-- **Reporting.** Every estimate comes with its coverage (the share of the
-  product with a known composition) and its comparison with the declared
-  values. Processing (drying, cooking) changes compositions and destroys
-  part of some vitamins: the result stays an estimate.
+- **Showing the estimate.** A read-only endpoint
+  (`/api/v1/products/{barcode}/estimate`) and a plain table on the product's
+  edit page exist. What is missing is the real panel (lot 3), and a cache if
+  working it out on each request (about a second) gets too slow.
+- **Processing.** Drying and cooking change compositions and destroy part of
+  some vitamins, and are not modelled: the output says so, and the result stays
+  an estimate.
 
 ## Upgrade to Django 6.0, for background tasks
 

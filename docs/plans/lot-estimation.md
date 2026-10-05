@@ -3,7 +3,8 @@
 Status: steps 1 (ingredient identity), 2 (CIQUAL import), 3 (derived
 nutrients), 4 (composition of a reference), 5 (curating the references), 6
 (percentage estimation) and 7 (nutrient computation) are done, 2026-10-04, and
-8 (validation and confidence), 2026-10-05; the rest is planned, not started
+8 (validation and confidence) and 9 (output), 2026-10-05; the rest is planned,
+not started
 (written 2026-10-03, after lot 2 merged; revised 2026-10-04: how an ingredient
 is linked to its reference changed, see the ground rules, decisions 8-11 and
 step 1; which composition counts for a branch changed, see step 7).
@@ -507,8 +508,46 @@ written.
    - Compare the computed and declared values for the 8 label nutrients.
      Report the gaps, then build the confidence object of decision 7. Warnings
      stay non-blocking.
-9. **Output**: `GET /api/v1/products/{barcode}/estimate`, read-only, for
+9. **Output** (done): `GET /api/v1/products/{barcode}/estimate`, read-only, for
    signed-in users.
+   - Done as planned, with these details and differences. One builder,
+     `build_estimate(product)` in `services/estimate_report.py`, makes the
+     `EstimateOut` schema (in `api/schemas/outbound.py`) that the endpoint
+     returns and the page renders, so the presentation is written once. The
+     endpoint is authenticated like the rest of the API (session or the mobile
+     app's token) and refuses anything but GET.
+   - **Difference from the plan:** `estimated` is not always present for an
+     ingredient: it is `null` when the label contradicts itself and nothing could
+     be estimated (the warning `impossible` says so). A declared ingredient does
+     get its declared interval narrowed by the rest, as planned.
+   - Per nutrient, in catalogue order: `estimated` (low, point, high, the high
+     `null` when no upper end is known), `coverage`, `confidence` (score and its
+     four parts), `declared` (the label's figure with its rounding) and `check`
+     (verdict, gap, whether it was `constrained`, and the interval compared). The
+     nutrients the label declares are listed even when no ingredient gives them.
+     Vitamin A is one entry with its second reading in `other_readings`:
+     `vitamin_a_sixth` is not an entry of its own.
+   - The response also carries the warnings (problem, message in the language
+     served, nutrients), the `sources` the figures draw on with their attribution,
+     and the `caveat` that processing is not modelled (see Out of scope).
+   - **The page**: a card under the form on the product's edit page, in its own
+     full-width row (the form's column is too narrow for a table of this many
+     columns: in it the card was 13,000 px tall). Two tables, the ingredients with
+     the label's percentage and the estimated one apart and muted, and the
+     nutrients with the label, the estimate, its range, coverage, confidence
+     (the score, then its four parts on one line, with a legend) and the check. It
+     is worked out on each GET of the page (about a second for the muesli) and not
+     after a failed POST. A solver failure (`RuntimeError`) is logged and the page
+     says the estimate could not be worked out: the form must not break on it.
+     Figures are shown to three significant digits (`templatetags/estimate_tags.py`)
+     and the label's as it was written. No chart: it was proposed and not decided.
+   - **CIQUAL attribution** is shown where its data appears: in the response, on
+     the page, and under the composition of a reference in the admin (which had
+     none).
+   - Checked in Chromium on the muesli, in English and in French: no console error,
+     no failed request, no horizontal overflow, 83 rows (14 ingredients, 69
+     nutrients).
+   - What follows is the plan as written.
    - Shows, per nutrient, the estimate, its range, coverage and declared
      value.
    - Shows, per ingredient, the declared and the estimated percentage as
@@ -521,7 +560,9 @@ written.
      lot 3.
    - Show the CIQUAL attribution wherever its data appears.
 10. **Docs**: remove the done items from `docs/roadmap.md` and update the
-    translations (`.po`).
+    translations (`.po`). The entries of steps 8 and 9 are translated already
+    (22, inserted without regenerating the catalogue). Left: `save`, untranslated
+    before, and the fuzzy `Other`, whose translation is the one of `Others`.
 
 ## Out of scope
 

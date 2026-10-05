@@ -1,18 +1,19 @@
-# Estimation des nutriments : point de reprise (2026-10-04)
+# Estimation des nutriments : point de reprise (2026-10-05)
 
 Note pour reprendre le travail dans une nouvelle session. Le plan de
 référence reste `docs/plans/lot-estimation.md` (décisions, étapes, écarts) ; ce
-fichier dit où l'on s'est arrêté et ce qui reste. À supprimer quand les étapes
-9 et 10 seront faites.
+fichier dit où l'on s'est arrêté et ce qui reste. À supprimer quand l'étape 10
+sera faite.
 
 Pour reprendre, dire par exemple : « Lis `docs/plans/lot-estimation.md` et
-`docs/plans/lot-estimation-handoff.md`, puis continue à l'étape 9. »
+`docs/plans/lot-estimation-handoff.md`, puis continue à l'étape 10. »
 
 ## Où on en est
 
-Étapes 1 à 8 du plan faites, sur `main`, dernier commit de code `dc03d4b`. 445
-tests passent, ruff et pre-commit sont propres, basedpyright a 8 erreurs qui
-datent d'avant (toutes dans `products/tests/test_views.py`).
+Étapes 1 à 9 du plan faites, sur `main`, dernier commit de code `2123966`. 487
+tests passent, ruff et pre-commit sont propres,
+basedpyright a 8 erreurs qui datent d'avant (toutes dans
+`products/tests/test_views.py`).
 
 | Étape | Commit           | Contenu                                                          |
 | ----- | ---------------- | ---------------------------------------------------------------- |
@@ -24,6 +25,7 @@ datent d'avant (toutes dans `products/tests/test_views.py`).
 | 6     | e633f94          | Estimation des pourcentages non déclarés                         |
 | 7     | e0abc01          | Calcul des nutriments du produit                                 |
 | 8     | dc03d4b          | Validation contre l'étiquette et confiance (`validate_estimate`) |
+| 9     | 2123966          | Endpoint `/estimate`, tableau sur la page d'édition, attribution |
 
 Les ingrédients sont lus uniquement dans le texte brut de l'étiquette
 (`services/label_parser.py`, commit 75621f5) ; un texte mal lu est signalé et la
@@ -87,6 +89,33 @@ checks, confidence, warnings)`. `warnings` est la liste complète (celles des
 - Sur le muesli : 0,7 s ; l'énergie déclarée (1532 kJ) est dans 1416-1739 ; aucun
   avertissement ; incertitude 0,07 ; protéines 0,46, vitamine C 0,26, fer 0,32.
 
+## Ce que fait le code (étape 9)
+
+- `services/estimate_report.py` : `build_estimate(product)` donne un `EstimateOut`
+  (schéma dans `api/schemas/outbound.py`) que l'endpoint rend tel quel et que la
+  page affiche : la présentation n'est écrite qu'une fois. Par nutriment : estimé
+  (bas, point, haut ; haut `null` si aucun maximum connu), couverture, confiance
+  et ses quatre parts, déclaré (avec son arrondi) et `check`. La vitamine A est
+  une seule entrée, sa seconde lecture est dans `other_readings`. S'y ajoutent les
+  avertissements, les `sources` avec leur attribution et la réserve sur les
+  transformations (`caveat`).
+- `GET /api/v1/products/{barcode}/estimate` (`api/routes.py`) : lecture seule,
+  même authentification que le reste de l'API (session ou jeton de l'appli).
+- **Écart avec le plan** : `estimated` d'un ingrédient vaut `null` quand
+  l'étiquette se contredit (rien n'a pu être estimé), au lieu d'être toujours là.
+- Page : une carte sous le formulaire, sur la page d'édition (`product_form.html`,
+  `components/estimate.html`, filtres dans `templatetags/estimate_tags.py`), dans
+  sa propre rangée pleine largeur (dans la colonne du formulaire elle faisait
+  13 000 px de haut). Calculée à chaque GET (environ 1 s pour le muesli), jamais
+  après un POST refusé ; un `RuntimeError` du solveur est journalisé et la page
+  dit que l'estimation n'a pas pu être calculée au lieu de casser.
+- L'attribution CIQUAL est dans la réponse, sur la page et sous la composition
+  d'une référence dans l'admin (elle n'y était pas).
+- Vérifié dans Chromium sur le muesli, en anglais et en français : aucune erreur de
+  console, aucune requête en échec, pas de débordement, 83 lignes.
+- Traductions : les 22 entrées des étapes 8 et 9 sont dans `django.po` (insérées à
+  la main, sans régénérer le catalogue) et `django.mo` est recompilé.
+
 ## État de la base de dev (pas dans le code)
 
 - Source `Manual` créée par toi, avec trois aliments ajoutés : `soy-flakes`,
@@ -135,25 +164,24 @@ checks, confidence, warnings)`. `warnings` est la liste complète (celles des
    aliments CIQUAL de référence (vitamines, minéraux), même méthode (note D,
    ±15 %), pour que la couverture passe à presque 100 %. Proposé, pas fait :
    tu avais demandé les macronutriments seulement.
-2. **Un graphique à l'étape 9** : des barres d'intervalle par nutriment avec le
-   déclaré marqué dessus, en réutilisant `nutrient-chart.js`. Proposé, pas
-   décidé.
+2. **Un graphique** : des barres d'intervalle par nutriment avec le déclaré
+   marqué dessus, en réutilisant `nutrient-chart.js`. Proposé, pas décidé : le
+   tableau de l'étape 9 est volontairement simple, le vrai panneau est au lot 3.
 3. Les décisions 6 (calcul à la demande, sans table) et 7 (formule de
    confiance) du plan ne sont pas confirmées. La 7 est codée telle que
    recommandée (parts visibles, score = produit) ; l'échelle des notes et le
    produit sont à un seul endroit du code si tu veux les changer.
 4. Les deux limites ci-dessus (énergie notée D, zéro sans marge).
+5. Le tableau liste les 69 nutriments, la plupart couverts à 37 % : long mais
+   honnête. À restreindre ou à regrouper au lot 3 ?
 
 Étapes du plan :
 
-- **9. Sortie.** `GET /api/v1/products/{barcode}/estimate` en lecture seule (il
-  appelle `validate_estimate`), un tableau simple sur la page produit (déclaré et
-  estimé séparés, couverture, intervalle, confiance et ses parts,
-  avertissements), l'attribution CIQUAL partout où ses données apparaissent.
-  `vitamin_a_sixth` n'est qu'une lecture de `vitamin_a` : ne pas la montrer
-  comme un nutriment à part.
-- **10. Docs.** Retirer les éléments faits de `docs/roadmap.md`, mettre à jour
-  les traductions.
+- **10. Docs.** La feuille de route (`docs/roadmap.md`) a déjà été mise à jour pour
+  les étapes 8 et 9, et les traductions de ces deux étapes sont faites. Reste :
+  relire la feuille de route une dernière fois, `save` (jamais traduit) et
+  l'entrée « fuzzy » `Other` du catalogue (sa traduction est celle de `Others`),
+  puis supprimer cette note.
 - **Lot 3** (`docs/plans/lot-3-react-form.md`) : formulaire produit en React,
   avec le vrai panneau d'estimation (étape 5 de ce lot).
 
