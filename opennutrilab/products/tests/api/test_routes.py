@@ -161,6 +161,26 @@ def test_get_product(api_client: Client, products_two: tuple[Product, Product]):
 
 
 @pytest.mark.django_db
+def test_the_text_the_ingredients_were_read_from_is_written_and_served(
+    api_client: Client,
+):
+    payload = _minimal_payload("3297760097969", "Created Via API")
+    payload["ingredients_text"] = "Sucre 56,3 %, lait"
+    api_client.post(API, payload, content_type="application/json")
+    url = f"{API}{payload['barcode']}"
+
+    assert api_client.get(url).json()["ingredients_text"] == "Sucre 56,3 %, lait"
+
+    api_client.patch(url, {"name": "Renamed"}, content_type="application/json")
+    assert api_client.get(url).json()["ingredients_text"] == "Sucre 56,3 %, lait"
+
+    api_client.patch(
+        url, {"ingredients_text": "Cacao"}, content_type="application/json"
+    )
+    assert api_client.get(url).json()["ingredients_text"] == "Cacao"
+
+
+@pytest.mark.django_db
 def test_an_ingredient_is_served_as_its_reference(api_client: Client):
     """No name and no OpenFoodFacts data of its own: the reference says it all."""
     payload = _minimal_payload("3297760097969", "Created Via API")

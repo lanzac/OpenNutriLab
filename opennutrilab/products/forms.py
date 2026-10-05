@@ -43,6 +43,11 @@ if TYPE_CHECKING:
 INGREDIENTS_JSON = TypeAdapter(list[IngredientInput])
 
 
+def plain_newlines(text: str) -> str:
+    """A browser posts line breaks as CRLF; the label's text has plain ones."""
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
 def nutrient_field(code: str) -> str:
     """The form field holding the declared amount of nutrient `code`."""
     return f"nutrient_{code}"
@@ -61,6 +66,8 @@ class ProductForm(forms.ModelForm):
     off_barcode = forms.CharField(required=False, widget=forms.HiddenInput)
     off_image_url = forms.CharField(required=False, widget=forms.HiddenInput)
     off_ingredients = forms.CharField(required=False, widget=forms.HiddenInput)
+    # The list the ingredients above were read from, as the label prints it.
+    off_ingredients_text = forms.CharField(required=False, widget=forms.HiddenInput)
     # A photo chosen by hand; it wins over the OpenFoodFacts one. Deliberately
     # not the model's image field, so ModelForm never assigns product.image
     # itself: the services store the file.
@@ -125,6 +132,11 @@ class ProductForm(forms.ModelForm):
                 "loader_text": _("Loading ingredients table..."),
             },
         )
+        # The label's own words, above the tree read from them.
+        ingredients_text_template: SafeText = render_to_string(
+            template_name="products/components/ingredients_text.html",
+            context=self._ingredients_text_context(),
+        )
 
         # --------------------------------------------------------------------
         # FormHelper configuration
@@ -181,6 +193,7 @@ class ProductForm(forms.ModelForm):
                 Field("off_barcode"),
                 Field("off_image_url"),
                 Field("off_ingredients"),
+                Field("off_ingredients_text"),
             ),
             BS5Accordion(
                 AccordionGroupExtended(
@@ -196,7 +209,8 @@ class ProductForm(forms.ModelForm):
                     _("Ingredients"),
                     Layout(),
                     template="crispy_bootstrap_extend/accordion-group-extended-vertical.html",
-                    extra_data=ingredients_table_container_template,
+                    extra_data=ingredients_text_template
+                    + ingredients_table_container_template,
                 ),
                 always_open=True,
                 css_class="mt-3",  # Add margin top
@@ -211,6 +225,44 @@ class ProductForm(forms.ModelForm):
             ),
         )
         # --------------------------------------------------------------------
+
+    def _ingredients_text_context(self) -> dict[str, Any]:
+        """
+        What the block with the label's ingredient list says, and why.
+
+        The text of the lookup this page was loaded from, if it was, which is what
+        will be saved; else the one saved with the product. A new product that was
+        not looked up has nothing to show, and no block.
+        """
+        looked_up = bool(self["off_barcode"].value())
+        text = plain_newlines(
+            (
+                self["off_ingredients_text"].value()
+                if looked_up
+                else self.instance.ingredients_text
+            )
+            or ""
+        )
+        if looked_up:
+            note = _("Loaded from OpenFoodFacts. It is saved with the product.")
+            empty = _("OpenFoodFacts has no ingredient list for this product.")
+        else:
+            note = _(
+                "Saved with the product: the text its ingredients were read from. "
+                'Use "Reset data" to load the current one from OpenFoodFacts.'
+            )
+            empty = _(
+                "No text was saved for this product. "
+                'Use "Reset data" to load it from OpenFoodFacts.'
+            )
+        return {
+            "show": looked_up or self.is_edit,
+            "text": text,
+            # Tall enough to read without scrolling, a line being some 70 characters.
+            "rows": min(12, max(3, text.count("\n") + len(text) // 70 + 2)),
+            "note": note,
+            "empty": empty,
+        }
 
     def _get_barcode_field_layout(self) -> FieldWithButtons:
         if not self.is_edit:
@@ -297,6 +349,12 @@ class ProductForm(forms.ModelForm):
             "group_level_2": cleaned.get("group_level_2") or "",
             "image_url": (cleaned.get("off_image_url") or None) if from_off else None,
         }
+        if from_off:
+            # Goes with the ingredients it was read from: replaced when they are,
+            # left alone when they are.
+            payload["ingredients_text"] = plain_newlines(
+                cleaned.get("off_ingredients_text") or ""
+            )
         # An empty field means "unknown" and clears the value; 0 is stored as a
         # measurement.
         nutrients = {

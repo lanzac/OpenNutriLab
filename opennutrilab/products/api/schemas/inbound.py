@@ -67,6 +67,8 @@ class ProductCreate(Schema):
     # Values declared on the nutrition label, keyed by Nutrient.code.
     nutrients: dict[str, NutrientAmount] = {}
     ingredients: list[IngredientInput] = []
+    # The label's list those ingredients were read from, when there is one.
+    ingredients_text: str = ""
 
     @field_validator("barcode")
     @classmethod
@@ -102,6 +104,7 @@ class ProductUpdate(Schema):
     group_level_2: str | None = Field(default=None, max_length=100)
     nutrients: dict[str, NutrientAmount | None] | None = None
     ingredients: list[IngredientInput] | None = None
+    ingredients_text: str | None = None
 
     @field_validator("image_url")
     @classmethod

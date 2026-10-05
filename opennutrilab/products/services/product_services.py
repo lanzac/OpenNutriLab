@@ -78,6 +78,7 @@ def create_product(
                 description=data.description,
                 group_level_1=data.group_level_1,
                 group_level_2=data.group_level_2,
+                ingredients_text=data.ingredients_text,
             )
         except IntegrityError as e:
             raise ProductAlreadyExistsError(data.barcode) from e
@@ -119,7 +120,13 @@ def update_product(
 def _apply_fields(product: Product, data: ProductUpdate) -> None:
     update_fields: list[str] = []
 
-    for field in ("name", "description", "group_level_1", "group_level_2"):
+    for field in (
+        "name",
+        "description",
+        "group_level_1",
+        "group_level_2",
+        "ingredients_text",
+    ):
         value = getattr(data, field)
         if value is not None:
             setattr(product, field, value)

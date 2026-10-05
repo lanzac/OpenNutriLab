@@ -1,0 +1,18 @@
+{% load i18n %}
+
+{# The label's ingredient list, word for word, above the tree read from it. See ProductForm._ingredients_text_context. #}
+{% if show %}
+  <div id="ingredients-text" class="mb-3">
+    <div id="ingredients-text-label" class="fw-semibold">{% translate "Ingredient list, as the label prints it" %}</div>
+    {% if text %}
+      {# No name: it is shown, not posted. #}
+      <textarea class="form-control bg-body-tertiary"
+                rows="{{ rows }}"
+                aria-labelledby="ingredients-text-label"
+                readonly>{{ text }}</textarea>
+      <div class="form-text">{{ note }}</div>
+    {% else %}
+      <div class="text-muted fst-italic">{{ empty }}</div>
+    {% endif %}
+  </div>
+{% endif %}

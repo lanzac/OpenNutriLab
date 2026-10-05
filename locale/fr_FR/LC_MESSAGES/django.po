@@ -450,6 +450,33 @@ msgstr ""
 msgid "The estimate could not be worked out."
 msgstr "L'estimation n'a pas pu être calculée."
 
+msgid "Loaded from OpenFoodFacts. It is saved with the product."
+msgstr "Chargé depuis OpenFoodFacts. Il est enregistré avec le produit."
+
+msgid "OpenFoodFacts has no ingredient list for this product."
+msgstr "OpenFoodFacts n'a pas de liste d'ingrédients pour ce produit."
+
+msgid ""
+"Saved with the product: the text its ingredients were read from. Use \"Reset "
+"data\" to load the current one from OpenFoodFacts."
+msgstr ""
+"Enregistré avec le produit : le texte dont ses ingrédients ont été lus. "
+"Utilisez « Réinitialiser les données » pour charger le texte actuel depuis "
+"OpenFoodFacts."
+
+msgid ""
+"No text was saved for this product. Use \"Reset data\" to load it from "
+"OpenFoodFacts."
+msgstr ""
+"Aucun texte n'a été enregistré pour ce produit. Utilisez « Réinitialiser les "
+"données » pour le charger depuis OpenFoodFacts."
+
+msgid "The ingredient list as the label prints it."
+msgstr "La liste d'ingrédients telle que l'étiquette l'imprime."
+
+msgid "Ingredient list, as the label prints it"
+msgstr "Liste des ingrédients, telle que l'étiquette l'imprime"
+
 #~ msgid "Fat"
 #~ msgstr "Matières grasses"
 

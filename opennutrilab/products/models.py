@@ -144,6 +144,15 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     group_level_1 = models.CharField(max_length=100, blank=True)
     group_level_2 = models.CharField(max_length=100, blank=True)
+    # The list of ingredients as the label prints it, which the ingredients were
+    # read from (see services.label_parser): kept so that a badly read list can be
+    # told from a badly written one. Set when the ingredients come from
+    # OpenFoodFacts and never edited, so it can be older than the text OFF has now.
+    ingredients_text = models.TextField(
+        blank=True,
+        default="",
+        help_text=_("The ingredient list as the label prints it."),
+    )
 
     if TYPE_CHECKING:
         declared_nutrients: RelatedManager["ProductNutrient"]

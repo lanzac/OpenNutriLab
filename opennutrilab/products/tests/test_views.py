@@ -575,6 +575,144 @@ class TestProductEditView:
         assert not Product.objects.filter(pk="3229820794556").exists()
 
 
+# What a label prints, with a line break (a browser posts it as CRLF) and markup
+# that must not be taken for markup.
+LABEL_TEXT = "Sucre 56,3 %, <b>lait</b> (lait écrémé).\npeut contenir des traces."
+
+
+def looked_up(
+    client: Client,
+    text: str | None = LABEL_TEXT,
+    language: str = "en",
+    **query: str,
+):
+    """The create page (or the edit one, with reset=1) after an OFF lookup."""
+    path = query.pop("path", reverse("create_product"))
+    params = {"barcode": NUTELLA, **query}
+    with patch(
+        "opennutrilab.products.views.fetch_from_off",
+        return_value=off_product(ingredients_text=text),
+    ):
+        return client.get(path, params, headers={"accept-language": language})
+
+
+@pytest.mark.django_db
+class TestIngredientListText:
+    """The label's own words are shown next to the ingredients read from them."""
+
+    def test_a_lookup_shows_the_list_word_for_word_and_carries_it(self, client: Client):
+        with translation.override("en"):
+            response: HttpResponse = looked_up(client)
+
+        page = response.content.decode()
+        assert "Ingredient list, as the label prints it" in page
+        assert "Loaded from OpenFoodFacts. It is saved with the product." in page
+        # Escaped, and its line break kept for the browser to show.
+        assert "&lt;b&gt;lait&lt;/b&gt; (lait écrémé)." in page
+        assert "<b>lait</b>" not in page
+        # Read only, and without a name: shown, not posted.
+        assert re.search(r"<textarea[^>]*\sreadonly", page)
+        assert 'name="ingredients' not in page.split("<textarea", 1)[1].split(">", 1)[0]
+        assert response.context["form"]["off_ingredients_text"].value() == LABEL_TEXT
+
+    def test_saving_a_looked_up_product_keeps_the_text(self, client: Client):
+        form = looked_up(client).context["form"]
+        # A browser posts line breaks as CRLF.
+        crlf = LABEL_TEXT.replace("\n", "\r\n")
+
+        client.post(
+            reverse("create_product"), submitted(form, off_ingredients_text=crlf)
+        )
+
+        assert Product.objects.get(pk=NUTELLA).ingredients_text == LABEL_TEXT
+
+    def test_the_text_comes_back_when_the_form_has_to_be_corrected(
+        self, client: Client
+    ):
+        form = looked_up(client).context["form"]
+
+        response: HttpResponse = client.post(
+            reverse("create_product"), submitted(form, name="")
+        )
+
+        assert not Product.objects.exists()
+        assert "&lt;b&gt;lait&lt;/b&gt;" in response.content.decode()
+
+    def test_a_saved_product_shows_the_text_it_was_saved_with(self, client: Client):
+        product = Product.objects.create(
+            barcode=NUTELLA, name="Nutella", ingredients_text=LABEL_TEXT
+        )
+
+        with translation.override("en"):
+            page = client.get(
+                reverse("edit_product", args=[product.pk])
+            ).content.decode()
+
+        assert "&lt;b&gt;lait&lt;/b&gt; (lait écrémé)." in page
+        assert (
+            "Saved with the product: the text its ingredients were read from." in page
+        )
+
+    def test_a_product_saved_without_a_text_says_so_and_how_to_get_it(
+        self, client: Client
+    ):
+        product = Product.objects.create(barcode=NUTELLA, name="Nutella")
+
+        with translation.override("en"):
+            page = client.get(
+                reverse("edit_product", args=[product.pk])
+            ).content.decode()
+
+        assert "No text was saved for this product." in page
+        assert "Reset data" in page
+
+    def test_a_lookup_that_has_no_list_says_so(self, client: Client):
+        with translation.override("en"):
+            page = looked_up(client, text="").content.decode()
+
+        assert "OpenFoodFacts has no ingredient list for this product." in page
+
+    def test_a_new_product_not_looked_up_has_no_block(self, client: Client):
+        page = client.get(reverse("create_product")).content.decode()
+
+        assert 'id="ingredients-text"' not in page
+
+    def test_reset_shows_the_current_text_and_saving_replaces_the_saved_one(
+        self, client: Client
+    ):
+        product = Product.objects.create(
+            barcode=NUTELLA, name="Nutella", ingredients_text="An old text"
+        )
+        url = reverse("edit_product", args=[product.pk])
+
+        response = looked_up(client, path=url, reset="1")
+
+        page = response.content.decode()
+        assert "An old text" not in page
+        assert "&lt;b&gt;lait&lt;/b&gt;" in page
+        client.post(url, submitted(response.context["form"]))
+        product.refresh_from_db()
+        assert product.ingredients_text == LABEL_TEXT
+
+    def test_a_plain_edit_leaves_the_saved_text_alone(self, client: Client):
+        product = Product.objects.create(
+            barcode=NUTELLA, name="Nutella", ingredients_text="Saved"
+        )
+        url = reverse("edit_product", args=[product.pk])
+        form = client.get(url).context["form"]
+
+        client.post(url, submitted(form, name="Renamed"))
+
+        product.refresh_from_db()
+        assert (product.name, product.ingredients_text) == ("Renamed", "Saved")
+
+    def test_the_block_is_in_the_language_served(self, client: Client):
+        page = looked_up(client, language="fr").content.decode()
+
+        assert "Liste des ingrédients, telle que l'étiquette l'imprime" in page
+        assert "Chargé depuis OpenFoodFacts." in page
+
+
 @pytest.mark.django_db
 @pytest.mark.parametrize("url_name", ["list_products", "create_product"])
 def test_product_pages_send_anonymous_visitors_to_sign_in(url_name: str):

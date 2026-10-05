@@ -32,8 +32,13 @@ nutrients from its ingredients"); this file is the execution plan.
   unknown, never estimated. Nothing is corrected or guessed: a text that looks
   badly read (brackets that do not match, a letter taken for a digit, the
   nutrition table in the list, a sentence for an ingredient, an empty place
-  between commas) gives no ingredient and a warning that says why, and the
-  text is corrected on OpenFoodFacts, then the product loaded again.
+  between commas)
+  gives no ingredient and a warning that says why, and the
+  text is corrected on OpenFoodFacts, then the product loaded again. The text is
+  kept on the product (`Product.ingredients_text`, set when the ingredients come
+  from OpenFoodFacts) and shown above the ingredients on the create and edit
+  pages (2026-10-05), so that a list badly read can be told from one badly
+  written. It is never edited, and can be older than the text OFF has now.
   Percentages over 100 in total are only a warning.
 - Uncertainty is part of the result, not a caveat. Every figure is an
   interval: a declared value is rounded to its last digit (33 % is 32.5-33.5,

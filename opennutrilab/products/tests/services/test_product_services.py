@@ -102,6 +102,20 @@ def test_create_product_writes_fields_declared_values_and_ingredient_tree():
 
 
 @pytest.mark.django_db
+def test_create_product_keeps_the_text_the_ingredients_were_read_from():
+    text = "Sucre 56,3 %, lait (lait écrémé)\npeut contenir des traces de : noisette"
+
+    product = create_product(create_payload(ingredients_text=text)).product
+
+    assert Product.objects.get(pk=product.pk).ingredients_text == text
+
+
+@pytest.mark.django_db
+def test_a_product_created_without_a_list_has_an_empty_text(product: Product):
+    assert product.ingredients_text == ""
+
+
+@pytest.mark.django_db
 def test_create_product_refuses_an_existing_barcode(product: Product):
     """
     Product(...).save() with an existing primary key silently UPDATEs, so a
@@ -177,6 +191,24 @@ def test_update_product_only_touches_what_is_given(product: Product):
     assert declared(product)["fat"] == Decimal("30.9")
     # Not recreated: same rows, same ids.
     assert set(product.ingredients.values_list("id", flat=True)) == ingredient_ids
+
+
+@pytest.mark.django_db
+def test_update_product_leaves_the_text_alone_unless_given():
+    product = create_product(create_payload(ingredients_text="Sucre")).product
+
+    update_product(product, ProductUpdate(name="Renamed"))
+    product.refresh_from_db()
+    assert product.ingredients_text == "Sucre"
+
+    update_product(product, ProductUpdate(ingredients_text="Cacao"))
+    product.refresh_from_db()
+    assert product.ingredients_text == "Cacao"
+
+    # An empty text is a text: OpenFoodFacts having no list clears the saved one.
+    update_product(product, ProductUpdate(ingredients_text=""))
+    product.refresh_from_db()
+    assert product.ingredients_text == ""
 
 
 @pytest.mark.django_db

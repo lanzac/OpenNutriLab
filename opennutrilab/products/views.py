@@ -352,6 +352,7 @@ def initial_from_off(request: HttpRequest, barcode: str) -> dict[str, Any] | Non
     )
     report_label_warnings(request, fetched.barcode, warnings)
     initial["off_ingredients"] = INGREDIENTS_JSON.dump_json(ingredients).decode()
+    initial["off_ingredients_text"] = fetched.ingredients_text or ""
     return initial
 
 

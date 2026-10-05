@@ -217,6 +217,8 @@ class ProductOut(ModelSchema):
     created_at: datetime
     group_level_1: str
     group_level_2: str
+    # The label's list of ingredients, as it was when the ingredients were loaded.
+    ingredients_text: str
 
     # Values declared on the label, in catalogue order.
     nutrients: list[DeclaredNutrientOut] = []
@@ -235,6 +237,7 @@ class ProductOut(ModelSchema):
             "created_at",
             "group_level_1",
             "group_level_2",
+            "ingredients_text",
         ]
 
     @staticmethod
