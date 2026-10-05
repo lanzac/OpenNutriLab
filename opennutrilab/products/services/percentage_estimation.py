@@ -110,7 +110,10 @@ class Interval(NamedTuple):
 
 
 class Problem(TextChoices):
-    """What kept the estimate from using all there is. "%(detail)s" is what."""
+    """
+    What the estimate has to say besides its figures: what kept it from using all
+    there is, and where it parts from the label. "%(detail)s" is what.
+    """
 
     NO_COMPOSITION = (
         "no_composition",
@@ -137,14 +140,34 @@ class Problem(TextChoices):
             "contradict each other: nothing could be estimated."
         ),
     )
+    # Said by estimate_validation, which compares the estimate with the label. Here
+    # "%(detail)s" is the nutrient, and the figures come with their unit.
+    DECLARED_BELOW = (
+        "declared_below",
+        _(
+            "%(detail)s: the label declares %(declared)s, but its ingredients "
+            "bring at least %(estimated)s."
+        ),
+    )
+    DECLARED_ABOVE = (
+        "declared_above",
+        _(
+            "%(detail)s: the label declares %(declared)s, but its ingredients "
+            "bring at most %(estimated)s."
+        ),
+    )
 
 
 class EstimateWarning(NamedTuple):
     problem: Problem
     detail: str = ""
+    # The nutrients (by code) the detail is about, when it names some.
+    codes: tuple[str, ...] = ()
+    # What else the message names, by placeholder.
+    figures: Mapping[str, str] | None = None
 
     def message(self) -> str:
-        return str(self.problem.label) % {"detail": self.detail}
+        return str(self.problem.label) % {"detail": self.detail, **(self.figures or {})}
 
 
 class PercentageEstimate(NamedTuple):
@@ -227,6 +250,8 @@ class Loaded(NamedTuple):
     compositions: list[dict[str, Estimate]]
     # The nutrient each one is part of, by code (sugars are carbohydrates).
     parents: dict[str, str | None]
+    # The unit each nutrient is given in, by code.
+    units: dict[str, str]
 
 
 def load(product: Product) -> Loaded:
@@ -260,6 +285,7 @@ def load(product: Product) -> Loaded:
         {code: nutrient.name for code, nutrient in catalogue.items()},
         [full[i.reference_id] for i in ingredients],
         {code: nutrient.parent_id for code, nutrient in catalogue.items()},
+        {code: nutrient.unit for code, nutrient in catalogue.items()},
     )
 
 
@@ -327,7 +353,9 @@ def solve_shares(
             off = _disagreeing(tree, nodes, units, label)
             names = nutrient_names or {}
             detail = ", ".join(names.get(code, code) for code in off)
-            warnings.append(EstimateWarning(Problem.LABEL_DISAGREES, detail))
+            warnings.append(
+                EstimateWarning(Problem.LABEL_DISAGREES, detail, tuple(off))
+            )
     return Solution(
         nodes,
         units,

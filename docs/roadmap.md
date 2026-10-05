@@ -12,7 +12,8 @@ declares. The data model is in place (`opennutrilab/products/models.py`), the
 CIQUAL table is imported, an ingredient is linked to its reference and the
 percentages the label does not give and the nutrients of a product are
 estimated (as intervals, from the order, the declared percentages and the
-declared nutrition); the rest of the following is not built yet.
+declared nutrition), then checked against the label with a confidence for each
+nutrient; the rest of the following is not built yet.
 
 - **Reference data.** The CIQUAL 2025 table is imported (`manage.py
 import_ciqual`). Other sources will follow, each with its own importer and
@@ -32,12 +33,6 @@ import_ciqual`). Other sources will follow, each with its own importer and
 - **Showing the estimate.** The estimates exist in code only: they are not on
   the product page or in the API yet (step 9 of the plan: a read-only endpoint
   and a plain table, then the real panel in lot 3).
-- **Vitamin A on labels.** The derived vitamin A follows CIQUAL (retinol +
-  beta-carotene / 12), but the regulation gives vitamin A in µg without any
-  conversion (Annex XIII of Regulation 1169/2011), and the EU scientific
-  convention counts beta-carotene for a sixth. When validating, compare a
-  declared vitamin A with an interval between the two, rather than choosing
-  one.
 - **Reporting.** Every estimate comes with its coverage (the share of the
   product with a known composition) and its comparison with the declared
   values. Processing (drying, cooking) changes compositions and destroys

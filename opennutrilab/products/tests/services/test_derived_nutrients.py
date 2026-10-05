@@ -57,6 +57,22 @@ def test_vitamin_a_follows_the_convention_ciqual_publishes_it_in(
     assert abs(derived - D(published)) <= D("0.01") + D(published) * D("0.01")
 
 
+def test_vitamin_a_is_also_worked_out_counting_the_carotene_for_a_sixth(
+    catalogue: None,
+):
+    """The two readings differ, and a label's convention is not known."""
+    # Madeleine, pur beurre: the twelfth is what CIQUAL publishes (219).
+    twelfth = derive("vitamin_a", retinol="206", beta_carotene="151")
+    sixth = derive("vitamin_a_sixth", retinol="206", beta_carotene="151")
+
+    assert twelfth is not None
+    assert sixth is not None
+    assert abs(sixth - D("231.17")) <= D("0.01")
+    assert sixth > twelfth
+    # Without carotene they are the same thing: the retinol.
+    assert derive("vitamin_a_sixth", retinol="10", beta_carotene="0") == D(10)
+
+
 @pytest.mark.parametrize(
     ("intrinsic", "folic_acid", "published"),
     [
@@ -188,6 +204,18 @@ def test_vitamin_k_is_created_with_k1_and_k2_as_its_parts(catalogue: None):
     assert k1.parent_id == "vitamin_k"
     assert Nutrient.objects.get(code="vitamin_k2").parent_id == "vitamin_k"
     assert vitamin_k.display_order < k1.display_order
+
+
+def test_vitamin_a_with_a_sixth_is_created_and_listed_after_vitamin_a(catalogue: None):
+    sixth = Nutrient.objects.get(code="vitamin_a_sixth")
+    vitamin_a = Nutrient.objects.get(code="vitamin_a")
+
+    assert (sixth.unit, sixth.group) == ("µg", "vitamin")
+    assert sixth.ciqual_code is None
+    assert sixth.parent_id is None
+    # Retinol, which follows vitamin A in the table, keeps its place after both.
+    retinol = Nutrient.objects.get(code="retinol")
+    assert vitamin_a.display_order < sixth.display_order < retinol.display_order
 
 
 def test_setting_them_up_again_changes_nothing(catalogue: None):

@@ -246,6 +246,8 @@ def test_only_the_nutrients_that_disagree_are_named():
 
     assert result.warnings[0].problem == Problem.LABEL_DISAGREES
     assert result.warnings[0].detail == "fat"
+    # The codes come with the names, for what reads them (estimate_validation).
+    assert result.warnings[0].codes == ("fat",)
 
 
 # ----------------------------------------------------------------------------

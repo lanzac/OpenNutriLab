@@ -2,8 +2,8 @@
 
 Status: steps 1 (ingredient identity), 2 (CIQUAL import), 3 (derived
 nutrients), 4 (composition of a reference), 5 (curating the references), 6
-(percentage estimation) and 7 (nutrient computation) are done, 2026-10-04; the
-rest is planned, not started
+(percentage estimation) and 7 (nutrient computation) are done, 2026-10-04, and
+8 (validation and confidence), 2026-10-05; the rest is planned, not started
 (written 2026-10-03, after lot 2 merged; revised 2026-10-04: how an ingredient
 is linked to its reference changed, see the ground rules, decisions 8-11 and
 step 1; which composition counts for a branch changed, see step 7).
@@ -269,9 +269,9 @@ written.
      documentation PDF has no text, so its own wording could not be read).
      Decision for step 8: choose neither. Compare a declared vitamin A with an
      interval whose ends count the carotene for a twelfth and for a sixth (a
-     second derived nutrient), which is the uncertainty the convention leaves.
-     It only matters for foods whose vitamin A comes from carotene: added
-     retinol is not affected.
+     second derived nutrient, `vitamin_a_sixth`, built in step 8), which is the
+     uncertainty the convention leaves. It only matters for foods whose vitamin
+     A comes from carotene: added retinol is not affected.
    - What follows is the plan as written.
    - Vitamin A (RE) = retinol x 1 + beta-carotene x 1/6, both in µg.
    - Vitamin K = K1 + K2.
@@ -439,9 +439,74 @@ written.
    - Amount = sum of percentage x composition / 100, with ranges carried
      from the percentage and source ranges.
    - Coverage is computed per nutrient, because CIQUAL has holes.
-8. **Validation and confidence**: compare the computed and declared values
-   for the 8 label nutrients. Report the gaps, then build the confidence
-   object of decision 7. Warnings stay non-blocking.
+8. **Validation and confidence** (done): `validate_estimate(product)`.
+   - Done as planned (decision 7 as recommended), with these details and
+     differences. The code is `services/estimate_validation.py`, and its
+     description says the rules. Every nutrient the product declares (the 8 of
+     the label, and any other an admin entered) is set against the estimate as
+     two intervals: the declared figure with its rounding, and the lowest and
+     highest ends of the estimate. They agree when they meet. Otherwise the label
+     is `declared_below` (it declares less than the ingredients bring at the
+     least) or `declared_above`, with the gap in the nutrient's unit, and a
+     non-blocking warning (`Problem.DECLARED_BELOW`, `DECLARED_ABOVE`) names the
+     nutrient and both figures. A nutrient no ingredient gives is
+     `not_estimated`. `validate_estimate` returns the nutrients and percentages
+     of steps 6 and 7 with the checks, the confidence of each nutrient and all
+     the warnings (the shares' first), in one pass: loading and solving once.
+   - **The label is also an input.** The seven nutrients that step 6 takes as
+     rules agree with the estimate by construction when they were used, so
+     comparing them confirms nothing. A check marks them `constrained`, and they
+     count for nothing in the confidence. What tests them is whether the shares
+     could be worked out with them at all, which is step 6's `LABEL_DISAGREES`
+     (its warning now carries the nutrients' codes as well as their names). The
+     independent checks are energy, which a label computes from the others, and
+     any nutrient outside the seven. On the muesli the declared 1532 kJ is within
+     the 1416-1739 kJ the ingredients give, and nothing is flagged.
+   - A nutrient given by only some of the ingredients has no highest end, so the
+     label can only be found below it. Such a check cannot confirm much and does
+     not count as an agreement either.
+   - **Vitamin A** (decided in step 3): `vitamin_a_sixth`, retinol +
+     beta-carotene / 6, is a second derived nutrient, created by
+     `ensure_derivations` like vitamin K (`import_ciqual` runs it; the dev database
+     got it from a direct call). `CONVENTIONS` maps `vitamin_a` to it, and a
+     declared vitamin A is compared with the span of both readings, from the lower
+     of the two lowest ends to the higher of the two highest, or open at the top if
+     either is. A figure between the two readings agrees too: another convention
+     would land there. Nothing declares a vitamin yet outside the admin (the form
+     and the OFF import only know the 8 of the label), so this is tested but not
+     seen on a real product.
+   - **Confidence**, for each estimated nutrient: four parts between 0 and 1 and
+     a score that is their product, worked out from the parts as shown. _Coverage_
+     is the share of the product whose ingredients give the nutrient. _Quality_ is
+     their foods' grades on the scale of the aggregation (A 1, B 0.75, C 0.5, D
+     0.25, none 0.25), averaged for an ingredient with several foods and weighted
+     by the shares. _Uncertainty_ is half the sum of the widths of the shares of
+     the ingredients that carry the composition (what one gains, another loses),
+     and counts against the score. _Agreement_ is the share of the informative
+     independent checks that agree, a nutrient named by `LABEL_DISAGREES` counting
+     as failed, and none when there is no such check (the score then takes 1:
+     nothing contradicts the estimate, which is not that it was confirmed).
+     Coverage and quality are the nutrient's, uncertainty and agreement the
+     product's. The formula is a recommendation nobody has contested, and its
+     figures (the grade scale, the product) are one place in the code to change.
+   - On the muesli (0.7 s): uncertainty 0.07, agreement 1.00, coverage 1.00 for
+     the macronutrients and 0.36-0.37 for the vitamins and minerals looked at.
+     Proteins score 0.46 (quality 0.50: the three Manual foods, grade D, are 63 %
+     of the product), vitamin C 0.26, vitamin A 0.23 and 0.15 counting the
+     carotene for a sixth (quality 0.70 and 0.45), iron 0.32.
+   - **Energy is graded D by CIQUAL for 2,842 of its 2,843 foods** (it is a
+     computed value, and the source says so in its grades), so the quality of the
+     energy of any product is 0.25 and its score at most 0.25, whatever the
+     macronutrients it comes from. That is the source's grade, taken as given.
+     Open: energy could take the quality of the nutrients it is computed from.
+   - Not modelled, as in step 6: a declared zero has no margin (a label's "0 g"
+     can stand for under 0.5 g, so a food with a little of the nutrient flags it),
+     and the tolerances the EU allows between a label and the food are not
+     added to the rounding.
+   - What follows is the plan as written.
+   - Compare the computed and declared values for the 8 label nutrients.
+     Report the gaps, then build the confidence object of decision 7. Warnings
+     stay non-blocking.
 9. **Output**: `GET /api/v1/products/{barcode}/estimate`, read-only, for
    signed-in users.
    - Shows, per nutrient, the estimate, its range, coverage and declared

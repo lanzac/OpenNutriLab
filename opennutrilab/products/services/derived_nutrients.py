@@ -21,6 +21,10 @@ and those that did not hold are not here:
 - salt is sodium x 2.5, as labels compute it: of the 2,437 foods that have both
   and a non-zero value, 81 % agree to within 5 % (median gap 0.9 %), but not
   those with very little sodium, where CIQUAL's rounding weighs most.
+- vitamin A is also retinol + beta-carotene / 6, as a second nutrient of its own
+  (vitamin_a_sixth). It is not a better value: the law does not say which
+  convention a label's vitamin A follows, so the validation compares a declared
+  one with what both give (see estimate_validation).
 - vitamin K is K1 + K2. CIQUAL gives no total, and K2 is measured for few
   foods, so the total is mostly incomplete.
 - Not here: vitamin D as D2 + D3, which CIQUAL's own total does not follow
@@ -52,14 +56,20 @@ class NewNutrient(NamedTuple):
     group: Nutrient.Group
     # Nutrients that are part of it, and had no parent.
     parts: tuple[str, ...] = ()
+    # Where it is listed when it has no parts to go before.
+    display_order: int | None = None
 
 
 # Factors keep six decimals, which is how NutrientComponent stores them: 1/12 is
-# 0.083333, off by less than 0.0005 %.
+# 0.083333, off by less than 0.0005 %, and 1/6 is 0.166667.
 DERIVATIONS: dict[str, tuple[Term, ...]] = {
     "vitamin_a": (
         Term("retinol", Decimal(1)),
         Term("beta_carotene", Decimal("0.083333")),
+    ),
+    "vitamin_a_sixth": (
+        Term("retinol", Decimal(1)),
+        Term("beta_carotene", Decimal("0.166667")),
     ),
     "vitamin_b9_dfe": (
         Term("intrinsic_folates", Decimal(1)),
@@ -74,6 +84,14 @@ DERIVATIONS: dict[str, tuple[Term, ...]] = {
 }
 
 CREATED: dict[str, NewNutrient] = {
+    # Listed right after vitamin A (CIQUAL's code 51104, at 600).
+    "vitamin_a_sixth": NewNutrient(
+        "Vitamin A (retinol + beta-carotene / 6)",
+        "Vitamine A (rétinol + bêta-carotène / 6)",
+        Nutrient.Unit.MICROGRAM,
+        Nutrient.Group.VITAMIN,
+        display_order=601,
+    ),
     "vitamin_k": NewNutrient(
         "Vitamin K",
         "Vitamine K",
@@ -130,7 +148,11 @@ def _derived_nutrient(code: str) -> Nutrient:
         unit=new.unit,
         group=new.group,
         # Just before its first part, so they are listed together.
-        display_order=min((p.display_order for p in parts), default=100) - 1,
+        display_order=(
+            new.display_order
+            if new.display_order is not None
+            else min((p.display_order for p in parts), default=100) - 1
+        ),
     )
     Nutrient.objects.filter(code__in=new.parts, parent=None).update(parent=nutrient)
     return nutrient
