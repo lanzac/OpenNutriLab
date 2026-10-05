@@ -67,6 +67,137 @@ class DeclaredNutrientOut(Schema):
         return obj.nutrient.unit
 
 
+class RangeOut(Schema):
+    """
+    An estimated figure with its range: `point` is within `low` and `high`.
+
+    Percentages of the product, per 100 g amounts and coverage all come this way.
+    `high` is None when no upper end is known, which happens for a nutrient only
+    some of the ingredients give.
+    """
+
+    low: Decimal
+    point: Decimal
+    high: Decimal | None = None
+
+
+class DeclaredOut(Schema):
+    """What the label declares of a nutrient, with the rounding it is written with."""
+
+    amount: Decimal
+    low: Decimal
+    high: Decimal
+
+
+class CheckOut(Schema):
+    """The declared figure set against the estimate (see estimate_validation)."""
+
+    # agrees, declared_below, declared_above or not_estimated.
+    verdict: str
+    # How far apart the two intervals are, in the nutrient's unit: 0 when they meet.
+    gap: Decimal
+    # The label's figure was one of the rules the shares were worked out with, so
+    # it agrees by construction and confirms nothing.
+    constrained: bool
+    # What it was compared with. For a nutrient read more than one way (vitamin A)
+    # this holds all the readings, so it is wider than `estimated`.
+    compared_low: Decimal | None = None
+    compared_high: Decimal | None = None
+
+
+class ConfidenceOut(Schema):
+    """
+    How far to trust an estimated nutrient: four parts between 0 and 1, and
+    their product.
+    """
+
+    score: Decimal
+    coverage: Decimal
+    quality: Decimal
+    uncertainty: Decimal
+    # None when no independent check could have failed.
+    agreement: Decimal | None = None
+
+
+class ReadingOut(Schema):
+    """Another way to read a nutrient, which a label's figure may follow."""
+
+    name: str
+    estimated: RangeOut
+
+
+class NutrientEstimateOut(Schema):
+    """One nutrient of the product, per 100 g, in `unit`."""
+
+    code: str
+    name: str
+    unit: str
+    # None for a nutrient the label declares and no ingredient gives.
+    estimated: RangeOut | None = None
+    # The share of the product, in percent, whose ingredients give a value.
+    coverage: RangeOut | None = None
+    confidence: ConfidenceOut | None = None
+    declared: DeclaredOut | None = None
+    check: CheckOut | None = None
+    other_readings: list[ReadingOut] = []
+
+
+class IngredientEstimateOut(Schema):
+    reference: ReferenceOut
+    # As on the label: None when it gives none. Never estimated.
+    declared: Decimal | None = None
+    # The share of the whole product, a sub-ingredient's included. For a declared
+    # one it is the declared interval, narrowed by what the rest says. None only
+    # when the label contradicts itself and nothing could be estimated.
+    estimated: RangeOut | None = None
+    sub_ingredients: list["IngredientEstimateOut"] = []
+
+
+IngredientEstimateOut.model_rebuild()
+
+
+class WarningOut(Schema):
+    """Something to say of the estimate that is not a figure. Never blocking."""
+
+    problem: str
+    message: str
+    # The nutrients it is about, by code.
+    nutrients: list[str] = []
+
+
+class SourceOut(Schema):
+    """A source of composition data the estimate draws on, and how to credit it."""
+
+    code: str
+    name: str
+    version: str
+    url: str
+    # What the licence requires to be shown wherever its data is used.
+    attribution: str
+
+
+class EstimateOut(Schema):
+    """
+    What a product's ingredients say of its nutrients, with how far to trust it.
+
+    Every figure is an interval, and the label's own are never changed: the
+    declared and the estimated are different fields.
+    """
+
+    barcode: str
+    # Whether the nutrition of the label narrowed the shares of the ingredients.
+    used_nutrition: bool
+    warnings: list[WarningOut] = []
+    # Catalogue order. The nutrients the label declares come with it, estimated
+    # or not.
+    nutrients: list[NutrientEstimateOut] = []
+    # The top-level ingredients, in the order of the label.
+    ingredients: list[IngredientEstimateOut] = []
+    sources: list[SourceOut] = []
+    # What the estimate does not account for.
+    caveat: str
+
+
 class ProductListItemOut(ModelSchema):
     """A product as a list shows it."""
 

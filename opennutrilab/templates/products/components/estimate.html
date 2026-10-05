@@ -1,0 +1,132 @@
+{% load i18n estimate_tags %}
+
+{# The estimate of a stored product, see services/estimate_report.py. A plain table: lot 3 brings the real panel. #}
+<div class="card mt-4" id="estimate">
+  <div class="card-header">{% translate "Estimate from the ingredients" %}</div>
+  <div class="card-body">
+    {% if estimate %}
+      <p class="small text-muted">
+        {% translate "Worked out from the ingredients and the nutrition saved for this product, not from what the form shows. Every figure is an interval, and the label's own figures are never changed." %}
+      </p>
+      {% for warning in estimate.warnings %}
+        <div class="alert alert-warning py-2 small" role="alert">{{ warning.message }}</div>
+      {% endfor %}
+      {% if estimate.ingredients %}
+        <h2 class="h6 mt-3">{% translate "Ingredients" %}</h2>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th scope="col">{% translate "Ingredient" %}</th>
+                <th scope="col" class="text-end">{% translate "Label" %} (%)</th>
+                <th scope="col" class="text-end">{% translate "Estimated" %} (%)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for depth, ingredient in estimate.ingredients|walk %}
+                <tr>
+                  <td style="padding-left: {{ depth }}rem">{{ ingredient.reference.name }}</td>
+                  <td class="text-end">
+                    {% if ingredient.declared is not None %}{{ ingredient.declared|plain }}{% endif %}
+                  </td>
+                  <td class="text-end text-muted">
+                    {% if ingredient.estimated %}
+                      {{ ingredient.estimated.point|figure }}
+                      <small>({{ ingredient.estimated|span }})</small>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+      {% if estimate.nutrients %}
+        <h2 class="h6 mt-4">{% translate "Nutrients per 100 g" %}</h2>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th scope="col">{% translate "Nutrient" %}</th>
+                <th scope="col" class="text-end">{% translate "Label" %}</th>
+                <th scope="col" class="text-end">{% translate "Estimate" %}</th>
+                <th scope="col" class="text-end">{% translate "Range" %}</th>
+                <th scope="col" class="text-end">{% translate "Coverage" %}</th>
+                <th scope="col" class="text-end">{% translate "Confidence" %}</th>
+                <th scope="col">{% translate "Label against estimate" %}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for nutrient in estimate.nutrients %}
+                <tr>
+                  <td>
+                    {{ nutrient.name }} <span class="small text-muted">({{ nutrient.unit }})</span>
+                  </td>
+                  <td class="text-end">
+                    {% if nutrient.declared %}{{ nutrient.declared.amount|plain }}{% endif %}
+                  </td>
+                  <td class="text-end">
+                    {% if nutrient.estimated %}{{ nutrient.estimated.point|figure }}{% endif %}
+                    {% for reading in nutrient.other_readings %}
+                      <small class="d-block text-muted">{{ reading.name }}: {{ reading.estimated|span }}</small>
+                    {% endfor %}
+                  </td>
+                  <td class="text-end text-muted text-nowrap">{{ nutrient.estimated|span }}</td>
+                  <td class="text-end">
+                    {% if nutrient.coverage %}
+                      {{ nutrient.coverage.point|floatformat:"0" }} %
+                    {% endif %}
+                  </td>
+                  <td class="text-end text-nowrap">
+                    {% if nutrient.confidence %}
+                      {% with parts=nutrient.confidence %}
+                        {{ parts.score|floatformat:2 }}
+                        <small class="text-muted">
+                          ({{ parts.coverage|floatformat:2 }} · {{ parts.quality|floatformat:2 }} · {{ parts.uncertainty|floatformat:2 }} ·
+                          {{ parts.agreement|floatformat:2|default:"–" }})
+                        </small>
+                      {% endwith %}
+                    {% endif %}
+                  </td>
+                  <td class="text-nowrap">
+                    {% if nutrient.check %}
+                      {% if nutrient.check.constrained %}
+                        <span class="badge text-bg-secondary"
+                              title="{% translate "The label's figure was one of the rules the percentages were worked out with, so it agrees by construction and confirms nothing." %}">
+                          {% translate "Used for the estimate" %}
+                        </span>
+                      {% elif nutrient.check.verdict == "agrees" %}
+                        <span class="badge text-bg-success">{% translate "Agrees" %}</span>
+                      {% elif nutrient.check.verdict == "declared_below" %}
+                        <span class="badge text-bg-warning"
+                              title="{% translate "The label declares less than the ingredients bring at the least." %}">
+                          {% translate "Label below" %}
+                        </span>
+                      {% elif nutrient.check.verdict == "declared_above" %}
+                        <span class="badge text-bg-warning"
+                              title="{% translate "The label declares more than the ingredients can bring at the most." %}">
+                          {% translate "Label above" %}
+                        </span>
+                      {% else %}
+                        <span class="badge text-bg-light">{% translate "Not estimated" %}</span>
+                      {% endif %}
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p class="small text-muted mb-1">
+          {% translate "Confidence is the product of four parts, each between 0 and 1, shown after it in this order: coverage, quality of the sources, uncertainty (which counts as 1 minus it) and agreement with the label. Agreement is a dash when no independent check could have failed." %}
+        </p>
+      {% endif %}
+      <p class="small text-muted mb-1">{{ estimate.caveat }}</p>
+      {% for source in estimate.sources %}
+        {% if source.attribution %}<p class="small text-muted mb-0">{{ source.attribution|urlize }}</p>{% endif %}
+      {% endfor %}
+    {% else %}
+      <p class="text-muted mb-0">{% translate "The estimate could not be worked out." %}</p>
+    {% endif %}
+  </div>
+</div>

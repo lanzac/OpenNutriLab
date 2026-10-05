@@ -6,10 +6,12 @@ from ninja.errors import HttpError
 
 from opennutrilab.products.api.schemas.inbound import ProductCreate
 from opennutrilab.products.api.schemas.inbound import ProductUpdate
+from opennutrilab.products.api.schemas.outbound import EstimateOut
 from opennutrilab.products.api.schemas.outbound import ProductListItemOut
 from opennutrilab.products.api.schemas.outbound import ProductOut
 from opennutrilab.products.models import Product
 from opennutrilab.products.services import product_services
+from opennutrilab.products.services.estimate_report import build_estimate
 
 router = Router(tags=["Products"])
 
@@ -24,6 +26,18 @@ def list_products(request: HttpRequest) -> BaseManager[Product]:
 @router.get(path="/{product_id}", response=ProductOut)
 def get_product(request: HttpRequest, product_id: str) -> Product:
     return get_object_or_404(Product, barcode=product_id)
+
+
+@router.get(path="/{product_id}/estimate", response=EstimateOut)
+def get_estimate(request: HttpRequest, product_id: str) -> EstimateOut:
+    """
+    What the product's ingredients say of its nutrients, set against its label.
+
+    Worked out on each request (about a second for a product with a dozen
+    ingredients), and never stored: the figures are intervals, each with the parts
+    its confidence is made of.
+    """
+    return build_estimate(get_object_or_404(Product, barcode=product_id))
 
 
 @router.post(path="/", response=ProductOut)

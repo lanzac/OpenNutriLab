@@ -246,7 +246,7 @@ def test_the_figures_of_a_warning_follow_the_language_served():
         (warning,) = mismatches(checks, {"fat": "Lipides"}, {"fat": "g"})
         message = warning.message()
 
-    assert "9,4 g" in message
+    assert "l'étiquette déclare 9,4 g" in message
 
 
 def test_what_agrees_or_cannot_be_compared_says_nothing():

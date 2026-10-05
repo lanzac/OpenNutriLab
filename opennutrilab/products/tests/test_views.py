@@ -1,5 +1,6 @@
 import io
 import json
+import re
 from decimal import Decimal
 from http import HTTPStatus
 from typing import TYPE_CHECKING
@@ -24,11 +25,13 @@ from opennutrilab.products.api.schemas.inbound import ProductCreate
 from opennutrilab.products.forms import ProductForm
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import IngredientTaxon
+from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductNutrient
 from opennutrilab.products.models import ReferenceIngredient
 from opennutrilab.products.models import Source
 from opennutrilab.products.models import SourceFood
+from opennutrilab.products.models import SourceFoodNutrient
 from opennutrilab.products.services.product_services import create_product
 from opennutrilab.products.views import ingredient_rows_from_db
 from opennutrilab.products.views import ingredient_rows_from_inputs
@@ -487,6 +490,78 @@ class TestProductEditView:
         assert not product.image
         notices = [str(m) for m in response.context["messages"]]
         assert any("could not be downloaded" in n for n in notices), notices
+
+    def test_the_page_shows_the_estimate_of_the_saved_product(self, client: Client):
+        product = Product.objects.create(barcode=NUTELLA, name="Nutella")
+        source = Source.objects.create(
+            code="ciqual-2025", name="Ciqual", attribution="Anses. Table Ciqual 2025."
+        )
+        food = SourceFood.objects.create(source=source, code="1")
+        for code, amount in (("fat", "30"), ("carbohydrates", "55"), ("proteins", "6")):
+            SourceFoodNutrient.objects.create(
+                food=food,
+                nutrient=Nutrient.objects.get(code=code),
+                amount=Decimal(amount),
+                confidence="A",
+            )
+        reference = ReferenceIngredient.objects.create(name_en="sugar")
+        reference.source_foods.add(food)
+        Ingredient.objects.create(
+            product=product, reference=reference, percentage=Decimal("56.3")
+        )
+
+        with translation.override("en"):
+            response: HttpResponse = client.get(
+                reverse("edit_product", args=[product.pk])
+            )
+
+        assert response.status_code == HTTPStatus.OK
+        page = response.content.decode()
+        assert 'id="estimate"' in page
+        assert "Estimate from the ingredients" in page
+        # The label's figure and the estimate side by side, and the credit.
+        assert ">sugar</td>" in page
+        assert "56.3" in page
+        assert "Anses. Table Ciqual 2025." in page
+        assert response.context["estimate"].barcode == NUTELLA
+        # It declares no nutrient: the warning is shown, and nothing could be
+        # checked against the label, which the confidence marks with a dash.
+        assert "The nutrition of the product was not used" in page
+        assert re.search(r"\u00b7\s+\u2013\)", page)
+
+    def test_the_create_page_has_no_estimate(self, client: Client):
+        page = client.get(reverse("create_product")).content.decode()
+
+        assert 'id="estimate"' not in page
+
+    def test_a_form_posted_back_to_be_corrected_does_not_work_the_estimate_out(
+        self, client: Client
+    ):
+        product = Product.objects.create(barcode=NUTELLA, name="Nutella")
+        url = reverse("edit_product", args=[product.pk])
+        form = client.get(url).context["form"]
+
+        with patch("opennutrilab.products.views.build_estimate") as build:
+            response = client.post(url, submitted(form, name=""))
+
+        assert response.status_code == HTTPStatus.OK
+        build.assert_not_called()
+        assert "estimate" not in response.context
+
+    def test_a_failing_estimate_does_not_break_the_page(self, client: Client):
+        product = Product.objects.create(barcode=NUTELLA, name="Nutella")
+
+        with patch(
+            "opennutrilab.products.views.build_estimate",
+            side_effect=RuntimeError("The linear program failed"),
+        ):
+            response: HttpResponse = client.get(
+                reverse("edit_product", args=[product.pk])
+            )
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.context["estimate"] is None
+        assert "The estimate could not be worked out." in response.content.decode()
 
     def test_a_tampered_barcode_is_ignored(self, client: Client):
         """The barcode is the primary key: editing must never move a product."""

@@ -349,6 +349,112 @@ msgstr ""
 "Les pourcentages déclarés et l'ordre des ingrédients se contredisent : rien "
 "n'a pu être estimé."
 
+msgid ""
+"Cooking, drying and other processing are not modelled: the percentages are "
+"those of the ingredients as used and the nutrition is that of the product as "
+"sold, so what a product loses in the making (water, vitamins) is not "
+"counted. Every figure is an estimate."
+msgstr ""
+"La cuisson, le séchage et les autres transformations ne sont pas modélisés : "
+"les pourcentages sont ceux des ingrédients tels qu'utilisés et les valeurs "
+"nutritionnelles celles du produit tel que vendu, donc ce qu'un produit perd "
+"à la fabrication (eau, vitamines) n'est pas compté. Chaque chiffre est une "
+"estimation."
+
+#, python-format
+msgid ""
+"%(detail)s: the label declares %(declared)s, but its ingredients bring at "
+"least %(estimated)s."
+msgstr ""
+"%(detail)s : l'étiquette déclare %(declared)s, mais ses ingrédients "
+"apportent au moins %(estimated)s."
+
+#, python-format
+msgid ""
+"%(detail)s: the label declares %(declared)s, but its ingredients bring at "
+"most %(estimated)s."
+msgstr ""
+"%(detail)s : l'étiquette déclare %(declared)s, mais ses ingrédients "
+"apportent au plus %(estimated)s."
+
+msgid "Estimate from the ingredients"
+msgstr "Estimation d'après les ingrédients"
+
+msgid ""
+"Worked out from the ingredients and the nutrition saved for this product, "
+"not from what the form shows. Every figure is an interval, and the label's "
+"own figures are never changed."
+msgstr ""
+"Calculée d'après les ingrédients et les valeurs nutritionnelles enregistrés "
+"pour ce produit, et non d'après ce que montre le formulaire. Chaque chiffre "
+"est un intervalle, et les chiffres de l'étiquette ne sont jamais modifiés."
+
+msgid "Ingredient"
+msgstr "Ingrédient"
+
+msgid "Label"
+msgstr "Étiquette"
+
+msgid "Estimated"
+msgstr "Estimé"
+
+msgid "Nutrients per 100 g"
+msgstr "Nutriments pour 100 g"
+
+msgid "Estimate"
+msgstr "Estimation"
+
+msgid "Coverage"
+msgstr "Couverture"
+
+msgid "Label against estimate"
+msgstr "Étiquette et estimation"
+
+msgid ""
+"The label's figure was one of the rules the percentages were worked out "
+"with, so it agrees by construction and confirms nothing."
+msgstr ""
+"Le chiffre de l'étiquette a servi de règle pour calculer les pourcentages : "
+"il concorde donc par construction et ne confirme rien."
+
+msgid "Used for the estimate"
+msgstr "Utilisé pour l'estimation"
+
+msgid "Agrees"
+msgstr "Concorde"
+
+msgid "The label declares less than the ingredients bring at the least."
+msgstr ""
+"L'étiquette déclare moins que ce que les ingrédients apportent au minimum."
+
+msgid "Label below"
+msgstr "Étiquette en dessous"
+
+msgid "The label declares more than the ingredients can bring at the most."
+msgstr ""
+"L'étiquette déclare plus que ce que les ingrédients peuvent apporter au "
+"maximum."
+
+msgid "Label above"
+msgstr "Étiquette au-dessus"
+
+msgid "Not estimated"
+msgstr "Non estimé"
+
+msgid ""
+"Confidence is the product of four parts, each between 0 and 1, shown after "
+"it in this order: coverage, quality of the sources, uncertainty (which "
+"counts as 1 minus it) and agreement with the label. Agreement is a dash when "
+"no independent check could have failed."
+msgstr ""
+"La confiance est le produit de quatre parts, chacune entre 0 et 1, affichées "
+"à sa suite dans cet ordre : couverture, qualité des sources, incertitude "
+"(qui compte pour 1 moins elle) et accord avec l'étiquette. L'accord est un "
+"tiret quand aucune vérification indépendante n'aurait pu échouer."
+
+msgid "The estimate could not be worked out."
+msgstr "L'estimation n'a pas pu être calculée."
+
 #~ msgid "Fat"
 #~ msgstr "Matières grasses"
 

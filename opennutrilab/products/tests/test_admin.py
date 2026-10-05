@@ -458,6 +458,31 @@ def test_a_references_page_shows_what_its_foods_say_together(admin_client: Clien
     assert "Carotte (ciqual-2025 20009)" in page
 
 
+def test_the_composition_credits_the_sources_it_shows_data_from(admin_client: Client):
+    credited = Source.objects.create(
+        code="ciqual-2025", name="Ciqual", attribution="Anses. Table Ciqual 2025."
+    )
+    uncredited = Source.objects.create(code="manual", name="Manual")
+    reference = ReferenceIngredient.objects.create(name_en="carrot")
+    for source, code in ((credited, "20009"), (uncredited, "m1")):
+        food = SourceFood.objects.create(source=source, code=code)
+        SourceFoodNutrient.objects.create(
+            food=food,
+            nutrient=Nutrient.objects.get(code="fat"),
+            amount=Decimal("9.3"),
+            confidence="B",
+        )
+        reference.source_foods.add(food)
+
+    page = admin_client.get(
+        reverse("admin:products_referenceingredient_change", args=[reference.pk])
+    ).content.decode()
+
+    # Once, and a source with no attribution to give adds nothing.
+    assert page.count("<p>Anses. Table Ciqual 2025.</p>") == 1
+    assert "<p></p>" not in page
+
+
 def test_a_reference_with_no_value_says_so_and_the_add_form_does_not_fail(
     admin_client: Client,
 ):

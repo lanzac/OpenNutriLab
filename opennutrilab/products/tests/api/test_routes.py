@@ -321,3 +321,76 @@ def test_staff_delete_a_product_with_a_leading_zero(staff_client: Client):
 
     assert response.status_code == HTTPStatus.OK
     assert not Product.objects.filter(barcode=barcode).exists()
+
+
+# -----------------------
+# The estimate
+# -----------------------
+@pytest.mark.django_db
+def test_the_estimate_needs_a_signed_in_user(client: Client):
+    response = client.get(f"{API}3229820794556/estimate")
+
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+
+
+@pytest.mark.django_db
+def test_the_estimate_of_an_unknown_product_is_not_found(api_client: Client):
+    response = api_client.get(f"{API}3229820794556/estimate")
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_the_estimate_is_served_with_its_parts(api_client: Client):
+    payload = _minimal_payload("3297760097969", "Created Via API")
+    payload["ingredients"] = [
+        {
+            "name": "Dates",
+            "percentage": "7",
+            "sub_ingredients": [{"name": "rice flour"}],
+        }
+    ]
+    api_client.post(API, payload, content_type="application/json")
+
+    response = api_client.get(f"{API}{payload['barcode']}/estimate")
+
+    assert response.status_code == HTTPStatus.OK
+    data = response.json()
+    assert set(data) == {
+        "barcode",
+        "used_nutrition",
+        "warnings",
+        "nutrients",
+        "ingredients",
+        "sources",
+        "caveat",
+    }
+    # No reference has a composition yet, so nothing is estimated, and it is said.
+    assert [w["problem"] for w in data["warnings"]] == ["no_composition"]
+    assert not data["used_nutrition"]
+    [dates] = data["ingredients"]
+    assert set(dates) == {"reference", "declared", "estimated", "sub_ingredients"}
+    # The label's figure and the estimate are two fields.
+    assert dates["declared"] == "7.00"
+    assert dates["estimated"] == {"low": "6.50", "point": "7.00", "high": "7.50"}
+    [rice] = dates["sub_ingredients"]
+    assert rice["declared"] is None
+    assert rice["estimated"] is not None
+    # What the label declares comes with a check, and no estimate to meet.
+    energy = next(n for n in data["nutrients"] if n["code"] == "energy")
+    assert energy["estimated"] is None
+    assert energy["declared"]["amount"] == "100.0000"
+    assert energy["check"]["verdict"] == "not_estimated"
+
+
+@pytest.mark.django_db
+def test_the_estimate_is_for_reading_only(
+    api_client: Client, products_two: tuple[Product, Product]
+):
+    p1, _ = products_two
+    url = f"{API}{p1.barcode}/estimate"
+
+    assert api_client.post(url, {}, content_type="application/json").status_code == (
+        HTTPStatus.METHOD_NOT_ALLOWED
+    )
+    assert api_client.delete(url).status_code == HTTPStatus.METHOD_NOT_ALLOWED

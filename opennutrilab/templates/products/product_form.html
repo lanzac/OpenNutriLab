@@ -30,6 +30,12 @@
         </div>
       </div>
     </div>
+    {# Its own row: a table of this many columns does not fit the form's. #}
+    {% if estimate or estimate_failed %}
+      <div class="row">
+        <div class="col-12">{% include "products/components/estimate.html" %}</div>
+      </div>
+    {% endif %}
   </div>
   {# Rows for the Tabulator tree, see ingredients-table.js. #}
   {{ ingredient_rows|json_script:"ingredients-data" }}

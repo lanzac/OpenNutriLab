@@ -26,6 +26,7 @@ from .api.openfoodfacts.services import fetch_from_off
 from .api.openfoodfacts.services import ingredient_inputs_from_label
 from .api.schemas.inbound import IngredientInput
 from .api.schemas.inbound import validate_off_image_url
+from .api.schemas.outbound import EstimateOut
 from .forms import INGREDIENTS_JSON
 from .forms import ProductForm
 from .forms import nutrient_field
@@ -34,6 +35,7 @@ from .models import IngredientTaxon
 from .models import Nutrient
 from .models import Product
 from .models import ReferenceIngredient
+from .services.estimate_report import build_estimate
 from .services.label_parser import LabelWarning
 from .services.product_services import plain_amount
 from .services.reference_services import CIQUAL_SOURCE_PREFIX
@@ -146,6 +148,17 @@ class ProductEditView(LoginRequiredMixin, ProductFormViewMixin, UpdateView):
     form_class = ProductForm
     success_url = reverse_lazy("list_products")
 
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        context = super().get_context_data(**kwargs)
+        # Only when the page is first shown: it is worked out on each request, and a
+        # form posted back to be corrected has nothing new to say about the saved
+        # product.
+        if self.request.method == "GET":
+            form = cast("ProductForm", context["form"])
+            context["estimate"] = estimate_for_page(form.instance)
+            context["estimate_failed"] = context["estimate"] is None
+        return context
+
     def get_form(
         self,
         data=None,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
@@ -180,6 +193,22 @@ class ProductDeleteView(UserPassesTestMixin, DeleteView):
 
 
 # Utilities
+
+
+def estimate_for_page(product: Product) -> EstimateOut | None:
+    """
+    The estimate of a stored product, or None when it could not be worked out.
+
+    The page is for editing the product, and must not break because the solver
+    did: only its own failure is caught, and it is logged.
+    """
+    try:
+        return build_estimate(product)
+    except RuntimeError:
+        logger.exception(
+            "The estimate of product %s could not be worked out", product.pk
+        )
+        return None
 
 
 def product_form_config() -> dict[str, Any]:

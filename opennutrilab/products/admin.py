@@ -259,10 +259,14 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
         ordered = sorted(
             estimates.items(), key=lambda e: (nutrients[e[0]].display_order, e[0])
         )
+        # What the licences of the sources ask to be shown wherever their data is.
+        sources = {
+            food.source for estimate in estimates.values() for food in estimate.foods
+        }
         return format_html(
             '<div style="max-height: 28em; overflow: auto"><table>'
             "<thead><tr><th>{}</th><th>{}</th><th>{}</th><th>{}</th><th>{}</th></tr>"
-            "</thead><tbody>{}</tbody></table></div>",
+            "</thead><tbody>{}</tbody></table></div>{}",
             _("Nutrient"),
             _("Amount per 100 g"),
             _("Range"),
@@ -280,6 +284,15 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
                         ", ".join(str(food) for food in estimate.foods),
                     )
                     for code, estimate in ordered
+                ),
+            ),
+            format_html_join(
+                "",
+                "<p>{}</p>",
+                (
+                    (source.attribution,)
+                    for source in sorted(sources, key=lambda s: s.code)
+                    if source.attribution
                 ),
             ),
         )
