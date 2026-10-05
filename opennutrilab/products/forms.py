@@ -202,7 +202,7 @@ class ProductForm(forms.ModelForm):
                 css_class="mt-3",  # Add margin top
             ),
             FormActions(
-                Submit(name=_("save"), value=_("Save"), css_class="btn-primary"),
+                Submit(name="save", value=_("Save"), css_class="btn-primary"),
                 HTML(
                     f'<a class="btn btn-secondary ms-2" '
                     f'href="{reverse("list_products")}">' + _("Cancel") + "</a>",

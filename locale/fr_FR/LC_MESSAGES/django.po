@@ -56,9 +56,6 @@ msgstr "Valeurs nutritionnelles (pour 100g)"
 msgid "Ingredients"
 msgstr "Ingrédients"
 
-msgid "save"
-msgstr ""
-
 msgid "Save"
 msgstr "Sauvergarder"
 
@@ -89,10 +86,8 @@ msgstr "Minéral"
 msgid "Vitamin"
 msgstr "Vitamine"
 
-#, fuzzy
-#| msgid "Others"
 msgid "Other"
-msgstr "Autres"
+msgstr "Autre"
 
 msgid "The nutrient this one is part of: sugars are carbohydrates."
 msgstr "Le nutriment dont celui-ci fait partie : les sucres sont des glucides."
