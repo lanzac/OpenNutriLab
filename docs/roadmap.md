@@ -3,41 +3,26 @@
 Planned changes that are decided but not started, and why. Remove an entry
 once it is done.
 
-## Estimate a product's nutrients from its ingredients
+## Estimate a product's nutrients: what is left
 
-The core feature: deduce a product's vitamins (and minerals, fatty acids...)
-from its ingredients, each linked to a reference ingredient whose
-composition is known, and check the result against the values the label
-declares. The data model is in place (`opennutrilab/products/models.py`), the
-CIQUAL table is imported, an ingredient is linked to its reference and the
-percentages the label does not give and the nutrients of a product are
-estimated (as intervals, from the order, the declared percentages and the
-declared nutrition), then checked against the label with a confidence for each
-nutrient, and shown in the API and on the product page; the rest of the following
-is not built yet.
+The core feature is built: a product's vitamins (and minerals, fatty acids...)
+are deduced from its ingredients, each linked to a reference ingredient whose
+composition comes from CIQUAL, as intervals with a confidence, and checked
+against the values the label declares. It is served at
+`/api/v1/products/{barcode}/estimate` and shown on the product's edit page. How
+it works, what it does not do and the questions it leaves open are in
+`docs/plans/lot-estimation.md`. What is left:
 
-- **Reference data.** The CIQUAL 2025 table is imported (`manage.py
-import_ciqual`). Other sources will follow, each with its own importer and
-  the attribution its licence requires.
-- **Reference ingredients.** Curated (`ReferenceIngredient`, e.g. "carotte
-  crue"), each drawing on several source foods, whose values are combined into
-  one composition with an interval (built). What is missing is to use it: the
-  estimate of a product from its ingredients.
-- **Linking ingredients.** An ingredient is its reference ingredient:
-  `Ingredient` keeps no name and no OpenFoodFacts data, only the link, found
-  by the ingredient's normalized name among the references' own (unique)
-  names, and a name that matches nothing creates a reference marked _to
-  review_. That is built. What is missing: the CIQUAL import, so that a
-  created reference can be seeded with OFF's CIQUAL code when it is a known
-  food (OFF's codes are suggestions, never trusted), and the tools to curate
-  the references to review. The plan is in `docs/plans/lot-estimation.md`.
-- **Showing the estimate.** A read-only endpoint
-  (`/api/v1/products/{barcode}/estimate`) and a plain table on the product's
-  edit page exist. What is missing is the real panel (lot 3), and a cache if
-  working it out on each request (about a second) gets too slow.
+- **Other sources of composition.** Each with its own importer and the
+  attribution its licence requires. The model is ready and aggregates them.
+- **The real panel**, in lot 3 (`docs/plans/lot-3-react-form.md`): the page's
+  table is deliberately plain.
+- **A cache, or work in the background**, if working the estimate out on each
+  request (about a second for a product with a dozen ingredients) gets too slow.
+  That is where Django 6 tasks would come in (see below).
 - **Processing.** Drying and cooking change compositions and destroy part of
   some vitamins, and are not modelled: the output says so, and the result stays
-  an estimate.
+  an estimate. The design is sketched under "Out of scope" in the plan.
 
 ## Upgrade to Django 6.0, for background tasks
 

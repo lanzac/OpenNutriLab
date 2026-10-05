@@ -1,10 +1,11 @@
 # Plan: nutrient estimation batch
 
-Status: steps 1 (ingredient identity), 2 (CIQUAL import), 3 (derived
-nutrients), 4 (composition of a reference), 5 (curating the references), 6
-(percentage estimation) and 7 (nutrient computation) are done, 2026-10-04, and
-8 (validation and confidence) and 9 (output), 2026-10-05; the rest is planned,
-not started
+Status: all ten steps are done: steps 1 (ingredient identity), 2 (CIQUAL
+import), 3 (derived nutrients), 4 (composition of a reference), 5 (curating the
+references), 6 (percentage estimation) and 7 (nutrient computation) on
+2026-10-04, and 8 (validation and confidence), 9 (output) and 10 (docs and
+translations) on 2026-10-05. What the batch leaves open is in "After the batch"
+below
 (written 2026-10-03, after lot 2 merged; revised 2026-10-04: how an ingredient
 is linked to its reference changed, see the ground rules, decisions 8-11 and
 step 1; which composition counts for a branch changed, see step 7).
@@ -559,10 +560,19 @@ written.
    - On the existing product page, show a plain table. The real UI comes in
      lot 3.
    - Show the CIQUAL attribution wherever its data appears.
-10. **Docs**: remove the done items from `docs/roadmap.md` and update the
-    translations (`.po`). The entries of steps 8 and 9 are translated already
-    (22, inserted without regenerating the catalogue). Left: `save`, untranslated
-    before, and the fuzzy `Other`, whose translation is the one of `Others`.
+10. **Docs** (done): the roadmap keeps only what is left to do, and the French
+    catalogue is complete (161 messages, none fuzzy or untranslated).
+    - The entries of steps 8 and 9 were inserted into the catalogue by hand, not
+      by regenerating it: `makemessages` rewrites some 350 lines the earlier
+      steps had not, and guesses translations for what it takes for a changed
+      string (it gave "Estimate from the ingredients" the translation of
+      "Reference ingredient").
+    - `save` was the _name_ of the product form's submit button, which was
+      wrapped in `_()` for no reason: it is a plain `name="save"` now, nothing
+      reads it, and its entry is gone. The fuzzy `Other` (a nutrient group) had
+      the translation of `Others`, and is now "Autre".
+    - The handoff note written for the next session is deleted: what it still
+      held is under "After the batch".
 
 ## Out of scope
 
@@ -590,8 +600,60 @@ written.
 
 ## Done when
 
+All three hold (2026-10-05):
+
 - The muesli gets an estimate, with coverage and confidence, viewable in
   the API and on its page.
-- Backend tests, vitest, basedpyright (strict on products) and pre-commit
-  all pass.
-- A browser check has been done on the muesli.
+- Backend tests (487), vitest (28), basedpyright (strict on products) and
+  pre-commit all pass. basedpyright still reports 8 errors, all in
+  `products/tests/test_views.py` and older than this batch.
+- A browser check has been done on the muesli, in English and in French.
+
+## After the batch
+
+What the batch leaves open, to take up with the user.
+
+**Questions**
+
+- **The three Manual foods only have the 8 nutrients of the label**, so the
+  vitamins and minerals of the muesli are covered for 36-38 % of the product.
+  Completing them from the CIQUAL foods they were worked out from (grade D,
+  at least 15 %, the same method) would bring that near 100 %. Proposed, not
+  done: the user asked for the macronutrients only.
+- **The confidence formula** (decision 7) and the choice to work the estimate out
+  on each request (decision 6) were never confirmed. They are coded as
+  recommended, and the grade scale and the product of the four parts are one
+  place in `estimate_validation.py`.
+- **Energy is graded D by CIQUAL for 2,842 of its 2,843 foods**, so its
+  confidence is at most 0.25 whatever the macronutrients it comes from. Could it
+  take their quality instead?
+- **The page lists all 69 nutrients**, most covered for 37 % only. Long but
+  honest: restrict or group them in lot 3's panel? A chart of the ranges with the
+  declared figure marked on it was proposed too, and not decided.
+- **No product can declare a vitamin** but through the admin: the form and the
+  OpenFoodFacts import only know the 8 nutrients of the label. So the vitamin A
+  convention check is tested on built cases and not seen on a real product.
+- **Unused references** (created for a product since changed): decide whether to
+  delete them.
+
+**Known limits**
+
+- No processing: water and vitamins lost in the making are not counted, and the
+  output says so.
+- The decreasing order (Regulation 1169/2011, article 18) has exceptions a text
+  does not show; they can only make a result too narrow.
+- A composition only counts if it has fat, carbohydrates and proteins.
+- The point value of a share depends on a fixed random seed, and can move a
+  little when the data does. The intervals are exact.
+- A declared zero has no margin (a label's "0 g" can stand for under 0.5 g), and
+  the tolerances the EU allows between a label and the food are not added to the
+  rounding: a warning can come from there.
+- The same reference appears once under a parent (a uniqueness constraint), and
+  plurals are matched only by dropping an "s", without accents.
+
+**What lives in the development database and not in the code**
+
+- The `Manual` source with its three foods, and the references linked to them.
+  A reset loses them, and nothing recreates them.
+- `vitamin_a_sixth`: `import_ciqual` creates it, a reset loses it until it is run
+  again.
