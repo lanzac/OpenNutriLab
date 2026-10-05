@@ -477,6 +477,9 @@ msgstr "La liste d'ingrédients telle que l'étiquette l'imprime."
 msgid "Ingredient list, as the label prints it"
 msgstr "Liste des ingrédients, telle que l'étiquette l'imprime"
 
+msgid "A percentage with no ingredient name: %(detail)s"
+msgstr "Un pourcentage sans nom d'ingrédient : %(detail)s"
+
 #~ msgid "Fat"
 #~ msgstr "Matières grasses"
 

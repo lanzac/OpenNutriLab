@@ -22,9 +22,23 @@ so what cannot be read as a list (a note in parentheses, a heading) is left out
 rather than turned into an ingredient, and a name that is wrong is the curator's
 to see: it makes a reference to review.
 
+A note in parentheses, such as "(origine : Italie)" or "(bio)", says nothing of
+what an ingredient is made of and is ignored wherever it stands, so that the
+parentheses that do list its parts are read whether it comes before them or not:
+
+    Gnocchi (origine : Italie) [semoule, pomme de terre 19,4 %]
+        ->  gnocchi: semoule, pomme de terre (19,4 %)
+
+So is an allergen declaration: parentheses that hold nothing but allergens, as in
+"semoule de blé (gluten)", "lécithines (soja)" or "(contient lait)". An allergen
+is a mention of what an ingredient may cause, not one of its parts. Only the
+allergens the regulation lists count (_ALLERGENS), and only when they are all
+the parentheses say: "(lait écrémé)" and "(blé, eau)" list parts, and are read.
+
 A text can also have been read badly from the label, by whoever entered it or by
 the software that did: a bracket closed by a parenthesis, a letter taken for a
-digit, the nutrition table or an address caught in the list. Nothing is done to
+digit, the nutrition table or an address caught in the list, a percentage on its
+own (after a comma, or in parentheses of its own). Nothing is done to
 repair it: guessing what was meant would put invented ingredients in a product.
 read_label says so and reads nothing, and the text is corrected where it comes
 from. Its absence of warnings is no proof either: a word that is missing
@@ -35,6 +49,7 @@ say so, and the ingredients are read as they are.
 """
 
 import re
+import unicodedata
 from decimal import Decimal
 from decimal import InvalidOperation
 from typing import NamedTuple
@@ -70,6 +85,10 @@ class Problem(TextChoices):
     LONG_NAME = "long_name", _("An ingredient that is a whole sentence: %(detail)s")
     SHORT_NAME = "short_name", _("An ingredient of one or two letters: %(detail)s")
     EMPTY_ITEM = "empty_item", _("An empty place between two commas.")
+    NAMELESS_PERCENT = (
+        "nameless_percent",
+        _("A percentage with no ingredient name: %(detail)s"),
+    )
     NOT_A_LIST = (
         "not_a_list",
         _("A long text with no separator, read as a single ingredient."),
@@ -125,9 +144,56 @@ _PERCENT = re.compile(
     r"(?<![\d.,])(\d{1,3}(?:[.,]\d+)?)\s*%",
     re.IGNORECASE,
 )
-_PERCENT_ONLY = re.compile(
-    r"^\W*(?:[a-zé]+\.?\s*)?\d{1,3}(?:[.,]\d+)?\s*%\W*$", re.IGNORECASE
+# A percentage and nothing else but the words that qualify it. Strict on purpose:
+# it is used to tell that a percentage has no name, which stops the reading, so
+# "sel 5 %" must not pass for one.
+_BARE_PERCENT = re.compile(
+    r"^\W*(?:(?:min|max|minimum|maximum|soit|environ)\.?\s*)?"
+    r"\d{1,3}(?:[.,]\d+)?\s*%\W*$",
+    re.IGNORECASE,
 )
+# The 14 allergens of Regulation (EU) 1169/2011, Annex II, with the words labels
+# give them, in French and in English: no accents, "oe" for the ligature, and the
+# plural next to the singular (see _folded).
+_ALLERGENS = frozenset(
+    {
+        # Cereals containing gluten.
+        "gluten", "ble", "seigle", "orge", "avoine", "epeautre", "kamut",
+        "cereales contenant du gluten", "cereales contenant gluten",
+        "wheat", "rye", "barley", "oat", "oats", "spelt",
+        "cereals containing gluten",
+        # Crustaceans, eggs, fish, peanuts, soya, milk.
+        "crustace", "crustaces", "crustacean", "crustaceans",
+        "oeuf", "oeufs", "egg", "eggs",
+        "poisson", "poissons", "fish",
+        "arachide", "arachides", "cacahuete", "cacahuetes", "peanut", "peanuts",
+        "soja", "soya", "soy", "soybean", "soybeans",
+        "lait", "lactose", "milk",
+        # Tree nuts.
+        "fruits a coque", "fruit a coque", "nuts", "tree nuts",
+        "amande", "amandes", "almond", "almonds",
+        "noisette", "noisettes", "hazelnut", "hazelnuts",
+        "noix", "walnut", "walnuts",
+        "noix de cajou", "cashew", "cashews",
+        "noix de pecan", "pecan", "pecans",
+        "noix du bresil", "brazil nuts",
+        "pistache", "pistaches", "pistachio", "pistachios",
+        "noix de macadamia", "noix du queensland", "macadamia",
+        # The others.
+        "celeri", "celery", "moutarde", "mustard",
+        "sesame", "graines de sesame", "sesame seeds",
+        "sulfite", "sulfites", "sulphite", "sulphites", "anhydride sulfureux",
+        "dioxyde de soufre", "so2", "sulphur dioxide", "sulfur dioxide",
+        "lupin", "lupine",
+        "mollusque", "mollusques", "mollusc", "molluscs", "mollusk", "mollusks",
+    }
+)  # fmt: skip
+# "contient du lait", "contains milk": what introduces an allergen declaration.
+_ALLERGEN_INTRO = re.compile(
+    r"^(?:contient|contiennent|contains|allergenes?|allergens?)\b\s*:?\s*"
+    r"(?:(?:du|de la|de l'|des|de|d')\s*)?"
+)
+_ALLERGEN_SEPARATOR = re.compile(r"\s*(?:[,;/]|\bet\b|\band\b|\bou\b|\bor\b)\s*")
 _NOTE = re.compile(
     r"^\W*(?:bio|biologiques?|organic|origine\b.*|d'origine\b.*|origin\b.*"
     r"|issus?\b.*)\W*$",
@@ -274,7 +340,7 @@ def _matching(text: str, open_at: int) -> int:
 
 
 def _parse_item(raw: str) -> LabelItem | None:
-    head, inner, tail = _split_parenthesis(raw.strip())
+    head, inner, tail = _split_parenthesis(_without_notes(raw.strip()))
     # "émulsifiants : lécithines (soja)": the heading names it, the rest is in it.
     if ":" in head:
         head, _, after = head.partition(":")
@@ -283,15 +349,48 @@ def _parse_item(raw: str) -> LabelItem | None:
     percentage = _percentage(head) or _percentage(tail)
     parts: tuple[LabelItem, ...] = ()
     if inner.strip():
-        if _PERCENT_ONLY.match(inner):
-            percentage = percentage or _percentage(inner)
-        elif not _NOTE.match(inner):
-            parts = tuple(_parse_list(inner))
+        parts = tuple(_parse_list(inner))
 
     name = _name(head)
     if name is None:
         return None
     return LabelItem(name, percentage, parts)
+
+
+def _folded(text: str) -> str:
+    """Lower case, no accents, no marks: "BLÉ*" and "ble" are the same word."""
+    text = unicodedata.normalize("NFD", text.translate(_MARKS).lower())
+    text = "".join(char for char in text if unicodedata.category(char) != "Mn")
+    return " ".join(text.replace("\u0153", "oe").replace("\u00e6", "ae").split())
+
+
+def _is_allergen_declaration(inner: str) -> bool:
+    """Whether the parentheses hold nothing but allergens: "(gluten)", "(blé, lait)"."""
+    words = _ALLERGEN_INTRO.sub("", _folded(inner))
+    terms = _ALLERGEN_SEPARATOR.split(words)
+    return all(term in _ALLERGENS for term in terms)
+
+
+def _without_notes(text: str) -> str:
+    """
+    `text` without its notes in parentheses ("(origine : Italie)", "(bio)") and its
+    allergen declarations ("(gluten)", "(contient lait)").
+
+    Only the first group is read as the parts of an ingredient, and what follows
+    it only for a percentage, so a note ahead of the parentheses that do list the
+    parts would hide them, and put their percentage on the ingredient. The notes
+    inside a group are left to the reading of that group.
+    """
+    kept: list[str] = []
+    index = 0
+    while (open_at := text.find("(", index)) != -1:
+        close_at = _matching(text, open_at)
+        inner = text[open_at + 1 : close_at]
+        is_note = _NOTE.match(inner) is not None or _is_allergen_declaration(inner)
+        kept.append(text[index:open_at] if is_note else text[index : close_at + 1])
+        index = close_at + 1
+    kept.append(text[index:])
+    return "".join(kept)
 
 
 def _split_parenthesis(raw: str) -> tuple[str, str, str]:
@@ -345,9 +444,31 @@ def _warnings(part: str, written: str, items: list[LabelItem]) -> list[LabelWarn
         found.append(LabelWarning(Problem.NOT_A_LIST))
     if any(not piece.strip() for piece in _split(part)[:-1]):
         found.append(LabelWarning(Problem.EMPTY_ITEM))
+    if nameless := _nameless_percentages(part):
+        found.append(LabelWarning(Problem.NAMELESS_PERCENT, ", ".join(nameless[:3])))
     total = sum((i.percentage for i in items if i.percentage is not None), Decimal(0))
     if total > _PERCENT_SUM_LIMIT:
         found.append(LabelWarning(Problem.PERCENT_SUM, f"{total} %"))
+    return found
+
+
+def _nameless_percentages(text: str) -> list[str]:
+    """
+    The places in a list that are a percentage and nothing else: "huile d'olive,
+    2,3 %" (a comma between a percentage and its ingredient makes it nobody's) and
+    "dattes (7 %)" (a percentage is written next to the ingredient, not in
+    parentheses of its own). Reading on would lose it, or put it where it is not,
+    without a word.
+    """
+    found: list[str] = []
+    for raw in _split(text):
+        piece = _without_notes(raw.strip())
+        if _BARE_PERCENT.match(piece):
+            found.append(piece.strip(_EDGE + "()"))
+            continue
+        _head, inner, _tail = _split_parenthesis(piece)
+        if inner.strip():
+            found += _nameless_percentages(inner)
     return found
 
 

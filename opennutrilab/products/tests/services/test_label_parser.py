@@ -2,6 +2,7 @@ from decimal import Decimal
 from typing import Any
 
 import pytest
+from django.utils import translation
 
 from opennutrilab.products.services.label_parser import LabelItem
 from opennutrilab.products.services.label_parser import Problem
@@ -57,6 +58,164 @@ def test_the_muesli_is_read_as_its_label_says_with_nothing_dropped():
     assert read_label(MUESLI).warnings == []
 
 
+# A ready meal, with a note ahead of its parts, brackets, a semicolon, and a
+# sentence that ends the list. The comma that was before "2,3 %" is corrected,
+# as it was on OpenFoodFacts: see the test after the next one.
+GNOCCHI = (
+    "Gnocchi à la pomme de terre précuit (origine : Italie) [semoule de blé "
+    "(gluten), pomme de terre déshydratée 19,4 %, eau, sel], purée de tomate "
+    "12,2%, oignon grillé 6,3 %, mozzarella 6 % [lait, sel, présure microbienne, "
+    "acidifiant : acide citrique], tomate cerise 4.2 %; épinard 3,1 %, tomate "
+    "cerise mi séchée 2,6 %, huile d'olive vierge extra 2,3 %, basilic, ail, "
+    "préparation d'oignon (jus d'oignon concentré, huile de tournesol), sel, "
+    "poivre.\npeut contenir des traces de : oeuf, arachide, moutarde."
+)
+
+
+def test_a_note_ahead_of_the_parts_does_not_hide_them_or_take_their_percentage():
+    """The 19,4 % was put on the gnocchi and its parts were lost, in silence."""
+    assert tree(parse_label(GNOCCHI)) == [
+        (
+            "gnocchi à la pomme de terre précuit",
+            None,
+            [
+                ("semoule de blé", None, []),
+                ("pomme de terre déshydratée", "19.4", []),
+                ("eau", None, []),
+                ("sel", None, []),
+            ],
+        ),
+        ("purée de tomate", "12.2", []),
+        ("oignon grillé", "6.3", []),
+        (
+            "mozzarella",
+            "6",
+            [
+                ("lait", None, []),
+                ("sel", None, []),
+                ("présure microbienne", None, []),
+                ("acidifiant", None, [("acide citrique", None, [])]),
+            ],
+        ),
+        ("tomate cerise", "4.2", []),
+        ("épinard", "3.1", []),
+        ("tomate cerise mi séchée", "2.6", []),
+        ("huile d'olive vierge extra", "2.3", []),
+        ("basilic", None, []),
+        ("ail", None, []),
+        (
+            "préparation d'oignon",
+            None,
+            [("jus d'oignon concentré", None, []), ("huile de tournesol", None, [])],
+        ),
+        ("sel", None, []),
+        ("poivre", None, []),
+    ]
+    assert read_label(GNOCCHI).warnings == []
+
+
+def test_a_comma_between_a_percentage_and_its_ingredient_stops_the_reading():
+    """The same list as OpenFoodFacts had it: the 2,3 % was dropped without a word."""
+    text = GNOCCHI.replace("extra 2,3 %", "extra, 2,3 %")
+
+    reading = read_label(text)
+
+    assert reading.items == []
+    assert [w.problem for w in reading.warnings] == [Problem.NAMELESS_PERCENT]
+    assert reading.warnings[0].stops_reading
+    assert "2,3 %" in reading.warnings[0].message()
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Gnocchi (origine : Italie) [semoule, eau 5 %], sel",
+        "Gnocchi [semoule, eau 5 %] (origine : Italie), sel",
+        "Gnocchi (bio) (origine UE) (semoule, eau 5 %), sel",
+        "Gnocchi (origine : Italie) (semoule, eau 5 %), sel",
+    ],
+)
+def test_a_note_is_ignored_wherever_it_stands_among_the_parentheses(text: str):
+    assert tree(parse_label(text)) == [
+        (
+            "gnocchi",
+            None,
+            [("semoule", None, []), ("eau", "5", [])],
+        ),
+        ("sel", None, []),
+    ]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Tomates 40 % (origine : Italie), sel",
+        "Tomates (origine : Italie) 40 %, sel",
+        "Tomates (bio) 40 % (origine UE), sel",
+    ],
+)
+def test_a_note_next_to_a_percentage_leaves_the_percentage_where_it_was(text: str):
+    assert tree(parse_label(text)) == [("tomates", "40", []), ("sel", None, [])]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Semoule de blé (gluten), sel",
+        "Semoule de blé (GLUTEN*), sel",
+        "Semoule de blé (blé, lait), sel",
+        "Semoule de blé (blé et lait), sel",
+        "Semoule de blé (contient du lait), sel",
+        "Semoule de blé (Contains milk), sel",
+        "Semoule de blé (œufs), sel",
+        "Semoule de blé (OEUFS), sel",
+        "Semoule de blé (noix de cajou), sel",
+        "Semoule de blé (fruits à coque), sel",
+        "Semoule de blé (anhydride sulfureux), sel",
+        "Semoule de blé [soja], sel",
+    ],
+)
+def test_an_allergen_declaration_is_not_a_part_of_the_ingredient(text: str):
+    assert tree(parse_label(text)) == [("semoule de blé", None, []), ("sel", None, [])]
+
+
+def test_an_allergen_declaration_ahead_of_the_parts_does_not_hide_them():
+    text = "Gnocchi (gluten) [semoule, eau 5 %], sel"
+
+    assert tree(parse_label(text)) == [
+        ("gnocchi", None, [("semoule", None, []), ("eau", "5", [])]),
+        ("sel", None, []),
+    ]
+
+
+# Parts that are not allergens, or that say more than an allergen does.
+NOT_ALLERGENS: list[tuple[str, list[Any]]] = [
+    ("Pâtes (blé, eau), sel", [("blé", None, []), ("eau", None, [])]),
+    ("Pâte (lait écrémé), sel", [("lait écrémé", None, [])]),
+    ("Farine (gluten de blé), sel", [("gluten de blé", None, [])]),
+    ("Pâte (lait 5 %, eau), sel", [("lait", "5", []), ("eau", None, [])]),
+    ("Chocolat (lait, cacao), sel", [("lait", None, []), ("cacao", None, [])]),
+]
+
+
+@pytest.mark.parametrize(("text", "parts"), NOT_ALLERGENS)
+def test_parentheses_that_hold_more_than_allergens_are_read_as_parts(
+    text: str, parts: list[Any]
+):
+    [first, _salt] = tree(parse_label(text))
+
+    assert first[2] == parts
+
+
+def test_a_note_inside_the_parts_is_ignored_there_too():
+    text = "Gnocchi (semoule (origine : France), eau (bio)), sel"
+
+    assert tree(parse_label(text)) == [
+        ("gnocchi", None, [("semoule", None, []), ("eau", None, [])]),
+        ("sel", None, []),
+    ]
+
+
 def test_a_percentage_with_a_space_and_a_decimal_comma_is_read_whole():
     text = "Céréale 50 % (Farine de blé 34,8 %, farine de blé complet 15,2 %), sucre"
 
@@ -75,7 +234,7 @@ def test_a_heading_with_a_colon_names_the_ingredient_the_rest_is_in():
 
     assert tree(parse_label(text)) == [
         ("sucre", None, []),
-        ("émulsifiants", None, [("lécithines", None, [("soja", None, [])])]),
+        ("émulsifiants", None, [("lécithines", None, [])]),
         ("vanilline", None, []),
         ("sel", None, []),
     ]
@@ -85,7 +244,7 @@ def test_a_percentage_after_the_parenthesis_belongs_to_the_ingredient():
     text = "sucre de canne (contient BLE) 8,5%, LACTOSE"
 
     assert tree(parse_label(text)) == [
-        ("sucre de canne", "8.5", [("ble", None, [])]),
+        ("sucre de canne", "8.5", []),
         ("lactose", None, []),
     ]
 
@@ -116,12 +275,12 @@ def test_the_list_ends_where_the_labels_sentence_does(text: str):
 
 
 def test_a_note_in_parentheses_is_not_an_ingredient():
-    text = "Sucre (origine UE), cacao (bio), farine (min. 12 %), sel"
+    text = "Sucre (origine UE), cacao (bio), farine, sel"
 
     assert tree(parse_label(text)) == [
         ("sucre", None, []),
         ("cacao", None, []),
-        ("farine", "12", []),
+        ("farine", None, []),
         ("sel", None, []),
     ]
 
@@ -189,6 +348,14 @@ def test_a_bracket_closed_by_a_parenthesis_stops_the_reading():
         ("Farine, énergie 1500 kJ 360 kcal, sel", Problem.OTHER_TEXT),
         ("Farine, sel, à consommer de préférence avant la fin", Problem.OTHER_TEXT),
         ("Farine,, sucre", Problem.EMPTY_ITEM),
+        ("Farine, huile d'olive, 2,3 %, sel", Problem.NAMELESS_PERCENT),
+        ("Farine, 5 %, sel", Problem.NAMELESS_PERCENT),
+        ("Glucides (sucres, 5 %), sel", Problem.NAMELESS_PERCENT),
+        ("Farine; soit 12 %; sel", Problem.NAMELESS_PERCENT),
+        # A percentage is written next to its ingredient, not in parentheses of its own.
+        ("Dattes (7 %), sel", Problem.NAMELESS_PERCENT),
+        ("Farine (min. 12 %), sel", Problem.NAMELESS_PERCENT),
+        ("Dattes 7 % (7 %), sel", Problem.NAMELESS_PERCENT),
         ("Farine, a, sel", Problem.SHORT_NAME),
         ("Peut contenir des traces de lait", Problem.NOTHING_READ),
     ],
@@ -198,6 +365,42 @@ def test_signs_of_a_text_read_badly_stop_the_reading(text: str, problem: Problem
 
     assert reading.items == []
     assert problem in [w.problem for w in reading.warnings]
+
+
+def test_the_warning_for_a_percentage_with_no_name_is_in_the_language_served():
+    warning = read_label("Farine, huile, 2,3 %, sel").warnings[0]
+
+    with translation.override("fr"):
+        assert warning.message() == "Un pourcentage sans nom d'ingrédient : 2,3 %"
+
+
+# A name with its percentage in parentheses is a part, whose percentage is its
+# share of the ingredient: it used to be taken for the ingredient's own.
+PARTS_WITH_PERCENTAGE: list[tuple[str, Any]] = [
+    ("Chocolat (cacao 70 %), sucre", ("chocolat", None, [("cacao", "70", [])])),
+    ("Dattes 7 % (riz 2 %), sucre", ("dattes", "7", [("riz", "2", [])])),
+    ("Dattes (riz 2 %) 7 %, sucre", ("dattes", "7", [("riz", "2", [])])),
+]
+
+
+@pytest.mark.parametrize(("text", "first"), PARTS_WITH_PERCENTAGE)
+def test_a_name_and_a_percentage_in_parentheses_are_a_part(text: str, first: Any):
+    assert tree(parse_label(text))[0] == first
+    assert read_label(text).warnings == []
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Sel 5 %, sucre",
+        "Farine, noisettes 13%, sel",
+        "Sucre 56,3 %, lait (lait écrémé)",
+        "Céréale 50 % (Farine de blé 34,8 %, farine de blé complet 15,2 %), sucre",
+    ],
+)
+def test_a_percentage_next_to_its_ingredient_is_not_a_percentage_with_none(text: str):
+    assert Problem.NAMELESS_PERCENT not in problems(text)
+    assert read_label(text).items
 
 
 def test_a_long_text_with_no_separator_is_not_read_as_one_ingredient():
