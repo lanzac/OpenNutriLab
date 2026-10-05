@@ -1,0 +1,110 @@
+# Plan: preparations next to reference ingredients
+
+Status: planned, not started (written 2026-10-05, after the nutrient estimation
+batch, `docs/plans/lot-estimation.md`).
+
+## Why
+
+A label lists "mozzarella" as an ingredient, and `ReferenceIngredient` was made
+for the ingredients of a product. But a mozzarella is itself a product, made of
+milk, salt and rennet, and the label of the muesli-like gnocchi says so
+(`mozzarella 6 % [lait, sel, présure microbienne, ...]`). It is not an ingredient
+to be curated and linked to a food as if it were milk or salt. The user's rule
+(2026-10-05): **`ReferenceIngredient` holds true ingredients only**, and what is a
+product or a preparation has to be told apart.
+
+In the development database 8 of 35 references are in that position, and which
+ones are _preparations_ is a human judgement, not something the text shows: raisins
+secs (raisins, huile) and dattes (dattes, farine de riz) list parts too, and the
+user keeps them as ingredients.
+
+## Ground rules (decided by the user, 2026-10-05)
+
+- A preparation is **made of several ingredients**. Mozzarella, gnocchi, "préparation
+  d'oignon", a sauce, a pastry are preparations. A food that is transformed but is
+  one material stays an ingredient: raisins secs, dattes, purée de tomate, oignon
+  grillé, huile d'olive, fruits rouges lyophilisés.
+- A `Preparation` has its names and a status, and **points to the true ingredients
+  it is made of**. It is an intermediate table between what a label says and the
+  references.
+- When the label lists the parts of a preparation (the mozzarella of this product),
+  **the label's parts are kept**. When it does not, **the preparation gives its
+  default references**.
+- When the label lists no parts, the composition of a preparation comes from a
+  **source food** (CIQUAL's "Mozzarella") when it has one, as a reference does.
+- The label stays the reference for everything it says: nothing here changes what
+  is read from the text.
+
+## Decisions taken in this plan, to confirm
+
+Each one has a recommendation. They were not put to the user one by one.
+
+1. **Model.** `Preparation`: `name_fr`, `name_en` (each unique when filled, a
+   curated one needs its English name, as for references), `status` (to review,
+   curated), `description`, `components` (many references: what it is made of, with
+   no proportions) and `source_foods` (many source foods: its measured composition,
+   if any). `Ingredient` gets a nullable `preparation` next to its `reference`,
+   which becomes nullable, with a check that exactly one is set, and the uniqueness
+   constraints written for both. Both stay `PROTECT`.
+2. **A name is a reference or a preparation, never both.** The database cannot say
+   it across two tables, so the services and the admin refuse a name the other
+   table has, and the lookup of a label's name looks in both.
+3. **No automatic classification.** Nothing guesses what is a preparation: the
+   text does not say it (see above). A name that matches nothing still creates a
+   reference _to review_, as today. The admin helps the human: the list of
+   references shows how many times each was seen with parts on a label, and an
+   action **"Make a preparation"** converts the selected references: names and
+   status move to a new preparation, the foods it drew on become its source foods,
+   the references it was seen made of on labels (its parts, distinct) become its
+   components to review, every ingredient that used it is repointed, and the
+   reference is deleted. Nothing is lost, and the conversion can be done on the
+   mozzarella, the gnocchi and the "préparation d'oignon" of the development
+   database as soon as the action exists.
+4. **Composition of a preparation** (the rule of the estimation, step 7 of its plan:
+   the coarsest level that has one counts, in a branch). In that order:
+   1. its source foods, aggregated as a reference's are (decision 3 of the
+      estimation plan): it is what the preparation became, so it counts even when
+      the label lists its parts;
+   2. else the parts the label lists, as now (each a reference or a preparation);
+   3. else its default references: as their shares are not known, each nutrient is
+      somewhere between the lowest and the highest of its components', and the
+      amount is their mean. That is the widest honest reading (any mix lies in it),
+      with no grade, so it weighs little in the confidence. It is not a fit: it
+      says "made of these" and no more;
+   4. else no composition, and the warning of the estimation says so, as now.
+5. **The API and the page** show an ingredient as either a reference or a
+   preparation: `IngredientOut` and the estimate keep `reference` (now `null` for a
+   preparation) and gain `preparation` (id, name, status). The ingredients table of
+   the form says which it is next to the status.
+
+## Steps (one commit or more each, tests with each)
+
+1. **Preparation and the link** (migration, model, admin). The model, the nullable
+   pair on `Ingredient` with its constraints, the cross-table uniqueness of names,
+   the admin with its usages count, components and source foods, and "mark as
+   curated". Existing ingredients are unchanged (all references).
+2. **Writing and reading ingredients.** `find_references` / `resolve_references`
+   look in both tables; `_replace_ingredients` writes either; `ProductOut`, the
+   form's rows and the ingredient admin read either. A tree can mix both.
+3. **"Make a preparation"** on the references' admin, with the count of times seen
+   with parts, and its tests (usages repointed, names and foods moved, components
+   from the parts seen, nothing left behind, a name in use refused).
+4. **Estimation.** The composition of a preparation as in decision 4, in
+   `reference_composition` (generalised to a set of source foods and a set of
+   components), `load()` in `percentage_estimation` (a node's name and composition
+   come from either), `estimate_report` and the card of the page.
+5. **Docs and translations**: the roadmap, this plan, the `.po`.
+
+## Out of scope
+
+- Proportions of a default recipe (a mozzarella is 70 % milk...): the components have
+  none, and the composition comes from a source food when one is wanted precise.
+- Treating a preparation's default references as parts in the shares of the
+  estimation (sum to the parent): the hull of their compositions is as wide and
+  much simpler, and a recipe with proportions is where that would come back.
+- Function words that head a list of additives are not ingredients either:
+  "acidifiant : acide citrique" is read as an ingredient `acidifiant` with `acide
+citrique` in it, and `acidifiant` ends up a reference to review. A list of the
+  classes (acidifiant, émulsifiant, colorant, conservateur, épaississant,
+  antioxydant, ...) to read as headings only would be a change of the label
+  parser. Not decided.
