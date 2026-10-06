@@ -17,6 +17,7 @@ from django.db.models.fields.files import ImageFieldFile
 from opennutrilab.products.api.schemas.inbound import ProductCreate
 from opennutrilab.products.api.schemas.inbound import ProductUpdate
 from opennutrilab.products.models import Ingredient
+from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductNutrient
 from opennutrilab.products.models import ReferenceIngredient
@@ -160,6 +161,98 @@ def test_an_ingredient_no_reference_has_the_name_of_gets_one_to_review():
         references[0],
         references[1],
         references[2],
+    ]
+
+
+@pytest.mark.django_db
+def test_an_ingredient_is_the_preparation_that_has_its_name():
+    mozzarella = Preparation.objects.create(name_en="mozzarella", name_fr="mozzarella")
+
+    product = create_product(
+        create_payload(ingredients=[{"name": "Mozzarella", "percentage": "6"}])
+    ).product
+
+    ingredient = product.ingredients.get()
+    # Only one of the two is set, and no reference is made under its name.
+    assert (ingredient.preparation, ingredient.reference) == (mozzarella, None)
+    assert ingredient.percentage == Decimal("6.00")
+    assert not ReferenceIngredient.objects.exists()
+
+
+@pytest.mark.django_db
+def test_a_tree_mixes_preparations_and_references_and_keeps_the_labels_parts():
+    mozzarella = Preparation.objects.create(name_en="mozzarella")
+    sugar = ReferenceIngredient.objects.create(name_en="sugar")
+
+    product = create_product(
+        create_payload(
+            ingredients=[
+                {
+                    "name": "mozzarella",
+                    "percentage": "6",
+                    "sub_ingredients": [{"name": "milk"}, {"name": "sugar"}],
+                },
+                {"name": "sugar"},
+            ]
+        )
+    ).product
+
+    cheese, loose_sugar = product.ingredients.filter(parent=None).order_by("id")
+    assert (cheese.preparation, loose_sugar.reference) == (mozzarella, sugar)
+    # What the label lists for the preparation is kept, a new name included.
+    parts = [(p.reference, p.preparation) for p in cheese.sub_ingredients.all()]
+    assert parts == [
+        (ReferenceIngredient.objects.get(name_en="milk"), None),
+        (sugar, None),
+    ]
+
+
+@pytest.mark.django_db
+def test_a_preparation_the_label_lists_no_parts_for_has_none_written():
+    """Its default references are read when it is estimated, never copied here."""
+    mozzarella = Preparation.objects.create(name_en="mozzarella")
+    mozzarella.components.add(ReferenceIngredient.objects.create(name_en="milk"))
+
+    product = create_product(
+        create_payload(ingredients=[{"name": "mozzarella"}])
+    ).product
+
+    assert [i.preparation for i in product.ingredients.all()] == [mozzarella]
+
+
+@pytest.mark.django_db
+def test_a_preparation_listed_twice_under_one_parent_is_kept_once():
+    Preparation.objects.create(name_en="mozzarella")
+
+    product = create_product(
+        create_payload(
+            ingredients=[
+                {"name": "Mozzarella", "percentage": "5"},
+                {"name": "mozzarella", "percentage": "6"},
+            ]
+        )
+    ).product
+
+    assert [(str(i), i.percentage) for i in product.ingredients.all()] == [
+        ("mozzarella", Decimal("6.00"))
+    ]
+
+
+@pytest.mark.django_db
+def test_replacing_the_tree_can_write_a_preparation_next_to_a_reference(
+    product: Product,
+):
+    mozzarella = Preparation.objects.create(name_en="mozzarella")
+    sugar = ReferenceIngredient.objects.get(name_en="Sucre")
+    data = ProductUpdate.model_validate(
+        {"ingredients": [{"name": "Mozzarella"}, {"name": "sucre"}]}
+    )
+
+    update_product(product, data)
+
+    assert [(i.preparation, i.reference) for i in product.ingredients.all()] == [
+        (mozzarella, None),
+        (None, sugar),
     ]
 
 

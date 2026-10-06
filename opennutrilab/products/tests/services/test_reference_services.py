@@ -6,6 +6,7 @@ from django.utils import translation
 
 from opennutrilab.products.api.schemas.inbound import IngredientInput
 from opennutrilab.products.models import IngredientTaxon
+from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import ReferenceIngredient
 from opennutrilab.products.models import Source
 from opennutrilab.products.models import SourceFood
@@ -65,12 +66,31 @@ def test_an_english_name_wins_over_the_same_french_one():
 
 
 @pytest.mark.django_db
-def test_finding_takes_one_query_however_many_names(
+def test_a_preparation_is_found_by_either_of_its_names_and_in_the_plural():
+    mozzarella = Preparation.objects.create(name_en="Mozzarella", name_fr="mozzarelle")
+
+    found = find_references(["MOZZARELLA", "mozzarelles", "cheddar"])
+
+    assert found == {"mozzarella": mozzarella, "mozzarelles": mozzarella}
+
+
+@pytest.mark.django_db
+def test_a_name_both_tables_have_in_two_languages_is_read_in_the_language_asked():
+    """No clash: a reference's French name is a preparation's English one."""
+    pasta = Preparation.objects.create(name_en="pasta")
+    noodles = ReferenceIngredient.objects.create(name_en="noodles", name_fr="pasta")
+
+    assert find_references(["pasta"]) == {"pasta": pasta}
+    assert find_references(["pasta"], french_first=True) == {"pasta": noodles}
+
+
+@pytest.mark.django_db
+def test_finding_takes_one_query_a_table_however_many_names(
     django_assert_num_queries: Any,
 ):
     ReferenceIngredient.objects.create(name_en="carrot")
 
-    with django_assert_num_queries(1):
+    with django_assert_num_queries(2):
         find_references(["carrot", "oat flakes", "sugar", "salt"])
 
 
@@ -95,6 +115,46 @@ def test_a_missing_reference_is_created_to_review_under_the_name_given():
     assert (created.name_en, created.name_fr) == ("oat flakes", "")
     assert created.status == ReferenceIngredient.Status.TO_REVIEW
     assert not created.source_foods.exists()
+
+
+@pytest.mark.django_db
+def test_a_preparation_is_used_and_no_reference_is_created_under_its_name():
+    mozzarella = Preparation.objects.create(name_en="mozzarella")
+    tree = [
+        ingredient("Mozzarella", sub_ingredients=[{"name": "milk"}]),
+        ingredient("tomato"),
+    ]
+
+    resolved = resolve_references(tree)
+
+    assert resolved["mozzarella"] == mozzarella
+    # What no reference or preparation has the name of is still a reference to
+    # review, parts of a preparation included.
+    assert set(ReferenceIngredient.objects.values_list("name_en", flat=True)) == {
+        "milk",
+        "tomato",
+    }
+    assert isinstance(resolved["milk"], ReferenceIngredient)
+    assert resolved["tomato"].status == ReferenceIngredient.Status.TO_REVIEW
+    assert Preparation.objects.get() == mozzarella
+
+
+@pytest.mark.django_db
+def test_a_name_that_matches_nothing_is_never_made_a_preparation():
+    resolved = resolve_references([ingredient("mozzarella")])
+
+    assert isinstance(resolved["mozzarella"], ReferenceIngredient)
+    assert not Preparation.objects.exists()
+
+
+@pytest.mark.django_db
+def test_a_name_in_a_preparations_plural_finds_it_and_creates_nothing():
+    mozzarella = Preparation.objects.create(name_en="mozzarella")
+
+    resolved = resolve_references([ingredient("mozzarellas")])
+
+    assert resolved == {"mozzarellas": mozzarella}
+    assert not ReferenceIngredient.objects.exists()
 
 
 @pytest.mark.django_db
@@ -304,6 +364,19 @@ def test_a_taxon_with_one_name_only_gives_that_one(db: None):
 
 
 @pytest.mark.django_db
+def test_a_preparation_is_found_through_the_english_correspondence():
+    IngredientTaxon.objects.create(
+        off_id="en:mozzarella", name_en="mozzarella", name_fr="mozzarelle"
+    )
+    mozzarella = Preparation.objects.create(name_en="mozzarella")
+
+    resolved = resolve_references([ingredient("mozzarelle")])
+
+    assert resolved == {"mozzarelle": mozzarella}
+    assert not ReferenceIngredient.objects.exists()
+
+
+@pytest.mark.django_db
 def test_looking_up_creates_nothing(oat_taxon: IngredientTaxon):
     oats = ReferenceIngredient.objects.create(name_en="oat flakes")
 
@@ -418,6 +491,18 @@ def test_a_reference_is_not_created_when_one_has_the_name(
         create_reference_from_foods(carrots)
 
     assert ReferenceIngredient.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_a_reference_is_not_created_when_a_preparation_has_the_name(
+    carrots: list[SourceFood],
+):
+    Preparation.objects.create(name_fr="Carotte, crue")
+
+    with pytest.raises(ReferenceNameError, match="preparation already has the name"):
+        create_reference_from_foods(carrots)
+
+    assert not ReferenceIngredient.objects.exists()
 
 
 @pytest.mark.django_db

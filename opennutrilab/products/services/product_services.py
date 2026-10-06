@@ -31,9 +31,10 @@ from opennutrilab.products.api.schemas.inbound import ProductCreate
 from opennutrilab.products.api.schemas.inbound import ProductUpdate
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import Nutrient
+from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductNutrient
-from opennutrilab.products.models import ReferenceIngredient
+from opennutrilab.products.services.reference_services import Item
 from opennutrilab.products.services.reference_services import name_key
 from opennutrilab.products.services.reference_services import resolve_references
 
@@ -166,22 +167,27 @@ def _replace_ingredients(product: Product, items: list[IngredientInput]) -> None
     """
     Replace the product's ingredient tree with `items`.
 
-    Each ingredient is the reference ingredient that has its name, created
-    when none has (see reference_services). Nothing of the old tree needs
-    carrying over: the name finds the same reference again.
+    Each ingredient is the reference ingredient or the preparation that has its
+    name, a reference being created when none has (see reference_services).
+    Nothing of the old tree needs carrying over: the name finds the same one
+    again. A preparation takes the parts the label lists for it as its children,
+    as any ingredient does.
     """
-    references = resolve_references(items)
+    linked = resolve_references(items)
     product.ingredients.all().delete()
-    _create_ingredients(product, items, parent=None, references=references)
+    _create_ingredients(product, items, parent=None, linked=linked)
 
 
 def _create_ingredients(
     product: Product,
     items: list[IngredientInput],
     parent: Ingredient | None,
-    references: dict[str, ReferenceIngredient],
+    linked: dict[str, Item],
 ) -> None:
     for item in items:
+        found = linked[name_key(item.name)]
+        # Only the one it is is given: the other stays null, as the check says.
+        link = "preparation" if isinstance(found, Preparation) else "reference"
         # update_or_create rather than create: an ingredient can be listed
         # twice under one parent (OpenFoodFacts sometimes does), which the
         # unique constraints on Ingredient would reject. The last occurrence
@@ -189,10 +195,10 @@ def _create_ingredients(
         ingredient, _created = Ingredient.objects.update_or_create(
             product=product,
             parent=parent,
-            reference=references[name_key(item.name)],
+            **{link: found},
             defaults={"percentage": item.percentage},
         )
-        _create_ingredients(product, item.sub_ingredients, ingredient, references)
+        _create_ingredients(product, item.sub_ingredients, ingredient, linked)
 
 
 # -------------------------

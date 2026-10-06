@@ -1,7 +1,7 @@
 # Plan: preparations next to reference ingredients
 
-Status: step 1 done (2026-10-06); the rest is planned. Written 2026-10-05, after
-the nutrient estimation batch, `docs/plans/lot-estimation.md`.
+Status: steps 1 and 2 done (2026-10-06); the rest is planned. Written 2026-10-05,
+after the nutrient estimation batch, `docs/plans/lot-estimation.md`.
 
 ## Why
 
@@ -102,11 +102,27 @@ Each one has a recommendation. They were not put to the user one by one.
      have when it applies the same ordering to the field of another admin that
      points to them. It is a subquery now (`most_used_first`), so it works with and
      without the annotation, and the preparations' admin uses it too.
-2. **Writing ingredients.** `find_references` / `resolve_references` look in both
-   tables (a name a preparation has finds it, a name that matches nothing still
-   creates a reference to review); `_replace_ingredients` writes either; the page's
-   drafts from OpenFoodFacts show either. A tree can mix both. (Reading either was
-   done in step 1.)
+2. **Writing ingredients** (done). `find_references` / `resolve_references` /
+   `existing_references` look in both tables (a name a preparation has finds it,
+   in either language, in the plural, or through the English correspondence; a
+   name that matches nothing still creates a reference to review);
+   `_replace_ingredients` writes either; the page's drafts from OpenFoodFacts
+   show either. A tree can mix both. (Reading either was done in step 1.)
+   - Done as planned, with these differences. The lookup takes one query for each
+     table, so two where it took one (the number does not depend on the names).
+     What the services return is `Item`, an alias of the two kinds. A name in a
+     language is still read before the same word in the other, across the two
+     tables: a reference's French "pasta" and a preparation's English "pasta" are
+     not a clash, and the language asked wins.
+   - Not in the plan, and done because decision 2 asks the services to refuse a
+     name the other table has: `create_reference_from_foods` (the admin's "create
+     a reference from these foods") refuses a name a preparation has.
+   - The page's rows prefetch the foods of references and of preparations
+     separately, since the two tables can share an id.
+   - What is not done here, on purpose: nothing makes a preparation from a label
+     (decision 3), and a preparation's default references are not written as
+     children when the label lists no parts: they are read when it is estimated
+     (step 4).
 3. **"Make a preparation"** on the references' admin, with the count of times seen
    with parts, and its tests (usages repointed, names and foods moved, components
    from the parts seen, nothing left behind, a name in use refused).

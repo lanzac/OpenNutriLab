@@ -40,6 +40,7 @@ from .services.estimate_report import build_estimate
 from .services.label_parser import LabelWarning
 from .services.product_services import plain_amount
 from .services.reference_services import CIQUAL_SOURCE_PREFIX
+from .services.reference_services import Item
 from .services.reference_services import existing_references
 from .services.reference_services import name_key
 from .services.reference_services import walk_ingredients
@@ -431,27 +432,32 @@ def ingredient_rows_from_inputs(items: list[IngredientInput]) -> list[dict[str, 
     """
     Rows for an OpenFoodFacts tree that is not saved yet.
 
-    An ingredient whose name a reference already has is shown as that
-    reference. Any other will get a new one when the product is saved: it is
-    shown by its name (in French when the taxonomy has one while French is
+    An ingredient whose name a reference or a preparation already has is shown
+    as that one. Any other will get a new reference when the product is saved:
+    it is shown by its name (in French when the taxonomy has one while French is
     served), with OpenFoodFacts' CIQUAL code, and marked new.
     """
     flat = list(walk_ingredients(items))
-    references = existing_references(flat)
-    prefetch_related_objects(list(references.values()), "source_foods__source")
+    known = existing_references(flat)
+    # One kind at a time: a reference and a preparation can share an id.
+    found = list(known.values())
+    references = [i for i in found if isinstance(i, ReferenceIngredient)]
+    preparations = [i for i in found if isinstance(i, Preparation)]
+    prefetch_related_objects(references, "source_foods__source")
+    prefetch_related_objects(preparations, "source_foods__source")
     display_names = IngredientTaxon.display_names(item.off_id for item in flat)
-    return _rows_from_inputs(items, references, display_names)
+    return _rows_from_inputs(items, known, display_names)
 
 
 def _rows_from_inputs(
     items: list[IngredientInput],
-    references: dict[str, ReferenceIngredient],
+    known: dict[str, Item],
     display_names: dict[str, str],
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for item in items:
-        reference = references.get(name_key(item.name))
-        if reference is None:
+        found = known.get(name_key(item.name))
+        if found is None:
             row = _row(
                 display_names.get(item.off_id, item.name),
                 item.percentage,
@@ -467,13 +473,13 @@ def _rows_from_inputs(
             )
         else:
             row = _row(
-                reference.name,
+                found.name,
                 item.percentage,
-                _reference_ciqual(reference),
-                _status_label(reference),
+                _reference_ciqual(found),
+                _status_label(found),
             )
         row["ingredients"] = (
-            _rows_from_inputs(item.sub_ingredients, references, display_names) or None
+            _rows_from_inputs(item.sub_ingredients, known, display_names) or None
         )
         rows.append(row)
     return rows

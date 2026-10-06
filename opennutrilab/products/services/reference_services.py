@@ -1,13 +1,16 @@
 """
-Finding the reference ingredient an ingredient is, and creating it when none is.
+Finding the reference ingredient or the preparation an ingredient is, and
+creating a reference when there is none.
 
 What a client sends for an ingredient is an IngredientInput: a name, a
 percentage, and what OpenFoodFacts said about it. The English name is the
 reference ingredient's key, but nothing is refused for lacking it: a name is
-looked up as it is, in either language, and if no reference has it, through
-its English correspondence, as OpenFoodFacts' taxonomy gives it ("flocons
-d'avoine" is "oat flakes"). When there is still none, one is created, to
-review, so that every ingredient has a reference.
+looked up as it is, in either language, in the references and in the
+preparations (a name is one or the other, never both), and if neither has it,
+through its English correspondence, as OpenFoodFacts' taxonomy gives it
+("flocons d'avoine" is "oat flakes"). When there is still none, a reference is
+created, to review, so that every ingredient is a reference or a preparation.
+Nothing guesses that a name is a preparation: the curator converts it.
 
 What OpenFoodFacts said (its id, its CIQUAL codes) is used only to find the
 correspondence and to create that reference, and only kept as a note in its
@@ -22,6 +25,7 @@ from collections.abc import Mapping
 from collections.abc import Sequence
 from typing import NamedTuple
 
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.db import transaction
 from django.db.models import Case
@@ -34,6 +38,7 @@ from django.utils.translation import get_language
 
 from opennutrilab.products.api.schemas.inbound import IngredientInput
 from opennutrilab.products.models import IngredientTaxon
+from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import ReferenceIngredient
 from opennutrilab.products.models import SourceFood
 
@@ -43,6 +48,9 @@ CIQUAL_SOURCE_PREFIX = "ciqual"
 SUGGESTION_LIMIT = 20
 # Shorter words ("de", "la") say nothing about which food is meant.
 SUGGESTION_MIN_WORD = 3
+
+# What an ingredient of a product is.
+type Item = ReferenceIngredient | Preparation
 
 
 class Correspondence(NamedTuple):
@@ -87,38 +95,42 @@ def walk_ingredients(items: Iterable[IngredientInput]) -> Iterator[IngredientInp
 
 def find_references(
     names: Iterable[str], *, french_first: bool = False
-) -> dict[str, ReferenceIngredient]:
+) -> dict[str, Item]:
     """
-    The references that have these names, by name_key, in one query.
+    The references and preparations that have these names, by name_key, in one
+    query for each table.
 
     A name is searched in both languages, English first unless `french_first`:
     each name is unique, but the English name of one reference can be the French
     name of another ("raisin" is a dried grape in English and a grape in French).
     A name written in the plural also finds the singular (see name_keys). A name
-    no reference has is absent.
+    no reference or preparation has is absent.
     """
     return _find(dict.fromkeys(names, french_first))
 
 
-def _find(french_first: Mapping[str, bool]) -> dict[str, ReferenceIngredient]:
+def _find(french_first: Mapping[str, bool]) -> dict[str, Item]:
     """find_references, with the language to win a tie asked for each name."""
     asked = {name: name_keys(name) for name in french_first if name_key(name)}
     keys = {key for variants in asked.values() for key in variants}
     if not keys:
         return {}
-    candidates = ReferenceIngredient.objects.alias(
-        key_en=Lower("name_en"), key_fr=Lower("name_fr")
-    ).filter(Q(key_en__in=keys) | Q(key_fr__in=keys))
-    by_french: dict[str, ReferenceIngredient] = {}
-    by_english: dict[str, ReferenceIngredient] = {}
-    for reference in candidates:
-        if (key := name_key(reference.name_fr)) in keys:
-            by_french[key] = reference
-        if (key := name_key(reference.name_en)) in keys:
-            by_english[key] = reference
+    by_french: dict[str, Item] = {}
+    by_english: dict[str, Item] = {}
+    # The tables never share a name in a language, but if they did (nothing in
+    # the database forbids it), the reference would win, as before preparations.
+    for model in (Preparation, ReferenceIngredient):
+        candidates = model.objects.alias(
+            key_en=Lower("name_en"), key_fr=Lower("name_fr")
+        ).filter(Q(key_en__in=keys) | Q(key_fr__in=keys))
+        for item in candidates:
+            if (key := name_key(item.name_fr)) in keys:
+                by_french[key] = item
+            if (key := name_key(item.name_en)) in keys:
+                by_english[key] = item
     english_wins = by_french | by_english
     french_wins = by_english | by_french
-    found: dict[str, ReferenceIngredient] = {}
+    found: dict[str, Item] = {}
     for name, variants in asked.items():
         stored = french_wins if french_first[name] else english_wins
         for key in variants:
@@ -195,9 +207,10 @@ def _read_in_taxonomy(
 
 def existing_references(
     items: Iterable[IngredientInput],
-) -> dict[str, ReferenceIngredient]:
+) -> dict[str, Item]:
     """
-    The reference of each ingredient of these trees that has one, by name_key.
+    The reference or preparation of each ingredient of these trees that has one,
+    by name_key.
 
     Looked up by the name as it is, then through its English correspondence.
     Nothing is created.
@@ -220,13 +233,14 @@ def existing_references(
 
 def resolve_references(
     items: Iterable[IngredientInput],
-) -> dict[str, ReferenceIngredient]:
+) -> dict[str, Item]:
     """
-    The reference of every ingredient of these trees, by name_key of its name.
+    The reference or preparation of every ingredient of these trees, by name_key
+    of its name.
 
-    An ingredient no reference has the name of, in either language or through
-    its English correspondence, gets one created, so every name is in the
-    result.
+    An ingredient no reference or preparation has the name of, in either
+    language or through its English correspondence, gets a reference created, to
+    review, so every name is in the result.
     """
     flat = list(walk_ingredients(items))
     references = existing_references(flat)
@@ -234,7 +248,7 @@ def resolve_references(
     correspondences = english_correspondences(missing) if missing else {}
     # What was created here, under every key of its names, for the same name
     # written in the plural, or listed twice, to find it.
-    created: dict[str, ReferenceIngredient] = {}
+    created: dict[str, Item] = {}
     for item in missing:
         key = name_key(item.name)
         if key in references:
@@ -253,9 +267,10 @@ def resolve_references(
 
 def _create_reference(
     item: IngredientInput, correspondence: Correspondence | None
-) -> ReferenceIngredient:
+) -> Item:
     """
-    A reference to review for an ingredient no reference has the name of.
+    A reference to review for an ingredient no reference or preparation has the
+    name of.
 
     Its names are the taxonomy's correspondence when there is one: the English
     name is the key and the French one is for display. Without one, the name
@@ -397,13 +412,19 @@ def create_reference_from_foods(foods: Sequence[SourceFood]) -> ReferenceIngredi
     """
     A reference to review that draws on these foods, named after the first.
 
-    The names are the food's own ("Carotte, crue"): the curator edits them.
+    The names are the food's own ("Carotte, crue"): the curator edits them. A
+    name a preparation has is refused: it is one or the other.
     """
     first = foods[0]
     name_en, name_fr = clean_name(first.name_en), clean_name(first.name_fr)
     if not (name_en or name_fr):
         msg = f"{first} has no name to give a reference."
         raise ReferenceNameError(msg)
+    try:
+        ReferenceIngredient(name_en=name_en, name_fr=name_fr).clean()
+    except ValidationError as e:
+        msg = f"A preparation already has the name of {first}."
+        raise ReferenceNameError(msg) from e
     try:
         with transaction.atomic():
             reference = ReferenceIngredient.objects.create(
