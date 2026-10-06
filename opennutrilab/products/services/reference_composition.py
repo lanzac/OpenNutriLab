@@ -21,6 +21,10 @@ The foods are then combined per nutrient. The amount is the mean of the foods'
 amounts weighted by the grade of each (A 4, B 3, C 2, D 1, none 1), which is the
 food's amount when there is one food. The interval is the range that holds all of
 theirs.
+
+A preparation that draws on no food has, when its label lists none of its parts,
+the composition of the references it is made of (components_composition). Their
+shares are not known, so it is a range and not a fit.
 """
 
 from collections import defaultdict
@@ -104,6 +108,50 @@ def reference_composition(
         for code, measure in _food_measures(food_rows, derivations).items():
             per_nutrient[code].append((food, measure))
     return {code: _combine(found) for code, found in per_nutrient.items()}
+
+
+def components_composition(
+    preparation: Preparation, derived: Iterable[Nutrient] | None = None
+) -> dict[str, Estimate]:
+    """
+    What a preparation is, if all that is known is the references it is made of.
+
+    Their shares are not known, so a nutrient is somewhere between the lowest and
+    the highest of its components', whatever the mix is: the widest reading that
+    is true of every recipe. The amount is the mean of theirs. It has no grade,
+    since it is not measured on anything: it says "made of these", and no more.
+
+    It stands only when every component says something. A component with no
+    composition could be most of the preparation, and a nutrient one of them does
+    not give is not zero, so the preparation has none then, or lacks that nutrient.
+    """
+    parts = [
+        reference_composition(component, derived)
+        for component in preparation.components.all()
+    ]
+    if not parts or not all(parts):
+        return {}
+    shared = set(parts[0]).intersection(*parts[1:])
+    return {code: _hull([part[code] for part in parts]) for code in shared}
+
+
+def _hull(estimates: Sequence[Estimate]) -> Estimate:
+    """The range that holds each of these, with the mean of their amounts."""
+    amounts = [e.amount for e in estimates if e.amount is not None]
+    highs = [e.high for e in estimates if e.high is not None]
+    qualifiers = {e.qualifier for e in estimates}
+    return Estimate(
+        amount=_round(sum(amounts, Decimal(0)) / len(amounts)) if amounts else None,
+        low=min(e.low or Decimal(0) for e in estimates),
+        high=max(highs) if len(highs) == len(estimates) else None,
+        qualifier=next(
+            q
+            for q in (Qualifier.EXACT, Qualifier.LESS_THAN, Qualifier.TRACES)
+            if q in qualifiers
+        ),
+        grades=(),
+        foods=tuple({food.pk: food for e in estimates for food in e.foods}.values()),
+    )
 
 
 def _food_measures(

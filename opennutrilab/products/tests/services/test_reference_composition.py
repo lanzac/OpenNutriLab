@@ -13,6 +13,7 @@ from opennutrilab.products.models import SourceFoodNutrient
 from opennutrilab.products.services.ciqual_import import ensure_nutrients
 from opennutrilab.products.services.ciqual_import import read_constituents
 from opennutrilab.products.services.derived_nutrients import ensure_derivations
+from opennutrilab.products.services.reference_composition import components_composition
 from opennutrilab.products.services.reference_composition import reference_composition
 
 CONSTITUENTS_FILE = Path(__file__).parents[1] / "data" / "ciqual_const_2025.xml"
@@ -332,3 +333,93 @@ def test_the_foods_of_a_reference_are_not_those_of_a_preparation(source: Source)
 
 def test_a_preparation_with_no_source_food_has_no_composition(db: None):
     assert reference_composition(Preparation.objects.create(name_en="gnocchi")) == {}
+
+
+# ----------------------------------------------------------------------------
+# A preparation drawing on no food: what it is made of
+# ----------------------------------------------------------------------------
+def made_of(*references: ReferenceIngredient, name: str = "gnocchi") -> Preparation:
+    preparation = Preparation.objects.create(name_en=name)
+    preparation.components.add(*references)
+    return preparation
+
+
+def test_the_components_give_the_range_that_holds_all_of_theirs(source: Source):
+    milk = food(source, "1")
+    value(milk, "fat", "3.5", minimum="3", maximum="4")
+    cream = food(source, "2")
+    value(cream, "fat", "30", minimum="28", maximum="32")
+
+    estimate = components_composition(made_of(reference_of(milk), reference_of(cream)))[
+        "fat"
+    ]
+
+    # Whatever the mix is, it is in there; the amount is the mean of theirs.
+    assert (estimate.low, estimate.amount, estimate.high) == (D(3), D("16.75"), D(32))
+    assert estimate.qualifier == EXACT
+
+
+def test_the_components_composition_has_no_grade_and_credits_all_their_foods(
+    source: Source,
+):
+    milk, cream = food(source, "1"), food(source, "2")
+    value(milk, "fat", "3.5", grade="A")
+    value(cream, "fat", "30", grade="A")
+
+    estimate = components_composition(made_of(reference_of(milk), reference_of(cream)))[
+        "fat"
+    ]
+
+    assert estimate.grades == ()
+    assert set(estimate.foods) == {milk, cream}
+
+
+def test_a_nutrient_one_component_does_not_give_is_not_in_the_composition(
+    source: Source,
+):
+    milk, flour = food(source, "1"), food(source, "2")
+    value(milk, "fat", "3.5")
+    value(milk, "vitamin_c", "1")
+    value(flour, "fat", "1")
+
+    found = components_composition(made_of(reference_of(milk), reference_of(flour)))
+
+    assert set(found) == {"fat"}
+
+
+def test_a_component_with_no_composition_leaves_the_preparation_with_none(
+    source: Source,
+):
+    milk = food(source, "1")
+    value(milk, "fat", "3.5")
+    rennet = ReferenceIngredient.objects.create(name_en="rennet")
+
+    assert components_composition(made_of(reference_of(milk), rennet)) == {}
+
+
+def test_a_preparation_made_of_nothing_has_no_composition(db: None):
+    assert components_composition(Preparation.objects.create(name_en="gnocchi")) == {}
+
+
+def test_a_component_that_is_only_traces_leaves_the_top_of_the_range_open(
+    source: Source,
+):
+    milk, salt = food(source, "1"), food(source, "2")
+    value(milk, "fat", "3.5", minimum="3", maximum="4")
+    value(salt, "fat", None, qualifier=TRACES)
+
+    estimate = components_composition(made_of(reference_of(milk), reference_of(salt)))[
+        "fat"
+    ]
+
+    assert (estimate.low, estimate.amount, estimate.high) == (D(0), D("3.5"), None)
+
+
+def test_the_components_of_one_preparation_are_not_those_of_another(source: Source):
+    one, other = food(source, "1"), food(source, "2")
+    value(one, "fat", "10")
+    value(other, "fat", "30")
+    made_of_one = made_of(reference_of(one))
+    made_of(reference_of(other), name="pizza")
+
+    assert components_composition(made_of_one)["fat"].amount == D(10)

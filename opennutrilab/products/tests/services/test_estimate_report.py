@@ -354,6 +354,61 @@ def test_an_ingredient_that_is_a_preparation_is_served_as_one(source: Source):
     }
 
 
+def components_source(source: Source) -> tuple[Source, Preparation]:
+    """A preparation with no food, made of a reference from another source."""
+    other = Source.objects.create(code="other", name="Other", attribution="Other.")
+    milk = reference(other, "m1", proteins="8")
+    gnocchi = Preparation.objects.create(name_en="gnocchi")
+    gnocchi.components.add(milk)
+    return other, gnocchi
+
+
+def test_the_sources_of_the_references_a_preparation_counts_by_are_credited(
+    source: Source,
+):
+    product = product_of(proteins="15")
+    _other, gnocchi = components_source(source)
+    Ingredient.objects.create(product=product, preparation=gnocchi)
+
+    credited = {s.code for s in build_estimate(product).sources}
+
+    assert credited == {"other"}
+
+
+def test_the_sources_of_default_references_are_not_credited_when_not_used(
+    source: Source,
+):
+    """The label lists its parts, so these are what count, not the components."""
+    product = product_of(proteins="15")
+    _other, gnocchi = components_source(source)
+    root = Ingredient.objects.create(product=product, preparation=gnocchi)
+    add(product, reference(source, "1", proteins="20"), parent=root)
+
+    credited = {s.code for s in build_estimate(product).sources}
+
+    assert credited == {"ciqual-2025"}
+
+
+def test_a_preparation_made_of_references_is_a_range_of_the_lowest_quality(
+    source: Source,
+):
+    product = product_of(proteins="15")
+    gnocchi = Preparation.objects.create(name_en="gnocchi")
+    gnocchi.components.add(
+        reference(source, "1", proteins="8"), reference(source, "2", proteins="28")
+    )
+    Ingredient.objects.create(product=product, preparation=gnocchi)
+
+    proteins = nutrients_of(build_estimate(product))["proteins"]
+
+    assert proteins.estimated is not None
+    # From the lowest to the highest of the two, with the rounding of each.
+    assert (proteins.estimated.low, proteins.estimated.high) == (D("7.5"), D("28.5"))
+    # It is not a fit: no grade, so the lowest quality, a quarter.
+    assert proteins.confidence is not None
+    assert proteins.confidence.quality == D("0.25")
+
+
 def test_the_sources_of_a_preparation_are_credited_too(source: Source):
     product = product_of()
     other = Source.objects.create(code="other", name="Other", attribution="Other.")

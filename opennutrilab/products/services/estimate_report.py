@@ -175,7 +175,17 @@ def _ingredients(
 
 
 def _sources(product: Product) -> list[SourceOut]:
-    """The sources of the foods the product's references draw on."""
+    """
+    The sources of the foods the product's references and preparations draw on, and
+    of those of the references a preparation is made of when it counts by them
+    (see percentage_estimation): one with no source food whose label lists no parts.
+    """
+    by_default = Ingredient.objects.filter(
+        product=product,
+        preparation__isnull=False,
+        preparation__source_foods__isnull=True,
+        sub_ingredients__isnull=True,
+    ).values("preparation")
     return [
         SourceOut(
             code=source.code,
@@ -187,6 +197,7 @@ def _sources(product: Product) -> list[SourceOut]:
         for source in Source.objects.filter(
             Q(foods__reference_ingredients__usages__product=product)
             | Q(foods__preparations__usages__product=product)
+            | Q(foods__reference_ingredients__used_in_preparations__in=by_default)
         )
         .distinct()
         .order_by("code")

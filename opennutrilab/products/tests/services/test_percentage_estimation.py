@@ -29,6 +29,7 @@ from opennutrilab.products.services.percentage_estimation import (
 )
 from opennutrilab.products.services.percentage_estimation import estimate
 from opennutrilab.products.services.percentage_estimation import estimate_percentages
+from opennutrilab.products.services.percentage_estimation import load
 from opennutrilab.products.services.reference_composition import Estimate
 
 D = Decimal
@@ -471,3 +472,109 @@ def test_a_preparation_and_a_reference_with_the_same_id_are_not_confused(
     result = estimate_percentages(product)
 
     assert_spans(result, {first.id: (50, 60), second.id: (40, 50)})
+
+
+# ----------------------------------------------------------------------------
+# A preparation counts by the references it is made of, when nothing else says
+# ----------------------------------------------------------------------------
+def made_of(*references: ReferenceIngredient, name: str = "gnocchi") -> Preparation:
+    """A preparation with no food of its own, made of these references."""
+    prepared = Preparation.objects.create(name_en=name)
+    prepared.components.add(*references)
+    return prepared
+
+
+def test_a_preparation_with_no_food_and_no_part_listed_counts_as_a_range(
+    source: Source,
+):
+    oats = reference(source, "1", proteins="20")
+    gnocchi = made_of(
+        reference(source, "2", proteins="8"), reference(source, "3", proteins="28")
+    )
+    product = product_with(proteins="15")
+    first = add(product, oats)
+    second = Ingredient.objects.create(product=product, preparation=gnocchi)
+
+    result = estimate_percentages(product)
+
+    # Its protein is anywhere from 7.5 to 28.5 per 100 g (the rounding of 8 and
+    # 28), so the oats, at 19.5 or more, can only be as much as two thirds before
+    # the label's 15 is out of reach.
+    assert_spans(result, {first.id: (50, 66.67), second.id: (33.33, 50)})
+    assert result.used_nutrition
+    assert result.warnings == []
+
+
+def test_the_parts_the_label_lists_count_and_not_the_default_references(
+    source: Source,
+):
+    gnocchi = made_of(reference(source, "1", proteins="8"))
+    product = product_with(proteins="15")
+    root = Ingredient.objects.create(product=product, preparation=gnocchi)
+    part = add(product, reference(source, "2", proteins="30"), parent=root)
+
+    loaded = load(product)
+
+    compositions = {node.key: node.composition for node in loaded.nodes}
+    assert compositions[root.id] is None
+    from_part = compositions[part.id]
+    assert from_part is not None
+    assert from_part["proteins"][0] > 20  # noqa: PLR2004
+
+
+def test_the_source_foods_of_a_preparation_count_and_not_its_default_references(
+    source: Source,
+):
+    gnocchi = preparation(source, "1", proteins="10")
+    gnocchi.components.add(reference(source, "2", proteins="30"))
+    product = product_with(proteins="15")
+    root = Ingredient.objects.create(product=product, preparation=gnocchi)
+
+    composition = {n.key: n.composition for n in load(product).nodes}[root.id]
+
+    assert composition is not None
+    assert composition["proteins"][1] < 20  # noqa: PLR2004
+
+
+def test_a_component_with_no_composition_gives_the_preparation_none(source: Source):
+    gnocchi = made_of(
+        reference(source, "1", proteins="8"),
+        ReferenceIngredient.objects.create(name_en="rennet"),
+    )
+    product = product_with(proteins="15")
+    add(product, reference(source, "2", proteins="20"))
+    Ingredient.objects.create(product=product, preparation=gnocchi)
+
+    result = estimate_percentages(product)
+
+    assert [w.problem for w in result.warnings] == [Problem.NO_COMPOSITION]
+    assert result.warnings[0].detail == "gnocchi"
+
+
+def test_source_foods_that_give_no_value_do_not_send_it_to_its_components(
+    source: Source,
+):
+    """It has a food, and so it does not count by what it is made of."""
+    gnocchi = made_of(reference(source, "1", proteins="8"))
+    gnocchi.source_foods.add(SourceFood.objects.create(source=source, code="empty"))
+    product = product_with(proteins="15")
+    Ingredient.objects.create(product=product, preparation=gnocchi)
+
+    composition = {n.key: n.composition for n in load(product).nodes}
+
+    assert list(composition.values()) == [None]
+
+
+def test_the_same_preparation_listed_twice_counts_by_each_place_it_is(source: Source):
+    """Once with its parts, once with none: each is read as its own node."""
+    gnocchi = made_of(reference(source, "1", proteins="8"))
+    product = product_with(proteins="15")
+    with_parts = Ingredient.objects.create(product=product, preparation=gnocchi)
+    add(product, reference(source, "2", proteins="30"), parent=with_parts)
+    side = add(product, reference(source, "3", proteins="20"))
+    alone = Ingredient.objects.create(product=product, preparation=gnocchi, parent=side)
+
+    composition = {n.key: n.composition for n in load(product).nodes}
+
+    assert composition[with_parts.id] is None
+    assert composition[alone.id] is not None

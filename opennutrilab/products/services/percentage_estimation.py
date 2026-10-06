@@ -31,6 +31,11 @@ worked out from dried grapes, not from fresh ones and oil, whose water would
 count for nothing but a quarter of the sugars. The sub-ingredients are used when
 the ingredient has no composition of its own, and still get a percentage.
 
+A preparation has its own when it draws on source foods, and then it counts even
+if the label lists its parts. Failing that, the parts the label lists count. A
+preparation with neither falls back on the references it is made of, as a range
+(see components_composition), and has none when one of them has none.
+
 All of these are linear rules over the percentages, so what each percentage can
 be is found exactly: its lowest and highest values among all the combinations
 that follow the rules, one linear program for each (scipy, HiGHS). The point
@@ -72,6 +77,7 @@ from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Product
 from opennutrilab.products.services.derived_nutrients import derived_nutrients
 from opennutrilab.products.services.reference_composition import Estimate
+from opennutrilab.products.services.reference_composition import components_composition
 from opennutrilab.products.services.reference_composition import reference_composition
 from opennutrilab.products.services.reference_composition import rounding_margin
 
@@ -256,21 +262,43 @@ class Loaded(NamedTuple):
 
 def load(product: Product) -> Loaded:
     """Read a product's ingredients, their compositions and its label."""
-    ingredients = list(product.ingredients.select_related("reference", "preparation"))
+    ingredients = list(
+        product.ingredients.select_related("reference", "preparation").prefetch_related(
+            "preparation__source_foods", "preparation__components"
+        )
+    )
     catalogue = {nutrient.code: nutrient for nutrient in Nutrient.objects.all()}
     derived = list(derived_nutrients())
     # A reference and a preparation can have the same id: the kind is in the key.
     items = {(type(i.item), i.item.pk): i.item for i in ingredients}
-    full = {key: reference_composition(item, derived) for key, item in items.items()}
+    own = {key: reference_composition(item, derived) for key, item in items.items()}
+    listed_parts = {i.parent_id for i in ingredients if i.parent_id is not None}
+    by_default: dict[int, dict[str, Estimate]] = {}
+    full: list[dict[str, Estimate]] = []
+    for i in ingredients:
+        composition = own[type(i.item), i.item.pk]
+        # Only a preparation with no food and no part listed here: see the module.
+        if (
+            not composition
+            and i.preparation is not None
+            and i.id not in listed_parts
+            and not i.preparation.source_foods.all()
+        ):
+            if i.preparation.pk not in by_default:
+                by_default[i.preparation.pk] = components_composition(
+                    i.preparation, derived
+                )
+            composition = by_default[i.preparation.pk]
+        full.append(composition)
     nodes = [
         Node(
             key=i.id,
             parent=i.parent_id,
             name=i.item.name,
             declared=i.percentage,
-            composition=_macronutrients(full[type(i.item), i.item.pk], catalogue),
+            composition=_macronutrients(composition, catalogue),
         )
-        for i in ingredients
+        for i, composition in zip(ingredients, full, strict=True)
     ]
     label = {
         code: _declared_range(Decimal(amount))
@@ -282,7 +310,7 @@ def load(product: Product) -> Loaded:
         nodes,
         label,
         {code: nutrient.name for code, nutrient in catalogue.items()},
-        [full[type(i.item), i.item.pk] for i in ingredients],
+        full,
         {code: nutrient.parent_id for code, nutrient in catalogue.items()},
         {code: nutrient.unit for code, nutrient in catalogue.items()},
     )
