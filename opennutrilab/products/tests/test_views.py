@@ -954,6 +954,28 @@ def test_rows_from_inputs_show_a_preparation_next_to_a_reference(ciqual: Source)
 
 
 @pytest.mark.django_db
+def test_rows_from_inputs_show_an_additive_by_its_code_with_its_own_foods(
+    ciqual: Source,
+):
+    oats = reference_with_foods("oat flakes", ciqual, "9311")
+    lecithin = Additive.objects.create(
+        id=oats.pk, name_en="soy lecithin", code="E322", status="curated"
+    )
+    lecithin.source_foods.add(
+        SourceFood.objects.create(source=ciqual, code="42200", name_fr="Lécithine")
+    )
+    items = [IngredientInput(name="oat flakes"), IngredientInput(name="E 322")]
+
+    with translation.override("en-us"):
+        rows = ingredient_rows_from_inputs(items)
+
+    assert [(r["name"], r["ciqual"], r["reference"]) for r in rows] == [
+        ("oat flakes", "9311", "To review"),
+        ("soy lecithin", "42200", "Additive, curated"),
+    ]
+
+
+@pytest.mark.django_db
 def test_rows_from_inputs_find_a_reference_through_the_english_name(
     ciqual: Source,
 ):
@@ -1069,9 +1091,9 @@ def test_rows_from_inputs_show_the_french_name_while_french_is_served(
         IngredientInput(name="Épices"),
     ]
 
-    # The references and the preparations by name, the taxonomy, the references
-    # and the preparations by correspondence, then the French names.
-    with translation.override("fr-fr"), django_assert_num_queries(6):
+    # The references, the preparations and the additives by name, the taxonomy,
+    # those by correspondence, then the French names.
+    with translation.override("fr-fr"), django_assert_num_queries(8):
         rows = ingredient_rows_from_inputs(items)
 
     assert [r["name"] for r in rows] == [
@@ -1089,7 +1111,7 @@ def test_rows_from_inputs_keep_the_english_name_in_other_languages(
 ):
     items = [IngredientInput(name="oat flakes", off_id="en:oat-flakes")]
 
-    with translation.override("en-us"), django_assert_num_queries(5):
+    with translation.override("en-us"), django_assert_num_queries(7):
         rows = ingredient_rows_from_inputs(items)
 
     assert [r["name"] for r in rows] == ["oat flakes"]

@@ -444,10 +444,10 @@ def ingredient_rows_from_inputs(items: list[IngredientInput]) -> list[dict[str, 
     known = existing_references(flat)
     # One kind at a time: a reference and a preparation can share an id.
     found = list(known.values())
-    references = [i for i in found if isinstance(i, ReferenceIngredient)]
-    preparations = [i for i in found if isinstance(i, Preparation)]
-    prefetch_related_objects(references, "source_foods__source")
-    prefetch_related_objects(preparations, "source_foods__source")
+    for kind in (ReferenceIngredient, Preparation, Additive):
+        prefetch_related_objects(
+            [i for i in found if type(i) is kind], "source_foods__source"
+        )
     display_names = IngredientTaxon.display_names(item.off_id for item in flat)
     return _rows_from_inputs(items, known, display_names)
 

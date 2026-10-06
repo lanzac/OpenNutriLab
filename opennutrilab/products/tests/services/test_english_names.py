@@ -4,6 +4,7 @@ from unittest.mock import patch
 import pytest
 from pytest_django.fixtures import SettingsWrapper
 
+from opennutrilab.products.models import Additive
 from opennutrilab.products.models import IngredientTaxon
 from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import ReferenceIngredient
@@ -170,6 +171,15 @@ def test_a_name_a_preparation_has_is_marked_as_taken():
         (proposal,) = propose(french("gnocchi à la pomme de terre")).proposals
 
     assert proposal.taken_by == "gnocchi"
+
+
+def test_a_name_an_additive_has_is_marked_as_taken():
+    Additive.objects.create(name_en="citric acid", code="E330")
+
+    with patch(TRANSLATE, return_value="Citric acid"):
+        (proposal,) = propose(french("acide citrique")).proposals
+
+    assert proposal.taken_by == "citric acid"
 
 
 def test_a_name_is_not_taken_by_the_reference_it_is_proposed_for():

@@ -29,6 +29,7 @@ from opennutrilab.products.api.schemas.inbound import OFF_IMAGE_HOSTS
 from opennutrilab.products.api.schemas.inbound import IngredientInput
 from opennutrilab.products.api.schemas.inbound import ProductCreate
 from opennutrilab.products.api.schemas.inbound import ProductUpdate
+from opennutrilab.products.models import Additive
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Preparation
@@ -167,8 +168,9 @@ def _replace_ingredients(product: Product, items: list[IngredientInput]) -> None
     """
     Replace the product's ingredient tree with `items`.
 
-    Each ingredient is the reference ingredient or the preparation that has its
-    name, a reference being created when none has (see reference_services).
+    Each ingredient is the reference ingredient, the preparation or the additive
+    that has its name, a reference being created when none has, and an additive
+    for an E number (see reference_services).
     Nothing of the old tree needs carrying over: the name finds the same one
     again. A preparation takes the parts the label lists for it as its children,
     as any ingredient does.
@@ -186,8 +188,14 @@ def _create_ingredients(
 ) -> None:
     for item in items:
         found = linked[name_key(item.name)]
-        # Only the one it is is given: the other stays null, as the check says.
-        link = "preparation" if isinstance(found, Preparation) else "reference"
+        # Only the one it is is given: the others stay null, as the check says.
+        link = (
+            "preparation"
+            if isinstance(found, Preparation)
+            else "additive"
+            if isinstance(found, Additive)
+            else "reference"
+        )
         # update_or_create rather than create: an ingredient can be listed
         # twice under one parent (OpenFoodFacts sometimes does), which the
         # unique constraints on Ingredient would reject. The last occurrence

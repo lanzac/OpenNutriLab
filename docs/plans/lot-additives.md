@@ -1,6 +1,6 @@
 # Plan: additives, apart from the reference ingredients
 
-Status: step 1 done (2026-10-06), the rest planned. Written 2026-10-06, after the preparations,
+Status: steps 1 and 2 done (2026-10-06), the rest planned. Written 2026-10-06, after the preparations,
 `docs/plans/lot-preparations.md`, from what the user decided that day.
 
 ## Why
@@ -73,54 +73,6 @@ Each has a recommendation. They were not put to the user one by one.
      creates a reference to review, never an additive: the text does not say that
      "xanthane" is one (the curator converts it, as for a preparation).
      An E number that matches no additive creates one, to review.
-3. **The label parser** (`label_parser.py`) reads the functional classes
-   (acidifiant, émulsifiant, colorant, conservateur, épaississant, antioxydant,
-   gélifiant, exhausteur de goût, stabilisant...) as headings, in French and in
-   English, when they stand before a colon or a parenthesis and a list. The heading
-   is not an ingredient: it becomes the function of the additives under it, and the
-   additives are listed as the ingredients they are (the parent's parts). A text
-   the parser cannot read is still reported and the reading stops, with no repair.
-4. **The estimate.** An additive has the composition its nutrients give. One with
-   none is **unknown, as any ingredient with none is**, which is a warning and a
-   lower confidence: that is the honest default. The curator can say of an
-   additive that it brings nothing of the nutrients (citric acid and the vitamins,
-   say) with a flag and a note, which counts for zero _by that claim_, per
-   additive, written down, and not by default. Its share stays an interval
-   bounded by the label's rules, so what it can weigh is shown. The alternative is
-   to count every additive with no figure as zero, which is simpler and wrong for
-   caramel or a sweetener.
-5. **Where the figures of a nutritive additive come from.** Not from a food table:
-   from the additive's specification (the purity the regulation asks for) and its
-   formula (calcium carbonate is about 40 % calcium). The curator enters them with
-   a note on where they come from. **To verify before relying on it**: that the
-   European specifications give that purity for each additive, which was not
-   checked. Nothing is imported automatically in this lot.
-6. **Converting a reference into an additive**, as for a preparation: an action on
-   the references' admin, in two steps, that moves the names and notes, the foods,
-   repoints the ingredients and deletes the reference. A class that was read as an
-   ingredient (`Acidifiant`) is not converted: it is deleted once the parser has
-   been fixed and the label read again.
-
-## Steps (one commit or more each, tests with each)
-
-1. **Additive and the link** (done): migration 0012, model, the third nullable link
-   and its constraints, the cross-table names, the admin (code, function,
-   nutrients, usages count), and the readers that take an ingredient of any kind
-   (page, API, estimate, ingredient admin).
-   - Done as planned, with these differences. The functional classes are the 26 of
-     the European additives regulation, as choices, with their French labels
-     (the words a label uses are for step 3). The code is written the one way ("e
-     330" is "E330") by the form's validation, and is unique whatever its case.
-     The help text of the nutrients' note had to lose its "40 %" (a percent sign in
-     a text to translate reads as a format). The check on `Ingredient` is "exactly
-     one of the three", and its old message left the catalogue for the new one.
-   - The test settings now set `TRANSLATION_URL` to nothing: a test of the English
-     names had come to depend on the machine's environment, which the local
-     Compose file now fills.
-   - The user's development database was migrated (0012): without it the running
-     site would have failed on the new column.
-2. **Writing ingredients**: the lookups in three tables, E numbers by their code,
-   `_replace_ingredients`, the drafts on the page.
 3. **The label parser** (`label_parser.py`) reads the functional classes
    (acidifiant, émulsifiant, colorant, conservateur, épaississant, antioxydant,
    gélifiant, exhausteur de goût, stabilisant...) as headings, in French and in

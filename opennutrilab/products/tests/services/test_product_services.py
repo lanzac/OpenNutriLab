@@ -16,6 +16,7 @@ from django.db.models.fields.files import ImageFieldFile
 
 from opennutrilab.products.api.schemas.inbound import ProductCreate
 from opennutrilab.products.api.schemas.inbound import ProductUpdate
+from opennutrilab.products.models import Additive
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
@@ -177,6 +178,66 @@ def test_an_ingredient_is_the_preparation_that_has_its_name():
     assert (ingredient.preparation, ingredient.reference) == (mozzarella, None)
     assert ingredient.percentage == Decimal("6.00")
     assert not ReferenceIngredient.objects.exists()
+
+
+@pytest.mark.django_db
+def test_an_ingredient_is_the_additive_that_has_its_name_or_its_code():
+    citric = Additive.objects.create(
+        name_en="citric acid", name_fr="acide citrique", code="E330"
+    )
+
+    product = create_product(
+        create_payload(
+            ingredients=[
+                {"name": "Acide citrique"},
+                {"name": "e 330", "sub_ingredients": []},
+            ]
+        )
+    ).product
+
+    # The same one twice under the one parent: the last is kept, as for any.
+    ingredient = product.ingredients.get()
+    assert (ingredient.additive, ingredient.reference, ingredient.preparation) == (
+        citric,
+        None,
+        None,
+    )
+    assert not ReferenceIngredient.objects.exists()
+
+
+@pytest.mark.django_db
+def test_an_e_number_no_additive_has_is_written_as_a_new_additive_to_review():
+    product = create_product(
+        create_payload(ingredients=[{"name": "Sucre"}, {"name": "E 330"}])
+    ).product
+
+    sugar, e330 = product.ingredients.order_by("id")
+    assert sugar.reference is not None
+    assert (e330.additive, e330.reference) == (Additive.objects.get(code="E330"), None)
+    assert Additive.objects.get().status == Additive.Status.TO_REVIEW
+
+
+@pytest.mark.django_db
+def test_additives_stand_among_the_parts_a_label_lists_for_a_preparation():
+    mozzarella = Preparation.objects.create(name_en="mozzarella")
+    citric = Additive.objects.create(name_en="citric acid", code="E330")
+
+    product = create_product(
+        create_payload(
+            ingredients=[
+                {
+                    "name": "mozzarella",
+                    "sub_ingredients": [{"name": "lait"}, {"name": "E330"}],
+                }
+            ]
+        )
+    ).product
+
+    cheese = product.ingredients.get(parent=None)
+    milk, acid = cheese.sub_ingredients.order_by("id")
+    assert cheese.preparation == mozzarella
+    assert milk.reference is not None
+    assert acid.additive == citric
 
 
 @pytest.mark.django_db

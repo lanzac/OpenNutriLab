@@ -1,16 +1,18 @@
 """
-Finding the reference ingredient or the preparation an ingredient is, and
-creating a reference when there is none.
+Finding the reference ingredient, the preparation or the additive an ingredient
+is, and creating one when there is none.
 
 What a client sends for an ingredient is an IngredientInput: a name, a
 percentage, and what OpenFoodFacts said about it. The English name is the
 reference ingredient's key, but nothing is refused for lacking it: a name is
-looked up as it is, in either language, in the references and in the
-preparations (a name is one or the other, never both), and if neither has it,
-through its English correspondence, as OpenFoodFacts' taxonomy gives it
-("flocons d'avoine" is "oat flakes"). When there is still none, a reference is
-created, to review, so that every ingredient is a reference or a preparation.
-Nothing guesses that a name is a preparation: the curator converts it.
+looked up as it is, in either language, in the references, the preparations
+and the additives (a name is one of them, never two), and if none has it, through
+its English correspondence, as OpenFoodFacts' taxonomy gives it ("flocons
+d'avoine" is "oat flakes"). When there is still none, a reference is created, to
+review, so that every ingredient is one of the three. Nothing guesses that a name
+is a preparation or an additive: the curator converts it. The one thing the text
+does say is an E number ("E330", "E 330"): it is an additive, is found by its
+code, and an E number no additive has gets one created, to review.
 
 What OpenFoodFacts said (its id, its CIQUAL codes) is used only to find the
 correspondence and to create that reference, and only kept as a note in its
@@ -18,6 +20,7 @@ description: OFF's data is imperfect and never becomes part of the curated
 models.
 """
 
+import re
 from collections import defaultdict
 from collections.abc import Iterable
 from collections.abc import Iterator
@@ -37,6 +40,7 @@ from django.db.models.functions import Lower
 from django.utils.translation import get_language
 
 from opennutrilab.products.api.schemas.inbound import IngredientInput
+from opennutrilab.products.models import Additive
 from opennutrilab.products.models import IngredientTaxon
 from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import ReferenceIngredient
@@ -50,7 +54,12 @@ SUGGESTION_LIMIT = 20
 SUGGESTION_MIN_WORD = 3
 
 # What an ingredient of a product is.
-type Item = ReferenceIngredient | Preparation
+type Item = ReferenceIngredient | Preparation | Additive
+
+# An E number as a label writes it: "E330", "E 330", "e330", "E160a", "E1001(ii)".
+_E_NUMBER = re.compile(
+    r"e\s?(\d{3,4})\s?([a-z]{1,3})?\s?(?:\(([ivx]+)\))?", re.IGNORECASE
+)
 
 
 class Correspondence(NamedTuple):
@@ -87,6 +96,19 @@ def _singular(word: str) -> str:
     return word[:-1] if plural else word
 
 
+def e_number(name: str) -> str:
+    """
+    The code of an additive when the name is one, as it is stored: "E330" for
+    "e 330", "E1001II" for "E1001(ii)". Blank when the name is not an E number,
+    which is all a word with other letters or fewer digits is.
+    """
+    found = _E_NUMBER.fullmatch(clean_name(name))
+    if found is None:
+        return ""
+    digits, letters, roman = found.groups(default="")
+    return f"E{digits}{letters}{roman}".upper()
+
+
 def walk_ingredients(items: Iterable[IngredientInput]) -> Iterator[IngredientInput]:
     for item in items:
         yield item
@@ -97,14 +119,14 @@ def find_references(
     names: Iterable[str], *, french_first: bool = False
 ) -> dict[str, Item]:
     """
-    The references and preparations that have these names, by name_key, in one
-    query for each table.
+    The references, preparations and additives that have these names, by name_key,
+    in one query for each table.
 
     A name is searched in both languages, English first unless `french_first`:
     each name is unique, but the English name of one reference can be the French
     name of another ("raisin" is a dried grape in English and a grape in French).
     A name written in the plural also finds the singular (see name_keys). A name
-    no reference or preparation has is absent.
+    nothing has is absent.
     """
     return _find(dict.fromkeys(names, french_first))
 
@@ -118,8 +140,9 @@ def _find(french_first: Mapping[str, bool]) -> dict[str, Item]:
     by_french: dict[str, Item] = {}
     by_english: dict[str, Item] = {}
     # The tables never share a name in a language, but if they did (nothing in
-    # the database forbids it), the reference would win, as before preparations.
-    for model in (Preparation, ReferenceIngredient):
+    # the database forbids it), the reference would win, as it did before there
+    # were others, then the preparation.
+    for model in (Additive, Preparation, ReferenceIngredient):
         candidates = model.objects.alias(
             key_en=Lower("name_en"), key_fr=Lower("name_fr")
         ).filter(Q(key_en__in=keys) | Q(key_fr__in=keys))
@@ -209,14 +232,16 @@ def existing_references(
     items: Iterable[IngredientInput],
 ) -> dict[str, Item]:
     """
-    The reference or preparation of each ingredient of these trees that has one,
-    by name_key.
+    The reference, preparation or additive of each ingredient of these trees that
+    has one, by name_key.
 
-    Looked up by the name as it is, then through its English correspondence.
-    Nothing is created.
+    An E number is looked up by its code first. Any name is looked up as it is,
+    then through its English correspondence. Nothing is created.
     """
     flat = list(walk_ingredients(items))
-    found = _find({i.name: _language_hint(i).startswith("fr") for i in flat})
+    found: dict[str, Item] = dict(_by_code(flat))
+    by_name = [i for i in flat if name_key(i.name) not in found]
+    found |= _find({i.name: _language_hint(i).startswith("fr") for i in by_name})
     unmatched = [item for item in flat if name_key(item.name) not in found]
     correspondences = english_correspondences(unmatched) if unmatched else {}
     candidates = find_references(
@@ -231,16 +256,32 @@ def existing_references(
     return found
 
 
+def _by_code(items: Iterable[IngredientInput]) -> dict[str, Additive]:
+    """The additives that have the E numbers these names are, by name_key."""
+    codes = {
+        name_key(i.name): e_number(i.name).lower() for i in items if e_number(i.name)
+    }
+    if not codes:
+        return {}
+    additives = {
+        additive.code.lower(): additive
+        for additive in Additive.objects.alias(key=Lower("code")).filter(
+            key__in=set(codes.values())
+        )
+    }
+    return {name: additives[code] for name, code in codes.items() if code in additives}
+
+
 def resolve_references(
     items: Iterable[IngredientInput],
 ) -> dict[str, Item]:
     """
-    The reference or preparation of every ingredient of these trees, by name_key
-    of its name.
+    The reference, preparation or additive of every ingredient of these trees, by
+    name_key of its name.
 
-    An ingredient no reference or preparation has the name of, in either
-    language or through its English correspondence, gets a reference created, to
-    review, so every name is in the result.
+    An ingredient nothing has the name of, in either language or through its
+    English correspondence, gets a reference created, to review, and an E number
+    no additive has gets an additive, to review, so every name is in the result.
     """
     flat = list(walk_ingredients(items))
     references = existing_references(flat)
@@ -249,9 +290,17 @@ def resolve_references(
     # What was created here, under every key of its names, for the same name
     # written in the plural, or listed twice, to find it.
     created: dict[str, Item] = {}
+    created_codes: dict[str, Additive] = {}
     for item in missing:
         key = name_key(item.name)
         if key in references:
+            continue
+        if code := e_number(item.name):
+            if code not in created_codes:
+                created_codes[code] = _create_additive(
+                    item, code, correspondences.get(key)
+                )
+            references[key] = created_codes[code]
             continue
         reference = next(
             (created[k] for k in name_keys(item.name) if k in created), None
@@ -263,6 +312,36 @@ def resolve_references(
                     created.setdefault(variant, reference)
         references[key] = reference
     return references
+
+
+def _create_additive(
+    item: IngredientInput, code: str, correspondence: Correspondence | None
+) -> Additive:
+    """
+    An additive to review for an E number no additive has.
+
+    Its English name is the code, which is all the label says; the taxonomy's
+    French name is kept when it gives one that is more than the code. The curator
+    names it and gives its class.
+    """
+    name_fr = clean_name(correspondence.name_fr) if correspondence else ""
+    if e_number(name_fr) == code:
+        name_fr = ""
+    try:
+        with transaction.atomic():
+            return Additive.objects.create(
+                name_en=code,
+                name_fr=name_fr,
+                code=code,
+                description=_creation_note(item, None),
+                status=Additive.Status.TO_REVIEW,
+            )
+    except IntegrityError:
+        # Another request created it since it was looked up.
+        existing = Additive.objects.alias(key=Lower("code")).filter(key=code.lower())
+        if (found := existing.first()) is not None:
+            return found
+        raise
 
 
 def _create_reference(
@@ -413,7 +492,7 @@ def create_reference_from_foods(foods: Sequence[SourceFood]) -> ReferenceIngredi
     A reference to review that draws on these foods, named after the first.
 
     The names are the food's own ("Carotte, crue"): the curator edits them. A
-    name a preparation has is refused: it is one or the other.
+    name a preparation or an additive has is refused: it is one of the three.
     """
     first = foods[0]
     name_en, name_fr = clean_name(first.name_en), clean_name(first.name_fr)
@@ -423,7 +502,7 @@ def create_reference_from_foods(foods: Sequence[SourceFood]) -> ReferenceIngredi
     try:
         ReferenceIngredient(name_en=name_en, name_fr=name_fr).clean()
     except ValidationError as e:
-        msg = f"A preparation already has the name of {first}."
+        msg = f"A preparation or an additive already has the name of {first}."
         raise ReferenceNameError(msg) from e
     try:
         with transaction.atomic():

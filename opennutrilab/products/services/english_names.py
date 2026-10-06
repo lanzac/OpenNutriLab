@@ -23,6 +23,7 @@ from django.db.models.functions import Lower
 from django.utils.translation import gettext_lazy as _
 
 from opennutrilab.products.api.schemas.inbound import IngredientInput
+from opennutrilab.products.models import Additive
 from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import ReferenceIngredient
 from opennutrilab.products.services.reference_services import Correspondence
@@ -121,14 +122,18 @@ def _from_food(reference: ReferenceIngredient) -> tuple[str, NameSource | None]:
 
 def taken_by(name: str, reference: ReferenceIngredient) -> str:
     """
-    The name of the reference or preparation, other than this one, that already has
-    this English name, or "". A name is one thing's only, whatever its case.
+    The name of the reference, preparation or additive, other than this one, that
+    already has this English name, or "". A name is one thing's only, whatever
+    its case.
     """
     key = name_key(name)
-    other: ReferenceIngredient | Preparation | None = (
+    other: ReferenceIngredient | Preparation | Additive | None = (
         ReferenceIngredient.objects.alias(key=Lower("name_en"))
         .filter(key=key)
         .exclude(pk=reference.pk)
         .first()
-    ) or Preparation.objects.alias(key=Lower("name_en")).filter(key=key).first()
+    ) or (
+        Preparation.objects.alias(key=Lower("name_en")).filter(key=key).first()
+        or Additive.objects.alias(key=Lower("name_en")).filter(key=key).first()
+    )
     return other.name if other is not None else ""
