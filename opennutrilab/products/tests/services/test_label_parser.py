@@ -476,6 +476,8 @@ def classes(items: list[LabelItem] | tuple[LabelItem, ...]) -> list[Any]:
         ("E1001(ii)", "E1001II"),
         ("E1001ii", "E1001II"),
         ("E100", "E100"),
+        ("E160aiii", "E160AIII"),
+        ("e450viii", "E450VIII"),
     ],
 )
 def test_an_e_number_is_read_as_the_code_it_is(name: str, code: str):
@@ -494,6 +496,9 @@ def test_an_e_number_is_read_as_the_code_it_is(name: str, code: str):
         "vitamine E",
         "eau",
         "E3a0",
+        "Exxx",
+        "E14xx",
+        "E15x",
     ],
 )
 def test_a_name_that_is_not_an_e_number_gives_no_code(name: str):

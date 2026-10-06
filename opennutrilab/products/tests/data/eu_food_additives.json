@@ -1,0 +1,4432 @@
+[
+  {
+    "value": null,
+    "id": 492635,
+    "lastModificationDate": "2022-12-21T08:09:41.000+00:00",
+    "valueDefinitionId": 1001115,
+    "valueIdentifier": "policyItemObject",
+    "ordinal": null,
+    "parentValueId": null,
+    "collectionId": null,
+    "childrenValues": [
+      {
+        "value": "POL-FAD-IMPORT-3077",
+        "id": 492986,
+        "lastModificationDate": "2023-01-24T10:38:24.006+00:00",
+        "valueDefinitionId": 1001120,
+        "valueIdentifier": "policyItemCode",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "fad_auth-substancefad-ascorbicacid",
+        "id": 492948,
+        "lastModificationDate": "2023-01-24T10:38:24.060+00:00",
+        "valueDefinitionId": 1001126,
+        "valueIdentifier": "policyItemComputedID",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "PUBLISHED",
+        "id": 492947,
+        "lastModificationDate": "2026-04-14T08:38:27.346+00:00",
+        "valueDefinitionId": 1001131,
+        "valueIdentifier": "policyItemStatus",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 492931,
+        "lastModificationDate": "2022-12-21T08:09:41.000+00:00",
+        "valueDefinitionId": 1001136,
+        "valueIdentifier": "policyItemSpecs",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": null,
+            "id": 493516,
+            "lastModificationDate": "2023-01-24T10:38:24.293+00:00",
+            "valueDefinitionId": 1001141,
+            "valueIdentifier": "policyItemMessage",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 493514,
+                "lastModificationDate": "2023-01-24T10:38:24.329+00:00",
+                "valueDefinitionId": 1001155,
+                "valueIdentifier": "policyItemMessageId",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 493515,
+                "lastModificationDate": "2023-01-24T10:38:24.396+00:00",
+                "valueDefinitionId": 1001156,
+                "valueIdentifier": "policyItemMessageText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 492934,
+            "lastModificationDate": "2022-12-21T08:09:41.000+00:00",
+            "valueDefinitionId": 1001141,
+            "valueIdentifier": "policyItemMessage",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": "862",
+                "id": 492935,
+                "lastModificationDate": "2022-12-21T08:09:41.000+00:00",
+                "valueDefinitionId": 1001155,
+                "valueIdentifier": "policyItemMessageId",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "Substance is included in Group I, see also authorisation for Group I",
+                "id": 492936,
+                "lastModificationDate": "2022-12-21T08:09:41.000+00:00",
+                "valueDefinitionId": 1001156,
+                "valueIdentifier": "policyItemMessageText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 492932,
+            "lastModificationDate": "2022-12-21T08:09:41.000+00:00",
+            "valueDefinitionId": 1001163,
+            "valueIdentifier": "policyItemNote",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": "&nbsp;",
+                "id": 492933,
+                "lastModificationDate": "2022-12-21T08:09:41.000+00:00",
+                "valueDefinitionId": 1001194,
+                "valueIdentifier": "policyItemNoteText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": "substanceFAD",
+            "id": 492939,
+            "lastModificationDate": "2023-01-24T10:38:24.942+00:00",
+            "valueDefinitionId": 1001203,
+            "valueIdentifier": "policyItemType",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Ascorbic acid",
+            "id": 492940,
+            "lastModificationDate": "2023-01-24T10:38:25.005+00:00",
+            "valueDefinitionId": 1001223,
+            "valueIdentifier": "identifyingName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Ascorbic acid",
+            "id": 492941,
+            "lastModificationDate": "2022-12-21T08:09:41.000+00:00",
+            "valueDefinitionId": 1001237,
+            "valueIdentifier": "displayName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": null,
+            "id": 492942,
+            "lastModificationDate": "2022-12-21T08:09:41.000+00:00",
+            "valueDefinitionId": 1001253,
+            "valueIdentifier": "substanceFAD",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 492945,
+                "lastModificationDate": "2022-12-21T08:09:41.000+00:00",
+                "valueDefinitionId": 1001263,
+                "valueIdentifier": "synonyms",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "E 300",
+                "id": 492944,
+                "lastModificationDate": "2022-12-21T08:09:41.000+00:00",
+                "valueDefinitionId": 1001273,
+                "valueIdentifier": "eNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 492946,
+                "lastModificationDate": "2022-12-21T08:09:41.000+00:00",
+                "valueDefinitionId": 1001280,
+                "valueIdentifier": "insNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "POL-FAD-IMPORT-2981",
+                "id": 492943,
+                "lastModificationDate": "2022-12-21T08:09:41.000+00:00",
+                "valueDefinitionId": 1001290,
+                "valueIdentifier": "memberOfFADGroup",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "POL-FAD-IMPORT-2981",
+                "id": 715382,
+                "lastModificationDate": "2023-05-25T12:23:16.764+00:00",
+                "valueDefinitionId": 1001290,
+                "valueIdentifier": "memberOfFADGroup",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 492937,
+            "lastModificationDate": "2022-12-21T08:09:41.000+00:00",
+            "valueDefinitionId": 1001313,
+            "valueIdentifier": "group",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          }
+        ]
+      },
+      {
+        "value": null,
+        "id": 492636,
+        "lastModificationDate": "2022-12-21T08:09:41.000+00:00",
+        "valueDefinitionId": 1001350,
+        "valueIdentifier": "conditionsOfUse",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 492949,
+        "lastModificationDate": "2022-12-21T08:09:42.000+00:00",
+        "valueDefinitionId": 1001506,
+        "valueIdentifier": "legislationWrapper",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 492928,
+        "lastModificationDate": "2022-12-21T08:09:42.000+00:00",
+        "valueDefinitionId": 1001608,
+        "valueIdentifier": "authorisationType",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": "fin",
+            "id": 492929,
+            "lastModificationDate": "2023-01-24T10:38:56.483+00:00",
+            "valueDefinitionId": 1001609,
+            "valueIdentifier": "domainCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "fad_auth",
+            "id": 492930,
+            "lastModificationDate": "2023-01-24T10:38:56.524+00:00",
+            "valueDefinitionId": 1001610,
+            "valueIdentifier": "authorisationTypeCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": null,
+    "id": 321290,
+    "lastModificationDate": "2022-12-21T08:09:07.000+00:00",
+    "valueDefinitionId": 1001115,
+    "valueIdentifier": "policyItemObject",
+    "ordinal": null,
+    "parentValueId": null,
+    "collectionId": null,
+    "childrenValues": [
+      {
+        "value": "POL-FAD-IMPORT-2989",
+        "id": 321291,
+        "lastModificationDate": "2022-12-21T08:09:07.000+00:00",
+        "valueDefinitionId": 1001120,
+        "valueIdentifier": "policyItemCode",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "fad_auth-substancefad-sunsetyellowfcforangeyellows",
+        "id": 321292,
+        "lastModificationDate": "2022-12-21T08:09:07.000+00:00",
+        "valueDefinitionId": 1001126,
+        "valueIdentifier": "policyItemComputedID",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "PUBLISHED",
+        "id": 321293,
+        "lastModificationDate": "2026-07-30T09:52:15.306+00:00",
+        "valueDefinitionId": 1001131,
+        "valueIdentifier": "policyItemStatus",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 321294,
+        "lastModificationDate": "2022-12-21T08:09:07.000+00:00",
+        "valueDefinitionId": 1001136,
+        "valueIdentifier": "policyItemSpecs",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": null,
+            "id": 321305,
+            "lastModificationDate": "2022-12-21T08:09:07.000+00:00",
+            "valueDefinitionId": 1001141,
+            "valueIdentifier": "policyItemMessage",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 321306,
+                "lastModificationDate": "2022-12-21T08:09:07.000+00:00",
+                "valueDefinitionId": 1001155,
+                "valueIdentifier": "policyItemMessageId",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 321307,
+                "lastModificationDate": "2022-12-21T08:09:07.000+00:00",
+                "valueDefinitionId": 1001156,
+                "valueIdentifier": "policyItemMessageText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 321299,
+            "lastModificationDate": "2022-12-21T08:09:07.000+00:00",
+            "valueDefinitionId": 1001163,
+            "valueIdentifier": "policyItemNote",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 321300,
+                "lastModificationDate": "2022-12-21T08:09:07.000+00:00",
+                "valueDefinitionId": 1001194,
+                "valueIdentifier": "policyItemNoteText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": "substanceFAD",
+            "id": 321301,
+            "lastModificationDate": "2022-12-21T08:09:07.000+00:00",
+            "valueDefinitionId": 1001203,
+            "valueIdentifier": "policyItemType",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Sunset Yellow FCF/Orange Yellow S",
+            "id": 321302,
+            "lastModificationDate": "2022-12-21T08:09:07.000+00:00",
+            "valueDefinitionId": 1001223,
+            "valueIdentifier": "identifyingName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Sunset Yellow FCF/Orange Yellow S",
+            "id": 321303,
+            "lastModificationDate": "2022-12-21T08:09:07.000+00:00",
+            "valueDefinitionId": 1001237,
+            "valueIdentifier": "displayName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": null,
+            "id": 321295,
+            "lastModificationDate": "2022-12-21T08:09:07.000+00:00",
+            "valueDefinitionId": 1001253,
+            "valueIdentifier": "substanceFAD",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 321298,
+                "lastModificationDate": "2022-12-21T08:09:07.000+00:00",
+                "valueDefinitionId": 1001263,
+                "valueIdentifier": "synonyms",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "E 110",
+                "id": 321296,
+                "lastModificationDate": "2022-12-21T08:09:07.000+00:00",
+                "valueDefinitionId": 1001273,
+                "valueIdentifier": "eNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 321297,
+                "lastModificationDate": "2022-12-21T08:09:07.000+00:00",
+                "valueDefinitionId": 1001280,
+                "valueIdentifier": "insNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 321304,
+                "lastModificationDate": "2022-12-21T08:09:07.000+00:00",
+                "valueDefinitionId": 1001290,
+                "valueIdentifier": "memberOfFADGroup",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 321308,
+            "lastModificationDate": "2022-12-21T08:09:07.000+00:00",
+            "valueDefinitionId": 1001313,
+            "valueIdentifier": "group",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 321309,
+                "lastModificationDate": "2022-12-21T08:09:07.000+00:00",
+                "valueDefinitionId": 1001325,
+                "valueIdentifier": "groupMemberRefs",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "value": null,
+        "id": 321310,
+        "lastModificationDate": "2022-12-21T08:09:07.000+00:00",
+        "valueDefinitionId": 1001350,
+        "valueIdentifier": "conditionsOfUse",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 321728,
+        "lastModificationDate": "2022-12-21T08:09:08.000+00:00",
+        "valueDefinitionId": 1001506,
+        "valueIdentifier": "legislationWrapper",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 321783,
+        "lastModificationDate": "2022-12-21T08:09:08.000+00:00",
+        "valueDefinitionId": 1001608,
+        "valueIdentifier": "authorisationType",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": "fin",
+            "id": 321784,
+            "lastModificationDate": "2022-12-21T08:09:08.000+00:00",
+            "valueDefinitionId": 1001609,
+            "valueIdentifier": "domainCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "fad_auth",
+            "id": 321785,
+            "lastModificationDate": "2022-12-21T08:09:08.000+00:00",
+            "valueDefinitionId": 1001610,
+            "valueIdentifier": "authorisationTypeCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": null,
+    "id": 319758,
+    "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+    "valueDefinitionId": 1001115,
+    "valueIdentifier": "policyItemObject",
+    "ordinal": null,
+    "parentValueId": null,
+    "collectionId": null,
+    "childrenValues": [
+      {
+        "value": "POL-FAD-IMPORT-2984",
+        "id": 319759,
+        "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+        "valueDefinitionId": 1001120,
+        "valueIdentifier": "policyItemCode",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "fad_auth-group-groupivpolyols",
+        "id": 319760,
+        "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+        "valueDefinitionId": 1001126,
+        "valueIdentifier": "policyItemComputedID",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "PUBLISHED",
+        "id": 319761,
+        "lastModificationDate": "2026-06-05T08:45:31.251+00:00",
+        "valueDefinitionId": 1001131,
+        "valueIdentifier": "policyItemStatus",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 319762,
+        "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+        "valueDefinitionId": 1001136,
+        "valueIdentifier": "policyItemSpecs",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": null,
+            "id": 319773,
+            "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+            "valueDefinitionId": 1001141,
+            "valueIdentifier": "policyItemMessage",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 319774,
+                "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+                "valueDefinitionId": 1001155,
+                "valueIdentifier": "policyItemMessageId",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 319775,
+                "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+                "valueDefinitionId": 1001156,
+                "valueIdentifier": "policyItemMessageText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 319767,
+            "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+            "valueDefinitionId": 1001163,
+            "valueIdentifier": "policyItemNote",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 319768,
+                "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+                "valueDefinitionId": 1001194,
+                "valueIdentifier": "policyItemNoteText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": "group",
+            "id": 319769,
+            "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+            "valueDefinitionId": 1001203,
+            "valueIdentifier": "policyItemType",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Group IV, Polyols",
+            "id": 319770,
+            "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+            "valueDefinitionId": 1001223,
+            "valueIdentifier": "identifyingName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Group IV, Polyols",
+            "id": 319771,
+            "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+            "valueDefinitionId": 1001237,
+            "valueIdentifier": "displayName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": null,
+            "id": 319763,
+            "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+            "valueDefinitionId": 1001253,
+            "valueIdentifier": "substanceFAD",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 319766,
+                "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+                "valueDefinitionId": 1001263,
+                "valueIdentifier": "synonyms",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "Group IV",
+                "id": 319764,
+                "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+                "valueDefinitionId": 1001273,
+                "valueIdentifier": "eNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 319765,
+                "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+                "valueDefinitionId": 1001280,
+                "valueIdentifier": "insNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 319772,
+                "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+                "valueDefinitionId": 1001290,
+                "valueIdentifier": "memberOfFADGroup",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 319776,
+            "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+            "valueDefinitionId": 1001313,
+            "valueIdentifier": "group",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": "POL-FAD-IMPORT-3144",
+                "id": 319777,
+                "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+                "valueDefinitionId": 1001325,
+                "valueIdentifier": "groupMemberRefs",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "POL-FAD-IMPORT-3145",
+                "id": 319778,
+                "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+                "valueDefinitionId": 1001325,
+                "valueIdentifier": "groupMemberRefs",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "POL-FAD-IMPORT-3295",
+                "id": 319779,
+                "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+                "valueDefinitionId": 1001325,
+                "valueIdentifier": "groupMemberRefs",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "POL-FAD-IMPORT-3302",
+                "id": 319780,
+                "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+                "valueDefinitionId": 1001325,
+                "valueIdentifier": "groupMemberRefs",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "POL-FAD-IMPORT-3303",
+                "id": 319781,
+                "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+                "valueDefinitionId": 1001325,
+                "valueIdentifier": "groupMemberRefs",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "POL-FAD-IMPORT-3304",
+                "id": 319782,
+                "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+                "valueDefinitionId": 1001325,
+                "valueIdentifier": "groupMemberRefs",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "POL-FAD-IMPORT-3305",
+                "id": 319783,
+                "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+                "valueDefinitionId": 1001325,
+                "valueIdentifier": "groupMemberRefs",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "value": null,
+        "id": 319784,
+        "lastModificationDate": "2022-12-21T08:09:02.000+00:00",
+        "valueDefinitionId": 1001350,
+        "valueIdentifier": "conditionsOfUse",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 320135,
+        "lastModificationDate": "2022-12-21T08:09:03.000+00:00",
+        "valueDefinitionId": 1001506,
+        "valueIdentifier": "legislationWrapper",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 320154,
+        "lastModificationDate": "2022-12-21T08:09:03.000+00:00",
+        "valueDefinitionId": 1001608,
+        "valueIdentifier": "authorisationType",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": "fin",
+            "id": 320155,
+            "lastModificationDate": "2022-12-21T08:09:03.000+00:00",
+            "valueDefinitionId": 1001609,
+            "valueIdentifier": "domainCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "fad_auth",
+            "id": 320156,
+            "lastModificationDate": "2022-12-21T08:09:03.000+00:00",
+            "valueDefinitionId": 1001610,
+            "valueIdentifier": "authorisationTypeCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": null,
+    "id": 320436,
+    "lastModificationDate": "2022-12-21T08:09:04.000+00:00",
+    "valueDefinitionId": 1001115,
+    "valueIdentifier": "policyItemObject",
+    "ordinal": null,
+    "parentValueId": null,
+    "collectionId": null,
+    "childrenValues": [
+      {
+        "value": "POL-FAD-IMPORT-2986",
+        "id": 320437,
+        "lastModificationDate": "2022-12-21T08:09:04.000+00:00",
+        "valueDefinitionId": 1001120,
+        "valueIdentifier": "policyItemCode",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "fad_auth-substancefad-riboflavins",
+        "id": 320438,
+        "lastModificationDate": "2022-12-21T08:09:04.000+00:00",
+        "valueDefinitionId": 1001126,
+        "valueIdentifier": "policyItemComputedID",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "PUBLISHED",
+        "id": 320439,
+        "lastModificationDate": "2026-07-23T08:51:33.675+00:00",
+        "valueDefinitionId": 1001131,
+        "valueIdentifier": "policyItemStatus",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 320440,
+        "lastModificationDate": "2022-12-21T08:09:04.000+00:00",
+        "valueDefinitionId": 1001136,
+        "valueIdentifier": "policyItemSpecs",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": null,
+            "id": 320451,
+            "lastModificationDate": "2022-12-21T08:09:04.000+00:00",
+            "valueDefinitionId": 1001141,
+            "valueIdentifier": "policyItemMessage",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": "991",
+                "id": 320452,
+                "lastModificationDate": "2022-12-21T08:09:04.000+00:00",
+                "valueDefinitionId": 1001155,
+                "valueIdentifier": "policyItemMessageId",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "Substance is included in Group II, see also authorisation for Group II",
+                "id": 320453,
+                "lastModificationDate": "2022-12-21T08:09:04.000+00:00",
+                "valueDefinitionId": 1001156,
+                "valueIdentifier": "policyItemMessageText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 320445,
+            "lastModificationDate": "2022-12-21T08:09:04.000+00:00",
+            "valueDefinitionId": 1001163,
+            "valueIdentifier": "policyItemNote",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 320446,
+                "lastModificationDate": "2022-12-21T08:09:04.000+00:00",
+                "valueDefinitionId": 1001194,
+                "valueIdentifier": "policyItemNoteText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": "substanceFAD",
+            "id": 320447,
+            "lastModificationDate": "2022-12-21T08:09:04.000+00:00",
+            "valueDefinitionId": 1001203,
+            "valueIdentifier": "policyItemType",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Riboflavins",
+            "id": 320448,
+            "lastModificationDate": "2022-12-21T08:09:04.000+00:00",
+            "valueDefinitionId": 1001223,
+            "valueIdentifier": "identifyingName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Riboflavins",
+            "id": 320449,
+            "lastModificationDate": "2022-12-21T08:09:04.000+00:00",
+            "valueDefinitionId": 1001237,
+            "valueIdentifier": "displayName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": null,
+            "id": 320441,
+            "lastModificationDate": "2022-12-21T08:09:04.000+00:00",
+            "valueDefinitionId": 1001253,
+            "valueIdentifier": "substanceFAD",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 320444,
+                "lastModificationDate": "2022-12-21T08:09:04.000+00:00",
+                "valueDefinitionId": 1001263,
+                "valueIdentifier": "synonyms",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "E 101",
+                "id": 320442,
+                "lastModificationDate": "2022-12-21T08:09:04.000+00:00",
+                "valueDefinitionId": 1001273,
+                "valueIdentifier": "eNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 320443,
+                "lastModificationDate": "2022-12-21T08:09:04.000+00:00",
+                "valueDefinitionId": 1001280,
+                "valueIdentifier": "insNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "POL-FAD-IMPORT-2982",
+                "id": 320450,
+                "lastModificationDate": "2022-12-21T08:09:04.000+00:00",
+                "valueDefinitionId": 1001290,
+                "valueIdentifier": "memberOfFADGroup",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 320454,
+            "lastModificationDate": "2022-12-21T08:09:04.000+00:00",
+            "valueDefinitionId": 1001313,
+            "valueIdentifier": "group",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 320455,
+                "lastModificationDate": "2022-12-21T08:09:04.000+00:00",
+                "valueDefinitionId": 1001325,
+                "valueIdentifier": "groupMemberRefs",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "value": null,
+        "id": 320456,
+        "lastModificationDate": "2022-12-21T08:09:04.000+00:00",
+        "valueDefinitionId": 1001350,
+        "valueIdentifier": "conditionsOfUse",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 320611,
+        "lastModificationDate": "2022-12-21T08:09:05.000+00:00",
+        "valueDefinitionId": 1001506,
+        "valueIdentifier": "legislationWrapper",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 320639,
+        "lastModificationDate": "2022-12-21T08:09:05.000+00:00",
+        "valueDefinitionId": 1001608,
+        "valueIdentifier": "authorisationType",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": "fin",
+            "id": 320640,
+            "lastModificationDate": "2022-12-21T08:09:05.000+00:00",
+            "valueDefinitionId": 1001609,
+            "valueIdentifier": "domainCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "fad_auth",
+            "id": 320641,
+            "lastModificationDate": "2022-12-21T08:09:05.000+00:00",
+            "valueDefinitionId": 1001610,
+            "valueIdentifier": "authorisationTypeCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": null,
+    "id": 335298,
+    "lastModificationDate": "2022-12-21T08:09:48.000+00:00",
+    "valueDefinitionId": 1001115,
+    "valueIdentifier": "policyItemObject",
+    "ordinal": null,
+    "parentValueId": null,
+    "collectionId": null,
+    "childrenValues": [
+      {
+        "value": "POL-FAD-IMPORT-3095",
+        "id": 335299,
+        "lastModificationDate": "2022-12-21T08:09:48.000+00:00",
+        "valueDefinitionId": 1001120,
+        "valueIdentifier": "policyItemCode",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "fad_auth-substancefad-lecithins",
+        "id": 335300,
+        "lastModificationDate": "2022-12-21T08:09:48.000+00:00",
+        "valueDefinitionId": 1001126,
+        "valueIdentifier": "policyItemComputedID",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "PUBLISHED",
+        "id": 335301,
+        "lastModificationDate": "2026-04-02T12:38:35.098+00:00",
+        "valueDefinitionId": 1001131,
+        "valueIdentifier": "policyItemStatus",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 335302,
+        "lastModificationDate": "2022-12-21T08:09:48.000+00:00",
+        "valueDefinitionId": 1001136,
+        "valueIdentifier": "policyItemSpecs",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": null,
+            "id": 335313,
+            "lastModificationDate": "2022-12-21T08:09:48.000+00:00",
+            "valueDefinitionId": 1001141,
+            "valueIdentifier": "policyItemMessage",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": "870",
+                "id": 335314,
+                "lastModificationDate": "2022-12-21T08:09:48.000+00:00",
+                "valueDefinitionId": 1001155,
+                "valueIdentifier": "policyItemMessageId",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "Substance is included in Group I, see also authorisation for Group I",
+                "id": 335315,
+                "lastModificationDate": "2022-12-21T08:09:48.000+00:00",
+                "valueDefinitionId": 1001156,
+                "valueIdentifier": "policyItemMessageText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 335307,
+            "lastModificationDate": "2022-12-21T08:09:48.000+00:00",
+            "valueDefinitionId": 1001163,
+            "valueIdentifier": "policyItemNote",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 335308,
+                "lastModificationDate": "2022-12-21T08:09:48.000+00:00",
+                "valueDefinitionId": 1001194,
+                "valueIdentifier": "policyItemNoteText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": "substanceFAD",
+            "id": 335309,
+            "lastModificationDate": "2022-12-21T08:09:48.000+00:00",
+            "valueDefinitionId": 1001203,
+            "valueIdentifier": "policyItemType",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Lecithins",
+            "id": 335310,
+            "lastModificationDate": "2022-12-21T08:09:48.000+00:00",
+            "valueDefinitionId": 1001223,
+            "valueIdentifier": "identifyingName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Lecithins",
+            "id": 335311,
+            "lastModificationDate": "2022-12-21T08:09:48.000+00:00",
+            "valueDefinitionId": 1001237,
+            "valueIdentifier": "displayName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": null,
+            "id": 335303,
+            "lastModificationDate": "2022-12-21T08:09:48.000+00:00",
+            "valueDefinitionId": 1001253,
+            "valueIdentifier": "substanceFAD",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 335306,
+                "lastModificationDate": "2022-12-21T08:09:48.000+00:00",
+                "valueDefinitionId": 1001263,
+                "valueIdentifier": "synonyms",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "E 322",
+                "id": 335304,
+                "lastModificationDate": "2022-12-21T08:09:48.000+00:00",
+                "valueDefinitionId": 1001273,
+                "valueIdentifier": "eNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 335305,
+                "lastModificationDate": "2022-12-21T08:09:48.000+00:00",
+                "valueDefinitionId": 1001280,
+                "valueIdentifier": "insNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "POL-FAD-IMPORT-2981",
+                "id": 335312,
+                "lastModificationDate": "2022-12-21T08:09:48.000+00:00",
+                "valueDefinitionId": 1001290,
+                "valueIdentifier": "memberOfFADGroup",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 335316,
+            "lastModificationDate": "2022-12-21T08:09:48.000+00:00",
+            "valueDefinitionId": 1001313,
+            "valueIdentifier": "group",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 335317,
+                "lastModificationDate": "2022-12-21T08:09:48.000+00:00",
+                "valueDefinitionId": 1001325,
+                "valueIdentifier": "groupMemberRefs",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "value": null,
+        "id": 335318,
+        "lastModificationDate": "2022-12-21T08:09:48.000+00:00",
+        "valueDefinitionId": 1001350,
+        "valueIdentifier": "conditionsOfUse",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 335462,
+        "lastModificationDate": "2022-12-21T08:09:49.000+00:00",
+        "valueDefinitionId": 1001506,
+        "valueIdentifier": "legislationWrapper",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 335472,
+        "lastModificationDate": "2022-12-21T08:09:49.000+00:00",
+        "valueDefinitionId": 1001608,
+        "valueIdentifier": "authorisationType",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": "fin",
+            "id": 335473,
+            "lastModificationDate": "2022-12-21T08:09:49.000+00:00",
+            "valueDefinitionId": 1001609,
+            "valueIdentifier": "domainCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "fad_auth",
+            "id": 335474,
+            "lastModificationDate": "2022-12-21T08:09:49.000+00:00",
+            "valueDefinitionId": 1001610,
+            "valueIdentifier": "authorisationTypeCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": null,
+    "id": 335851,
+    "lastModificationDate": "2022-12-21T08:09:50.000+00:00",
+    "valueDefinitionId": 1001115,
+    "valueIdentifier": "policyItemObject",
+    "ordinal": null,
+    "parentValueId": null,
+    "collectionId": null,
+    "childrenValues": [
+      {
+        "value": "POL-FAD-IMPORT-3099",
+        "id": 335852,
+        "lastModificationDate": "2022-12-21T08:09:50.000+00:00",
+        "valueDefinitionId": 1001120,
+        "valueIdentifier": "policyItemCode",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "fad_auth-substancefad-citricacid",
+        "id": 335853,
+        "lastModificationDate": "2022-12-21T08:09:50.000+00:00",
+        "valueDefinitionId": 1001126,
+        "valueIdentifier": "policyItemComputedID",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "PUBLISHED",
+        "id": 335854,
+        "lastModificationDate": "2026-06-29T08:12:25.143+00:00",
+        "valueDefinitionId": 1001131,
+        "valueIdentifier": "policyItemStatus",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 335855,
+        "lastModificationDate": "2022-12-21T08:09:50.000+00:00",
+        "valueDefinitionId": 1001136,
+        "valueIdentifier": "policyItemSpecs",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": null,
+            "id": 335866,
+            "lastModificationDate": "2022-12-21T08:09:50.000+00:00",
+            "valueDefinitionId": 1001141,
+            "valueIdentifier": "policyItemMessage",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": "874",
+                "id": 335867,
+                "lastModificationDate": "2022-12-21T08:09:50.000+00:00",
+                "valueDefinitionId": 1001155,
+                "valueIdentifier": "policyItemMessageId",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "Substance is included in Group I, see also authorisation for Group I",
+                "id": 335868,
+                "lastModificationDate": "2022-12-21T08:09:50.000+00:00",
+                "valueDefinitionId": 1001156,
+                "valueIdentifier": "policyItemMessageText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 335860,
+            "lastModificationDate": "2022-12-21T08:09:50.000+00:00",
+            "valueDefinitionId": 1001163,
+            "valueIdentifier": "policyItemNote",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 335861,
+                "lastModificationDate": "2022-12-21T08:09:50.000+00:00",
+                "valueDefinitionId": 1001194,
+                "valueIdentifier": "policyItemNoteText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": "substanceFAD",
+            "id": 335862,
+            "lastModificationDate": "2022-12-21T08:09:50.000+00:00",
+            "valueDefinitionId": 1001203,
+            "valueIdentifier": "policyItemType",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Citric acid",
+            "id": 335863,
+            "lastModificationDate": "2022-12-21T08:09:50.000+00:00",
+            "valueDefinitionId": 1001223,
+            "valueIdentifier": "identifyingName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Citric acid",
+            "id": 335864,
+            "lastModificationDate": "2022-12-21T08:09:50.000+00:00",
+            "valueDefinitionId": 1001237,
+            "valueIdentifier": "displayName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": null,
+            "id": 335856,
+            "lastModificationDate": "2022-12-21T08:09:50.000+00:00",
+            "valueDefinitionId": 1001253,
+            "valueIdentifier": "substanceFAD",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 335859,
+                "lastModificationDate": "2022-12-21T08:09:50.000+00:00",
+                "valueDefinitionId": 1001263,
+                "valueIdentifier": "synonyms",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "E 330",
+                "id": 335857,
+                "lastModificationDate": "2022-12-21T08:09:50.000+00:00",
+                "valueDefinitionId": 1001273,
+                "valueIdentifier": "eNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 335858,
+                "lastModificationDate": "2022-12-21T08:09:50.000+00:00",
+                "valueDefinitionId": 1001280,
+                "valueIdentifier": "insNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "POL-FAD-IMPORT-2981",
+                "id": 335865,
+                "lastModificationDate": "2022-12-21T08:09:50.000+00:00",
+                "valueDefinitionId": 1001290,
+                "valueIdentifier": "memberOfFADGroup",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 335869,
+            "lastModificationDate": "2022-12-21T08:09:50.000+00:00",
+            "valueDefinitionId": 1001313,
+            "valueIdentifier": "group",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 335870,
+                "lastModificationDate": "2022-12-21T08:09:50.000+00:00",
+                "valueDefinitionId": 1001325,
+                "valueIdentifier": "groupMemberRefs",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "value": null,
+        "id": 335871,
+        "lastModificationDate": "2022-12-21T08:09:50.000+00:00",
+        "valueDefinitionId": 1001350,
+        "valueIdentifier": "conditionsOfUse",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 336228,
+        "lastModificationDate": "2022-12-21T08:09:52.000+00:00",
+        "valueDefinitionId": 1001506,
+        "valueIdentifier": "legislationWrapper",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 336274,
+        "lastModificationDate": "2022-12-21T08:09:52.000+00:00",
+        "valueDefinitionId": 1001608,
+        "valueIdentifier": "authorisationType",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": "fin",
+            "id": 336275,
+            "lastModificationDate": "2022-12-21T08:09:52.000+00:00",
+            "valueDefinitionId": 1001609,
+            "valueIdentifier": "domainCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "fad_auth",
+            "id": 336276,
+            "lastModificationDate": "2022-12-21T08:09:52.000+00:00",
+            "valueDefinitionId": 1001610,
+            "valueIdentifier": "authorisationTypeCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": null,
+    "id": 334822,
+    "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+    "valueDefinitionId": 1001115,
+    "valueIdentifier": "policyItemObject",
+    "ordinal": null,
+    "parentValueId": null,
+    "collectionId": null,
+    "childrenValues": [
+      {
+        "value": "POL-FAD-IMPORT-3088",
+        "id": 334823,
+        "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+        "valueDefinitionId": 1001120,
+        "valueIdentifier": "policyItemCode",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "fad_auth-substancefad-octylgallate",
+        "id": 334824,
+        "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+        "valueDefinitionId": 1001126,
+        "valueIdentifier": "policyItemComputedID",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "PUBLISHED",
+        "id": 334825,
+        "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+        "valueDefinitionId": 1001131,
+        "valueIdentifier": "policyItemStatus",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 334826,
+        "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+        "valueDefinitionId": 1001136,
+        "valueIdentifier": "policyItemSpecs",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": null,
+            "id": 334838,
+            "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+            "valueDefinitionId": 1001141,
+            "valueIdentifier": "policyItemMessage",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": "1086",
+                "id": 334839,
+                "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+                "valueDefinitionId": 1001155,
+                "valueIdentifier": "policyItemMessageId",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "Substance is not included anymore in E 310 - 320, according to the Regulation (EU) 2018/1481",
+                "id": 334840,
+                "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+                "valueDefinitionId": 1001156,
+                "valueIdentifier": "policyItemMessageText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 334841,
+            "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+            "valueDefinitionId": 1001141,
+            "valueIdentifier": "policyItemMessage",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": "1091",
+                "id": 334842,
+                "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+                "valueDefinitionId": 1001155,
+                "valueIdentifier": "policyItemMessageId",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "Substance is not included anymore in E 310 - 321, see Regulation (EU) 2018/1481",
+                "id": 334843,
+                "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+                "valueDefinitionId": 1001156,
+                "valueIdentifier": "policyItemMessageText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 334831,
+            "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+            "valueDefinitionId": 1001163,
+            "valueIdentifier": "policyItemNote",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": "Removed from union list according to the Regulation (EU) 2018/1481",
+                "id": 334832,
+                "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+                "valueDefinitionId": 1001194,
+                "valueIdentifier": "policyItemNoteText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": "substanceFAD",
+            "id": 334833,
+            "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+            "valueDefinitionId": 1001203,
+            "valueIdentifier": "policyItemType",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Octyl gallate",
+            "id": 334834,
+            "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+            "valueDefinitionId": 1001223,
+            "valueIdentifier": "identifyingName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Octyl gallate",
+            "id": 334835,
+            "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+            "valueDefinitionId": 1001237,
+            "valueIdentifier": "displayName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": null,
+            "id": 334827,
+            "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+            "valueDefinitionId": 1001253,
+            "valueIdentifier": "substanceFAD",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 334830,
+                "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+                "valueDefinitionId": 1001263,
+                "valueIdentifier": "synonyms",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "E 311/REMOVED FROM UNION LIST",
+                "id": 334828,
+                "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+                "valueDefinitionId": 1001273,
+                "valueIdentifier": "eNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 334829,
+                "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+                "valueDefinitionId": 1001280,
+                "valueIdentifier": "insNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "POL-FAD-IMPORT-3087",
+                "id": 334836,
+                "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+                "valueDefinitionId": 1001290,
+                "valueIdentifier": "memberOfFADGroup",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "POL-FAD-IMPORT-3086",
+                "id": 334837,
+                "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+                "valueDefinitionId": 1001290,
+                "valueIdentifier": "memberOfFADGroup",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 334844,
+            "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+            "valueDefinitionId": 1001313,
+            "valueIdentifier": "group",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 334845,
+                "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+                "valueDefinitionId": 1001325,
+                "valueIdentifier": "groupMemberRefs",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "value": null,
+        "id": 334846,
+        "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+        "valueDefinitionId": 1001350,
+        "valueIdentifier": "conditionsOfUse",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 334859,
+        "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+        "valueDefinitionId": 1001506,
+        "valueIdentifier": "legislationWrapper",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 334869,
+        "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+        "valueDefinitionId": 1001608,
+        "valueIdentifier": "authorisationType",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": "fin",
+            "id": 334870,
+            "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+            "valueDefinitionId": 1001609,
+            "valueIdentifier": "domainCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "fad_auth",
+            "id": 334871,
+            "lastModificationDate": "2022-12-21T08:09:47.000+00:00",
+            "valueDefinitionId": 1001610,
+            "valueIdentifier": "authorisationTypeCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": null,
+    "id": 323839,
+    "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+    "valueDefinitionId": 1001115,
+    "valueIdentifier": "policyItemObject",
+    "ordinal": null,
+    "parentValueId": null,
+    "collectionId": null,
+    "childrenValues": [
+      {
+        "value": "POL-FAD-IMPORT-3002",
+        "id": 323840,
+        "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+        "valueDefinitionId": 1001120,
+        "valueIdentifier": "policyItemCode",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "fad_auth-substancefad-plaincaramel",
+        "id": 323841,
+        "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+        "valueDefinitionId": 1001126,
+        "valueIdentifier": "policyItemComputedID",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "PUBLISHED",
+        "id": 323842,
+        "lastModificationDate": "2024-04-05T09:49:18.033+00:00",
+        "valueDefinitionId": 1001131,
+        "valueIdentifier": "policyItemStatus",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 323843,
+        "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+        "valueDefinitionId": 1001136,
+        "valueIdentifier": "policyItemSpecs",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": null,
+            "id": 323856,
+            "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+            "valueDefinitionId": 1001141,
+            "valueIdentifier": "policyItemMessage",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": "994",
+                "id": 323857,
+                "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+                "valueDefinitionId": 1001155,
+                "valueIdentifier": "policyItemMessageId",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "Substance is included in Group II, see also authorisation for Group II",
+                "id": 323858,
+                "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+                "valueDefinitionId": 1001156,
+                "valueIdentifier": "policyItemMessageText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 323859,
+            "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+            "valueDefinitionId": 1001141,
+            "valueIdentifier": "policyItemMessage",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": "1029",
+                "id": 323860,
+                "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+                "valueDefinitionId": 1001155,
+                "valueIdentifier": "policyItemMessageId",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "Substance is included in E 150a-d, see also authorisation for Group E 150a-d",
+                "id": 323861,
+                "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+                "valueDefinitionId": 1001156,
+                "valueIdentifier": "policyItemMessageText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 323848,
+            "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+            "valueDefinitionId": 1001163,
+            "valueIdentifier": "policyItemNote",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": "The term caramel relates to products of a more or less intense brown colour which are intended for colouring.  It does not correspond to the sugary aromatic product obtained from heating sugars and which is used for flavouring food (e.g. confectionery, pastry, alcoholic drinks).",
+                "id": 323849,
+                "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+                "valueDefinitionId": 1001194,
+                "valueIdentifier": "policyItemNoteText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": "substanceFAD",
+            "id": 323850,
+            "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+            "valueDefinitionId": 1001203,
+            "valueIdentifier": "policyItemType",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Plain caramel",
+            "id": 323851,
+            "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+            "valueDefinitionId": 1001223,
+            "valueIdentifier": "identifyingName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Plain caramel",
+            "id": 323852,
+            "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+            "valueDefinitionId": 1001237,
+            "valueIdentifier": "displayName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": null,
+            "id": 323844,
+            "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+            "valueDefinitionId": 1001253,
+            "valueIdentifier": "substanceFAD",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 323847,
+                "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+                "valueDefinitionId": 1001263,
+                "valueIdentifier": "synonyms",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "E 150a",
+                "id": 323845,
+                "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+                "valueDefinitionId": 1001273,
+                "valueIdentifier": "eNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 323846,
+                "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+                "valueDefinitionId": 1001280,
+                "valueIdentifier": "insNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "POL-FAD-IMPORT-3363",
+                "id": 323853,
+                "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+                "valueDefinitionId": 1001290,
+                "valueIdentifier": "memberOfFADGroup",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "POL-FAD-IMPORT-3003",
+                "id": 323854,
+                "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+                "valueDefinitionId": 1001290,
+                "valueIdentifier": "memberOfFADGroup",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "POL-FAD-IMPORT-2982",
+                "id": 323855,
+                "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+                "valueDefinitionId": 1001290,
+                "valueIdentifier": "memberOfFADGroup",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 323862,
+            "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+            "valueDefinitionId": 1001313,
+            "valueIdentifier": "group",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 323863,
+                "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+                "valueDefinitionId": 1001325,
+                "valueIdentifier": "groupMemberRefs",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "value": null,
+        "id": 323864,
+        "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+        "valueDefinitionId": 1001350,
+        "valueIdentifier": "conditionsOfUse",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 323878,
+        "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+        "valueDefinitionId": 1001506,
+        "valueIdentifier": "legislationWrapper",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 323888,
+        "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+        "valueDefinitionId": 1001608,
+        "valueIdentifier": "authorisationType",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": "fin",
+            "id": 323889,
+            "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+            "valueDefinitionId": 1001609,
+            "valueIdentifier": "domainCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "fad_auth",
+            "id": 323890,
+            "lastModificationDate": "2022-12-21T08:09:15.000+00:00",
+            "valueDefinitionId": 1001610,
+            "valueIdentifier": "authorisationTypeCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": null,
+    "id": 362275,
+    "lastModificationDate": "2022-12-21T08:11:19.000+00:00",
+    "valueDefinitionId": 1001115,
+    "valueIdentifier": "policyItemObject",
+    "ordinal": null,
+    "parentValueId": null,
+    "collectionId": null,
+    "childrenValues": [
+      {
+        "value": "POL-FAD-IMPORT-3337",
+        "id": 362276,
+        "lastModificationDate": "2022-12-21T08:11:19.000+00:00",
+        "valueDefinitionId": 1001120,
+        "valueIdentifier": "policyItemCode",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "fad_auth-substancefad-octenylsuccinicacidmodifiedgumarabic",
+        "id": 362277,
+        "lastModificationDate": "2022-12-21T08:11:19.000+00:00",
+        "valueDefinitionId": 1001126,
+        "valueIdentifier": "policyItemComputedID",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "PUBLISHED",
+        "id": 362278,
+        "lastModificationDate": "2026-03-23T17:10:49.618+00:00",
+        "valueDefinitionId": 1001131,
+        "valueIdentifier": "policyItemStatus",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 362279,
+        "lastModificationDate": "2022-12-21T08:11:19.000+00:00",
+        "valueDefinitionId": 1001136,
+        "valueIdentifier": "policyItemSpecs",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": null,
+            "id": 362290,
+            "lastModificationDate": "2022-12-21T08:11:19.000+00:00",
+            "valueDefinitionId": 1001141,
+            "valueIdentifier": "policyItemMessage",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 362291,
+                "lastModificationDate": "2022-12-21T08:11:19.000+00:00",
+                "valueDefinitionId": 1001155,
+                "valueIdentifier": "policyItemMessageId",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 362292,
+                "lastModificationDate": "2022-12-21T08:11:19.000+00:00",
+                "valueDefinitionId": 1001156,
+                "valueIdentifier": "policyItemMessageText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 362284,
+            "lastModificationDate": "2022-12-21T08:11:19.000+00:00",
+            "valueDefinitionId": 1001163,
+            "valueIdentifier": "policyItemNote",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 362285,
+                "lastModificationDate": "2022-12-21T08:11:19.000+00:00",
+                "valueDefinitionId": 1001194,
+                "valueIdentifier": "policyItemNoteText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": "substanceFAD",
+            "id": 362286,
+            "lastModificationDate": "2022-12-21T08:11:19.000+00:00",
+            "valueDefinitionId": 1001203,
+            "valueIdentifier": "policyItemType",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Octenyl succinic acid modified gum arabic",
+            "id": 362287,
+            "lastModificationDate": "2022-12-21T08:11:19.000+00:00",
+            "valueDefinitionId": 1001223,
+            "valueIdentifier": "identifyingName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Octenyl succinic acid modified gum arabic",
+            "id": 362288,
+            "lastModificationDate": "2022-12-21T08:11:19.000+00:00",
+            "valueDefinitionId": 1001237,
+            "valueIdentifier": "displayName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": null,
+            "id": 362280,
+            "lastModificationDate": "2022-12-21T08:11:19.000+00:00",
+            "valueDefinitionId": 1001253,
+            "valueIdentifier": "substanceFAD",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 362283,
+                "lastModificationDate": "2022-12-21T08:11:19.000+00:00",
+                "valueDefinitionId": 1001263,
+                "valueIdentifier": "synonyms",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "E 423",
+                "id": 362281,
+                "lastModificationDate": "2022-12-21T08:11:19.000+00:00",
+                "valueDefinitionId": 1001273,
+                "valueIdentifier": "eNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 362282,
+                "lastModificationDate": "2022-12-21T08:11:19.000+00:00",
+                "valueDefinitionId": 1001280,
+                "valueIdentifier": "insNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 362289,
+                "lastModificationDate": "2022-12-21T08:11:19.000+00:00",
+                "valueDefinitionId": 1001290,
+                "valueIdentifier": "memberOfFADGroup",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 362293,
+            "lastModificationDate": "2022-12-21T08:11:19.000+00:00",
+            "valueDefinitionId": 1001313,
+            "valueIdentifier": "group",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 362294,
+                "lastModificationDate": "2022-12-21T08:11:19.000+00:00",
+                "valueDefinitionId": 1001325,
+                "valueIdentifier": "groupMemberRefs",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "value": null,
+        "id": 362295,
+        "lastModificationDate": "2022-12-21T08:11:19.000+00:00",
+        "valueDefinitionId": 1001350,
+        "valueIdentifier": "conditionsOfUse",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 362335,
+        "lastModificationDate": "2022-12-21T08:11:20.000+00:00",
+        "valueDefinitionId": 1001506,
+        "valueIdentifier": "legislationWrapper",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 362345,
+        "lastModificationDate": "2022-12-21T08:11:20.000+00:00",
+        "valueDefinitionId": 1001608,
+        "valueIdentifier": "authorisationType",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": "fin",
+            "id": 362346,
+            "lastModificationDate": "2022-12-21T08:11:20.000+00:00",
+            "valueDefinitionId": 1001609,
+            "valueIdentifier": "domainCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "fad_auth",
+            "id": 362347,
+            "lastModificationDate": "2022-12-21T08:11:20.000+00:00",
+            "valueDefinitionId": 1001610,
+            "valueIdentifier": "authorisationTypeCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": null,
+    "id": 364810,
+    "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+    "valueDefinitionId": 1001115,
+    "valueIdentifier": "policyItemObject",
+    "ordinal": null,
+    "parentValueId": null,
+    "collectionId": null,
+    "childrenValues": [
+      {
+        "value": "POL-FAD-IMPORT-3369",
+        "id": 364811,
+        "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+        "valueDefinitionId": 1001120,
+        "valueIdentifier": "policyItemCode",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "fad_auth-substancefad-monkfruitextract",
+        "id": 364812,
+        "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+        "valueDefinitionId": 1001126,
+        "valueIdentifier": "policyItemComputedID",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "PUBLISHED",
+        "id": 364813,
+        "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+        "valueDefinitionId": 1001131,
+        "valueIdentifier": "policyItemStatus",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 364814,
+        "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+        "valueDefinitionId": 1001136,
+        "valueIdentifier": "policyItemSpecs",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": null,
+            "id": 364825,
+            "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+            "valueDefinitionId": 1001141,
+            "valueIdentifier": "policyItemMessage",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 364826,
+                "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+                "valueDefinitionId": 1001155,
+                "valueIdentifier": "policyItemMessageId",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 364827,
+                "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+                "valueDefinitionId": 1001156,
+                "valueIdentifier": "policyItemMessageText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 364819,
+            "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+            "valueDefinitionId": 1001163,
+            "valueIdentifier": "policyItemNote",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 364820,
+                "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+                "valueDefinitionId": 1001194,
+                "valueIdentifier": "policyItemNoteText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": "substanceFAD",
+            "id": 364821,
+            "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+            "valueDefinitionId": 1001203,
+            "valueIdentifier": "policyItemType",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Monk fruit extract",
+            "id": 364822,
+            "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+            "valueDefinitionId": 1001223,
+            "valueIdentifier": "identifyingName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Monk fruit extract",
+            "id": 364823,
+            "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+            "valueDefinitionId": 1001237,
+            "valueIdentifier": "displayName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": null,
+            "id": 364815,
+            "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+            "valueDefinitionId": 1001253,
+            "valueIdentifier": "substanceFAD",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": "Luo han guo (LHG) extract",
+                "id": 364818,
+                "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+                "valueDefinitionId": 1001263,
+                "valueIdentifier": "synonyms",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "E XXX",
+                "id": 364816,
+                "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+                "valueDefinitionId": 1001273,
+                "valueIdentifier": "eNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 364817,
+                "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+                "valueDefinitionId": 1001280,
+                "valueIdentifier": "insNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 364824,
+                "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+                "valueDefinitionId": 1001290,
+                "valueIdentifier": "memberOfFADGroup",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 364828,
+            "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+            "valueDefinitionId": 1001313,
+            "valueIdentifier": "group",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 364829,
+                "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+                "valueDefinitionId": 1001325,
+                "valueIdentifier": "groupMemberRefs",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "value": null,
+        "id": 364830,
+        "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+        "valueDefinitionId": 1001350,
+        "valueIdentifier": "conditionsOfUse",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 364843,
+        "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+        "valueDefinitionId": 1001506,
+        "valueIdentifier": "legislationWrapper",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 364853,
+        "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+        "valueDefinitionId": 1001608,
+        "valueIdentifier": "authorisationType",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": "fin",
+            "id": 364854,
+            "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+            "valueDefinitionId": 1001609,
+            "valueIdentifier": "domainCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "fad_auth",
+            "id": 364855,
+            "lastModificationDate": "2022-12-21T08:11:27.000+00:00",
+            "valueDefinitionId": 1001610,
+            "valueIdentifier": "authorisationTypeCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": null,
+    "id": 363424,
+    "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+    "valueDefinitionId": 1001115,
+    "valueIdentifier": "policyItemObject",
+    "ordinal": null,
+    "parentValueId": null,
+    "collectionId": null,
+    "childrenValues": [
+      {
+        "value": "POL-FAD-IMPORT-3347",
+        "id": 363425,
+        "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+        "valueDefinitionId": 1001120,
+        "valueIdentifier": "policyItemCode",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "fad_auth-substancefad-hydrogenperoxide",
+        "id": 363426,
+        "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+        "valueDefinitionId": 1001126,
+        "valueIdentifier": "policyItemComputedID",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "PUBLISHED",
+        "id": 363427,
+        "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+        "valueDefinitionId": 1001131,
+        "valueIdentifier": "policyItemStatus",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 363428,
+        "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+        "valueDefinitionId": 1001136,
+        "valueIdentifier": "policyItemSpecs",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": null,
+            "id": 363439,
+            "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+            "valueDefinitionId": 1001141,
+            "valueIdentifier": "policyItemMessage",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 363440,
+                "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+                "valueDefinitionId": 1001155,
+                "valueIdentifier": "policyItemMessageId",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 363441,
+                "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+                "valueDefinitionId": 1001156,
+                "valueIdentifier": "policyItemMessageText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 363433,
+            "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+            "valueDefinitionId": 1001163,
+            "valueIdentifier": "policyItemNote",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 363434,
+                "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+                "valueDefinitionId": 1001194,
+                "valueIdentifier": "policyItemNoteText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": "substanceFAD",
+            "id": 363435,
+            "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+            "valueDefinitionId": 1001203,
+            "valueIdentifier": "policyItemType",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Hydrogen peroxide",
+            "id": 363436,
+            "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+            "valueDefinitionId": 1001223,
+            "valueIdentifier": "identifyingName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Hydrogen peroxide",
+            "id": 363437,
+            "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+            "valueDefinitionId": 1001237,
+            "valueIdentifier": "displayName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": null,
+            "id": 363429,
+            "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+            "valueDefinitionId": 1001253,
+            "valueIdentifier": "substanceFAD",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 363432,
+                "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+                "valueDefinitionId": 1001263,
+                "valueIdentifier": "synonyms",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 363430,
+                "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+                "valueDefinitionId": 1001273,
+                "valueIdentifier": "eNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 363431,
+                "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+                "valueDefinitionId": 1001280,
+                "valueIdentifier": "insNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 363438,
+                "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+                "valueDefinitionId": 1001290,
+                "valueIdentifier": "memberOfFADGroup",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 363442,
+            "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+            "valueDefinitionId": 1001313,
+            "valueIdentifier": "group",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 363443,
+                "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+                "valueDefinitionId": 1001325,
+                "valueIdentifier": "groupMemberRefs",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "value": null,
+        "id": 363444,
+        "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+        "valueDefinitionId": 1001350,
+        "valueIdentifier": "conditionsOfUse",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 363457,
+        "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+        "valueDefinitionId": 1001506,
+        "valueIdentifier": "legislationWrapper",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 363467,
+        "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+        "valueDefinitionId": 1001608,
+        "valueIdentifier": "authorisationType",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": "fin",
+            "id": 363468,
+            "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+            "valueDefinitionId": 1001609,
+            "valueIdentifier": "domainCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "fad_auth",
+            "id": 363469,
+            "lastModificationDate": "2022-12-21T08:11:23.000+00:00",
+            "valueDefinitionId": 1001610,
+            "valueIdentifier": "authorisationTypeCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": null,
+    "id": 363843,
+    "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+    "valueDefinitionId": 1001115,
+    "valueIdentifier": "policyItemObject",
+    "ordinal": null,
+    "parentValueId": null,
+    "collectionId": null,
+    "childrenValues": [
+      {
+        "value": "POL-FAD-IMPORT-3356",
+        "id": 363844,
+        "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+        "valueDefinitionId": 1001120,
+        "valueIdentifier": "policyItemCode",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "fad_auth-substancefad-anthrapen",
+        "id": 363845,
+        "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+        "valueDefinitionId": 1001126,
+        "valueIdentifier": "policyItemComputedID",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "PUBLISHED",
+        "id": 363846,
+        "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+        "valueDefinitionId": 1001131,
+        "valueIdentifier": "policyItemStatus",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 363847,
+        "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+        "valueDefinitionId": 1001136,
+        "valueIdentifier": "policyItemSpecs",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": null,
+            "id": 363858,
+            "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+            "valueDefinitionId": 1001141,
+            "valueIdentifier": "policyItemMessage",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 363859,
+                "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+                "valueDefinitionId": 1001155,
+                "valueIdentifier": "policyItemMessageId",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 363860,
+                "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+                "valueDefinitionId": 1001156,
+                "valueIdentifier": "policyItemMessageText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 363852,
+            "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+            "valueDefinitionId": 1001163,
+            "valueIdentifier": "policyItemNote",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 363853,
+                "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+                "valueDefinitionId": 1001194,
+                "valueIdentifier": "policyItemNoteText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": "substanceFAD",
+            "id": 363854,
+            "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+            "valueDefinitionId": 1001203,
+            "valueIdentifier": "policyItemType",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Anthrapen",
+            "id": 363855,
+            "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+            "valueDefinitionId": 1001223,
+            "valueIdentifier": "identifyingName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Anthrapen",
+            "id": 363856,
+            "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+            "valueDefinitionId": 1001237,
+            "valueIdentifier": "displayName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": null,
+            "id": 363848,
+            "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+            "valueDefinitionId": 1001253,
+            "valueIdentifier": "substanceFAD",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 363851,
+                "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+                "valueDefinitionId": 1001263,
+                "valueIdentifier": "synonyms",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "..",
+                "id": 363849,
+                "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+                "valueDefinitionId": 1001273,
+                "valueIdentifier": "eNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 363850,
+                "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+                "valueDefinitionId": 1001280,
+                "valueIdentifier": "insNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 363857,
+                "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+                "valueDefinitionId": 1001290,
+                "valueIdentifier": "memberOfFADGroup",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 363861,
+            "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+            "valueDefinitionId": 1001313,
+            "valueIdentifier": "group",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 363862,
+                "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+                "valueDefinitionId": 1001325,
+                "valueIdentifier": "groupMemberRefs",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "value": null,
+        "id": 363863,
+        "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+        "valueDefinitionId": 1001350,
+        "valueIdentifier": "conditionsOfUse",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 363876,
+        "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+        "valueDefinitionId": 1001506,
+        "valueIdentifier": "legislationWrapper",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 363886,
+        "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+        "valueDefinitionId": 1001608,
+        "valueIdentifier": "authorisationType",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": "fin",
+            "id": 363887,
+            "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+            "valueDefinitionId": 1001609,
+            "valueIdentifier": "domainCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "fad_auth",
+            "id": 363888,
+            "lastModificationDate": "2022-12-21T08:11:24.000+00:00",
+            "valueDefinitionId": 1001610,
+            "valueIdentifier": "authorisationTypeCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": null,
+    "id": 343692,
+    "lastModificationDate": "2022-12-21T08:10:17.000+00:00",
+    "valueDefinitionId": 1001115,
+    "valueIdentifier": "policyItemObject",
+    "ordinal": null,
+    "parentValueId": null,
+    "collectionId": null,
+    "childrenValues": [
+      {
+        "value": "POL-FAD-IMPORT-3157",
+        "id": 343693,
+        "lastModificationDate": "2022-12-21T08:10:17.000+00:00",
+        "valueDefinitionId": 1001120,
+        "valueIdentifier": "policyItemCode",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "fad_auth-substancefad-pectins",
+        "id": 343694,
+        "lastModificationDate": "2022-12-21T08:10:17.000+00:00",
+        "valueDefinitionId": 1001126,
+        "valueIdentifier": "policyItemComputedID",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "PUBLISHED",
+        "id": 343695,
+        "lastModificationDate": "2026-07-09T14:37:45.695+00:00",
+        "valueDefinitionId": 1001131,
+        "valueIdentifier": "policyItemStatus",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 343696,
+        "lastModificationDate": "2022-12-21T08:10:17.000+00:00",
+        "valueDefinitionId": 1001136,
+        "valueIdentifier": "policyItemSpecs",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": null,
+            "id": 343707,
+            "lastModificationDate": "2022-12-21T08:10:17.000+00:00",
+            "valueDefinitionId": 1001141,
+            "valueIdentifier": "policyItemMessage",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": "906",
+                "id": 343708,
+                "lastModificationDate": "2022-12-21T08:10:17.000+00:00",
+                "valueDefinitionId": 1001155,
+                "valueIdentifier": "policyItemMessageId",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "Substance is included in Group I, see also authorisation for Group I",
+                "id": 343709,
+                "lastModificationDate": "2022-12-21T08:10:17.000+00:00",
+                "valueDefinitionId": 1001156,
+                "valueIdentifier": "policyItemMessageText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 343701,
+            "lastModificationDate": "2022-12-21T08:10:17.000+00:00",
+            "valueDefinitionId": 1001163,
+            "valueIdentifier": "policyItemNote",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 343702,
+                "lastModificationDate": "2022-12-21T08:10:17.000+00:00",
+                "valueDefinitionId": 1001194,
+                "valueIdentifier": "policyItemNoteText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": "substanceFAD",
+            "id": 343703,
+            "lastModificationDate": "2022-12-21T08:10:17.000+00:00",
+            "valueDefinitionId": 1001203,
+            "valueIdentifier": "policyItemType",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Pectins",
+            "id": 343704,
+            "lastModificationDate": "2022-12-21T08:10:17.000+00:00",
+            "valueDefinitionId": 1001223,
+            "valueIdentifier": "identifyingName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Pectins",
+            "id": 343705,
+            "lastModificationDate": "2022-12-21T08:10:17.000+00:00",
+            "valueDefinitionId": 1001237,
+            "valueIdentifier": "displayName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": null,
+            "id": 343697,
+            "lastModificationDate": "2022-12-21T08:10:17.000+00:00",
+            "valueDefinitionId": 1001253,
+            "valueIdentifier": "substanceFAD",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 343700,
+                "lastModificationDate": "2022-12-21T08:10:17.000+00:00",
+                "valueDefinitionId": 1001263,
+                "valueIdentifier": "synonyms",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "E 440",
+                "id": 343698,
+                "lastModificationDate": "2022-12-21T08:10:17.000+00:00",
+                "valueDefinitionId": 1001273,
+                "valueIdentifier": "eNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 343699,
+                "lastModificationDate": "2022-12-21T08:10:17.000+00:00",
+                "valueDefinitionId": 1001280,
+                "valueIdentifier": "insNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "POL-FAD-IMPORT-2981",
+                "id": 343706,
+                "lastModificationDate": "2022-12-21T08:10:17.000+00:00",
+                "valueDefinitionId": 1001290,
+                "valueIdentifier": "memberOfFADGroup",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 343710,
+            "lastModificationDate": "2022-12-21T08:10:17.000+00:00",
+            "valueDefinitionId": 1001313,
+            "valueIdentifier": "group",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 343711,
+                "lastModificationDate": "2022-12-21T08:10:17.000+00:00",
+                "valueDefinitionId": 1001325,
+                "valueIdentifier": "groupMemberRefs",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "value": null,
+        "id": 343712,
+        "lastModificationDate": "2022-12-21T08:10:17.000+00:00",
+        "valueDefinitionId": 1001350,
+        "valueIdentifier": "conditionsOfUse",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 343926,
+        "lastModificationDate": "2022-12-21T08:10:18.000+00:00",
+        "valueDefinitionId": 1001506,
+        "valueIdentifier": "legislationWrapper",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 343936,
+        "lastModificationDate": "2022-12-21T08:10:18.000+00:00",
+        "valueDefinitionId": 1001608,
+        "valueIdentifier": "authorisationType",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": "fin",
+            "id": 343937,
+            "lastModificationDate": "2022-12-21T08:10:18.000+00:00",
+            "valueDefinitionId": 1001609,
+            "valueIdentifier": "domainCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "fad_auth",
+            "id": 343938,
+            "lastModificationDate": "2022-12-21T08:10:18.000+00:00",
+            "valueDefinitionId": 1001610,
+            "valueIdentifier": "authorisationTypeCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": null,
+    "id": 342170,
+    "lastModificationDate": "2022-12-21T08:10:12.000+00:00",
+    "valueDefinitionId": 1001115,
+    "valueIdentifier": "policyItemObject",
+    "ordinal": null,
+    "parentValueId": null,
+    "collectionId": null,
+    "childrenValues": [
+      {
+        "value": "POL-FAD-IMPORT-3140",
+        "id": 342171,
+        "lastModificationDate": "2022-12-21T08:10:12.000+00:00",
+        "valueDefinitionId": 1001120,
+        "valueIdentifier": "policyItemCode",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "fad_auth-substancefad-xanthangum",
+        "id": 342172,
+        "lastModificationDate": "2022-12-21T08:10:12.000+00:00",
+        "valueDefinitionId": 1001126,
+        "valueIdentifier": "policyItemComputedID",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "PUBLISHED",
+        "id": 342173,
+        "lastModificationDate": "2026-07-09T14:36:30.609+00:00",
+        "valueDefinitionId": 1001131,
+        "valueIdentifier": "policyItemStatus",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 342174,
+        "lastModificationDate": "2022-12-21T08:10:12.000+00:00",
+        "valueDefinitionId": 1001136,
+        "valueIdentifier": "policyItemSpecs",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": null,
+            "id": 342185,
+            "lastModificationDate": "2022-12-21T08:10:12.000+00:00",
+            "valueDefinitionId": 1001141,
+            "valueIdentifier": "policyItemMessage",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": "899",
+                "id": 342186,
+                "lastModificationDate": "2022-12-21T08:10:12.000+00:00",
+                "valueDefinitionId": 1001155,
+                "valueIdentifier": "policyItemMessageId",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "Substance is included in Group I, see also authorisation for Group I",
+                "id": 342187,
+                "lastModificationDate": "2022-12-21T08:10:12.000+00:00",
+                "valueDefinitionId": 1001156,
+                "valueIdentifier": "policyItemMessageText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 342179,
+            "lastModificationDate": "2022-12-21T08:10:12.000+00:00",
+            "valueDefinitionId": 1001163,
+            "valueIdentifier": "policyItemNote",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 342180,
+                "lastModificationDate": "2022-12-21T08:10:12.000+00:00",
+                "valueDefinitionId": 1001194,
+                "valueIdentifier": "policyItemNoteText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": "substanceFAD",
+            "id": 342181,
+            "lastModificationDate": "2022-12-21T08:10:12.000+00:00",
+            "valueDefinitionId": 1001203,
+            "valueIdentifier": "policyItemType",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Xanthan gum",
+            "id": 342182,
+            "lastModificationDate": "2022-12-21T08:10:12.000+00:00",
+            "valueDefinitionId": 1001223,
+            "valueIdentifier": "identifyingName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Xanthan gum",
+            "id": 342183,
+            "lastModificationDate": "2022-12-21T08:10:12.000+00:00",
+            "valueDefinitionId": 1001237,
+            "valueIdentifier": "displayName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": null,
+            "id": 342175,
+            "lastModificationDate": "2022-12-21T08:10:12.000+00:00",
+            "valueDefinitionId": 1001253,
+            "valueIdentifier": "substanceFAD",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 342178,
+                "lastModificationDate": "2022-12-21T08:10:12.000+00:00",
+                "valueDefinitionId": 1001263,
+                "valueIdentifier": "synonyms",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "E 415",
+                "id": 342176,
+                "lastModificationDate": "2022-12-21T08:10:12.000+00:00",
+                "valueDefinitionId": 1001273,
+                "valueIdentifier": "eNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 342177,
+                "lastModificationDate": "2022-12-21T08:10:12.000+00:00",
+                "valueDefinitionId": 1001280,
+                "valueIdentifier": "insNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "POL-FAD-IMPORT-2981",
+                "id": 342184,
+                "lastModificationDate": "2022-12-21T08:10:12.000+00:00",
+                "valueDefinitionId": 1001290,
+                "valueIdentifier": "memberOfFADGroup",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 342188,
+            "lastModificationDate": "2022-12-21T08:10:12.000+00:00",
+            "valueDefinitionId": 1001313,
+            "valueIdentifier": "group",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 342189,
+                "lastModificationDate": "2022-12-21T08:10:12.000+00:00",
+                "valueDefinitionId": 1001325,
+                "valueIdentifier": "groupMemberRefs",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "value": null,
+        "id": 342190,
+        "lastModificationDate": "2022-12-21T08:10:12.000+00:00",
+        "valueDefinitionId": 1001350,
+        "valueIdentifier": "conditionsOfUse",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 342339,
+        "lastModificationDate": "2022-12-21T08:10:13.000+00:00",
+        "valueDefinitionId": 1001506,
+        "valueIdentifier": "legislationWrapper",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 342358,
+        "lastModificationDate": "2022-12-21T08:10:13.000+00:00",
+        "valueDefinitionId": 1001608,
+        "valueIdentifier": "authorisationType",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": "fin",
+            "id": 342359,
+            "lastModificationDate": "2022-12-21T08:10:13.000+00:00",
+            "valueDefinitionId": 1001609,
+            "valueIdentifier": "domainCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "fad_auth",
+            "id": 342360,
+            "lastModificationDate": "2022-12-21T08:10:13.000+00:00",
+            "valueDefinitionId": 1001610,
+            "valueIdentifier": "authorisationTypeCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "value": null,
+    "id": 2979199,
+    "lastModificationDate": "2022-12-21T08:09:08.000+00:00",
+    "valueDefinitionId": 1001115,
+    "valueIdentifier": "policyItemObject",
+    "ordinal": null,
+    "parentValueId": null,
+    "collectionId": null,
+    "childrenValues": [
+      {
+        "value": "POL-FAD-IMPORT-2990",
+        "id": 2979521,
+        "lastModificationDate": "2022-12-21T08:09:08.000+00:00",
+        "valueDefinitionId": 1001120,
+        "valueIdentifier": "policyItemCode",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "fad_auth-substancefad-cochinealcarminicacidcarmines",
+        "id": 2979614,
+        "lastModificationDate": "2022-12-21T08:09:08.000+00:00",
+        "valueDefinitionId": 1001126,
+        "valueIdentifier": "policyItemComputedID",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": "PUBLISHED",
+        "id": 2979522,
+        "lastModificationDate": "2026-06-10T13:26:17.422+00:00",
+        "valueDefinitionId": 1001131,
+        "valueIdentifier": "policyItemStatus",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 2979200,
+        "lastModificationDate": "2022-12-21T08:09:08.000+00:00",
+        "valueDefinitionId": 1001136,
+        "valueIdentifier": "policyItemSpecs",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": null,
+            "id": 2979206,
+            "lastModificationDate": "2022-12-21T08:09:08.000+00:00",
+            "valueDefinitionId": 1001141,
+            "valueIdentifier": "policyItemMessage",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": "1010",
+                "id": 2979208,
+                "lastModificationDate": "2022-12-21T08:09:08.000+00:00",
+                "valueDefinitionId": 1001155,
+                "valueIdentifier": "policyItemMessageId",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "Substance is included in Group III, see also authorisation for Group III",
+                "id": 2979207,
+                "lastModificationDate": "2022-12-21T08:09:08.000+00:00",
+                "valueDefinitionId": 1001156,
+                "valueIdentifier": "policyItemMessageText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 2979212,
+            "lastModificationDate": "2022-12-21T08:09:08.000+00:00",
+            "valueDefinitionId": 1001163,
+            "valueIdentifier": "policyItemNote",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 2979213,
+                "lastModificationDate": "2022-12-21T08:09:08.000+00:00",
+                "valueDefinitionId": 1001194,
+                "valueIdentifier": "policyItemNoteText",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": "substanceFAD",
+            "id": 2979215,
+            "lastModificationDate": "2022-12-21T08:09:08.000+00:00",
+            "valueDefinitionId": 1001203,
+            "valueIdentifier": "policyItemType",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "Carminic acid, Carmine",
+            "id": 2979214,
+            "lastModificationDate": "2025-12-09T08:33:45.919+00:00",
+            "valueDefinitionId": 1001223,
+            "valueIdentifier": "identifyingName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "<p>Carminic acid, Carmine</p>",
+            "id": 2979211,
+            "lastModificationDate": "2025-12-09T08:33:55.301+00:00",
+            "valueDefinitionId": 1001237,
+            "valueIdentifier": "displayName",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": null,
+            "id": 2979201,
+            "lastModificationDate": "2022-12-21T08:09:08.000+00:00",
+            "valueDefinitionId": 1001253,
+            "valueIdentifier": "substanceFAD",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 2979205,
+                "lastModificationDate": "2022-12-21T08:09:08.000+00:00",
+                "valueDefinitionId": 1001263,
+                "valueIdentifier": "synonyms",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "E 120",
+                "id": 2979202,
+                "lastModificationDate": "2022-12-21T08:09:08.000+00:00",
+                "valueDefinitionId": 1001273,
+                "valueIdentifier": "eNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": null,
+                "id": 2979204,
+                "lastModificationDate": "2022-12-21T08:09:08.000+00:00",
+                "valueDefinitionId": 1001280,
+                "valueIdentifier": "insNumber",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              },
+              {
+                "value": "POL-FAD-IMPORT-2983",
+                "id": 2979203,
+                "lastModificationDate": "2022-12-21T08:09:08.000+00:00",
+                "valueDefinitionId": 1001290,
+                "valueIdentifier": "memberOfFADGroup",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          },
+          {
+            "value": null,
+            "id": 2979209,
+            "lastModificationDate": "2022-12-21T08:09:08.000+00:00",
+            "valueDefinitionId": 1001313,
+            "valueIdentifier": "group",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": [
+              {
+                "value": null,
+                "id": 2979210,
+                "lastModificationDate": "2022-12-21T08:09:08.000+00:00",
+                "valueDefinitionId": 1001325,
+                "valueIdentifier": "groupMemberRefs",
+                "ordinal": null,
+                "parentValueId": null,
+                "collectionId": null,
+                "childrenValues": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "value": null,
+        "id": 2979216,
+        "lastModificationDate": "2022-12-21T08:09:08.000+00:00",
+        "valueDefinitionId": 1001350,
+        "valueIdentifier": "conditionsOfUse",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 2979523,
+        "lastModificationDate": "2022-12-21T08:09:10.000+00:00",
+        "valueDefinitionId": 1001506,
+        "valueIdentifier": "legislationWrapper",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": []
+      },
+      {
+        "value": null,
+        "id": 2979518,
+        "lastModificationDate": "2022-12-21T08:09:10.000+00:00",
+        "valueDefinitionId": 1001608,
+        "valueIdentifier": "authorisationType",
+        "ordinal": null,
+        "parentValueId": null,
+        "collectionId": null,
+        "childrenValues": [
+          {
+            "value": "fin",
+            "id": 2979519,
+            "lastModificationDate": "2022-12-21T08:09:10.000+00:00",
+            "valueDefinitionId": 1001609,
+            "valueIdentifier": "domainCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          },
+          {
+            "value": "fad_auth",
+            "id": 2979520,
+            "lastModificationDate": "2022-12-21T08:09:10.000+00:00",
+            "valueDefinitionId": 1001610,
+            "valueIdentifier": "authorisationTypeCode",
+            "ordinal": null,
+            "parentValueId": null,
+            "collectionId": null,
+            "childrenValues": []
+          }
+        ]
+      }
+    ]
+  }
+]

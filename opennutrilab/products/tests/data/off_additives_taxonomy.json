@@ -1,0 +1,159 @@
+{
+  "en:e330": {
+    "name": {
+      "en": "E330 - Citric acid",
+      "fr": "E330 - Acide citrique",
+      "xx": "E330"
+    },
+    "e_number": {
+      "en": "330"
+    },
+    "additives_classes": {
+      "en": "en:antioxidant, en:sequestrant"
+    }
+  },
+  "en:e300": {
+    "name": {
+      "en": "E300 - Ascorbic acid",
+      "fr": "E300 - Acide ascorbique",
+      "xx": "E300 - 3a300"
+    },
+    "e_number": {
+      "en": "300"
+    },
+    "additives_classes": {
+      "en": "en:antioxidant, en:sequestrant"
+    }
+  },
+  "en:e322": {
+    "name": {
+      "en": "E322 - Lecithins",
+      "fr": "E322 - Lécithines",
+      "xx": "E322"
+    },
+    "e_number": {
+      "en": "322"
+    },
+    "additives_classes": {
+      "en": "en:antioxidant, en:emulsifier"
+    }
+  },
+  "en:e150a": {
+    "name": {
+      "en": "E150a - Plain caramel",
+      "fr": "E150a - Caramel E150a",
+      "xx": "E150a"
+    },
+    "e_number": {
+      "en": "150a"
+    },
+    "additives_classes": {
+      "en": "en:colour"
+    }
+  },
+  "en:e101": {
+    "name": {
+      "en": "E101 - Riboflavin",
+      "fr": "E101 - Riboflavine",
+      "xx": "E101 - 3a825i"
+    },
+    "e_number": {
+      "en": "101"
+    },
+    "additives_classes": {
+      "en": "en:colour"
+    }
+  },
+  "en:e101i": {
+    "name": {
+      "en": "E101i - Riboflavin",
+      "fr": "E101i - Riboflavine",
+      "xx": "E101i"
+    },
+    "e_number": {
+      "en": "101"
+    },
+    "additives_classes": {
+      "en": "en:colour"
+    }
+  },
+  "en:e101ii": {
+    "name": {
+      "en": "E101ii - Riboflavin-5′-phosphate",
+      "fr": "E101ii - Riboflavine-5′-phosphate",
+      "xx": "E101ii"
+    },
+    "e_number": {
+      "en": "101"
+    },
+    "additives_classes": {
+      "en": "en:colour"
+    }
+  },
+  "en:e415": {
+    "name": {
+      "en": "E415 - Xanthan gum",
+      "fr": "E415 - Gomme xanthane",
+      "xx": "E415"
+    },
+    "e_number": {
+      "en": "415"
+    },
+    "additives_classes": {
+      "en": "en:emulsifier, en:stabiliser, en:thickener"
+    }
+  },
+  "en:e440": {
+    "name": {
+      "en": "E440 - Pectins",
+      "fr": "E440 - Pectines",
+      "xx": "E440"
+    },
+    "e_number": {
+      "en": "440"
+    },
+    "additives_classes": {
+      "en": "en:emulsifier, en:stabiliser, en:thickener"
+    }
+  },
+  "en:e1001ii": {
+    "name": {
+      "en": "E1001ii - Choline carbonate",
+      "xx": "E1001ii"
+    },
+    "e_number": {
+      "en": "1001"
+    }
+  },
+  "en:e1200": {
+    "name": {
+      "en": "E1200 - Polydextrose",
+      "fr": "E1200 - Polydextrose",
+      "xx": "E1200"
+    },
+    "e_number": {
+      "en": "1200"
+    },
+    "additives_classes": {
+      "en": "en:humectant, en:stabiliser, en:thickener"
+    }
+  },
+  "en:no7": {
+    "name": {
+      "en": "no7 - n7"
+    }
+  },
+  "en:colour": {
+    "name": {
+      "en": "colour - color"
+    }
+  },
+  "de:quellkohlensäure": {
+    "name": {}
+  },
+  "en:mono-and-diglycerides-of-vegetable-fatty-acids": {
+    "name": {
+      "en": "mono- and diglycerides of vegetable fatty acids"
+    }
+  }
+}

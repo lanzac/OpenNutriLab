@@ -316,8 +316,11 @@ _CLASS_OF = {
 # "poudre à lever"): their parentheses are read as additives only when E numbers.
 _ALSO_INGREDIENTS = frozenset({"modified_starch", "raising_agent", "carrier"})
 # An E number as a label writes it: "E330", "E 330", "e330", "E160a", "E1001(ii)".
+# One letter may stand apart ("E 160 a"); a longer suffix is attached to the number
+# ("E160aiii", "E450viii"), so that "E330 acid" is not a code.
 _E_NUMBER = re.compile(
-    r"e\s?-?(\d{3,4})\s?([a-z]{1,3})?\s?(?:\(([ivx]+)\))?", re.IGNORECASE
+    r"e\s?-?(\d{3,4})(?:\s?([a-z])|([a-z]{1,4}))?\s?(?:\(([ivx]+)\))?",
+    re.IGNORECASE,
 )
 _MARKS = str.maketrans("", "", "*†‡°_")
 _BRACKETS = str.maketrans("[]{}", "()()")
@@ -337,7 +340,7 @@ _OTHER_TEXT = re.compile(
 # Letters on both sides of a digit ("S0JA", "fari1e"), but not "oméga-3" or "B6".
 _DIGIT_IN_WORD = re.compile(r"(?=\S*[^\W\d_]{2})(?=\S*\d)\S+")
 _KNOWN_WITH_DIGITS = re.compile(
-    r"o?m[ée]ga-?\d[\d-]*|[a-z]-?\d+[a-z]?|e-?\d+[a-z]?", re.IGNORECASE
+    r"o?m[ée]ga-?\d[\d-]*|[a-z]-?\d+[a-z]?|e-?\d+[a-z]{0,4}", re.IGNORECASE
 )
 _PAIRS = {")": "(", "]": "[", "}": "{"}
 _LONG_NAME_WORDS = 12
@@ -417,8 +420,8 @@ def e_number(name: str) -> str:
     found = _E_NUMBER.fullmatch(" ".join(name.split()))
     if found is None:
         return ""
-    digits, letters, roman = found.groups(default="")
-    return f"E{digits}{letters}{roman}".upper()
+    digits, spaced, attached, roman = found.groups(default="")
+    return f"E{digits}{spaced or attached}{roman}".upper()
 
 
 def _parse_list(text: str) -> list[LabelItem]:
