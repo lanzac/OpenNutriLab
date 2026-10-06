@@ -72,13 +72,18 @@ def ingredient(name: str, *subs: IngredientEstimateOut) -> IngredientEstimateOut
     )
 
 
+def name_of(ingredient: IngredientEstimateOut) -> str:
+    assert ingredient.reference is not None
+    return ingredient.reference.model_dump()["name"]
+
+
 def test_the_tree_is_walked_in_the_order_of_the_label_with_its_depth():
     tree = [
         ingredient("dates", ingredient("rice flour", ingredient("rice"))),
         ingredient("oats"),
     ]
 
-    assert [(depth, i.reference.name) for depth, i in walk(tree)] == [
+    assert [(depth, name_of(i)) for depth, i in walk(tree)] == [
         (0, "dates"),
         (1, "rice flour"),
         (2, "rice"),

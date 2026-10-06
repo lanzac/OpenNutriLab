@@ -7,6 +7,7 @@ from ninja import ModelSchema
 from ninja import Schema
 
 from opennutrilab.products.models import Ingredient
+from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductNutrient
 from opennutrilab.products.models import ReferenceIngredient
@@ -25,6 +26,16 @@ class ReferenceOut(ModelSchema):
         fields: list[str] = ["id", "status"]
 
 
+class PreparationOut(ModelSchema):
+    """The preparation an ingredient is, named in the language served."""
+
+    name: str
+
+    class Meta:
+        model = Preparation
+        fields: list[str] = ["id", "status"]
+
+
 # How many levels of sub-ingredients a product's tree is loaded with in one go.
 SUB_INGREDIENT_LEVELS = 3
 
@@ -32,7 +43,9 @@ SUB_INGREDIENT_LEVELS = 3
 class IngredientOut(Schema):
     # As declared on the label.
     percentage: Decimal | None = None
-    reference: ReferenceOut
+    # One of the two: a true ingredient, or what is made of several.
+    reference: ReferenceOut | None = None
+    preparation: PreparationOut | None = None
 
     # https://django-ninja.dev/guides/response/?h=self#self-referencing-schemes
     # Read from the related manager, with no resolver: below the first level
@@ -143,7 +156,9 @@ class NutrientEstimateOut(Schema):
 
 
 class IngredientEstimateOut(Schema):
-    reference: ReferenceOut
+    # One of the two, as in IngredientOut.
+    reference: ReferenceOut | None = None
+    preparation: PreparationOut | None = None
     # As on the label: None when it gives none. Never estimated.
     declared: Decimal | None = None
     # The share of the whole product, a sub-ingredient's included. For a declared
@@ -253,13 +268,13 @@ class ProductOut(ModelSchema):
         levels: list[Prefetch[Ingredient]] = [
             Prefetch(
                 "__".join([path] * depth),
-                queryset=Ingredient.objects.select_related("reference"),
+                queryset=Ingredient.objects.select_related("reference", "preparation"),
             )
             for depth in range(1, SUB_INGREDIENT_LEVELS + 1)
         ]
         return (
             obj.ingredients.filter(parent__isnull=True)
-            .select_related("reference")
+            .select_related("reference", "preparation")
             .prefetch_related(*levels)
         )
 

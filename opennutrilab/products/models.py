@@ -5,15 +5,18 @@ Products, their ingredients, and the nutrient data behind them.
   with its unit. All amounts are per 100 g, in that unit.
 - Product and ProductNutrient: what a product's nutrition label declares.
 - Ingredient: a product's ingredient tree, as its label lists it. Each one is
-  its reference ingredient and has no name of its own.
+  a reference ingredient or a preparation, and has no name of its own.
 - IngredientTaxon: OpenFoodFacts' ingredient taxonomy, a dictionary of the
   English and French names of what a label names, with a CIQUAL hint. It gives
   a wording its English name, and proposes foods. Nothing links to it.
 - Source, SourceFood and SourceFoodNutrient: composition data exactly as a
   food composition table publishes it (CIQUAL first), with its qualifiers
   and confidence grades.
-- ReferenceIngredient: a curated ingredient ("carotte crue") drawing on any
+- ReferenceIngredient: a curated true ingredient ("carotte crue") drawing on any
   number of source foods. Product ingredients link to it.
+- Preparation: what is made of several ingredients ("mozzarella", "gnocchi"),
+  which a reference must not be. It points to the references it is made of, and
+  may draw on source foods too. Product ingredients link to it as well.
 """
 
 from collections.abc import Iterable
@@ -21,6 +24,7 @@ from typing import TYPE_CHECKING
 from typing import Any
 from typing import override
 
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator
 from django.core.validators import MinValueValidator
 from django.db import models
@@ -197,16 +201,19 @@ class ProductNutrient(models.Model):
 
 class Ingredient(models.Model):
     """
-    An ingredient of a product, which is its reference ingredient.
+    An ingredient of a product, which is a reference ingredient or a preparation.
 
     It has no name and keeps nothing OpenFoodFacts says about it: the name is
-    the reference's, and what OFF gave only served to find or create that
-    reference (see services.reference_services).
+    that of the one it is, and what OFF gave only served to find or create it
+    (see services.reference_services). A preparation is what the label says is
+    made of several ingredients: it has the ingredients the label lists in it as
+    its children.
     """
 
     id: int
     parent_id: int | None
-    reference_id: int
+    reference_id: int | None
+    preparation_id: int | None
 
     product = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="ingredients"
@@ -220,10 +227,22 @@ class Ingredient(models.Model):
         on_delete=models.CASCADE,
         related_name="sub_ingredients",
     )
-    # Always set, and protected: a reference in use cannot be deleted. An
-    # ingredient no reference has the name of gets one created, to review.
-    reference: "models.ForeignKey[ReferenceIngredient]" = models.ForeignKey(
-        "ReferenceIngredient", on_delete=models.PROTECT, related_name="usages"
+    # One of the two is set, and protected: what is in use cannot be deleted. An
+    # ingredient no reference or preparation has the name of gets a reference
+    # created, to review, which the curator may turn into a preparation.
+    reference: "models.ForeignKey[ReferenceIngredient | None]" = models.ForeignKey(
+        "ReferenceIngredient",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="usages",
+    )
+    preparation: "models.ForeignKey[Preparation | None]" = models.ForeignKey(
+        "Preparation",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="usages",
     )
     # Declared, never estimated: the OpenFoodFacts import keeps a percentage
     # only if the label's text says it, and estimates are computed on demand,
@@ -249,6 +268,8 @@ class Ingredient(models.Model):
         # created in.
         ordering = ["id"]
         constraints = [
+            # A null reference or preparation is never equal to another, so each
+            # pair of constraints only bears on the rows that have one.
             models.UniqueConstraint(
                 fields=["product", "parent", "reference"],
                 name="unique_ingredient_per_product_parent",
@@ -258,11 +279,38 @@ class Ingredient(models.Model):
                 condition=models.Q(parent__isnull=True),
                 name="unique_root_ingredient_per_product",
             ),
+            models.UniqueConstraint(
+                fields=["product", "parent", "preparation"],
+                name="unique_preparation_per_product_parent",
+            ),
+            models.UniqueConstraint(
+                fields=["product", "preparation"],
+                condition=models.Q(parent__isnull=True),
+                name="unique_root_preparation_per_product",
+            ),
+            # django-stubs still types `check`, which Django 5.1 renamed.
+            models.CheckConstraint(  # pyright: ignore[reportCallIssue]
+                condition=(  # pyright: ignore[reportCallIssue]
+                    models.Q(reference__isnull=False, preparation__isnull=True)
+                    | models.Q(reference__isnull=True, preparation__isnull=False)
+                ),
+                name="ingredient_is_a_reference_or_a_preparation",
+                violation_error_message=_(
+                    "An ingredient is a reference or a preparation, not both."
+                ),
+            ),
         ]
 
     @override
     def __str__(self) -> str:
-        return str(self.reference)
+        return str(self.item)
+
+    @property
+    def item(self) -> "ReferenceIngredient | Preparation":
+        """The reference or the preparation this ingredient is."""
+        item = self.reference or self.preparation
+        assert item is not None  # The constraint says one of them is set.
+        return item
 
 
 class IngredientTaxon(models.Model):
@@ -436,17 +484,13 @@ _HAS_A_NAME = ~models.Q(name_en="") | ~models.Q(name_fr="")
 _CURATED_HAS_NAME_EN = ~models.Q(status="curated") | ~models.Q(name_en="")
 
 
-class ReferenceIngredient(models.Model):
+class CuratedItem(models.Model):
     """
-    A curated ingredient, e.g. "carotte crue".
+    What a reference ingredient and a preparation have in common: the names, the
+    notes for whoever curates them, and a status.
 
-    Its composition is aggregated from the source foods it draws on, so that
-    more sources make it more complete and more reliable.
-
-    A product's ingredient is one of these: it is found by its name, searched
-    in `name_en` and `name_fr`. Each name is unique when filled, whatever its
-    case, so a name leads to one reference at most. A name no reference has
-    creates one, to review (see services.reference_services).
+    Each name is unique when filled, whatever its case, in its table and across
+    the two (see _name_clashes), so a name leads to one of them at most.
     """
 
     class Status(models.TextChoices):
@@ -462,14 +506,63 @@ class ReferenceIngredient(models.Model):
     status = models.CharField(
         max_length=10, choices=Status.choices, default=Status.TO_REVIEW
     )
+
+    class Meta:
+        abstract = True
+
+    @override
+    def __str__(self) -> str:
+        return self.name
+
+    @property
+    def name(self) -> str:
+        """The name in the language being served, whichever one is filled."""
+        if (get_language() or "").startswith("fr"):
+            return self.name_fr or self.name_en
+        return self.name_en or self.name_fr
+
+
+def _name_clashes(
+    item: CuratedItem, other: type[models.Model], message: str
+) -> dict[str, str]:
+    """
+    The names of `item` that `other`'s table has too, by field, with `message`.
+
+    The database cannot say that a name is one table's or the other's, so the
+    forms and the services ask. A name in a language is compared with the other
+    table's names in that language: "raisin" being a grape in French and a dried
+    one in English, the same word in two languages is not a clash.
+    """
+    clashes: dict[str, str] = {}
+    for field in ("name_en", "name_fr"):
+        name = " ".join(getattr(item, field).split())
+        if name and other.objects.alias(key=Lower(field)).filter(key=name.lower()):  # pyright: ignore[reportAttributeAccessIssue]
+            clashes[field] = message
+    return clashes
+
+
+class ReferenceIngredient(CuratedItem):
+    """
+    A curated true ingredient, e.g. "carotte crue": made of nothing else a label
+    would list. What is made of several ingredients is a Preparation.
+
+    Its composition is aggregated from the source foods it draws on, so that
+    more sources make it more complete and more reliable.
+
+    A product's ingredient is one of these, or a preparation: it is found by its
+    name, searched in `name_en` and `name_fr`. A name no reference or preparation
+    has creates a reference, to review (see services.reference_services).
+    """
+
     source_foods: "models.ManyToManyField[SourceFood, Any]" = models.ManyToManyField(
         SourceFood, blank=True, related_name="reference_ingredients"
     )
 
     if TYPE_CHECKING:
         usages: RelatedManager["Ingredient"]
+        used_in_preparations: RelatedManager["Preparation"]
 
-    class Meta:
+    class Meta(CuratedItem.Meta):
         constraints = [
             models.UniqueConstraint(
                 Lower("name_en"),
@@ -498,12 +591,73 @@ class ReferenceIngredient(models.Model):
         ]
 
     @override
-    def __str__(self) -> str:
-        return self.name
+    def clean(self) -> None:
+        super().clean()
+        if clashes := _name_clashes(
+            self, Preparation, str(_("A preparation already has this name."))
+        ):
+            raise ValidationError({field: [text] for field, text in clashes.items()})
 
-    @property
-    def name(self) -> str:
-        """The name in the language being served, whichever one is filled."""
-        if (get_language() or "").startswith("fr"):
-            return self.name_fr or self.name_en
-        return self.name_en or self.name_fr
+
+class Preparation(CuratedItem):
+    """
+    What is made of several ingredients, e.g. "mozzarella" or "gnocchi": a
+    product used as an ingredient, which is not an ingredient to be linked to a
+    food as milk or salt are.
+
+    It stands between what a label says and the true ingredients. It points to
+    the references it is made of, which are its default recipe: used when the
+    label does not list its parts, never over those the label does list. It may
+    also draw on source foods, whose composition is measured (CIQUAL's
+    "Mozzarella"), and which counts at its level, as a reference's does.
+    """
+
+    components: "models.ManyToManyField[ReferenceIngredient, Any]" = (
+        models.ManyToManyField(
+            ReferenceIngredient,
+            blank=True,
+            related_name="used_in_preparations",
+            help_text=_("The ingredients it is made of, when the label lists none."),
+        )
+    )
+    source_foods: "models.ManyToManyField[SourceFood, Any]" = models.ManyToManyField(
+        SourceFood, blank=True, related_name="preparations"
+    )
+
+    if TYPE_CHECKING:
+        usages: RelatedManager["Ingredient"]
+
+    class Meta(CuratedItem.Meta):
+        constraints = [
+            models.UniqueConstraint(
+                Lower("name_en"),
+                condition=~models.Q(name_en=""),
+                name="unique_preparation_name_en",
+            ),
+            models.UniqueConstraint(
+                Lower("name_fr"),
+                condition=~models.Q(name_fr=""),
+                name="unique_preparation_name_fr",
+            ),
+            models.CheckConstraint(  # pyright: ignore[reportCallIssue]
+                condition=_HAS_A_NAME,  # pyright: ignore[reportCallIssue]
+                name="preparation_has_a_name",
+            ),
+            models.CheckConstraint(  # pyright: ignore[reportCallIssue]
+                condition=_CURATED_HAS_NAME_EN,  # pyright: ignore[reportCallIssue]
+                name="curated_preparation_has_name_en",
+                violation_error_message=_(
+                    "A curated preparation needs its English name."
+                ),
+            ),
+        ]
+
+    @override
+    def clean(self) -> None:
+        super().clean()
+        if clashes := _name_clashes(
+            self,
+            ReferenceIngredient,
+            str(_("A reference ingredient already has this name.")),
+        ):
+            raise ValidationError({field: [text] for field, text in clashes.items()})

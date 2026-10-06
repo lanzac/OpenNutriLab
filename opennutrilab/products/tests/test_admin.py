@@ -12,6 +12,7 @@ from django.urls import reverse
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import IngredientTaxon
 from opennutrilab.products.models import Nutrient
+from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ReferenceIngredient
 from opennutrilab.products.models import Source
@@ -22,6 +23,7 @@ from opennutrilab.users.tests.factories import UserFactory
 pytestmark = pytest.mark.django_db
 
 REFERENCES = "admin:products_referenceingredient_changelist"
+PREPARATIONS = "admin:products_preparation_changelist"
 FOODS = "admin:products_sourcefood_changelist"
 
 
@@ -495,5 +497,150 @@ def test_a_reference_with_no_value_says_so_and_the_add_form_does_not_fail(
     assert "No composition" in page
     assert (
         admin_client.get(reverse("admin:products_referenceingredient_add")).status_code
+        == HTTPStatus.OK
+    )
+
+
+# ----------------------------------------------------------------------------
+# Preparations
+# ----------------------------------------------------------------------------
+def prepared_for(preparation: Preparation, *barcodes: str) -> None:
+    for barcode in barcodes:
+        product, _created = Product.objects.get_or_create(
+            barcode=barcode, defaults={"name": barcode}
+        )
+        Ingredient.objects.create(product=product, preparation=preparation)
+
+
+def test_the_preparations_are_listed_most_used_first_with_their_counts(
+    admin_client: Client,
+):
+    Preparation.objects.create(name_en="unused")
+    once = Preparation.objects.create(name_en="once")
+    twice = Preparation.objects.create(name_en="twice")
+    prepared_for(twice, "3229820794556", "3017620422003")
+    prepared_for(once, "3229820794556")
+    twice.components.set(
+        [ReferenceIngredient.objects.create(name_en=n) for n in ("milk", "salt")]
+    )
+    twice.source_foods.add(
+        SourceFood.objects.create(
+            source=Source.objects.create(code="ciqual-2025", name="Ciqual"), code="1"
+        )
+    )
+
+    response = admin_client.get(reverse(PREPARATIONS))
+
+    rows = response.context["cl"].result_list
+    assert [r.name_en for r in rows] == ["twice", "once", "unused"]
+    assert [(r.usage_count, r.component_count, r.food_count) for r in rows] == [
+        (2, 2, 1),
+        (1, 0, 0),
+        (0, 0, 0),
+    ]
+
+
+def test_a_preparation_is_edited_with_its_components_and_foods(admin_client: Client):
+    milk = ReferenceIngredient.objects.create(name_en="milk")
+    mozzarella = Preparation.objects.create(name_en="mozzarella")
+
+    page = admin_client.get(
+        reverse("admin:products_preparation_change", args=[mozzarella.pk])
+    )
+    response = admin_client.post(
+        reverse("admin:products_preparation_change", args=[mozzarella.pk]),
+        {
+            "name_en": "mozzarella",
+            "name_fr": "mozzarella",
+            "status": "to_review",
+            "description": "",
+            "components": [milk.pk],
+        },
+    )
+
+    assert page.status_code == HTTPStatus.OK
+    assert response.status_code == HTTPStatus.FOUND
+    assert list(mozzarella.components.all()) == [milk]
+    assert (
+        admin_client.get(reverse("admin:products_preparation_add")).status_code
+        == HTTPStatus.OK
+    )
+
+
+def test_a_preparation_is_found_by_its_name_from_an_ingredient_form(
+    admin_client: Client,
+):
+    mozzarella = Preparation.objects.create(name_en="mozzarella")
+
+    response = admin_client.get(
+        reverse("admin:autocomplete"),
+        {
+            "term": "mozz",
+            "app_label": "products",
+            "model_name": "ingredient",
+            "field_name": "preparation",
+        },
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    assert [r["id"] for r in response.json()["results"]] == [str(mozzarella.pk)]
+
+
+def test_an_ingredient_that_is_a_preparation_is_listed_by_its_name(
+    admin_client: Client,
+):
+    mozzarella = Preparation.objects.create(name_en="mozzarella")
+    prepared_for(mozzarella, "3229820794556")
+
+    response = admin_client.get(reverse("admin:products_ingredient_changelist"))
+
+    assert "mozzarella" in response.content.decode()
+
+
+def test_preparations_are_marked_as_curated_when_they_have_their_english_name(
+    admin_client: Client,
+):
+    ready = Preparation.objects.create(name_en="mozzarella")
+    waiting = Preparation.objects.create(name_fr="gnocchi")
+
+    response = admin_client.post(
+        reverse(PREPARATIONS),
+        {"action": "mark_curated", "_selected_action": [ready.pk, waiting.pk]},
+        follow=True,
+    )
+
+    ready.refresh_from_db()
+    waiting.refresh_from_db()
+    assert ready.status == Preparation.Status.CURATED
+    assert waiting.status == Preparation.Status.TO_REVIEW
+    assert any("lack an English name" in m for m in messages_of(response))
+    assert any("1 preparation(s) marked as curated" in m for m in messages_of(response))
+
+
+def test_the_forms_refuse_a_name_the_other_table_has(admin_client: Client):
+    Preparation.objects.create(name_en="mozzarella")
+
+    response = admin_client.post(
+        reverse("admin:products_referenceingredient_add"),
+        {"name_en": "Mozzarella", "name_fr": "", "status": "to_review"},
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    assert "A preparation already has this name." in response.content.decode()
+    assert not ReferenceIngredient.objects.exists()
+
+
+def test_the_pages_of_an_ingredient_open_whichever_it_is(admin_client: Client):
+    """The forms for the reference and the preparation use the admins' ordering."""
+    salt = ReferenceIngredient.objects.create(name_en="salt")
+    mozzarella = Preparation.objects.create(name_en="mozzarella")
+    used_by(salt, "3229820794556")
+    prepared_for(mozzarella, "3229820794556")
+
+    for ingredient in Ingredient.objects.all():
+        url = reverse("admin:products_ingredient_change", args=[ingredient.pk])
+        assert admin_client.get(url).status_code == HTTPStatus.OK
+    assert (
+        admin_client.get(reverse("admin:products_ingredient_add")).status_code
         == HTTPStatus.OK
     )

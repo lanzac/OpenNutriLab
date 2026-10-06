@@ -9,6 +9,7 @@ from django.utils import translation
 
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import Nutrient
+from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductNutrient
 from opennutrilab.products.models import ReferenceIngredient
@@ -283,3 +284,169 @@ def test_a_curated_reference_needs_its_english_name():
     to_review.save()
     to_review.refresh_from_db()
     assert to_review.status == curated
+
+
+# ----------------------------------------------------------------------------
+# Preparations
+# ----------------------------------------------------------------------------
+@pytest.mark.django_db
+def test_a_preparation_is_named_like_a_reference():
+    mozzarella = Preparation.objects.create(name_en="mozzarella", name_fr="mozzarella")
+    only_english = Preparation.objects.create(name_en="gnocchi")
+
+    with translation.override("fr-fr"):
+        assert (str(mozzarella), str(only_english)) == ("mozzarella", "gnocchi")
+    assert Preparation.Status(mozzarella.status) is Preparation.Status.TO_REVIEW
+
+
+@pytest.mark.django_db
+def test_a_preparation_name_is_unique_whatever_its_case():
+    Preparation.objects.create(name_en="Mozzarella", name_fr="Mozzarella")
+
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        Preparation.objects.create(name_en="mozzarella")
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        Preparation.objects.create(name_en="fresh mozzarella", name_fr="mozzarella")
+
+
+@pytest.mark.django_db
+def test_a_preparation_needs_a_name_and_a_curated_one_its_english_name():
+    curated = Preparation.Status.CURATED
+
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        Preparation.objects.create()
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        Preparation.objects.create(name_fr="gnocchi", status=curated)
+    with pytest.raises(ValidationError, match="curated preparation needs"):
+        Preparation(name_fr="gnocchi", status=curated).full_clean()
+
+
+@pytest.mark.django_db
+def test_a_preparation_points_to_the_references_it_is_made_of():
+    milk = ReferenceIngredient.objects.create(name_en="milk")
+    salt = ReferenceIngredient.objects.create(name_en="salt")
+    mozzarella = Preparation.objects.create(name_en="mozzarella")
+
+    mozzarella.components.set([milk, salt])
+
+    assert set(mozzarella.components.all()) == {milk, salt}
+    assert list(milk.used_in_preparations.all()) == [mozzarella]
+
+
+@pytest.mark.django_db
+def test_a_preparation_draws_on_source_foods_as_a_reference_does(
+    ciqual_carrot: SourceFood,
+):
+    gnocchi = Preparation.objects.create(name_en="gnocchi")
+
+    gnocchi.source_foods.add(ciqual_carrot)
+
+    assert list(Preparation.objects.filter(source_foods=ciqual_carrot)) == [gnocchi]
+    # The foods of a reference and those of a preparation are not mixed up.
+    assert not ReferenceIngredient.objects.filter(source_foods=ciqual_carrot).exists()
+
+
+@pytest.mark.django_db
+def test_a_name_is_a_reference_or_a_preparation_not_both():
+    Preparation.objects.create(name_en="Mozzarella", name_fr="Mozzarella")
+    ReferenceIngredient.objects.create(name_en="Milk", name_fr="Lait")
+
+    with pytest.raises(ValidationError) as as_a_reference:
+        ReferenceIngredient(name_en="mozzarella").full_clean()
+    with pytest.raises(ValidationError) as as_a_preparation:
+        Preparation(name_fr="lait").full_clean()
+
+    assert (
+        "A preparation already has this name."
+        in as_a_reference.value.message_dict["name_en"]
+    )
+    assert (
+        "A reference ingredient already has this name."
+        in (as_a_preparation.value.message_dict["name_fr"])
+    )
+
+
+@pytest.mark.django_db
+def test_the_same_word_in_another_language_is_not_a_clash():
+    """ "Raisin" is a grape in French and a dried grape in English."""
+    Preparation.objects.create(name_fr="raisin")
+
+    ReferenceIngredient(name_en="raisin").full_clean()
+
+
+@pytest.mark.django_db
+def test_a_name_does_not_clash_with_itself_when_it_is_edited():
+    mozzarella = Preparation.objects.create(name_en="mozzarella")
+
+    mozzarella.description = "Cheese."
+    mozzarella.full_clean()
+
+
+@pytest.mark.django_db
+def test_an_ingredient_is_a_reference_or_a_preparation(product: Product):
+    salt = ReferenceIngredient.objects.create(name_en="salt")
+    mozzarella = Preparation.objects.create(name_en="mozzarella")
+
+    as_reference = Ingredient.objects.create(product=product, reference=salt)
+    as_preparation = Ingredient.objects.create(product=product, preparation=mozzarella)
+
+    assert as_reference.item == salt
+    assert as_preparation.item == mozzarella
+    assert (str(as_reference), str(as_preparation)) == ("salt", "mozzarella")
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        Ingredient.objects.create(
+            product=product, reference=salt, preparation=mozzarella, parent=as_reference
+        )
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        Ingredient.objects.create(product=product, parent=as_reference)
+    with pytest.raises(ValidationError, match="a reference or a preparation"):
+        Ingredient(product=product, reference=salt, preparation=mozzarella).full_clean()
+
+
+@pytest.mark.django_db
+def test_a_product_lists_a_preparation_once_per_parent(product: Product):
+    mozzarella = Preparation.objects.create(name_en="mozzarella")
+    pizza = Preparation.objects.create(name_en="pizza")
+    Ingredient.objects.create(product=product, preparation=mozzarella)
+    parent = Ingredient.objects.create(product=product, preparation=pizza)
+    # Under another parent it is a different ingredient.
+    Ingredient.objects.create(product=product, parent=parent, preparation=mozzarella)
+
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        Ingredient.objects.create(product=product, preparation=mozzarella)
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        Ingredient.objects.create(
+            product=product, parent=parent, preparation=mozzarella
+        )
+
+
+@pytest.mark.django_db
+def test_a_reference_and_a_preparation_do_not_make_each_other_a_duplicate(
+    product: Product,
+):
+    """Two rows with a null reference, or a null preparation, are not equal."""
+    salt = ReferenceIngredient.objects.create(name_en="salt")
+    sugar = ReferenceIngredient.objects.create(name_en="sugar")
+    mozzarella = Preparation.objects.create(name_en="mozzarella")
+    gnocchi = Preparation.objects.create(name_en="gnocchi")
+
+    for item in (salt, sugar, mozzarella, gnocchi):
+        Ingredient.objects.create(
+            product=product,
+            **{
+                "reference"
+                if isinstance(item, ReferenceIngredient)
+                else "preparation": item
+            },
+        )
+
+    assert product.ingredients.count() == 4  # noqa: PLR2004
+
+
+@pytest.mark.django_db
+def test_a_preparation_in_use_cannot_be_removed(product: Product):
+    mozzarella = Preparation.objects.create(name_en="mozzarella")
+    Ingredient.objects.create(product=product, preparation=mozzarella)
+
+    with pytest.raises(ProtectedError):
+        mozzarella.delete()

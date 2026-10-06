@@ -33,6 +33,7 @@ from .forms import nutrient_field
 from .models import Ingredient
 from .models import IngredientTaxon
 from .models import Nutrient
+from .models import Preparation
 from .models import Product
 from .models import ReferenceIngredient
 from .services.estimate_report import build_estimate
@@ -384,7 +385,9 @@ def _ciqual_url(food_code: str, proxy_food_code: str) -> str | None:
     return CIQUAL_FOOD_URL.format(code=quote(code, safe="")) if code else None
 
 
-def _reference_ciqual(reference: ReferenceIngredient) -> tuple[str, str | None]:
+def _reference_ciqual(
+    reference: ReferenceIngredient | Preparation,
+) -> tuple[str, str | None]:
     """
     The CIQUAL codes of the foods a reference draws on, and where to check them.
 
@@ -416,8 +419,12 @@ def _row(
     }
 
 
-def _status_label(reference: ReferenceIngredient) -> str:
-    return str(ReferenceIngredient.Status(reference.status).label)
+def _status_label(item: ReferenceIngredient | Preparation) -> str:
+    """Whether it is curated, and that it is a preparation when it is one."""
+    label = str(ReferenceIngredient.Status(item.status).label)
+    if isinstance(item, Preparation):
+        return _("Preparation, %(status)s") % {"status": label.lower()}
+    return label
 
 
 def ingredient_rows_from_inputs(items: list[IngredientInput]) -> list[dict[str, Any]]:
@@ -476,16 +483,18 @@ def ingredient_rows_from_db(product: Product) -> list[dict[str, Any]]:
     """The stored ingredient tree, in a few queries however many there are."""
     ingredients = list(
         Ingredient.objects.filter(product=product)
-        .select_related("reference")
-        .prefetch_related("reference__source_foods__source")
+        .select_related("reference", "preparation")
+        .prefetch_related(
+            "reference__source_foods__source", "preparation__source_foods__source"
+        )
         .order_by("id")
     )
     rows = {
         ingredient.id: _row(
-            ingredient.reference.name,
+            ingredient.item.name,
             ingredient.percentage,
-            _reference_ciqual(ingredient.reference),
-            _status_label(ingredient.reference),
+            _reference_ciqual(ingredient.item),
+            _status_label(ingredient.item),
         )
         for ingredient in ingredients
     }

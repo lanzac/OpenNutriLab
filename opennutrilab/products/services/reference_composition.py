@@ -30,6 +30,7 @@ from decimal import Decimal
 from typing import NamedTuple
 
 from opennutrilab.products.models import Nutrient
+from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import ReferenceIngredient
 from opennutrilab.products.models import SourceFood
 from opennutrilab.products.models import SourceFoodNutrient
@@ -71,17 +72,22 @@ class _Measure(NamedTuple):
 
 
 def reference_composition(
-    reference: ReferenceIngredient, derived: Iterable[Nutrient] | None = None
+    item: ReferenceIngredient | Preparation, derived: Iterable[Nutrient] | None = None
 ) -> dict[str, Estimate]:
     """
-    What the foods of a reference say together, by nutrient code.
+    What the foods of a reference, or of a preparation, say together, by nutrient
+    code.
 
-    A reference with no source food has no composition. `derived` is
-    derived_nutrients() when not given; pass it when computing many, to read
-    the catalogue once.
+    One with no source food has no composition. `derived` is derived_nutrients()
+    when not given; pass it when computing many, to read the catalogue once.
     """
+    drawn_on = (
+        {"food__reference_ingredients": item}
+        if isinstance(item, ReferenceIngredient)
+        else {"food__preparations": item}
+    )
     rows = list(
-        SourceFoodNutrient.objects.filter(food__reference_ingredients=reference)
+        SourceFoodNutrient.objects.filter(**drawn_on)
         .select_related("food__source", "nutrient")
         .order_by("food_id")
     )

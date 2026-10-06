@@ -480,6 +480,39 @@ msgstr "Liste des ingrédients, telle que l'étiquette l'imprime"
 msgid "A percentage with no ingredient name: %(detail)s"
 msgstr "Un pourcentage sans nom d'ingrédient : %(detail)s"
 
+msgid "Components"
+msgstr "Composants"
+
+msgid "Mark the selected preparations as curated"
+msgstr "Marquer les préparations sélectionnées comme validées"
+
+msgid "%(count)d preparation(s) lack an English name and were not marked."
+msgstr ""
+"%(count)d préparation(s) n'ont pas de nom anglais et n'ont pas été marquées."
+
+msgid "%(count)d preparation(s) marked as curated."
+msgstr "%(count)d préparation(s) marquée(s) comme validée(s)."
+
+msgid "An ingredient is a reference or a preparation, not both."
+msgstr "Un ingrédient est une référence ou une préparation, pas les deux."
+
+msgid "A preparation already has this name."
+msgstr "Une préparation a déjà ce nom."
+
+msgid "The ingredients it is made of, when the label lists none."
+msgstr ""
+"Les ingrédients dont elle est faite, quand l'étiquette n'en liste aucun."
+
+msgid "A curated preparation needs its English name."
+msgstr "Une préparation validée a besoin de son nom anglais."
+
+msgid "A reference ingredient already has this name."
+msgstr "Un ingrédient de référence a déjà ce nom."
+
+#, python-format
+msgid "Preparation, %(status)s"
+msgstr "Préparation, %(status)s"
+
 #~ msgid "Fat"
 #~ msgstr "Matières grasses"
 

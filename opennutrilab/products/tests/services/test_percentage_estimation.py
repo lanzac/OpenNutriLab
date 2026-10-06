@@ -8,6 +8,7 @@ from django.utils import translation
 
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import Nutrient
+from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductNutrient
 from opennutrilab.products.models import ReferenceIngredient
@@ -410,3 +411,63 @@ def test_a_product_is_estimated_in_a_few_queries_however_many_ingredients(
     # of the foods' values for each reference.
     with django_assert_max_num_queries(5 + 6):
         estimate_percentages(product)
+
+
+def preparation(
+    source: Source, code: str, pk: int | None = None, **amounts: str
+) -> Preparation:
+    """A preparation that draws on a food with these amounts, like `reference`."""
+    food = SourceFood.objects.create(source=source, code=code)
+    for nutrient in ("fat", "carbohydrates", "proteins"):
+        SourceFoodNutrient.objects.create(
+            food=food,
+            nutrient=Nutrient.objects.get(code=nutrient),
+            amount=D(amounts.get(nutrient, "0")),
+            confidence="A",
+        )
+    prepared = Preparation.objects.create(pk=pk, name_en=f"preparation {code}")
+    prepared.source_foods.add(food)
+    return prepared
+
+
+def test_a_preparation_counts_by_its_source_foods_as_a_reference_does(source: Source):
+    oats = reference(source, "1", proteins="20")
+    mozzarella = preparation(source, "2", proteins="10")
+    product = product_with(proteins="15")
+    first = add(product, oats)
+    second = Ingredient.objects.create(product=product, preparation=mozzarella)
+
+    result = estimate_percentages(product)
+
+    assert_spans(result, {first.id: (50, 60), second.id: (40, 50)})
+    assert result.used_nutrition
+    assert result.warnings == []
+
+
+def test_a_preparation_with_no_composition_is_named_in_the_warning(source: Source):
+    product = product_with(proteins="15")
+    add(product, reference(source, "1", proteins="20"))
+    Ingredient.objects.create(
+        product=product, preparation=Preparation.objects.create(name_en="gnocchi")
+    )
+
+    result = estimate_percentages(product)
+
+    assert [w.problem for w in result.warnings] == [Problem.NO_COMPOSITION]
+    assert result.warnings[0].detail == "gnocchi"
+
+
+def test_a_preparation_and_a_reference_with_the_same_id_are_not_confused(
+    source: Source,
+):
+    """Their compositions are looked up by kind and id, not by id alone."""
+    reference_row = reference(source, "1", proteins="20")
+    preparation_row = preparation(source, "2", pk=reference_row.pk, proteins="10")
+    assert reference_row.pk == preparation_row.pk
+    product = product_with(proteins="15")
+    first = add(product, reference_row)
+    second = Ingredient.objects.create(product=product, preparation=preparation_row)
+
+    result = estimate_percentages(product)
+
+    assert_spans(result, {first.id: (50, 60), second.id: (40, 50)})

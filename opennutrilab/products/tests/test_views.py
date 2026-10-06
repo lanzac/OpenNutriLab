@@ -26,6 +26,7 @@ from opennutrilab.products.forms import ProductForm
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import IngredientTaxon
 from opennutrilab.products.models import Nutrient
+from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductNutrient
 from opennutrilab.products.models import ReferenceIngredient
@@ -1093,3 +1094,29 @@ def test_rows_from_db_show_the_name_in_the_language_served(
     assert [c["name"] for c in rows[0]["ingredients"]] == ["flocons d'avoine"]
     assert [r["name"] for r in english_rows] == ["date", "Épices"]
     assert ReferenceIngredient.objects.get(name_en="date").name_fr == "datte"
+
+
+@pytest.mark.django_db
+def test_rows_from_db_show_a_preparation_by_its_name_and_marked_as_one(ciqual: Source):
+    mozzarella = Preparation.objects.create(name_en="mozzarella", name_fr="mozzarella")
+    mozzarella.source_foods.add(
+        SourceFood.objects.create(source=ciqual, code="12120", name_fr="Mozzarella")
+    )
+    product = Product.objects.create(barcode=NUTELLA, name="Pizza")
+    sugar = ReferenceIngredient.objects.create(name_en="sugar")
+    Ingredient.objects.create(product=product, reference=sugar)
+    pizza = Ingredient.objects.create(product=product, preparation=mozzarella)
+    Ingredient.objects.create(product=product, parent=pizza, reference=sugar)
+
+    with translation.override("en"):
+        rows = ingredient_rows_from_db(product)
+
+    sweet, cheese = rows
+    assert (sweet["name"], sweet["reference"]) == ("sugar", "To review")
+    # Its CIQUAL code is that of the foods it draws on, and it says what it is.
+    assert (cheese["name"], cheese["reference"], cheese["ciqual"]) == (
+        "mozzarella",
+        "Preparation, to review",
+        "12120",
+    )
+    assert [r["name"] for r in cheese["ingredients"]] == ["sugar"]

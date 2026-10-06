@@ -16,6 +16,7 @@ the same nutrient, not another nutrient.
 from collections import defaultdict
 from collections.abc import Mapping
 
+from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 
 from opennutrilab.products.api.schemas.outbound import CheckOut
@@ -24,6 +25,7 @@ from opennutrilab.products.api.schemas.outbound import DeclaredOut
 from opennutrilab.products.api.schemas.outbound import EstimateOut
 from opennutrilab.products.api.schemas.outbound import IngredientEstimateOut
 from opennutrilab.products.api.schemas.outbound import NutrientEstimateOut
+from opennutrilab.products.api.schemas.outbound import PreparationOut
 from opennutrilab.products.api.schemas.outbound import RangeOut
 from opennutrilab.products.api.schemas.outbound import ReadingOut
 from opennutrilab.products.api.schemas.outbound import ReferenceOut
@@ -148,13 +150,22 @@ def _ingredients(
     """The ingredients as the label's tree, with their declared and estimated shares."""
     children: defaultdict[int | None, list[Ingredient]] = defaultdict(list)
     # In the order of the label, which is the order they were created in.
-    for ingredient in product.ingredients.select_related("reference"):
+    for ingredient in product.ingredients.select_related("reference", "preparation"):
         children[ingredient.parent_id].append(ingredient)
 
     def build(ingredient: Ingredient) -> IngredientEstimateOut:
         share = percentages.percentages.get(ingredient.id)
         return IngredientEstimateOut(
-            reference=ReferenceOut.model_validate(ingredient.reference),
+            reference=(
+                None
+                if ingredient.reference is None
+                else ReferenceOut.model_validate(ingredient.reference)
+            ),
+            preparation=(
+                None
+                if ingredient.preparation is None
+                else PreparationOut.model_validate(ingredient.preparation)
+            ),
             declared=ingredient.percentage,
             estimated=None if share is None else _range(share),
             sub_ingredients=[build(sub) for sub in children[ingredient.id]],
@@ -174,7 +185,8 @@ def _sources(product: Product) -> list[SourceOut]:
             attribution=source.attribution,
         )
         for source in Source.objects.filter(
-            foods__reference_ingredients__usages__product=product
+            Q(foods__reference_ingredients__usages__product=product)
+            | Q(foods__preparations__usages__product=product)
         )
         .distinct()
         .order_by("code")

@@ -6,8 +6,10 @@ import pytest
 from django.utils import translation
 
 from opennutrilab.products.api.schemas.outbound import EstimateOut
+from opennutrilab.products.api.schemas.outbound import IngredientEstimateOut
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import Nutrient
+from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductNutrient
 from opennutrilab.products.models import ReferenceIngredient
@@ -77,6 +79,12 @@ def add(
         parent=parent,
         percentage=None if percentage is None else D(percentage),
     )
+
+
+def names(ingredient: IngredientEstimateOut) -> str:
+    """The name of the reference an ingredient is."""
+    assert ingredient.reference is not None
+    return ingredient.reference.model_dump()["name"]
 
 
 def nutrients_of(estimate: EstimateOut) -> dict[str, Any]:
@@ -219,12 +227,9 @@ def test_ingredients_are_a_tree_in_the_order_of_the_label(source: Source):
     estimate = build_estimate(product)
 
     first, second = estimate.ingredients
-    assert [i.reference.name for i in (first, second)] == [
-        "reference 1",
-        "reference 3",
-    ]
+    assert [names(i) for i in (first, second)] == ["reference 1", "reference 3"]
     (child,) = first.sub_ingredients
-    assert child.reference.name == "reference 2"
+    assert names(child) == "reference 2"
     assert child.sub_ingredients == []
 
 
@@ -257,6 +262,7 @@ def test_the_reference_is_given_with_its_status(source: Source):
 
     (ingredient,) = build_estimate(product).ingredients
 
+    assert ingredient.reference is not None
     served = ingredient.reference.model_dump()
     assert (served["id"], served["status"]) == (ref.pk, "curated")
 
@@ -328,3 +334,34 @@ def test_an_estimate_is_served_in_a_few_queries_however_many_ingredients(
     # sources.
     with django_assert_max_num_queries(5 + 6 + 1 + 3):
         build_estimate(product)
+
+
+def test_an_ingredient_that_is_a_preparation_is_served_as_one(source: Source):
+    product = product_of()
+    mozzarella = Preparation.objects.create(
+        name_en="mozzarella", status=Preparation.Status.CURATED
+    )
+    Ingredient.objects.create(product=product, preparation=mozzarella)
+
+    (ingredient,) = build_estimate(product).ingredients
+
+    assert ingredient.reference is None
+    assert ingredient.preparation is not None
+    assert ingredient.preparation.model_dump() == {
+        "id": mozzarella.pk,
+        "name": "mozzarella",
+        "status": "curated",
+    }
+
+
+def test_the_sources_of_a_preparation_are_credited_too(source: Source):
+    product = product_of()
+    other = Source.objects.create(code="other", name="Other", attribution="Other.")
+    mozzarella = Preparation.objects.create(name_en="mozzarella")
+    mozzarella.source_foods.add(SourceFood.objects.create(source=other, code="m1"))
+    Ingredient.objects.create(product=product, preparation=mozzarella)
+    add(product, reference(source, "1"))
+
+    credited = {s.code for s in build_estimate(product).sources}
+
+    assert credited == {"other", "ciqual-2025"}

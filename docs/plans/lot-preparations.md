@@ -1,7 +1,7 @@
 # Plan: preparations next to reference ingredients
 
-Status: planned, not started (written 2026-10-05, after the nutrient estimation
-batch, `docs/plans/lot-estimation.md`).
+Status: step 1 done (2026-10-06); the rest is planned. Written 2026-10-05, after
+the nutrient estimation batch, `docs/plans/lot-estimation.md`.
 
 ## Why
 
@@ -79,20 +79,41 @@ Each one has a recommendation. They were not put to the user one by one.
 
 ## Steps (one commit or more each, tests with each)
 
-1. **Preparation and the link** (migration, model, admin). The model, the nullable
-   pair on `Ingredient` with its constraints, the cross-table uniqueness of names,
-   the admin with its usages count, components and source foods, and "mark as
+1. **Preparation and the link** (done): migration 0011, model, admin. The model, the
+   nullable pair on `Ingredient` with its constraints, the cross-table uniqueness of
+   names, the admin with its usages count, components and source foods, and "mark as
    curated". Existing ingredients are unchanged (all references).
-2. **Writing and reading ingredients.** `find_references` / `resolve_references`
-   look in both tables; `_replace_ingredients` writes either; `ProductOut`, the
-   form's rows and the ingredient admin read either. A tree can mix both.
+   - Done as planned, with these differences. What a reference and a preparation
+     share (names, notes, status, the `name` property) is an abstract base,
+     `CuratedItem`, which changes nothing in the reference's columns. A name clash
+     is told per language (a reference's French name against a preparation's French
+     name), since "raisin" is two things in French and English, and by two
+     complete messages so that each translates. `Ingredient.item` gives the one it
+     is.
+   - What step 2 was to read is read already, so that nothing breaks while the
+     link is nullable: the loader of the estimation, the rows of the page, the
+     API (`reference` and `preparation`, one of them null), the estimate report
+     and the ingredient admin. A preparation that draws on source foods already
+     counts by them (decision 4.1): `reference_composition` takes either. Left
+     for step 4: its default references.
+   - **Found on the way, and fixed**: the pages of an ingredient in the admin gave
+     a 500 since the curation tools of the estimation batch. The ordering "most
+     used first" of the references' admin used an annotation that Django does not
+     have when it applies the same ordering to the field of another admin that
+     points to them. It is a subquery now (`most_used_first`), so it works with and
+     without the annotation, and the preparations' admin uses it too.
+2. **Writing ingredients.** `find_references` / `resolve_references` look in both
+   tables (a name a preparation has finds it, a name that matches nothing still
+   creates a reference to review); `_replace_ingredients` writes either; the page's
+   drafts from OpenFoodFacts show either. A tree can mix both. (Reading either was
+   done in step 1.)
 3. **"Make a preparation"** on the references' admin, with the count of times seen
    with parts, and its tests (usages repointed, names and foods moved, components
    from the parts seen, nothing left behind, a name in use refused).
-4. **Estimation.** The composition of a preparation as in decision 4, in
-   `reference_composition` (generalised to a set of source foods and a set of
-   components), `load()` in `percentage_estimation` (a node's name and composition
-   come from either), `estimate_report` and the card of the page.
+4. **Estimation.** What is left of decision 4: the default references of a preparation
+   that has no source food and whose label lists no parts (the hull of their
+   compositions), and the sources of those references credited in the report. The
+   rest (source foods, the label's parts, no composition) works from step 1.
 5. **Docs and translations**: the roadmap, this plan, the `.po`.
 
 ## Out of scope

@@ -6,7 +6,10 @@ from django.contrib import messages
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.db import transaction
 from django.db.models import Count
+from django.db.models import OuterRef
 from django.db.models import QuerySet
+from django.db.models import Subquery
+from django.db.models.functions import Coalesce
 from django.http import HttpRequest
 from django.http import HttpResponseRedirect
 from django.http.response import HttpResponseBase
@@ -22,6 +25,7 @@ from .models import Ingredient
 from .models import IngredientTaxon
 from .models import Nutrient
 from .models import NutrientComponent
+from .models import Preparation
 from .models import Product
 from .models import ProductNutrient
 from .models import ReferenceIngredient
@@ -76,14 +80,14 @@ class ProductAdmin(admin.ModelAdmin[Product]):
 class IngredientAdmin(admin.ModelAdmin[Ingredient]):
     list_display = ("indented_name", "product", "percentage")
     list_filter = ("product",)
-    list_select_related = ("product", "reference")
-    autocomplete_fields = ("reference",)
+    list_select_related = ("product", "reference", "preparation")
+    autocomplete_fields = ("reference", "preparation")
     ordering = ("id",)
 
     @admin.display(description="Ingredient (hierarchical)")
     def indented_name(self, obj: Ingredient) -> str:
         indent = "— " * self.get_level(obj)
-        return f"{indent}{obj.reference}"
+        return f"{indent}{obj.item}"
 
     def get_level(self, obj: Ingredient) -> int:
         level = 0
@@ -158,6 +162,26 @@ def _estimate_range(estimate: Estimate) -> str:
     return f"{low} \u2013 {high}"
 
 
+def most_used_first(ingredient_field: str) -> list[Any]:
+    """
+    The ordering of the references and of the preparations: the most used first.
+
+    `ingredient_field` is the one of Ingredient that points to them. It is a
+    subquery and not the `usage_count` annotation, because Django also applies the
+    ordering to the queryset of the fields of other admins that point to them (the
+    autocomplete of an ingredient's form), which is not annotated, and refuses an
+    aggregate there.
+    """
+    uses = (
+        Ingredient.objects.filter(**{ingredient_field: OuterRef("pk")})
+        .order_by()
+        .values(ingredient_field)
+        .annotate(total=Count("pk"))
+        .values("total")
+    )
+    return [Coalesce(Subquery(uses), 0).desc(), "name_en", "id"]
+
+
 class HasSourceFoodsFilter(admin.SimpleListFilter):
     title = gettext_lazy("source foods")
     parameter_name = "source_foods"
@@ -210,8 +234,8 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
             food_count=Count("source_foods", distinct=True),
         )
 
-    def get_ordering(self, request: HttpRequest) -> list[str]:
-        return ["-usage_count", "name_en", "id"]
+    def get_ordering(self, request: HttpRequest) -> list[Any]:
+        return most_used_first("reference")
 
     @admin.display(description=gettext_lazy("Ingredients"), ordering="usage_count")
     def used_by(self, obj: ReferenceIngredient) -> int:
@@ -386,4 +410,81 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
             )
         self.message_user(
             request, _("%(count)d reference(s) marked as curated.") % {"count": updated}
+        )
+
+
+@admin.register(Preparation)
+class PreparationAdmin(admin.ModelAdmin[Preparation]):
+    """
+    What is made of several ingredients ("mozzarella", "gnocchi"), curated apart
+    from the true ingredients: the references it is made of, which stand in when
+    a label lists none of its parts, and the source foods it draws on when its
+    composition is known. The most used come first.
+    """
+
+    list_display = (
+        "name_en",
+        "name_fr",
+        "status",
+        "used_by",
+        "component_count",
+        "source_food_count",
+    )
+    list_filter = ("status", HasSourceFoodsFilter)
+    search_fields = ("name_fr", "name_en")
+    autocomplete_fields = ("components", "source_foods")
+    fields = (
+        "name_en",
+        "name_fr",
+        "status",
+        "description",
+        "components",
+        "source_foods",
+    )
+    actions = ("mark_curated",)
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Preparation]:
+        # Not super(): it sorts by get_ordering before the counts exist.
+        return Preparation.objects.annotate(
+            usage_count=Count("usages", distinct=True),
+            component_count=Count("components", distinct=True),
+            food_count=Count("source_foods", distinct=True),
+        )
+
+    def get_ordering(self, request: HttpRequest) -> list[Any]:
+        return most_used_first("preparation")
+
+    @admin.display(description=gettext_lazy("Ingredients"), ordering="usage_count")
+    def used_by(self, obj: Preparation) -> int:
+        count: object = getattr(obj, "usage_count", None)
+        return count if isinstance(count, int) else obj.usages.count()
+
+    @admin.display(description=gettext_lazy("Components"), ordering="component_count")
+    def component_count(self, obj: Preparation) -> int:
+        count: object = getattr(obj, "component_count", None)
+        return count if isinstance(count, int) else obj.components.count()
+
+    @admin.display(description=gettext_lazy("Source foods"), ordering="food_count")
+    def source_food_count(self, obj: Preparation) -> int:
+        count: object = getattr(obj, "food_count", None)
+        return count if isinstance(count, int) else obj.source_foods.count()
+
+    @admin.action(description=gettext_lazy("Mark the selected preparations as curated"))
+    def mark_curated(
+        self, request: HttpRequest, queryset: QuerySet[Preparation]
+    ) -> None:
+        """A curated preparation needs its English name, so those lacking it wait."""
+        pks = list(queryset.values_list("pk", flat=True))
+        ready = Preparation.objects.filter(pk__in=pks).exclude(name_en="")
+        updated = ready.update(status=Preparation.Status.CURATED)
+        if skipped := len(pks) - ready.count():
+            self.message_user(
+                request,
+                _("%(count)d preparation(s) lack an English name and were not marked.")
+                % {"count": skipped},
+                level=messages.WARNING,
+            )
+        self.message_user(
+            request,
+            _("%(count)d preparation(s) marked as curated.") % {"count": updated},
         )

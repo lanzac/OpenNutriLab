@@ -260,7 +260,7 @@ def test_replacing_the_tree_gives_each_ingredient_the_reference_with_its_name(
 
     update_product(product, data)
 
-    links = [i.reference for i in product.ingredients.order_by("id")]
+    links = [i.item for i in product.ingredients.order_by("id")]
     assert links[0] == sugar
     assert links[2] == milk
     assert links[1].name_en == "Noisettes"

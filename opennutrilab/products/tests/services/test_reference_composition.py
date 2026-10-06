@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 
 from opennutrilab.products.models import Nutrient
+from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import ReferenceIngredient
 from opennutrilab.products.models import Source
 from opennutrilab.products.models import SourceFood
@@ -296,3 +297,38 @@ def test_the_composition_is_read_in_a_few_queries_however_many_foods(
     # The values, and the catalogue's derivations with their terms.
     with django_assert_max_num_queries(3):
         reference_composition(reference)
+
+
+# ----------------------------------------------------------------------------
+# A preparation draws on its source foods as a reference does
+# ----------------------------------------------------------------------------
+def test_a_preparation_of_one_food_is_that_foods_values(source: Source):
+    mozzarella = food(source)
+    value(mozzarella, "fat", "17.5", grade="B")
+    preparation = Preparation.objects.create(name_en="mozzarella")
+    preparation.source_foods.add(mozzarella)
+
+    estimate = reference_composition(preparation)["fat"]
+
+    assert (estimate.amount, estimate.grades, estimate.foods) == (
+        D("17.5"),
+        ("B",),
+        (mozzarella,),
+    )
+
+
+def test_the_foods_of_a_reference_are_not_those_of_a_preparation(source: Source):
+    one = food(source, "1")
+    value(one, "fat", "10")
+    other = food(source, "2")
+    value(other, "fat", "30")
+    reference = reference_of(one)
+    preparation = Preparation.objects.create(name_en="gnocchi")
+    preparation.source_foods.add(other)
+
+    assert reference_composition(reference)["fat"].amount == D(10)
+    assert reference_composition(preparation)["fat"].amount == D(30)
+
+
+def test_a_preparation_with_no_source_food_has_no_composition(db: None):
+    assert reference_composition(Preparation.objects.create(name_en="gnocchi")) == {}

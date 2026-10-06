@@ -256,20 +256,19 @@ class Loaded(NamedTuple):
 
 def load(product: Product) -> Loaded:
     """Read a product's ingredients, their compositions and its label."""
-    ingredients = list(product.ingredients.select_related("reference"))
+    ingredients = list(product.ingredients.select_related("reference", "preparation"))
     catalogue = {nutrient.code: nutrient for nutrient in Nutrient.objects.all()}
     derived = list(derived_nutrients())
-    full = {
-        reference.pk: reference_composition(reference, derived)
-        for reference in {i.reference_id: i.reference for i in ingredients}.values()
-    }
+    # A reference and a preparation can have the same id: the kind is in the key.
+    items = {(type(i.item), i.item.pk): i.item for i in ingredients}
+    full = {key: reference_composition(item, derived) for key, item in items.items()}
     nodes = [
         Node(
             key=i.id,
             parent=i.parent_id,
-            name=i.reference.name,
+            name=i.item.name,
             declared=i.percentage,
-            composition=_macronutrients(full[i.reference_id], catalogue),
+            composition=_macronutrients(full[type(i.item), i.item.pk], catalogue),
         )
         for i in ingredients
     ]
@@ -283,7 +282,7 @@ def load(product: Product) -> Loaded:
         nodes,
         label,
         {code: nutrient.name for code, nutrient in catalogue.items()},
-        [full[i.reference_id] for i in ingredients],
+        [full[type(i.item), i.item.pk] for i in ingredients],
         {code: nutrient.parent_id for code, nutrient in catalogue.items()},
         {code: nutrient.unit for code, nutrient in catalogue.items()},
     )

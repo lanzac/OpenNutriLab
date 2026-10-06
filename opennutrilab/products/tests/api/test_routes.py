@@ -7,6 +7,8 @@ from django.test import Client
 
 from opennutrilab.products.api.schemas.inbound import ProductCreate
 from opennutrilab.products.api.schemas.outbound import ProductOut
+from opennutrilab.products.models import Ingredient
+from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ReferenceIngredient
 from opennutrilab.products.services import product_services
@@ -199,7 +201,9 @@ def test_an_ingredient_is_served_as_its_reference(api_client: Client):
     response = api_client.get(f"{API}{payload['barcode']}")
 
     [dates] = response.json()["ingredients"]
-    assert set(dates) == {"percentage", "reference", "sub_ingredients"}
+    assert set(dates) == {"percentage", "reference", "preparation", "sub_ingredients"}
+    # A true ingredient: the other of the two is null.
+    assert dates["preparation"] is None
     assert dates["percentage"] == "7.00"
     assert dates["reference"] == {
         "id": ReferenceIngredient.objects.get(name_en="Dates").pk,
@@ -389,7 +393,14 @@ def test_the_estimate_is_served_with_its_parts(api_client: Client):
     assert [w["problem"] for w in data["warnings"]] == ["no_composition"]
     assert not data["used_nutrition"]
     [dates] = data["ingredients"]
-    assert set(dates) == {"reference", "declared", "estimated", "sub_ingredients"}
+    assert set(dates) == {
+        "reference",
+        "preparation",
+        "declared",
+        "estimated",
+        "sub_ingredients",
+    }
+    assert dates["preparation"] is None
     # The label's figure and the estimate are two fields.
     assert dates["declared"] == "7.00"
     assert dates["estimated"] == {"low": "6.50", "point": "7.00", "high": "7.50"}
@@ -414,3 +425,21 @@ def test_the_estimate_is_for_reading_only(
         HTTPStatus.METHOD_NOT_ALLOWED
     )
     assert api_client.delete(url).status_code == HTTPStatus.METHOD_NOT_ALLOWED
+
+
+@pytest.mark.django_db
+def test_an_ingredient_that_is_a_preparation_is_served_as_one(
+    api_client: Client, products_two: tuple[Product, Product]
+):
+    product, _ = products_two
+    mozzarella = Preparation.objects.create(name_en="mozzarella")
+    Ingredient.objects.create(product=product, preparation=mozzarella)
+
+    [ingredient] = api_client.get(f"{API}{product.barcode}").json()["ingredients"]
+
+    assert ingredient["reference"] is None
+    assert ingredient["preparation"] == {
+        "id": mozzarella.pk,
+        "name": "mozzarella",
+        "status": "to_review",
+    }
