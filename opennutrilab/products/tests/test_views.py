@@ -23,6 +23,7 @@ from opennutrilab.products.api.openfoodfacts.services import OFFProductNotFoundE
 from opennutrilab.products.api.schemas.inbound import IngredientInput
 from opennutrilab.products.api.schemas.inbound import ProductCreate
 from opennutrilab.products.forms import ProductForm
+from opennutrilab.products.models import Additive
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import IngredientTaxon
 from opennutrilab.products.models import Nutrient
@@ -1152,3 +1153,29 @@ def test_rows_from_db_show_a_preparation_by_its_name_and_marked_as_one(ciqual: S
         "12120",
     )
     assert [r["name"] for r in cheese["ingredients"]] == ["sugar"]
+
+
+@pytest.mark.django_db
+def test_rows_from_db_show_an_additive_by_its_name_and_marked_as_one(ciqual: Source):
+    lecithin = Additive.objects.create(
+        name_en="soy lecithin", name_fr="lécithine de soja", code="E322"
+    )
+    lecithin.source_foods.add(
+        SourceFood.objects.create(source=ciqual, code="42200", name_fr="Lécithine")
+    )
+    product = Product.objects.create(barcode=NUTELLA, name="Chocolate")
+    sugar = ReferenceIngredient.objects.create(name_en="sugar")
+    Ingredient.objects.create(product=product, reference=sugar)
+    Ingredient.objects.create(product=product, additive=lecithin)
+
+    with translation.override("fr"):
+        rows = ingredient_rows_from_db(product)
+
+    sweet, emulsifier = rows
+    assert (sweet["name"], sweet["reference"]) == ("sugar", "À relire")
+    # Its CIQUAL code is that of the foods it draws on, and it says what it is.
+    assert (emulsifier["name"], emulsifier["reference"], emulsifier["ciqual"]) == (
+        "lécithine de soja",
+        "Additif, à relire",
+        "42200",
+    )

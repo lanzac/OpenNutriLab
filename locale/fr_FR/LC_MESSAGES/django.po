@@ -493,9 +493,6 @@ msgstr ""
 msgid "%(count)d preparation(s) marked as curated."
 msgstr "%(count)d préparation(s) marquée(s) comme validée(s)."
 
-msgid "An ingredient is a reference or a preparation, not both."
-msgstr "Un ingrédient est une référence ou une préparation, pas les deux."
-
 msgid "A preparation already has this name."
 msgstr "Une préparation a déjà ce nom."
 
@@ -640,6 +637,130 @@ msgstr "Déjà le nom anglais de %(other)s."
 
 msgid "Give the ticked names"
 msgstr "Donner les noms cochés"
+
+msgid "Nutrients"
+msgstr "Nutriments"
+
+msgid "Mark the selected additives as curated"
+msgstr "Marquer les additifs sélectionnés comme validés"
+
+#, python-format
+msgid "%(count)d additive(s) lack an English name and were not marked."
+msgstr "%(count)d additif(s) n'ont pas de nom anglais et n'ont pas été marqués."
+
+#, python-format
+msgid "%(count)d additive(s) marked as curated."
+msgstr "%(count)d additif(s) marqué(s) comme validé(s)."
+
+msgid ""
+"An ingredient is a reference, a preparation or an additive, and only one of "
+"them."
+msgstr ""
+"Un ingrédient est une référence, une préparation ou un additif, et un seul "
+"des trois."
+
+msgid "An additive already has this name."
+msgstr "Un additif a déjà ce nom."
+
+msgid "Acid"
+msgstr "Acidifiant"
+
+msgid "Acidity regulator"
+msgstr "Correcteur d'acidité"
+
+msgid "Anti-caking agent"
+msgstr "Anti-agglomérant"
+
+msgid "Anti-foaming agent"
+msgstr "Antimousse"
+
+msgid "Antioxidant"
+msgstr "Antioxydant"
+
+msgid "Bulking agent"
+msgstr "Agent de charge"
+
+msgid "Carrier"
+msgstr "Support"
+
+msgid "Colour"
+msgstr "Colorant"
+
+msgid "Emulsifier"
+msgstr "Émulsifiant"
+
+msgid "Emulsifying salt"
+msgstr "Sel de fonte"
+
+msgid "Firming agent"
+msgstr "Affermissant"
+
+msgid "Flavour enhancer"
+msgstr "Exhausteur de goût"
+
+msgid "Flour treatment agent"
+msgstr "Agent de traitement de la farine"
+
+msgid "Foaming agent"
+msgstr "Agent moussant"
+
+msgid "Gelling agent"
+msgstr "Gélifiant"
+
+msgid "Glazing agent"
+msgstr "Agent d'enrobage"
+
+msgid "Humectant"
+msgstr "Humectant"
+
+msgid "Modified starch"
+msgstr "Amidon modifié"
+
+msgid "Packaging gas"
+msgstr "Gaz d'emballage"
+
+msgid "Preservative"
+msgstr "Conservateur"
+
+msgid "Propellant"
+msgstr "Gaz propulseur"
+
+msgid "Raising agent"
+msgstr "Poudre à lever"
+
+msgid "Sequestrant"
+msgstr "Séquestrant"
+
+msgid "Stabiliser"
+msgstr "Stabilisant"
+
+msgid "Sweetener"
+msgstr "Édulcorant"
+
+msgid "Thickener"
+msgstr "Épaississant"
+
+msgid "Its E number, such as E330. Blank when it has none."
+msgstr "Son numéro E, par exemple E330. Vide s'il n'en a pas."
+
+msgid "What it is used for, when it is known."
+msgstr "À quoi il sert, quand on le sait."
+
+msgid "An additive already has this E number."
+msgstr "Un additif a déjà ce numéro E."
+
+msgid "A curated additive needs its English name."
+msgstr "Un additif validé a besoin de son nom anglais."
+
+msgid "Per 100 g of the additive, in the nutrient's unit."
+msgstr "Pour 100 g d'additif, dans l'unité du nutriment."
+
+msgid "Where the figure comes from: its specification, or its formula."
+msgstr "D'où vient le chiffre : sa spécification ou sa formule."
+
+#, python-format
+msgid "Additive, %(status)s"
+msgstr "Additif, %(status)s"
 
 #~ msgid "Fat"
 #~ msgstr "Matières grasses"

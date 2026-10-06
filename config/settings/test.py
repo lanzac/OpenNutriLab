@@ -16,6 +16,12 @@ SECRET_KEY = env(
 # https://docs.djangoproject.com/en/dev/ref/settings/#test-runner
 TEST_RUNNER = "django.test.runner.DiscoverRunner"
 
+# TRANSLATION
+# ------------------------------------------------------------------------------
+# Tests never reach a translator, whatever the environment of the machine says.
+TRANSLATION_URL = ""
+TRANSLATION_API_KEY = ""
+
 # PASSWORDS
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#password-hashers

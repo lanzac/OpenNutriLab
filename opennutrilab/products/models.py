@@ -5,7 +5,8 @@ Products, their ingredients, and the nutrient data behind them.
   with its unit. All amounts are per 100 g, in that unit.
 - Product and ProductNutrient: what a product's nutrition label declares.
 - Ingredient: a product's ingredient tree, as its label lists it. Each one is
-  a reference ingredient or a preparation, and has no name of its own.
+  a reference ingredient, a preparation or an additive, and has no name of its
+  own.
 - IngredientTaxon: OpenFoodFacts' ingredient taxonomy, a dictionary of the
   English and French names of what a label names, with a CIQUAL hint. It gives
   a wording its English name, and proposes foods. Nothing links to it.
@@ -17,6 +18,9 @@ Products, their ingredients, and the nutrient data behind them.
 - Preparation: what is made of several ingredients ("mozzarella", "gnocchi"),
   which a reference must not be. It points to the references it is made of, and
   may draw on source foods too. Product ingredients link to it as well.
+- Additive and AdditiveNutrient: a food additive ("acide citrique", E330), apart
+  from the true ingredients, with the nutrients it brings when it brings any.
+  Product ingredients link to it as well.
 """
 
 from collections.abc import Iterable
@@ -201,7 +205,8 @@ class ProductNutrient(models.Model):
 
 class Ingredient(models.Model):
     """
-    An ingredient of a product, which is a reference ingredient or a preparation.
+    An ingredient of a product, which is a reference ingredient, a preparation or
+    an additive.
 
     It has no name and keeps nothing OpenFoodFacts says about it: the name is
     that of the one it is, and what OFF gave only served to find or create it
@@ -214,6 +219,7 @@ class Ingredient(models.Model):
     parent_id: int | None
     reference_id: int | None
     preparation_id: int | None
+    additive_id: int | None
 
     product = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="ingredients"
@@ -227,9 +233,9 @@ class Ingredient(models.Model):
         on_delete=models.CASCADE,
         related_name="sub_ingredients",
     )
-    # One of the two is set, and protected: what is in use cannot be deleted. An
-    # ingredient no reference or preparation has the name of gets a reference
-    # created, to review, which the curator may turn into a preparation.
+    # One of the three is set, and protected: what is in use cannot be deleted. An
+    # ingredient nothing has the name of gets a reference created, to review,
+    # which the curator may turn into a preparation.
     reference: "models.ForeignKey[ReferenceIngredient | None]" = models.ForeignKey(
         "ReferenceIngredient",
         null=True,
@@ -239,6 +245,13 @@ class Ingredient(models.Model):
     )
     preparation: "models.ForeignKey[Preparation | None]" = models.ForeignKey(
         "Preparation",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="usages",
+    )
+    additive: "models.ForeignKey[Additive | None]" = models.ForeignKey(
+        "Additive",
         null=True,
         blank=True,
         on_delete=models.PROTECT,
@@ -268,8 +281,8 @@ class Ingredient(models.Model):
         # created in.
         ordering = ["id"]
         constraints = [
-            # A null reference or preparation is never equal to another, so each
-            # pair of constraints only bears on the rows that have one.
+            # A null link is never equal to another, so each pair of constraints
+            # only bears on the rows that have that link.
             models.UniqueConstraint(
                 fields=["product", "parent", "reference"],
                 name="unique_ingredient_per_product_parent",
@@ -288,15 +301,38 @@ class Ingredient(models.Model):
                 condition=models.Q(parent__isnull=True),
                 name="unique_root_preparation_per_product",
             ),
+            models.UniqueConstraint(
+                fields=["product", "parent", "additive"],
+                name="unique_additive_per_product_parent",
+            ),
+            models.UniqueConstraint(
+                fields=["product", "additive"],
+                condition=models.Q(parent__isnull=True),
+                name="unique_root_additive_per_product",
+            ),
             # django-stubs still types `check`, which Django 5.1 renamed.
             models.CheckConstraint(  # pyright: ignore[reportCallIssue]
                 condition=(  # pyright: ignore[reportCallIssue]
-                    models.Q(reference__isnull=False, preparation__isnull=True)
-                    | models.Q(reference__isnull=True, preparation__isnull=False)
+                    models.Q(
+                        reference__isnull=False,
+                        preparation__isnull=True,
+                        additive__isnull=True,
+                    )
+                    | models.Q(
+                        reference__isnull=True,
+                        preparation__isnull=False,
+                        additive__isnull=True,
+                    )
+                    | models.Q(
+                        reference__isnull=True,
+                        preparation__isnull=True,
+                        additive__isnull=False,
+                    )
                 ),
-                name="ingredient_is_a_reference_or_a_preparation",
+                name="ingredient_is_a_reference_a_preparation_or_an_additive",
                 violation_error_message=_(
-                    "An ingredient is a reference or a preparation, not both."
+                    "An ingredient is a reference, a preparation or an additive, "
+                    "and only one of them."
                 ),
             ),
         ]
@@ -306,9 +342,9 @@ class Ingredient(models.Model):
         return str(self.item)
 
     @property
-    def item(self) -> "ReferenceIngredient | Preparation":
-        """The reference or the preparation this ingredient is."""
-        item = self.reference or self.preparation
+    def item(self) -> "ReferenceIngredient | Preparation | Additive":
+        """The reference, the preparation or the additive this ingredient is."""
+        item = self.reference or self.preparation or self.additive
         assert item is not None  # The constraint says one of them is set.
         return item
 
@@ -486,11 +522,11 @@ _CURATED_HAS_NAME_EN = ~models.Q(status="curated") | ~models.Q(name_en="")
 
 class CuratedItem(models.Model):
     """
-    What a reference ingredient and a preparation have in common: the names, the
-    notes for whoever curates them, and a status.
+    What a reference ingredient, a preparation and an additive have in common: the
+    names, the notes for whoever curates them, and a status.
 
     Each name is unique when filled, whatever its case, in its table and across
-    the two (see _name_clashes), so a name leads to one of them at most.
+    the three (see _name_clashes), so a name leads to one of them at most.
     """
 
     class Status(models.TextChoices):
@@ -539,6 +575,18 @@ def _name_clashes(
         if name and other.objects.alias(key=Lower(field)).filter(key=name.lower()):  # pyright: ignore[reportAttributeAccessIssue]
             clashes[field] = message
     return clashes
+
+
+def _refuse_names_of_others(
+    item: CuratedItem, others: Iterable[tuple[type[models.Model], Any]]
+) -> None:
+    """Raise a ValidationError by field for the names another table has."""
+    errors: dict[str, Any] = {}
+    for other, message in others:
+        for field, text in _name_clashes(item, other, str(message)).items():
+            errors.setdefault(field, []).append(text)
+    if errors:
+        raise ValidationError(errors)
 
 
 class ReferenceIngredient(CuratedItem):
@@ -593,10 +641,13 @@ class ReferenceIngredient(CuratedItem):
     @override
     def clean(self) -> None:
         super().clean()
-        if clashes := _name_clashes(
-            self, Preparation, str(_("A preparation already has this name."))
-        ):
-            raise ValidationError({field: [text] for field, text in clashes.items()})
+        _refuse_names_of_others(
+            self,
+            (
+                (Preparation, _("A preparation already has this name.")),
+                (Additive, _("An additive already has this name.")),
+            ),
+        )
 
 
 class Preparation(CuratedItem):
@@ -655,9 +706,160 @@ class Preparation(CuratedItem):
     @override
     def clean(self) -> None:
         super().clean()
-        if clashes := _name_clashes(
+        _refuse_names_of_others(
             self,
-            ReferenceIngredient,
-            str(_("A reference ingredient already has this name.")),
-        ):
-            raise ValidationError({field: [text] for field, text in clashes.items()})
+            (
+                (
+                    ReferenceIngredient,
+                    _("A reference ingredient already has this name."),
+                ),
+                (Additive, _("An additive already has this name.")),
+            ),
+        )
+
+
+class Additive(CuratedItem):
+    """
+    A food additive, e.g. "acide citrique" (E330), which a label lists with the
+    ingredients and which is not one: its kinds are a closed list (the E numbers,
+    the functional classes), CIQUAL has next to nothing on them, and some bring a
+    vitamin or a mineral (E300 is vitamin C, E170 is calcium carbonate).
+
+    The nutrients it brings are the ones its curator says it does, with the
+    amount per 100 g and where the figure comes from (AdditiveNutrient). It may
+    also draw on source foods when a table has it. One with neither has no
+    composition, which is not the same as one that brings nothing.
+    """
+
+    class Function(models.TextChoices):
+        """The functional classes of the European additives regulation."""
+
+        ACID = "acid", _("Acid")
+        ACIDITY_REGULATOR = "acidity_regulator", _("Acidity regulator")
+        ANTI_CAKING_AGENT = "anti_caking_agent", _("Anti-caking agent")
+        ANTI_FOAMING_AGENT = "anti_foaming_agent", _("Anti-foaming agent")
+        ANTIOXIDANT = "antioxidant", _("Antioxidant")
+        BULKING_AGENT = "bulking_agent", _("Bulking agent")
+        CARRIER = "carrier", _("Carrier")
+        COLOUR = "colour", _("Colour")
+        EMULSIFIER = "emulsifier", _("Emulsifier")
+        EMULSIFYING_SALT = "emulsifying_salt", _("Emulsifying salt")
+        FIRMING_AGENT = "firming_agent", _("Firming agent")
+        FLAVOUR_ENHANCER = "flavour_enhancer", _("Flavour enhancer")
+        FLOUR_TREATMENT_AGENT = "flour_treatment_agent", _("Flour treatment agent")
+        FOAMING_AGENT = "foaming_agent", _("Foaming agent")
+        GELLING_AGENT = "gelling_agent", _("Gelling agent")
+        GLAZING_AGENT = "glazing_agent", _("Glazing agent")
+        HUMECTANT = "humectant", _("Humectant")
+        MODIFIED_STARCH = "modified_starch", _("Modified starch")
+        PACKAGING_GAS = "packaging_gas", _("Packaging gas")
+        PRESERVATIVE = "preservative", _("Preservative")
+        PROPELLANT = "propellant", _("Propellant")
+        RAISING_AGENT = "raising_agent", _("Raising agent")
+        SEQUESTRANT = "sequestrant", _("Sequestrant")
+        STABILISER = "stabiliser", _("Stabiliser")
+        SWEETENER = "sweetener", _("Sweetener")
+        THICKENER = "thickener", _("Thickener")
+
+    code = models.CharField(
+        max_length=10,
+        blank=True,
+        help_text=_("Its E number, such as E330. Blank when it has none."),
+    )
+    function = models.CharField(
+        max_length=30,
+        choices=Function.choices,
+        blank=True,
+        help_text=_("What it is used for, when it is known."),
+    )
+    source_foods: "models.ManyToManyField[SourceFood, Any]" = models.ManyToManyField(
+        SourceFood, blank=True, related_name="additives"
+    )
+
+    if TYPE_CHECKING:
+        usages: RelatedManager["Ingredient"]
+        nutrients: RelatedManager["AdditiveNutrient"]
+
+    class Meta(CuratedItem.Meta):
+        constraints = [
+            models.UniqueConstraint(
+                Lower("name_en"),
+                condition=~models.Q(name_en=""),
+                name="unique_additive_name_en",
+            ),
+            models.UniqueConstraint(
+                Lower("name_fr"),
+                condition=~models.Q(name_fr=""),
+                name="unique_additive_name_fr",
+            ),
+            models.UniqueConstraint(
+                Lower("code"),
+                condition=~models.Q(code=""),
+                name="unique_additive_code",
+                violation_error_message=_("An additive already has this E number."),
+            ),
+            models.CheckConstraint(  # pyright: ignore[reportCallIssue]
+                condition=_HAS_A_NAME,  # pyright: ignore[reportCallIssue]
+                name="additive_has_a_name",
+            ),
+            models.CheckConstraint(  # pyright: ignore[reportCallIssue]
+                condition=_CURATED_HAS_NAME_EN,  # pyright: ignore[reportCallIssue]
+                name="curated_additive_has_name_en",
+                violation_error_message=_("A curated additive needs its English name."),
+            ),
+        ]
+
+    @override
+    def __str__(self) -> str:
+        return f"{self.name} ({self.code})" if self.code else self.name
+
+    @override
+    def clean(self) -> None:
+        super().clean()
+        # "e 330" and "E330" are the one code.
+        self.code = "".join(self.code.split()).upper()
+        _refuse_names_of_others(
+            self,
+            (
+                (
+                    ReferenceIngredient,
+                    _("A reference ingredient already has this name."),
+                ),
+                (Preparation, _("A preparation already has this name.")),
+            ),
+        )
+
+
+class AdditiveNutrient(models.Model):
+    """What an additive brings of a nutrient, per 100 g of the additive."""
+
+    additive_id: int
+    nutrient_id: str
+
+    additive = models.ForeignKey(
+        Additive, on_delete=models.CASCADE, related_name="nutrients"
+    )
+    nutrient = models.ForeignKey(Nutrient, on_delete=models.PROTECT, related_name="+")
+    # In the nutrient's unit, as the foods' amounts are: 100 g of pure ascorbic
+    # acid is 100 g of vitamin C.
+    amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=6,
+        validators=[MinValueValidator(0, message=_("Amount cannot be negative"))],
+        help_text=_("Per 100 g of the additive, in the nutrient's unit."),
+    )
+    note = models.TextField(
+        blank=True,
+        help_text=_("Where the figure comes from: its specification, or its formula."),
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["additive", "nutrient"], name="unique_nutrient_per_additive"
+            ),
+        ]
+
+    @override
+    def __str__(self) -> str:
+        return f"{self.additive}: {self.amount} {self.nutrient}"

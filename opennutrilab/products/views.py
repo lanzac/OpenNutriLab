@@ -30,6 +30,7 @@ from .api.schemas.outbound import EstimateOut
 from .forms import INGREDIENTS_JSON
 from .forms import ProductForm
 from .forms import nutrient_field
+from .models import Additive
 from .models import Ingredient
 from .models import IngredientTaxon
 from .models import Nutrient
@@ -387,7 +388,7 @@ def _ciqual_url(food_code: str, proxy_food_code: str) -> str | None:
 
 
 def _reference_ciqual(
-    reference: ReferenceIngredient | Preparation,
+    reference: ReferenceIngredient | Preparation | Additive,
 ) -> tuple[str, str | None]:
     """
     The CIQUAL codes of the foods a reference draws on, and where to check them.
@@ -420,11 +421,13 @@ def _row(
     }
 
 
-def _status_label(item: ReferenceIngredient | Preparation) -> str:
-    """Whether it is curated, and that it is a preparation when it is one."""
+def _status_label(item: ReferenceIngredient | Preparation | Additive) -> str:
+    """Whether it is curated, and what it is when it is not a reference."""
     label = str(ReferenceIngredient.Status(item.status).label)
     if isinstance(item, Preparation):
         return _("Preparation, %(status)s") % {"status": label.lower()}
+    if isinstance(item, Additive):
+        return _("Additive, %(status)s") % {"status": label.lower()}
     return label
 
 
@@ -489,9 +492,11 @@ def ingredient_rows_from_db(product: Product) -> list[dict[str, Any]]:
     """The stored ingredient tree, in a few queries however many there are."""
     ingredients = list(
         Ingredient.objects.filter(product=product)
-        .select_related("reference", "preparation")
+        .select_related("reference", "preparation", "additive")
         .prefetch_related(
-            "reference__source_foods__source", "preparation__source_foods__source"
+            "reference__source_foods__source",
+            "preparation__source_foods__source",
+            "additive__source_foods__source",
         )
         .order_by("id")
     )

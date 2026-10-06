@@ -4,6 +4,7 @@ from typing import Any
 
 import pytest
 
+from opennutrilab.products.models import Additive
 from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import ReferenceIngredient
@@ -333,6 +334,24 @@ def test_the_foods_of_a_reference_are_not_those_of_a_preparation(source: Source)
 
 def test_a_preparation_with_no_source_food_has_no_composition(db: None):
     assert reference_composition(Preparation.objects.create(name_en="gnocchi")) == {}
+
+
+# ----------------------------------------------------------------------------
+# An additive draws on its source foods as a reference does
+# ----------------------------------------------------------------------------
+def test_the_foods_of_an_additive_are_not_those_of_a_reference(source: Source):
+    one, other = food(source, "1"), food(source, "2")
+    value(one, "fat", "10")
+    value(other, "fat", "30")
+    lecithin = Additive.objects.create(name_en="soy lecithin", code="E322")
+    lecithin.source_foods.add(one)
+
+    assert reference_composition(lecithin)["fat"].amount == D(10)
+    assert reference_composition(reference_of(other))["fat"].amount == D(30)
+
+
+def test_an_additive_with_no_source_food_has_no_composition(db: None):
+    assert reference_composition(Additive.objects.create(name_en="citric acid")) == {}
 
 
 # ----------------------------------------------------------------------------

@@ -7,6 +7,8 @@ from django.db import transaction
 from django.db.models import ProtectedError
 from django.utils import translation
 
+from opennutrilab.products.models import Additive
+from opennutrilab.products.models import AdditiveNutrient
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Preparation
@@ -383,24 +385,53 @@ def test_a_name_does_not_clash_with_itself_when_it_is_edited():
 
 
 @pytest.mark.django_db
-def test_an_ingredient_is_a_reference_or_a_preparation(product: Product):
+def test_an_ingredient_is_a_reference_a_preparation_or_an_additive(product: Product):
     salt = ReferenceIngredient.objects.create(name_en="salt")
     mozzarella = Preparation.objects.create(name_en="mozzarella")
+    citric = Additive.objects.create(name_en="citric acid", code="E330")
 
     as_reference = Ingredient.objects.create(product=product, reference=salt)
     as_preparation = Ingredient.objects.create(product=product, preparation=mozzarella)
+    as_additive = Ingredient.objects.create(product=product, additive=citric)
 
     assert as_reference.item == salt
     assert as_preparation.item == mozzarella
-    assert (str(as_reference), str(as_preparation)) == ("salt", "mozzarella")
+    assert as_additive.item == citric
+    assert (str(as_reference), str(as_preparation), str(as_additive)) == (
+        "salt",
+        "mozzarella",
+        "citric acid (E330)",
+    )
+    # Two of them, or none: the database refuses it.
     with transaction.atomic(), pytest.raises(IntegrityError):
         Ingredient.objects.create(
             product=product, reference=salt, preparation=mozzarella, parent=as_reference
         )
     with transaction.atomic(), pytest.raises(IntegrityError):
+        Ingredient.objects.create(
+            product=product, reference=salt, additive=citric, parent=as_reference
+        )
+    with transaction.atomic(), pytest.raises(IntegrityError):
         Ingredient.objects.create(product=product, parent=as_reference)
-    with pytest.raises(ValidationError, match="a reference or a preparation"):
-        Ingredient(product=product, reference=salt, preparation=mozzarella).full_clean()
+    with pytest.raises(ValidationError, match="and only one of them"):
+        Ingredient(
+            product=product, preparation=mozzarella, additive=citric
+        ).full_clean()
+
+
+@pytest.mark.django_db
+def test_a_product_lists_an_additive_once_per_parent(product: Product):
+    citric = Additive.objects.create(name_en="citric acid")
+    mozzarella = Preparation.objects.create(name_en="mozzarella")
+    Ingredient.objects.create(product=product, additive=citric)
+    parent = Ingredient.objects.create(product=product, preparation=mozzarella)
+    # Under another parent it is a different ingredient.
+    Ingredient.objects.create(product=product, parent=parent, additive=citric)
+
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        Ingredient.objects.create(product=product, additive=citric)
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        Ingredient.objects.create(product=product, parent=parent, additive=citric)
 
 
 @pytest.mark.django_db
@@ -450,3 +481,165 @@ def test_a_preparation_in_use_cannot_be_removed(product: Product):
 
     with pytest.raises(ProtectedError):
         mozzarella.delete()
+
+
+# ----------------------------------------------------------------------------
+# Additives
+# ----------------------------------------------------------------------------
+@pytest.mark.django_db
+def test_an_additive_is_named_like_a_reference_and_has_a_code_and_a_function():
+    citric = Additive.objects.create(
+        name_en="citric acid",
+        name_fr="acide citrique",
+        code="E330",
+        function=Additive.Function.ACID,
+    )
+
+    with translation.override("fr-fr"):
+        assert str(citric) == "acide citrique (E330)"
+    assert Additive.Status(citric.status) is Additive.Status.TO_REVIEW
+    assert Additive.Function(citric.function).label == "Acid"
+    assert str(Additive.objects.create(name_en="carmine")) == "carmine"
+
+
+@pytest.mark.django_db
+def test_an_additive_name_is_unique_whatever_its_case():
+    Additive.objects.create(name_en="Citric acid", name_fr="Acide citrique")
+
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        Additive.objects.create(name_en="citric acid")
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        Additive.objects.create(name_en="sour", name_fr="acide citrique")
+
+
+@pytest.mark.django_db
+def test_an_additive_code_is_unique_whatever_its_case_and_may_be_blank():
+    Additive.objects.create(name_en="citric acid", code="E330")
+    Additive.objects.create(name_en="carmine")
+    Additive.objects.create(name_en="annatto")
+
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        Additive.objects.create(name_en="other", code="e330")
+    with pytest.raises(ValidationError, match="already has this E number"):
+        Additive(name_en="other", code="e330").full_clean()
+
+
+@pytest.mark.django_db
+def test_an_additive_code_is_written_the_one_way():
+    additive = Additive(name_en="citric acid", code=" e 330 ")
+
+    additive.full_clean()
+
+    assert additive.code == "E330"
+
+
+@pytest.mark.django_db
+def test_an_additive_needs_a_name_and_a_curated_one_its_english_name():
+    curated = Additive.Status.CURATED
+
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        Additive.objects.create(code="E330")
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        Additive.objects.create(name_fr="acide citrique", status=curated)
+    with pytest.raises(ValidationError, match="curated additive needs"):
+        Additive(name_fr="acide citrique", status=curated).full_clean()
+
+
+@pytest.mark.django_db
+def test_an_additive_function_is_one_of_the_closed_list():
+    with pytest.raises(ValidationError):
+        Additive(name_en="citric acid", function="a_made_up_class").full_clean()
+    Additive(name_en="citric acid", function="").full_clean()
+
+
+@pytest.mark.django_db
+def test_an_additive_brings_a_nutrient_once():
+    ascorbic = Additive.objects.create(name_en="ascorbic acid", code="E300")
+    vitamin_c = Nutrient.objects.create(
+        code="vitamin_c",
+        name_en="Vitamin C",
+        name_fr="Vitamine C",
+        unit=Nutrient.Unit.MILLIGRAM,
+        group=Nutrient.Group.VITAMIN,
+    )
+
+    brought = AdditiveNutrient.objects.create(
+        additive=ascorbic,
+        nutrient=vitamin_c,
+        amount=Decimal(100000),
+        note="Pure ascorbic acid is vitamin C.",
+    )
+
+    assert list(ascorbic.nutrients.all()) == [brought]
+    assert str(brought).startswith("ascorbic acid (E300): 100000")
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        AdditiveNutrient.objects.create(
+            additive=ascorbic, nutrient=vitamin_c, amount=Decimal(1)
+        )
+    with pytest.raises(ValidationError):
+        AdditiveNutrient(
+            additive=ascorbic,
+            nutrient=Nutrient.objects.get(code="fat"),
+            amount=Decimal(-1),
+        ).full_clean()
+
+
+@pytest.mark.django_db
+def test_an_additive_draws_on_source_foods_apart_from_the_other_kinds(
+    ciqual_carrot: SourceFood,
+):
+    lecithin = Additive.objects.create(name_en="soy lecithin", code="E322")
+
+    lecithin.source_foods.add(ciqual_carrot)
+
+    assert list(Additive.objects.filter(source_foods=ciqual_carrot)) == [lecithin]
+    assert not ReferenceIngredient.objects.filter(source_foods=ciqual_carrot).exists()
+    assert not Preparation.objects.filter(source_foods=ciqual_carrot).exists()
+
+
+@pytest.mark.django_db
+def test_an_additive_in_use_cannot_be_deleted(product: Product):
+    citric = Additive.objects.create(name_en="citric acid")
+    Ingredient.objects.create(product=product, additive=citric)
+
+    with pytest.raises(ProtectedError):
+        citric.delete()
+
+
+@pytest.mark.django_db
+def test_a_name_is_one_of_the_three_kinds_only():
+    Additive.objects.create(name_en="Citric acid", name_fr="Acide citrique")
+    Preparation.objects.create(name_en="Mozzarella")
+    ReferenceIngredient.objects.create(name_en="Milk")
+
+    errors = {}
+    for label, item in {
+        "reference": ReferenceIngredient(name_en="citric acid"),
+        "preparation": Preparation(name_fr="acide citrique"),
+        "additive_as_preparation": Additive(name_en="mozzarella"),
+        "additive_as_reference": Additive(name_en="milk"),
+        "reference_as_preparation": ReferenceIngredient(name_en="mozzarella"),
+    }.items():
+        with pytest.raises(ValidationError) as caught:
+            item.full_clean()
+        errors[label] = caught.value.message_dict
+
+    assert errors["reference"]["name_en"] == ["An additive already has this name."]
+    assert errors["preparation"]["name_fr"] == ["An additive already has this name."]
+    assert errors["additive_as_preparation"]["name_en"] == [
+        "A preparation already has this name."
+    ]
+    assert errors["additive_as_reference"]["name_en"] == [
+        "A reference ingredient already has this name."
+    ]
+    assert errors["reference_as_preparation"]["name_en"] == [
+        "A preparation already has this name."
+    ]
+
+
+@pytest.mark.django_db
+def test_an_additive_name_does_not_clash_with_itself_when_it_is_edited():
+    citric = Additive.objects.create(name_en="citric acid", code="E330")
+
+    citric.description = "An acid."
+    citric.full_clean()

@@ -33,6 +33,7 @@ from collections.abc import Sequence
 from decimal import Decimal
 from typing import NamedTuple
 
+from opennutrilab.products.models import Additive
 from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import ReferenceIngredient
@@ -76,11 +77,12 @@ class _Measure(NamedTuple):
 
 
 def reference_composition(
-    item: ReferenceIngredient | Preparation, derived: Iterable[Nutrient] | None = None
+    item: ReferenceIngredient | Preparation | Additive,
+    derived: Iterable[Nutrient] | None = None,
 ) -> dict[str, Estimate]:
     """
-    What the foods of a reference, or of a preparation, say together, by nutrient
-    code.
+    What the foods of a reference, of a preparation or of an additive say
+    together, by nutrient code.
 
     One with no source food has no composition. `derived` is derived_nutrients()
     when not given; pass it when computing many, to read the catalogue once.
@@ -89,6 +91,8 @@ def reference_composition(
         {"food__reference_ingredients": item}
         if isinstance(item, ReferenceIngredient)
         else {"food__preparations": item}
+        if isinstance(item, Preparation)
+        else {"food__additives": item}
     )
     rows = list(
         SourceFoodNutrient.objects.filter(**drawn_on)

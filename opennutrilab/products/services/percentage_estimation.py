@@ -263,9 +263,9 @@ class Loaded(NamedTuple):
 def load(product: Product) -> Loaded:
     """Read a product's ingredients, their compositions and its label."""
     ingredients = list(
-        product.ingredients.select_related("reference", "preparation").prefetch_related(
-            "preparation__source_foods", "preparation__components"
-        )
+        product.ingredients.select_related(
+            "reference", "preparation", "additive"
+        ).prefetch_related("preparation__source_foods", "preparation__components")
     )
     catalogue = {nutrient.code: nutrient for nutrient in Nutrient.objects.all()}
     derived = list(derived_nutrients())

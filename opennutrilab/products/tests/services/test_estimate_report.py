@@ -7,6 +7,7 @@ from django.utils import translation
 
 from opennutrilab.products.api.schemas.outbound import EstimateOut
 from opennutrilab.products.api.schemas.outbound import IngredientEstimateOut
+from opennutrilab.products.models import Additive
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Preparation
@@ -407,6 +408,40 @@ def test_a_preparation_made_of_references_is_a_range_of_the_lowest_quality(
     # It is not a fit: no grade, so the lowest quality, a quarter.
     assert proteins.confidence is not None
     assert proteins.confidence.quality == D("0.25")
+
+
+def test_an_ingredient_that_is_an_additive_is_served_as_one(source: Source):
+    product = product_of()
+    citric = Additive.objects.create(
+        name_en="citric acid", code="E330", function=Additive.Function.ACID
+    )
+    Ingredient.objects.create(product=product, additive=citric)
+
+    (ingredient,) = build_estimate(product).ingredients
+
+    assert ingredient.reference is None
+    assert ingredient.preparation is None
+    assert ingredient.additive is not None
+    assert ingredient.additive.model_dump() == {
+        "id": citric.pk,
+        "name": "citric acid",
+        "code": "E330",
+        "function": "acid",
+        "status": "to_review",
+    }
+
+
+def test_the_sources_of_an_additive_are_credited_too(source: Source):
+    product = product_of()
+    other = Source.objects.create(code="other", name="Other", attribution="Other.")
+    lecithin = Additive.objects.create(name_en="soy lecithin", code="E322")
+    lecithin.source_foods.add(SourceFood.objects.create(source=other, code="l1"))
+    Ingredient.objects.create(product=product, additive=lecithin)
+    add(product, reference(source, "1"))
+
+    credited = {s.code for s in build_estimate(product).sources}
+
+    assert credited == {"other", "ciqual-2025"}
 
 
 def test_the_sources_of_a_preparation_are_credited_too(source: Source):

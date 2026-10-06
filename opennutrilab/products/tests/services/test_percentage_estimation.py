@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 from django.utils import translation
 
+from opennutrilab.products.models import Additive
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Preparation
@@ -578,3 +579,71 @@ def test_the_same_preparation_listed_twice_counts_by_each_place_it_is(source: So
 
     assert composition[with_parts.id] is None
     assert composition[alone.id] is not None
+
+
+# ----------------------------------------------------------------------------
+# An additive counts by its source foods, as a reference does
+# ----------------------------------------------------------------------------
+def additive(
+    source: Source, code: str, pk: int | None = None, **amounts: str
+) -> Additive:
+    """An additive that draws on a food with these amounts, like `reference`."""
+    food = SourceFood.objects.create(source=source, code=code)
+    for nutrient in ("fat", "carbohydrates", "proteins"):
+        SourceFoodNutrient.objects.create(
+            food=food,
+            nutrient=Nutrient.objects.get(code=nutrient),
+            amount=D(amounts.get(nutrient, "0")),
+            confidence="A",
+        )
+    lecithin = Additive.objects.create(pk=pk, name_en=f"additive {code}")
+    lecithin.source_foods.add(food)
+    return lecithin
+
+
+def test_an_additive_counts_by_its_source_foods_as_a_reference_does(source: Source):
+    oats = reference(source, "1", proteins="20")
+    lecithin = additive(source, "2", proteins="10")
+    product = product_with(proteins="15")
+    first = add(product, oats)
+    second = Ingredient.objects.create(product=product, additive=lecithin)
+
+    result = estimate_percentages(product)
+
+    assert_spans(result, {first.id: (50, 60), second.id: (40, 50)})
+    assert result.used_nutrition
+    assert result.warnings == []
+
+
+def test_an_additive_with_no_composition_is_named_in_the_warning(source: Source):
+    product = product_with(proteins="15")
+    add(product, reference(source, "1", proteins="20"))
+    Ingredient.objects.create(
+        product=product,
+        additive=Additive.objects.create(name_en="citric acid", code="E330"),
+    )
+
+    result = estimate_percentages(product)
+
+    assert [w.problem for w in result.warnings] == [Problem.NO_COMPOSITION]
+    assert result.warnings[0].detail == "citric acid"
+
+
+def test_a_reference_a_preparation_and_an_additive_with_one_id_are_not_confused(
+    source: Source,
+):
+    reference_row = reference(source, "1", proteins="20")
+    preparation_row = preparation(source, "2", pk=reference_row.pk, proteins="10")
+    additive_row = additive(source, "3", pk=reference_row.pk, proteins="30")
+    assert reference_row.pk == preparation_row.pk == additive_row.pk
+    product = product_with(proteins="20")
+    first = add(product, reference_row)
+    second = Ingredient.objects.create(product=product, preparation=preparation_row)
+    third = Ingredient.objects.create(product=product, additive=additive_row)
+
+    loaded = load(product)
+
+    proteins = {n.key: (n.composition or {})["proteins"] for n in loaded.nodes}
+    assert proteins[first.id][0] > 19  # noqa: PLR2004
+    assert proteins[second.id][1] < 11  # noqa: PLR2004
+    assert proteins[third.id][0] > 29  # noqa: PLR2004

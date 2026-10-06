@@ -24,6 +24,8 @@ from django.utils.safestring import SafeString
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 
+from .models import Additive
+from .models import AdditiveNutrient
 from .models import Ingredient
 from .models import IngredientTaxon
 from .models import Nutrient
@@ -91,8 +93,8 @@ class ProductAdmin(admin.ModelAdmin[Product]):
 class IngredientAdmin(admin.ModelAdmin[Ingredient]):
     list_display = ("indented_name", "product", "percentage")
     list_filter = ("product",)
-    list_select_related = ("product", "reference", "preparation")
-    autocomplete_fields = ("reference", "preparation")
+    list_select_related = ("product", "reference", "preparation", "additive")
+    autocomplete_fields = ("reference", "preparation", "additive")
     ordering = ("id",)
 
     @admin.display(description="Ingredient (hierarchical)")
@@ -727,4 +729,88 @@ class PreparationAdmin(admin.ModelAdmin[Preparation]):
         self.message_user(
             request,
             _("%(count)d preparation(s) marked as curated.") % {"count": updated},
+        )
+
+
+class AdditiveNutrientInline(admin.TabularInline[AdditiveNutrient]):
+    model = AdditiveNutrient
+    extra = 0
+
+
+@admin.register(Additive)
+class AdditiveAdmin(admin.ModelAdmin[Additive]):
+    """
+    The food additives, curated apart from the true ingredients: the E number and
+    the functional class, the nutrients one brings (E300 is vitamin C) with where
+    the figure comes from, and the source foods it draws on, if a table has it.
+    The most used come first.
+    """
+
+    list_display = (
+        "name_en",
+        "name_fr",
+        "code",
+        "function",
+        "status",
+        "used_by",
+        "nutrient_count",
+        "source_food_count",
+    )
+    list_filter = ("status", "function", HasSourceFoodsFilter)
+    search_fields = ("code", "name_fr", "name_en")
+    autocomplete_fields = ("source_foods",)
+    fields = (
+        "name_en",
+        "name_fr",
+        "code",
+        "function",
+        "status",
+        "description",
+        "source_foods",
+    )
+    inlines = (AdditiveNutrientInline,)
+    actions = ("mark_curated",)
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Additive]:
+        # Not super(): it sorts by get_ordering before the counts exist.
+        return Additive.objects.annotate(
+            usage_count=Count("usages", distinct=True),
+            nutrient_count=Count("nutrients", distinct=True),
+            food_count=Count("source_foods", distinct=True),
+        )
+
+    def get_ordering(self, request: HttpRequest) -> list[Any]:
+        return most_used_first("additive")
+
+    @admin.display(description=gettext_lazy("Ingredients"), ordering="usage_count")
+    def used_by(self, obj: Additive) -> int:
+        count: object = getattr(obj, "usage_count", None)
+        return count if isinstance(count, int) else obj.usages.count()
+
+    @admin.display(description=gettext_lazy("Nutrients"), ordering="nutrient_count")
+    def nutrient_count(self, obj: Additive) -> int:
+        count: object = getattr(obj, "nutrient_count", None)
+        return count if isinstance(count, int) else obj.nutrients.count()
+
+    @admin.display(description=gettext_lazy("Source foods"), ordering="food_count")
+    def source_food_count(self, obj: Additive) -> int:
+        count: object = getattr(obj, "food_count", None)
+        return count if isinstance(count, int) else obj.source_foods.count()
+
+    @admin.action(description=gettext_lazy("Mark the selected additives as curated"))
+    def mark_curated(self, request: HttpRequest, queryset: QuerySet[Additive]) -> None:
+        """A curated additive needs its English name, so those lacking it wait."""
+        pks = list(queryset.values_list("pk", flat=True))
+        ready = Additive.objects.filter(pk__in=pks).exclude(name_en="")
+        updated = ready.update(status=Additive.Status.CURATED)
+        if skipped := len(pks) - ready.count():
+            self.message_user(
+                request,
+                _("%(count)d additive(s) lack an English name and were not marked.")
+                % {"count": skipped},
+                level=messages.WARNING,
+            )
+        self.message_user(
+            request,
+            _("%(count)d additive(s) marked as curated.") % {"count": updated},
         )

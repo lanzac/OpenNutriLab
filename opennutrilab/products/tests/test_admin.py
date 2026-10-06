@@ -11,6 +11,8 @@ from django.test import Client
 from django.urls import reverse
 from pytest_django.fixtures import SettingsWrapper
 
+from opennutrilab.products.models import Additive
+from opennutrilab.products.models import AdditiveNutrient
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import IngredientTaxon
 from opennutrilab.products.models import Nutrient
@@ -26,6 +28,7 @@ pytestmark = pytest.mark.django_db
 
 REFERENCES = "admin:products_referenceingredient_changelist"
 PREPARATIONS = "admin:products_preparation_changelist"
+ADDITIVES = "admin:products_additive_changelist"
 FOODS = "admin:products_sourcefood_changelist"
 
 
@@ -1050,8 +1053,10 @@ def test_the_pages_of_an_ingredient_open_whichever_it_is(admin_client: Client):
     """The forms for the reference and the preparation use the admins' ordering."""
     salt = ReferenceIngredient.objects.create(name_en="salt")
     mozzarella = Preparation.objects.create(name_en="mozzarella")
+    citric = Additive.objects.create(name_en="citric acid", code="E330")
     used_by(salt, "3229820794556")
     prepared_for(mozzarella, "3229820794556")
+    added_to(citric, "3229820794556")
 
     for ingredient in Ingredient.objects.all():
         url = reverse("admin:products_ingredient_change", args=[ingredient.pk])
@@ -1060,3 +1065,169 @@ def test_the_pages_of_an_ingredient_open_whichever_it_is(admin_client: Client):
         admin_client.get(reverse("admin:products_ingredient_add")).status_code
         == HTTPStatus.OK
     )
+
+
+# ----------------------------------------------------------------------------
+# Additives
+# ----------------------------------------------------------------------------
+def added_to(additive: Additive, *barcodes: str) -> None:
+    for barcode in barcodes:
+        product, _created = Product.objects.get_or_create(
+            barcode=barcode, defaults={"name": barcode}
+        )
+        Ingredient.objects.create(product=product, additive=additive)
+
+
+def test_the_additives_are_listed_most_used_first_with_their_counts(
+    admin_client: Client,
+):
+    Additive.objects.create(name_en="unused")
+    once = Additive.objects.create(name_en="once", code="E100")
+    twice = Additive.objects.create(name_en="twice", code="E200")
+    added_to(twice, "3229820794556", "3017620422003")
+    added_to(once, "3229820794556")
+    AdditiveNutrient.objects.create(
+        additive=twice,
+        nutrient=Nutrient.objects.get(code="fat"),
+        amount=Decimal(1),
+    )
+    twice.source_foods.add(
+        SourceFood.objects.create(
+            source=Source.objects.create(code="ciqual-2025", name="Ciqual"), code="1"
+        )
+    )
+
+    response = admin_client.get(reverse(ADDITIVES))
+
+    rows = response.context["cl"].result_list
+    assert [r.name_en for r in rows] == ["twice", "once", "unused"]
+    assert [(r.usage_count, r.nutrient_count, r.food_count) for r in rows] == [
+        (2, 1, 1),
+        (1, 0, 0),
+        (0, 0, 0),
+    ]
+
+
+def test_an_additive_is_edited_with_its_code_function_and_nutrients(
+    admin_client: Client,
+):
+    fat = Nutrient.objects.get(code="fat")
+    citric = Additive.objects.create(name_en="citric acid")
+    url = reverse("admin:products_additive_change", args=[citric.pk])
+
+    page = admin_client.get(url)
+    response = admin_client.post(
+        url,
+        {
+            "name_en": "citric acid",
+            "name_fr": "acide citrique",
+            "code": " e 330",
+            "function": "acid",
+            "status": "to_review",
+            "description": "",
+            "nutrients-TOTAL_FORMS": "1",
+            "nutrients-INITIAL_FORMS": "0",
+            "nutrients-MIN_NUM_FORMS": "0",
+            "nutrients-MAX_NUM_FORMS": "1000",
+            "nutrients-0-nutrient": fat.pk,
+            "nutrients-0-amount": "0",
+            "nutrients-0-note": "No fat in it.",
+        },
+    )
+
+    assert page.status_code == HTTPStatus.OK
+    assert response.status_code == HTTPStatus.FOUND
+    citric.refresh_from_db()
+    assert (citric.code, citric.function) == ("E330", "acid")
+    [brought] = citric.nutrients.all()
+    assert (brought.nutrient, brought.amount, brought.note) == (
+        fat,
+        Decimal(0),
+        "No fat in it.",
+    )
+    assert (
+        admin_client.get(reverse("admin:products_additive_add")).status_code
+        == HTTPStatus.OK
+    )
+
+
+def test_an_additive_is_found_by_its_code_or_name_from_an_ingredient_form(
+    admin_client: Client,
+):
+    citric = Additive.objects.create(name_en="citric acid", code="E330")
+
+    for term in ("E33", "citric"):
+        response = admin_client.get(
+            reverse("admin:autocomplete"),
+            {
+                "term": term,
+                "app_label": "products",
+                "model_name": "ingredient",
+                "field_name": "additive",
+            },
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        assert [r["id"] for r in response.json()["results"]] == [str(citric.pk)]
+
+
+def test_an_ingredient_that_is_an_additive_is_listed_by_its_name(
+    admin_client: Client,
+):
+    citric = Additive.objects.create(name_en="citric acid", code="E330")
+    added_to(citric, "3229820794556")
+
+    response = admin_client.get(reverse("admin:products_ingredient_changelist"))
+
+    assert "citric acid (E330)" in response.content.decode()
+
+
+def test_additives_are_marked_as_curated_when_they_have_their_english_name(
+    admin_client: Client,
+):
+    ready = Additive.objects.create(name_en="citric acid", code="E330")
+    waiting = Additive.objects.create(name_fr="acide citrique", code="E331")
+
+    response = admin_client.post(
+        reverse(ADDITIVES),
+        {"action": "mark_curated", "_selected_action": [ready.pk, waiting.pk]},
+        follow=True,
+    )
+
+    ready.refresh_from_db()
+    waiting.refresh_from_db()
+    assert (ready.status, waiting.status) == ("curated", "to_review")
+    texts = messages_of(response)
+    assert any("1 additive(s) lack an English name" in m for m in texts)
+    assert any("1 additive(s) marked as curated" in m for m in texts)
+
+
+def test_the_additives_are_filtered_by_function_and_by_source_foods(
+    admin_client: Client,
+):
+    acid = Additive.objects.create(name_en="citric acid", function="acid")
+    Additive.objects.create(name_en="carmine", function="colour")
+
+    response = admin_client.get(reverse(ADDITIVES), {"function": "acid"})
+    assert [r.name_en for r in response.context["cl"].result_list] == [acid.name_en]
+
+    response = admin_client.get(reverse(ADDITIVES), {"source_foods": "with"})
+    assert list(response.context["cl"].result_list) == []
+
+
+def test_the_forms_refuse_a_name_an_additive_has(admin_client: Client):
+    Additive.objects.create(name_en="citric acid", code="E330")
+
+    as_reference = admin_client.post(
+        reverse("admin:products_referenceingredient_add"),
+        {"name_en": "Citric acid", "name_fr": "", "status": "to_review"},
+    )
+    as_preparation = admin_client.post(
+        reverse("admin:products_preparation_add"),
+        {"name_en": "citric acid", "name_fr": "", "status": "to_review"},
+    )
+
+    assert "An additive already has this name." in as_reference.content.decode()
+    assert "An additive already has this name." in as_preparation.content.decode()
+    assert not ReferenceIngredient.objects.exists()
+    assert not Preparation.objects.exists()

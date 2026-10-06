@@ -19,6 +19,7 @@ from collections.abc import Mapping
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 
+from opennutrilab.products.api.schemas.outbound import AdditiveOut
 from opennutrilab.products.api.schemas.outbound import CheckOut
 from opennutrilab.products.api.schemas.outbound import ConfidenceOut
 from opennutrilab.products.api.schemas.outbound import DeclaredOut
@@ -150,7 +151,9 @@ def _ingredients(
     """The ingredients as the label's tree, with their declared and estimated shares."""
     children: defaultdict[int | None, list[Ingredient]] = defaultdict(list)
     # In the order of the label, which is the order they were created in.
-    for ingredient in product.ingredients.select_related("reference", "preparation"):
+    for ingredient in product.ingredients.select_related(
+        "reference", "preparation", "additive"
+    ):
         children[ingredient.parent_id].append(ingredient)
 
     def build(ingredient: Ingredient) -> IngredientEstimateOut:
@@ -166,6 +169,11 @@ def _ingredients(
                 if ingredient.preparation is None
                 else PreparationOut.model_validate(ingredient.preparation)
             ),
+            additive=(
+                None
+                if ingredient.additive is None
+                else AdditiveOut.model_validate(ingredient.additive)
+            ),
             declared=ingredient.percentage,
             estimated=None if share is None else _range(share),
             sub_ingredients=[build(sub) for sub in children[ingredient.id]],
@@ -176,8 +184,9 @@ def _ingredients(
 
 def _sources(product: Product) -> list[SourceOut]:
     """
-    The sources of the foods the product's references and preparations draw on, and
-    of those of the references a preparation is made of when it counts by them
+    The sources of the foods the product's references, preparations and additives
+    draw on, and of those of the references a preparation is made of when it counts
+    by them
     (see percentage_estimation): one with no source food whose label lists no parts.
     """
     by_default = Ingredient.objects.filter(
@@ -197,6 +206,7 @@ def _sources(product: Product) -> list[SourceOut]:
         for source in Source.objects.filter(
             Q(foods__reference_ingredients__usages__product=product)
             | Q(foods__preparations__usages__product=product)
+            | Q(foods__additives__usages__product=product)
             | Q(foods__reference_ingredients__used_in_preparations__in=by_default)
         )
         .distinct()

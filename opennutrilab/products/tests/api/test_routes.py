@@ -7,6 +7,7 @@ from django.test import Client
 
 from opennutrilab.products.api.schemas.inbound import ProductCreate
 from opennutrilab.products.api.schemas.outbound import ProductOut
+from opennutrilab.products.models import Additive
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
@@ -201,9 +202,16 @@ def test_an_ingredient_is_served_as_its_reference(api_client: Client):
     response = api_client.get(f"{API}{payload['barcode']}")
 
     [dates] = response.json()["ingredients"]
-    assert set(dates) == {"percentage", "reference", "preparation", "sub_ingredients"}
-    # A true ingredient: the other of the two is null.
+    assert set(dates) == {
+        "percentage",
+        "reference",
+        "preparation",
+        "additive",
+        "sub_ingredients",
+    }
+    # A true ingredient: the other two are null.
     assert dates["preparation"] is None
+    assert dates["additive"] is None
     assert dates["percentage"] == "7.00"
     assert dates["reference"] == {
         "id": ReferenceIngredient.objects.get(name_en="Dates").pk,
@@ -396,11 +404,13 @@ def test_the_estimate_is_served_with_its_parts(api_client: Client):
     assert set(dates) == {
         "reference",
         "preparation",
+        "additive",
         "declared",
         "estimated",
         "sub_ingredients",
     }
     assert dates["preparation"] is None
+    assert dates["additive"] is None
     # The label's figure and the estimate are two fields.
     assert dates["declared"] == "7.00"
     assert dates["estimated"] == {"low": "6.50", "point": "7.00", "high": "7.50"}
@@ -442,4 +452,30 @@ def test_an_ingredient_that_is_a_preparation_is_served_as_one(
         "id": mozzarella.pk,
         "name": "mozzarella",
         "status": "to_review",
+    }
+
+
+@pytest.mark.django_db
+def test_an_ingredient_that_is_an_additive_is_served_as_one(
+    api_client: Client, products_two: tuple[Product, Product]
+):
+    product, _ = products_two
+    citric = Additive.objects.create(
+        name_en="citric acid",
+        code="E330",
+        function=Additive.Function.ACID,
+        status=Additive.Status.CURATED,
+    )
+    Ingredient.objects.create(product=product, additive=citric)
+
+    [ingredient] = api_client.get(f"{API}{product.barcode}").json()["ingredients"]
+
+    assert ingredient["reference"] is None
+    assert ingredient["preparation"] is None
+    assert ingredient["additive"] == {
+        "id": citric.pk,
+        "name": "citric acid",
+        "code": "E330",
+        "function": "acid",
+        "status": "curated",
     }
