@@ -32,9 +32,8 @@ turns one into the other (`docs/plans/lot-preparations.md`). What is decided and
 not started, with the reasons in that plan's "After the batch":
 
 - **A table for the additives** (E330, "acidifiant"), apart from the references,
-  able to say which vitamin or mineral an additive brings.
-- **A proposal of the English name** of a reference that has none, for the
-  curator to accept.
+  able to say which vitamin or mineral an additive brings: planned in
+  `docs/plans/lot-additives.md`, with the decisions to confirm.
 
 ## Upgrade to Django 6.0, for background tasks
 

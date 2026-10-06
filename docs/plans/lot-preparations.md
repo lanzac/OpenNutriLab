@@ -226,9 +226,30 @@ What the user decided on 2026-10-06, after steps 1 to 3, and what stays open.
   table), source foods being the second way. Whether flavourings, ferments and
   rennet go in the same table is left for that lot: for now they stay references.
 - **A proposal of the English name** of a reference that has none (6 of the 32
-  references in the development database), for the curator to accept. It is
-  computed and shown, never written in `name_en`: that is a key by which labels
-  are looked up, and "mark as curated" accepts whatever has one.
+  references in the development database), for the curator to accept (done,
+  2026-10-06). It is computed and shown, never written in `name_en`: that is a key
+  by which labels are looked up, and "mark as curated" accepts whatever has one.
+  The action "Propose English names" on the references (with a filter "without an
+  English name") shows one per reference, in a field the curator edits, with where
+  it comes from and ticked for them only when it is reliable: the taxonomy, then
+  the English name of the one source food, then a machine translation, which is
+  never pre-ticked. A name another reference or a preparation already has is
+  flagged and refused. The taxonomy found nothing for the 6 and the foods gave one,
+  so the others depend on the translator.
+  - **The translator** is `services/translation.translate`, one function that
+    calls a LibreTranslate-compatible server set by `TRANSLATION_URL` (off when
+    empty), so another translator is a change to that function. LibreTranslate was
+    taken over CroissantLLM (MIT, 1.3B, said to translate well, run locally)
+    because it is a service with an API and an official image, loads only
+    French and English, needs no prompt, and is less prone to inventing text, while serving a
+    language model means a runtime, a quantised model, a prompt and a check on what
+    it says. Its weakness is context: a compound name ("tomate cerise mi séchée") may
+    come out word for word, which the curator's review is there for. **Not
+    measured**: the stack has not run it (no Docker in the development container),
+    so its memory use and its translations of the 6 names are unknown, and the
+    code was exercised against a local fake server and mocks. A translation equal
+    to the French name (a word the translator does not know) is dropped, one
+    failure stops the asks for that page, and at most 50 names are asked at a time.
 - **The composition of a preparation in its admin page**, as a reference's page
   shows it (its foods' values, or the range of its components').
 - **Components with no composition** (see step 4) may need a softer rule once
