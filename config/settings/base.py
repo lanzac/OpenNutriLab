@@ -290,5 +290,16 @@ DJANGO_VITE = {
         "static_url_prefix": "vite",
     },
 }
+# Machine translation
+# ------------------------------------------------------------------------------
+# A LibreTranslate-compatible server (`POST <url>/translate`) that proposes the
+# English name of a reference ingredient that has none, for the curator to accept
+# (see services/english_names.py). Empty, which is the default, turns it off: the
+# proposals then come from the OpenFoodFacts taxonomy and the source foods only.
+TRANSLATION_URL = env("TRANSLATION_URL", default="")
+TRANSLATION_API_KEY = env("TRANSLATION_API_KEY", default="")
+# Seconds to wait for one translation.
+TRANSLATION_TIMEOUT = env.int("TRANSLATION_TIMEOUT", default=10)
+
 # Your stuff...
 # ------------------------------------------------------------------------------

@@ -53,6 +53,15 @@ EMAIL_USE_TLS=True
 # header and needs nothing here. Scoped to /api/ and /_allauth/ by CORS_URLS_REGEX.
 # DJANGO_CORS_ALLOWED_ORIGINS=https://app.opennutrilab.example,capacitor://localhost
 
+# Translation of ingredient names (optional)
+# ------------------------------------------------------------------------------
+# A LibreTranslate-compatible server that proposes, in the admin, the English name
+# of a reference ingredient that has none. The Compose files do not run one (see
+# docs/deployment.md). Left empty, the proposals come from the OpenFoodFacts
+# taxonomy and the source foods only.
+# TRANSLATION_URL=http://libretranslate:5000
+# TRANSLATION_API_KEY=
+
 # Media
 # ------------------------------------------------------------------------------
 # Matches the volume mounted in docker-compose.production.yml.

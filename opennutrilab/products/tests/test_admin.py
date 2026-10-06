@@ -2,6 +2,7 @@ import re
 from decimal import Decimal
 from http import HTTPStatus
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 from django.contrib.auth.models import Permission
@@ -672,6 +673,237 @@ def test_making_a_preparation_needs_the_permissions_it_uses(
 
     assert not Preparation.objects.exists()
     assert ReferenceIngredient.objects.filter(name_en="mozzarella").exists()
+
+
+# ----------------------------------------------------------------------------
+# Proposing English names
+# ----------------------------------------------------------------------------
+TRANSLATE = "opennutrilab.products.services.english_names.translate"
+
+
+def names_proposed(
+    client: Client, references: list[ReferenceIngredient], **extra: Any
+) -> Any:
+    return client.post(
+        reverse(REFERENCES),
+        {
+            "action": "propose_english_names",
+            "_selected_action": [r.pk for r in references],
+            **extra,
+        },
+        follow=True,
+    )
+
+
+@pytest.fixture
+def unnamed() -> dict[str, ReferenceIngredient]:
+    """Two references with no English name, and one that has it."""
+    return {
+        "onion": ReferenceIngredient.objects.create(name_fr="oignon grillé"),
+        "juice": ReferenceIngredient.objects.create(name_fr="jus d'oignon concentré"),
+        "named": ReferenceIngredient.objects.create(name_en="milk", name_fr="lait"),
+    }
+
+
+def test_the_references_are_filtered_by_having_an_english_name(
+    admin_client: Client, unnamed: dict[str, ReferenceIngredient]
+):
+    response = admin_client.get(reverse(REFERENCES), {"english_name": "without"})
+    assert {r.name_fr for r in response.context["cl"].result_list} == {
+        "oignon grillé",
+        "jus d'oignon concentré",
+    }
+
+    response = admin_client.get(reverse(REFERENCES), {"english_name": "with"})
+    assert [r.name_fr for r in response.context["cl"].result_list] == ["lait"]
+
+
+def test_the_proposals_are_shown_with_their_source_and_nothing_is_written(
+    admin_client: Client, unnamed: dict[str, ReferenceIngredient]
+):
+    with patch(TRANSLATE, return_value="grilled onion"):
+        response = names_proposed(admin_client, list(unnamed.values()))
+
+    page = response.content.decode()
+    assert 'value="grilled onion"' in page
+    assert "Machine translation" in page
+    # The reference that has an English name is not proposed one.
+    assert "lait" not in page
+    assert (
+        not ReferenceIngredient.objects.filter(name_fr="oignon grillé")
+        .exclude(name_en="")
+        .exists()
+    )
+
+
+def test_a_machine_translation_is_not_ticked_for_the_curator(
+    admin_client: Client, unnamed: dict[str, ReferenceIngredient]
+):
+    with patch(TRANSLATE, return_value="grilled onion"):
+        response = names_proposed(admin_client, [unnamed["onion"]])
+
+    box = re.search(
+        r'<input type="checkbox"[^>]*apply_\d+[^>]*>', response.content.decode()
+    )
+    assert box is not None
+    assert "checked" not in box.group(0)
+
+
+def test_a_name_from_the_taxonomy_is_ticked_already(
+    admin_client: Client, unnamed: dict[str, ReferenceIngredient]
+):
+    IngredientTaxon.objects.create(
+        off_id="en:grilled-onion", name_en="grilled onion", name_fr="oignon grillé"
+    )
+
+    response = names_proposed(admin_client, [unnamed["onion"]])
+
+    box = re.search(
+        r'<input type="checkbox"[^>]*apply_\d+[^>]*>', response.content.decode()
+    )
+    assert box is not None
+    assert "checked" in box.group(0)
+
+
+def test_the_page_says_when_no_translator_is_set(
+    admin_client: Client, unnamed: dict[str, ReferenceIngredient]
+):
+    response = names_proposed(admin_client, [unnamed["onion"]])
+
+    assert "No translator is set" in response.content.decode()
+
+
+def test_a_translator_that_does_not_answer_is_reported(
+    admin_client: Client, unnamed: dict[str, ReferenceIngredient]
+):
+    with patch(TRANSLATE, return_value=None):
+        response = names_proposed(admin_client, [unnamed["onion"]])
+
+    assert any("did not answer" in m for m in messages_of(response))
+
+
+def test_only_the_ticked_references_are_named_with_what_is_in_their_field(
+    admin_client: Client, unnamed: dict[str, ReferenceIngredient]
+):
+    onion, juice = unnamed["onion"], unnamed["juice"]
+
+    response = names_proposed(
+        admin_client,
+        [onion, juice],
+        apply="on",
+        **{
+            f"apply_{onion.pk}": "on",
+            # Edited by the curator.
+            f"name_{onion.pk}": "  roasted   onion ",
+            # Not ticked: left alone.
+            f"name_{juice.pk}": "onion juice",
+        },
+    )
+
+    onion.refresh_from_db()
+    juice.refresh_from_db()
+    assert (onion.name_en, juice.name_en) == ("roasted onion", "")
+    # The status is the curator's to change: a name is not a curation.
+    assert onion.status == ReferenceIngredient.Status.TO_REVIEW
+    assert any(
+        "1 reference(s) given an English name" in m for m in messages_of(response)
+    )
+
+
+def test_a_ticked_reference_with_an_empty_field_is_left_alone(
+    admin_client: Client, unnamed: dict[str, ReferenceIngredient]
+):
+    onion = unnamed["onion"]
+
+    names_proposed(
+        admin_client,
+        [onion],
+        apply="on",
+        **{f"apply_{onion.pk}": "on", f"name_{onion.pk}": "  "},
+    )
+
+    onion.refresh_from_db()
+    assert onion.name_en == ""
+
+
+def test_a_name_that_is_already_taken_is_refused_and_the_others_are_given(
+    admin_client: Client, unnamed: dict[str, ReferenceIngredient]
+):
+    onion, juice = unnamed["onion"], unnamed["juice"]
+    Preparation.objects.create(name_en="Roasted onion")
+
+    response = names_proposed(
+        admin_client,
+        [onion, juice],
+        apply="on",
+        **{
+            f"apply_{onion.pk}": "on",
+            f"name_{onion.pk}": "roasted onion",
+            f"apply_{juice.pk}": "on",
+            f"name_{juice.pk}": "onion juice",
+        },
+    )
+
+    onion.refresh_from_db()
+    juice.refresh_from_db()
+    assert (onion.name_en, juice.name_en) == ("", "onion juice")
+    assert any(
+        "already the English name of Roasted onion" in m for m in messages_of(response)
+    )
+
+
+def test_the_same_name_given_to_two_references_is_given_to_one_only(
+    admin_client: Client, unnamed: dict[str, ReferenceIngredient]
+):
+    onion, juice = unnamed["onion"], unnamed["juice"]
+
+    response = names_proposed(
+        admin_client,
+        [onion, juice],
+        apply="on",
+        **{
+            f"apply_{onion.pk}": "on",
+            f"name_{onion.pk}": "onion",
+            f"apply_{juice.pk}": "on",
+            f"name_{juice.pk}": "ONION",
+        },
+    )
+
+    onion.refresh_from_db()
+    juice.refresh_from_db()
+    # The page goes through them by their French name: "jus" before "oignon".
+    assert (juice.name_en, onion.name_en) == ("ONION", "")
+    assert any("already the English name" in m for m in messages_of(response))
+
+
+def test_references_that_all_have_an_english_name_get_a_message_and_no_page(
+    admin_client: Client, unnamed: dict[str, ReferenceIngredient]
+):
+    response = names_proposed(admin_client, [unnamed["named"]])
+
+    assert any("already have an English name" in m for m in messages_of(response))
+    assert "Give the ticked names" not in response.content.decode()
+
+
+def test_proposing_names_needs_the_permission_to_change_references(
+    client: Client, unnamed: dict[str, ReferenceIngredient]
+):
+    viewer = UserFactory(is_staff=True)
+    viewer.user_permissions.add(
+        Permission.objects.get(codename="view_referenceingredient")
+    )
+    client.force_login(viewer)
+    onion = unnamed["onion"]
+
+    names_proposed(
+        client,
+        [onion],
+        apply="on",
+        **{f"apply_{onion.pk}": "on", f"name_{onion.pk}": "roasted onion"},
+    )
+
+    onion.refresh_from_db()
+    assert onion.name_en == ""
 
 
 # ----------------------------------------------------------------------------

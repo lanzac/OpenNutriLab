@@ -4,6 +4,8 @@ from typing import Any
 from django.contrib import admin
 from django.contrib import messages
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from django.db import transaction
 from django.db.models import Count
 from django.db.models import OuterRef
@@ -33,6 +35,8 @@ from .models import ReferenceIngredient
 from .models import Source
 from .models import SourceFood
 from .models import SourceFoodNutrient
+from .services.english_names import propose_english_names as propose_names_for
+from .services.english_names import taken_by
 from .services.preparation_services import PreparationConversionError
 from .services.preparation_services import convert_to_preparation
 from .services.preparation_services import ensure_convertible
@@ -42,8 +46,10 @@ from .services.reference_composition import Estimate
 from .services.reference_composition import reference_composition
 from .services.reference_proposals import propose_foods as propose_foods_for
 from .services.reference_services import ReferenceNameError
+from .services.reference_services import clean_name
 from .services.reference_services import create_reference_from_foods
 from .services.reference_services import suggest_source_foods
+from .services.translation import translation_enabled
 
 
 class NutrientComponentInline(admin.TabularInline[NutrientComponent]):
@@ -207,6 +213,26 @@ class HasSourceFoodsFilter(admin.SimpleListFilter):
         return queryset
 
 
+class HasEnglishNameFilter(admin.SimpleListFilter):
+    title = gettext_lazy("English name")
+    parameter_name = "english_name"
+
+    def lookups(
+        self, request: HttpRequest, model_admin: admin.ModelAdmin[Any]
+    ) -> list[tuple[Any, str]]:
+        return [
+            ("without", _("Without an English name")),
+            ("with", _("With an English name")),
+        ]
+
+    def queryset(self, request: HttpRequest, queryset: QuerySet[Any]) -> QuerySet[Any]:
+        if self.value() == "without":
+            return queryset.filter(name_en="")
+        if self.value() == "with":
+            return queryset.exclude(name_en="")
+        return queryset
+
+
 @admin.register(ReferenceIngredient)
 class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
     """
@@ -225,7 +251,7 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
         "seen_with_parts",
         "source_food_count",
     )
-    list_filter = ("status", HasSourceFoodsFilter)
+    list_filter = ("status", HasSourceFoodsFilter, HasEnglishNameFilter)
     search_fields = ("name_fr", "name_en")
     autocomplete_fields = ("source_foods",)
     fields = (
@@ -238,7 +264,12 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
         "composition",
     )
     readonly_fields = ("suggested_foods", "composition")
-    actions = ("propose_foods", "mark_curated", "make_preparation")
+    actions = (
+        "propose_foods",
+        "propose_english_names",
+        "mark_curated",
+        "make_preparation",
+    )
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[ReferenceIngredient]:
         # Not super(): it sorts by get_ordering before the counts exist. The
@@ -419,6 +450,105 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
             )
             % {"linked": linked, "curated": curated},
         )
+
+    @admin.action(
+        description=gettext_lazy("Propose English names for the selected references"),
+        permissions=["change"],
+    )
+    def propose_english_names(
+        self, request: HttpRequest, queryset: QuerySet[ReferenceIngredient]
+    ) -> HttpResponseBase | None:
+        """
+        Propose an English name for each selected reference that has none.
+
+        Two steps on one action, as for the foods: the first shows a proposal for
+        each, with where it comes from, in a field that can be edited, the second
+        (the form's "apply") gives the ticked references the name in its field.
+        Nothing is written without that second step.
+        """
+        waiting = list(
+            queryset.filter(name_en="")
+            .prefetch_related("source_foods")
+            .order_by("name_fr", "id")
+        )
+        if "apply" in request.POST:
+            self._give_english_names(request, waiting)
+            return HttpResponseRedirect(request.get_full_path())
+        if not waiting:
+            self.message_user(
+                request,
+                _("The selected references already have an English name."),
+                level=messages.WARNING,
+            )
+            return None
+        proposed = propose_names_for(waiting)
+        if proposed.translator_failed:
+            self.message_user(
+                request,
+                _(
+                    "The translator did not answer: the names it would have "
+                    "proposed are left blank."
+                ),
+                level=messages.WARNING,
+            )
+        context = {
+            **self.admin_site.each_context(request),
+            "title": _("Propose English names"),
+            "opts": self.opts,
+            "proposals": [
+                (proposal, self.used_by(proposal.reference))
+                for proposal in proposed.proposals
+            ],
+            "translator_set": translation_enabled(),
+            "selected_ids": request.POST.getlist(ACTION_CHECKBOX_NAME),
+            "action_checkbox_name": ACTION_CHECKBOX_NAME,
+        }
+        return TemplateResponse(
+            request, "admin/products/referenceingredient/english_names.html", context
+        )
+
+    def _give_english_names(
+        self, request: HttpRequest, references: list[ReferenceIngredient]
+    ) -> None:
+        given = 0
+        for reference in references:
+            name = clean_name(request.POST.get(f"name_{reference.pk}", ""))
+            if f"apply_{reference.pk}" not in request.POST or not name:
+                continue
+            if other := taken_by(name, reference):
+                self._english_name_refused(
+                    request,
+                    reference,
+                    _("%(name)s is already the English name of %(other)s.")
+                    % {"name": name, "other": other},
+                )
+                continue
+            reference.name_en = name
+            try:
+                reference.clean_fields()
+                with transaction.atomic():
+                    reference.save(update_fields=["name_en"])
+            except ValidationError as e:
+                self._english_name_refused(request, reference, " ".join(e.messages))
+            except IntegrityError:
+                # Another request gave it since the check.
+                self._english_name_refused(
+                    request,
+                    reference,
+                    _("%(name)s is already the English name of another.")
+                    % {"name": name},
+                )
+            else:
+                given += 1
+        self.message_user(
+            request,
+            _("%(count)d reference(s) given an English name.") % {"count": given},
+        )
+
+    def _english_name_refused(
+        self, request: HttpRequest, reference: ReferenceIngredient, why: str
+    ) -> None:
+        self.message_user(request, f"{reference.name}: {why}", level=messages.ERROR)
 
     def has_make_preparation_permission(self, request: HttpRequest) -> bool:
         """It adds a preparation, repoints ingredients and deletes a reference."""

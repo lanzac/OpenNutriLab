@@ -563,6 +563,84 @@ msgstr "Composants obtenus"
 msgid "None: no label lists its parts."
 msgstr "Aucun : aucune étiquette ne liste ses parties."
 
+msgid "English name"
+msgstr "Nom anglais"
+
+msgid "Without an English name"
+msgstr "Sans nom anglais"
+
+msgid "With an English name"
+msgstr "Avec nom anglais"
+
+msgid "Propose English names for the selected references"
+msgstr "Proposer des noms anglais pour les références sélectionnées"
+
+msgid "The selected references already have an English name."
+msgstr "Les références sélectionnées ont déjà un nom anglais."
+
+msgid ""
+"The translator did not answer: the names it would have proposed are left "
+"blank."
+msgstr ""
+"Le traducteur n'a pas répondu : les noms qu'il aurait proposés sont laissés "
+"vides."
+
+msgid "Propose English names"
+msgstr "Proposer des noms anglais"
+
+#, python-format
+msgid "%(name)s is already the English name of %(other)s."
+msgstr "%(name)s est déjà le nom anglais de %(other)s."
+
+#, python-format
+msgid "%(name)s is already the English name of another."
+msgstr "%(name)s est déjà le nom anglais d'un autre ingrédient."
+
+#, python-format
+msgid "%(count)d reference(s) given an English name."
+msgstr "%(count)d référence(s) nommée(s) en anglais."
+
+msgid "OpenFoodFacts taxonomy"
+msgstr "Taxonomie OpenFoodFacts"
+
+msgid "Its source food"
+msgstr "Son aliment source"
+
+msgid "Machine translation"
+msgstr "Traduction automatique"
+
+msgid ""
+"For each reference with no English name, the name it may have, and where it "
+"comes from. The English name is what labels are looked up by, so check each "
+"one: edit it if need be, and tick the references to name. Nothing is written "
+"until you apply. A machine translation is not ticked for you."
+msgstr ""
+"Pour chaque référence sans nom anglais, le nom qu'elle pourrait avoir et "
+"d'où il vient. Le nom anglais sert à retrouver les références depuis les "
+"étiquettes : vérifiez chacun, modifiez-le si besoin et cochez les références "
+"à nommer. Rien n'est écrit avant d'appliquer. Une traduction automatique "
+"n'est pas cochée pour vous."
+
+msgid ""
+"No translator is set, so only the OpenFoodFacts taxonomy and the source "
+"foods were used."
+msgstr ""
+"Aucun traducteur n'est configuré : seuls la taxonomie OpenFoodFacts et les "
+"aliments sources ont été utilisés."
+
+msgid "Give"
+msgstr "Nommer"
+
+msgid "Nothing proposed: type one."
+msgstr "Rien de proposé : saisissez-en un."
+
+#, python-format
+msgid "Already the English name of %(other)s."
+msgstr "Déjà le nom anglais de %(other)s."
+
+msgid "Give the ticked names"
+msgstr "Donner les noms cochés"
+
 #~ msgid "Fat"
 #~ msgstr "Matières grasses"
 

@@ -1,0 +1,109 @@
+{% extends "admin/base_site.html" %}
+
+{% load i18n admin_urls %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+    .names td {
+      vertical-align: top;
+    }
+
+    .names input[type="text"] {
+      min-width: 22em;
+    }
+
+    .names .source {
+      color: var(--body-quiet-color);
+      font-size: 0.9em;
+    }
+
+    .names .warn,
+    .names .machine {
+      color: var(--error-fg);
+    }
+  </style>
+{% endblock extrastyle %}
+{% block breadcrumbs %}
+  <div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% translate "Home" %}</a>
+    › <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+    › <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+    › {% translate "Propose English names" %}
+  </div>
+{% endblock breadcrumbs %}
+{% block content %}
+  <p>
+    {% blocktranslate trimmed %}
+      For each reference with no English name, the name it may have, and where it
+      comes from. The English name is what labels are looked up by, so check each
+      one: edit it if need be, and tick the references to name. Nothing is written
+      until you apply. A machine translation is not ticked for you.
+    {% endblocktranslate %}
+  </p>
+  {% if not translator_set %}
+    <p class="warn">
+      {% translate "No translator is set, so only the OpenFoodFacts taxonomy and the source foods were used." %}
+    </p>
+  {% endif %}
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="propose_english_names" />
+    {% for pk in selected_ids %}<input type="hidden" name="{{ action_checkbox_name }}" value="{{ pk }}" />{% endfor %}
+    <div class="module">
+      <table class="names">
+        <thead>
+          <tr>
+            <th>{% translate "Give" %}</th>
+            <th>{% translate "Reference" %}</th>
+            <th>{% translate "English name" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for proposal, uses in proposals %}
+            <tr class="{% cycle 'row1' 'row2' %}">
+              <td>
+                <input type="checkbox"
+                       name="apply_{{ proposal.reference.pk }}"
+                       {% if proposal.name_en and not proposal.taken_by and proposal.source.value != "machine" %}checked{% endif %} />
+              </td>
+              <td>
+                <a href="{% url opts|admin_urlname:'change' proposal.reference.pk|admin_urlquote %}">
+                  <strong>{{ proposal.reference.name_fr|default:"-" }}</strong>
+                </a>
+                <br />
+                <small>{% blocktranslate count count=uses %}used by {{ count }} ingredient{% plural %}used by {{ count }} ingredients{% endblocktranslate %}</small>
+              </td>
+              <td>
+                <input type="text"
+                       name="name_{{ proposal.reference.pk }}"
+                       value="{{ proposal.name_en }}"
+                       maxlength="255" />
+                <div class="source">
+                  {% if proposal.source %}
+                    <span class="{% if proposal.source.value == 'machine' %}machine{% endif %}">{{ proposal.source.label }}</span>
+                  {% else %}
+                    {% translate "Nothing proposed: type one." %}
+                  {% endif %}
+                </div>
+                {% if proposal.taken_by %}
+                  <div class="warn">
+                    {% blocktranslate with other=proposal.taken_by %}Already the English name of {{ other }}.{% endblocktranslate %}
+                  </div>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="submit-row">
+      <input type="submit"
+             name="apply"
+             class="default"
+             value="{% translate 'Give the ticked names' %}" />
+      <a href="{% url opts|admin_urlname:'changelist' %}"
+         class="button cancel-link">{% translate "Cancel" %}</a>
+    </div>
+  </form>
+{% endblock content %}
