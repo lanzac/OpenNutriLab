@@ -100,6 +100,45 @@ run, an ingredient has no English name (it is named as the label words it, and
 the English name is added when the reference is reviewed), and the proposals of
 CIQUAL foods lose their second signal.
 
+Load the European Commission's list of food additives, the Union list of
+Regulation (EC) 1333/2008, as its Food and Feed Information Portal serves it, so
+that a label's additives are found by their name and not only by their E number (it
+downloads about 12 MB and takes a minute; the additives it creates are to review,
+with no class, and running it again completes what is there and overwrites
+nothing):
+
+```sh
+just prod-manage import_eu_additives --dry-run
+just prod-manage import_eu_additives
+```
+
+The list names the substances in English alone. OpenFoodFacts' list, which is wider
+and less careful (sub-forms, enzymes, colours that are no longer authorised), gives
+their French names, and creates nothing:
+
+```sh
+just prod-manage import_off_additives
+```
+
+An earlier version of this guide had OpenFoodFacts' list create the additives. If
+that was run, `import_eu_additives --prune` also deletes the additives it made that
+the Union list does not have, as long as nothing has touched them (still to review,
+used by no ingredient, no nutrient, no source food). `--dry-run` says what would
+change and keeps nothing.
+
+Then, in the admin of the references, the filter "Known as an additive" lists the
+references that have the name of one, and the action "Make an additive of the
+selected references" merges them into it. The products that are already there keep
+the ingredients they were saved with until their label is read again, which this
+does for all of them at once, from the text stored with each (`--dry-run` says what
+would change and keeps nothing; the labels are in French unless `--language` says
+otherwise):
+
+```sh
+just prod-manage reread_ingredients --dry-run
+just prod-manage reread_ingredients
+```
+
 Load ANSES' CIQUAL food composition table, the reference data nutrient
 estimates are built on (licence Etalab 2.0: the attribution it stores must be
 shown wherever its data is). It downloads about 70 MB, which takes several

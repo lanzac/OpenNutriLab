@@ -236,6 +236,11 @@ What the user decided on 2026-10-06, after steps 1 to 3, and what stays open.
   never pre-ticked. A name another reference or a preparation already has is
   flagged and refused. The taxonomy found nothing for the 6 and the foods gave one,
   so the others depend on the translator.
+  - The same action is on the preparations and on the additives (2026-10-06): the
+    page and the service take any of the three, the name another kind has is
+    refused whichever kind it is, and the filter "without an English name" is on
+    each list. Imported additives often lack one of the two names, and those made
+    from a French label lack the English one.
   - **The translator** is `services/translation.translate`, one function that
     calls a LibreTranslate-compatible server set by `TRANSLATION_URL` (off when
     empty), so another translator is a change to that function. LibreTranslate was

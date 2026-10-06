@@ -31,9 +31,10 @@ Reference ingredients hold true ingredients only, and what is made of several
 turns one into the other (`docs/plans/lot-preparations.md`). What is decided and
 not started, with the reasons in that plan's "After the batch":
 
-- **A table for the additives** (E330, "acidifiant"), apart from the references,
-  able to say which vitamin or mineral an additive brings: planned in
-  `docs/plans/lot-additives.md`, with the decisions to confirm.
+- **The additives' nutrients**: the table of additives is built and filled
+  (`docs/plans/lot-additives.md`), what is left is the estimate counting what an
+  additive brings (E300 is vitamin C) and the flag of an additive that brings
+  nothing, which the curator sets.
 
 ## Upgrade to Django 6.0, for background tasks
 
