@@ -25,6 +25,9 @@ from django.db import transaction
 from django.utils.translation import gettext as _
 
 from opennutrilab.products.api.openfoodfacts.services import OFF_HEADERS
+from opennutrilab.products.api.openfoodfacts.services import (
+    ingredient_inputs_from_label,
+)
 from opennutrilab.products.api.schemas.inbound import OFF_IMAGE_HOSTS
 from opennutrilab.products.api.schemas.inbound import IngredientInput
 from opennutrilab.products.api.schemas.inbound import ProductCreate
@@ -35,6 +38,7 @@ from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductNutrient
+from opennutrilab.products.services.label_parser import LabelWarning
 from opennutrilab.products.services.reference_services import Item
 from opennutrilab.products.services.reference_services import name_key
 from opennutrilab.products.services.reference_services import resolve_references
@@ -50,6 +54,16 @@ class ProductAlreadyExistsError(Exception):
 
 class UnknownNutrientError(Exception):
     """The payload names a nutrient code the catalogue does not know."""
+
+
+class Reread(NamedTuple):
+    """What reading a product's stored label again did."""
+
+    # Whether the ingredients were replaced.
+    done: bool
+    before: int
+    after: int
+    warnings: list[LabelWarning]
 
 
 class ProductWrite(NamedTuple):
@@ -114,6 +128,32 @@ def update_product(
 
     image_ok = _attach_image(product, upload=image, url=data.image_url)
     return ProductWrite(product, image_fetch_failed=not image_ok)
+
+
+def reread_ingredients(product: Product, language: str) -> Reread:
+    """
+    Read the label text stored with a product again, and replace its ingredients
+    with what it says, as saving does.
+
+    The ingredients come from that text and nothing else (see label_parser), so
+    this loses nothing a person entered. A product with no text, or whose text looks
+    badly read (the reading stops), is left as it is. `language` is the one the
+    label is in: it says where the names of what is new go.
+    """
+    before = product.ingredients.count()
+    if not product.ingredients_text.strip():
+        return Reread(done=False, before=before, after=before, warnings=[])
+    inputs, warnings = ingredient_inputs_from_label(product.ingredients_text, language)
+    if not inputs or any(w.stops_reading for w in warnings):
+        return Reread(done=False, before=before, after=before, warnings=warnings)
+    with transaction.atomic():
+        _replace_ingredients(product, inputs)
+    return Reread(
+        done=True,
+        before=before,
+        after=product.ingredients.count(),
+        warnings=warnings,
+    )
 
 
 # -------------------------

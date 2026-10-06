@@ -762,6 +762,75 @@ msgstr "D'où vient le chiffre : sa spécification ou sa formule."
 msgid "Additive, %(status)s"
 msgstr "Additif, %(status)s"
 
+msgid "additive"
+msgstr "additif"
+
+msgid "Known as an additive"
+msgstr "Connue comme additif"
+
+msgid "Make an additive of the selected references"
+msgstr "Transformer les références sélectionnées en additifs"
+
+msgid "Make additives"
+msgstr "Transformer en additifs"
+
+#, python-format
+msgid ""
+"%(count)d reference(s) made into additives: %(names)s. Check them, then mark "
+"them as curated."
+msgstr ""
+"%(count)d référence(s) transformée(s) en additifs : %(names)s. Vérifiez-les, "
+"puis marquez-les comme validés."
+
+#, python-format
+msgid ""
+"%(name)s and %(additive)s are both listed under the same ingredient of "
+"%(product)s: one of them has to go first."
+msgstr ""
+"%(name)s et %(additive)s sont tous deux listés sous le même ingrédient de "
+"%(product)s : l'un des deux doit disparaître d'abord."
+
+#, python-format
+msgid "An additive already has the name of %(name)s."
+msgstr "Un additif a déjà le nom de %(name)s."
+
+msgid ""
+"A food additive is not an ingredient: an E number, a class of use. Each "
+"reference ticked below becomes one: the ingredients that used it point to "
+"the additive and the reference is deleted. When an additive of that name is "
+"already there, the reference is merged into it, and what it lacks is "
+"completed from the reference. Otherwise the reference becomes a new "
+"additive, with its names, status, notes and source foods. The parts a label "
+"lists stay where they are. A name that is only the plural of one is not "
+"ticked for you: check it."
+msgstr ""
+"Un additif alimentaire n'est pas un ingrédient : un numéro E, une classe "
+"d'usage. Chaque référence cochée ci-dessous en devient un : les ingrédients "
+"qui l'utilisaient pointent vers l'additif et la référence est supprimée. "
+"Quand un additif de ce nom existe déjà, la référence est fusionnée avec lui "
+"et ce qui lui manque est complété à partir de la référence. Sinon la "
+"référence devient un nouvel additif, avec ses noms, son statut, ses notes et "
+"ses aliments sources. Les parties qu'une étiquette liste restent à leur "
+"place. Un nom qui n'est que le pluriel d'un autre n'est pas coché pour vous "
+": vérifiez-le."
+
+msgid "Convert"
+msgstr "Transformer"
+
+msgid "What happens"
+msgstr "Ce qui se passe"
+
+#, python-format
+msgid "Merged into the additive %(name)s %(code)s"
+msgstr "Fusionnée avec l'additif %(name)s %(code)s"
+
+#, python-format
+msgid "Looks like the additive %(name)s %(code)s: merged into it if ticked"
+msgstr "Ressemble à l'additif %(name)s %(code)s : fusionnée avec lui si cochée"
+
+msgid "A new additive, to review."
+msgstr "Un nouvel additif, à relire."
+
 #~ msgid "Fat"
 #~ msgstr "Matières grasses"
 

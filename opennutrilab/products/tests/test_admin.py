@@ -680,6 +680,187 @@ def test_making_a_preparation_needs_the_permissions_it_uses(
 
 
 # ----------------------------------------------------------------------------
+# Making an additive of references
+# ----------------------------------------------------------------------------
+def made_additives(
+    client: Client, references: list[ReferenceIngredient], **extra: Any
+) -> Any:
+    return client.post(
+        reverse(REFERENCES),
+        {
+            "action": "make_additive",
+            "_selected_action": [r.pk for r in references],
+            **extra,
+        },
+        follow=True,
+    )
+
+
+@pytest.fixture
+def known() -> dict[str, Any]:
+    """A reference named like an additive, one like its plural, a new one."""
+    citric = Additive.objects.create(
+        name_en="Citric acid", name_fr="Acide citrique", code="E330"
+    )
+    Additive.objects.create(name_fr="Lécithines", code="E322")
+    return {
+        "citric": citric,
+        "same": ReferenceIngredient.objects.create(name_fr="acide citrique"),
+        "plural": ReferenceIngredient.objects.create(name_fr="lécithine"),
+        "new": ReferenceIngredient.objects.create(name_fr="gomme xanthane"),
+    }
+
+
+def test_the_references_known_as_additives_are_filtered_out_of_the_list(
+    admin_client: Client, known: dict[str, Any]
+):
+    response = admin_client.get(reverse(REFERENCES), {"known_additive": "known"})
+
+    assert {r.name_fr for r in response.context["cl"].result_list} == {
+        "acide citrique",
+        "lécithine",
+    }
+
+
+def test_making_an_additive_shows_what_each_reference_becomes_first(
+    admin_client: Client, known: dict[str, Any]
+):
+    response = admin_client.post(
+        reverse(REFERENCES),
+        {
+            "action": "make_additive",
+            "_selected_action": [known["same"].pk, known["plural"].pk, known["new"].pk],
+        },
+    )
+
+    page = response.content.decode()
+    assert response.status_code == HTTPStatus.OK
+    assert "Merged into the additive Citric acid E330" in page
+    assert "Looks like the additive Lécithines E322" in page
+    assert "A new additive, to review." in page
+    assert ReferenceIngredient.objects.count() == 3  # noqa: PLR2004
+    assert Additive.objects.count() == 2  # noqa: PLR2004
+
+
+def ticked_boxes(page: str) -> dict[str, bool]:
+    """Which of the boxes "convert_<id>" are ticked."""
+    return {
+        match.group(1): "checked" in match.group(0)
+        for match in re.finditer(
+            r'<input type="checkbox"[^>]*name="convert_(\d+)"[^>]*>', page
+        )
+    }
+
+
+def test_a_sure_match_and_a_new_additive_are_ticked_and_a_likely_one_is_not(
+    admin_client: Client, known: dict[str, Any]
+):
+    response = admin_client.post(
+        reverse(REFERENCES),
+        {
+            "action": "make_additive",
+            "_selected_action": [known["same"].pk, known["plural"].pk, known["new"].pk],
+        },
+    )
+
+    boxes = ticked_boxes(response.content.decode())
+
+    assert boxes == {
+        str(known["same"].pk): True,
+        str(known["plural"].pk): False,
+        str(known["new"].pk): True,
+    }
+
+
+def test_applying_converts_the_ticked_references_only(
+    admin_client: Client, known: dict[str, Any]
+):
+    used_by(known["same"], "3229820794556")
+    used_by(known["new"], "3229820794556")
+    used_by(known["plural"], "3229820794556")
+
+    response = made_additives(
+        admin_client,
+        [known["same"], known["plural"], known["new"]],
+        apply="on",
+        **{f"convert_{known['same'].pk}": "on", f"convert_{known['new'].pk}": "on"},
+    )
+
+    assert set(ReferenceIngredient.objects.values_list("name_fr", flat=True)) == {
+        "lécithine"
+    }
+    # Merged into the additive that was there, and a new one made: three in all.
+    assert Additive.objects.count() == 3  # noqa: PLR2004
+    assert known["citric"].usages.count() == 1
+    assert Additive.objects.get(name_fr="gomme xanthane").usages.count() == 1
+    assert any("2 reference(s) made into additives" in m for m in messages_of(response))
+
+
+def test_a_reference_that_cannot_be_made_an_additive_is_told_and_the_others_are(
+    admin_client: Client, known: dict[str, Any]
+):
+    sauce = Preparation.objects.create(name_en="sauce")
+    sauce.components.add(known["new"])
+    refused = [known["new"]]
+
+    shown = made_additives(admin_client, [*refused, known["same"]])
+    response = made_additives(
+        admin_client,
+        [*refused, known["same"]],
+        apply="on",
+        **{f"convert_{known['new'].pk}": "on", f"convert_{known['same'].pk}": "on"},
+    )
+
+    page = shown.content.decode()
+    assert "component of sauce" in page
+    # A reference that cannot be converted has no box to tick.
+    assert str(known["new"].pk) not in ticked_boxes(page)
+    assert ReferenceIngredient.objects.filter(pk=known["new"].pk).exists()
+    assert not ReferenceIngredient.objects.filter(pk=known["same"].pk).exists()
+    texts = messages_of(response)
+    assert any("component of sauce" in m for m in texts)
+    assert any("1 reference(s) made into additives" in m for m in texts)
+
+
+def test_when_no_reference_can_be_made_an_additive_the_curator_gets_no_page(
+    admin_client: Client, known: dict[str, Any]
+):
+    sauce = Preparation.objects.create(name_en="sauce")
+    sauce.components.add(known["new"])
+
+    response = made_additives(admin_client, [known["new"]])
+
+    assert any("component of sauce" in m for m in messages_of(response))
+    assert "Make additives" not in response.content.decode().split("action-select")[-1]
+    assert ReferenceIngredient.objects.filter(pk=known["new"].pk).exists()
+
+
+def test_making_an_additive_needs_the_permissions_it_uses(
+    client: Client, known: dict[str, Any]
+):
+    editor = UserFactory(is_staff=True)
+    editor.user_permissions.add(
+        *Permission.objects.filter(
+            codename__in=(
+                "view_referenceingredient",
+                "change_referenceingredient",
+                "change_ingredient",
+                "delete_referenceingredient",
+                # Not "add_additive".
+            )
+        )
+    )
+    client.force_login(editor)
+
+    made_additives(
+        client, [known["new"]], apply="on", **{f"convert_{known['new'].pk}": "on"}
+    )
+
+    assert ReferenceIngredient.objects.filter(pk=known["new"].pk).exists()
+    assert Additive.objects.count() == 2  # noqa: PLR2004
+
+
+# ----------------------------------------------------------------------------
 # Proposing English names
 # ----------------------------------------------------------------------------
 TRANSLATE = "opennutrilab.products.services.english_names.translate"

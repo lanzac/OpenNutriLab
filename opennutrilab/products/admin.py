@@ -37,6 +37,10 @@ from .models import ReferenceIngredient
 from .models import Source
 from .models import SourceFood
 from .models import SourceFoodNutrient
+from .services.additive_services import AdditiveConversionError
+from .services.additive_services import additives_known_as
+from .services.additive_services import convert_to_additive
+from .services.additive_services import ensure_convertible as ensure_additive
 from .services.english_names import propose_english_names as propose_names_for
 from .services.english_names import taken_by
 from .services.preparation_services import PreparationConversionError
@@ -235,6 +239,24 @@ class HasEnglishNameFilter(admin.SimpleListFilter):
         return queryset
 
 
+class KnownAsAdditiveFilter(admin.SimpleListFilter):
+    """The references that have the name of an additive (see additive_services)."""
+
+    title = gettext_lazy("additive")
+    parameter_name = "known_additive"
+
+    def lookups(
+        self, request: HttpRequest, model_admin: admin.ModelAdmin[Any]
+    ) -> list[tuple[Any, str]]:
+        return [("known", _("Known as an additive"))]
+
+    def queryset(self, request: HttpRequest, queryset: QuerySet[Any]) -> QuerySet[Any]:
+        if self.value() == "known":
+            known = additives_known_as(list(ReferenceIngredient.objects.all()))
+            return queryset.filter(pk__in=known)
+        return queryset
+
+
 @admin.register(ReferenceIngredient)
 class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
     """
@@ -253,7 +275,12 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
         "seen_with_parts",
         "source_food_count",
     )
-    list_filter = ("status", HasSourceFoodsFilter, HasEnglishNameFilter)
+    list_filter = (
+        "status",
+        HasSourceFoodsFilter,
+        HasEnglishNameFilter,
+        KnownAsAdditiveFilter,
+    )
     search_fields = ("name_fr", "name_en")
     autocomplete_fields = ("source_foods",)
     fields = (
@@ -271,6 +298,7 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
         "propose_english_names",
         "mark_curated",
         "make_preparation",
+        "make_additive",
     )
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[ReferenceIngredient]:
@@ -551,6 +579,92 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
         self, request: HttpRequest, reference: ReferenceIngredient, why: str
     ) -> None:
         self.message_user(request, f"{reference.name}: {why}", level=messages.ERROR)
+
+    def has_make_additive_permission(self, request: HttpRequest) -> bool:
+        """It adds an additive, repoints ingredients and deletes a reference."""
+        return request.user.has_perms(
+            (
+                "products.add_additive",
+                "products.change_ingredient",
+                "products.delete_referenceingredient",
+            )
+        )
+
+    @admin.action(
+        description=gettext_lazy("Make an additive of the selected references"),
+        permissions=["make_additive"],
+    )
+    def make_additive(
+        self, request: HttpRequest, queryset: QuerySet[ReferenceIngredient]
+    ) -> HttpResponseBase | None:
+        """
+        Turn each ticked reference into an additive (see additive_services).
+
+        Two steps on one action, as for the preparations: the first shows what each
+        reference becomes, the second (the form's "apply") converts the ticked ones.
+        A reference that has the name of an additive is merged into it, and is ticked
+        for the curator when the name is the same word and not only its plural.
+        """
+        selected = list(queryset.order_by("name_en", "name_fr", "id"))
+        known = additives_known_as(selected)
+        if "apply" in request.POST:
+            ticked = [r for r in selected if f"convert_{r.pk}" in request.POST]
+            self._make_additives(request, ticked)
+            return HttpResponseRedirect(request.get_full_path())
+        rows: list[dict[str, Any]] = []
+        for reference in selected:
+            match = known.get(reference.pk)
+            try:
+                ensure_additive(reference, match)
+                refusal = ""
+            except AdditiveConversionError as e:
+                refusal = str(e)
+            rows.append(
+                {
+                    "reference": reference,
+                    "uses": self.used_by(reference),
+                    "match": match,
+                    "refusal": refusal,
+                    "ticked": not refusal and (match is None or match.exact),
+                }
+            )
+        if all(row["refusal"] for row in rows):
+            for row in rows:
+                self.message_user(request, row["refusal"], level=messages.ERROR)
+            return None
+        context = {
+            **self.admin_site.each_context(request),
+            "title": _("Make additives"),
+            "opts": self.opts,
+            "rows": rows,
+            "selected_ids": request.POST.getlist(ACTION_CHECKBOX_NAME),
+            "action_checkbox_name": ACTION_CHECKBOX_NAME,
+        }
+        return TemplateResponse(
+            request, "admin/products/referenceingredient/make_additive.html", context
+        )
+
+    def _make_additives(
+        self, request: HttpRequest, references: list[ReferenceIngredient]
+    ) -> None:
+        made: list[str] = []
+        for reference in references:
+            name = reference.name
+            try:
+                convert_to_additive(reference)
+            except AdditiveConversionError as e:
+                self.message_user(request, str(e), level=messages.ERROR)
+            else:
+                made.append(name)
+        if made:
+            self.message_user(
+                request,
+                _(
+                    "%(count)d reference(s) made into additives: %(names)s. "
+                    "Check them, then mark them as curated."
+                )
+                % {"count": len(made), "names": ", ".join(made)},
+            )
 
     def has_make_preparation_permission(self, request: HttpRequest) -> bool:
         """It adds a preparation, repoints ingredients and deletes a reference."""
