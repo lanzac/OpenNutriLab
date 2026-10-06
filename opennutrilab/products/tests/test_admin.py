@@ -502,6 +502,179 @@ def test_a_reference_with_no_value_says_so_and_the_add_form_does_not_fail(
 
 
 # ----------------------------------------------------------------------------
+# Making a preparation of references
+# ----------------------------------------------------------------------------
+def seen_with(
+    reference: ReferenceIngredient, *parts: ReferenceIngredient, barcode: str
+) -> None:
+    """The reference on a label, with the parts that label lists for it."""
+    product, _created = Product.objects.get_or_create(
+        barcode=barcode, defaults={"name": barcode}
+    )
+    ingredient = Ingredient.objects.create(product=product, reference=reference)
+    for part in parts:
+        Ingredient.objects.create(product=product, parent=ingredient, reference=part)
+
+
+def made_preparations(
+    client: Client, references: list[ReferenceIngredient], **extra: Any
+) -> Any:
+    return client.post(
+        reverse(REFERENCES),
+        {
+            "action": "make_preparation",
+            "_selected_action": [r.pk for r in references],
+            **extra,
+        },
+        follow=True,
+    )
+
+
+@pytest.fixture
+def cheese() -> dict[str, ReferenceIngredient]:
+    """A mozzarella seen made of milk and salt, and the two it was made of."""
+    things = {
+        name: ReferenceIngredient.objects.create(name_en=name, name_fr=name_fr)
+        for name, name_fr in (
+            ("mozzarella", "mozzarelle"),
+            ("milk", "lait"),
+            ("salt", "sel"),
+        )
+    }
+    seen_with(things["mozzarella"], things["milk"], things["salt"], barcode="1")
+    return things
+
+
+def test_the_references_say_how_many_times_they_were_seen_with_parts(
+    admin_client: Client, cheese: dict[str, ReferenceIngredient]
+):
+    seen_with(cheese["mozzarella"], barcode="2")  # Listed with no parts.
+    seen_with(cheese["mozzarella"], cheese["milk"], barcode="3")
+
+    response = admin_client.get(reverse(REFERENCES))
+
+    rows = {r.name_en: r for r in response.context["cl"].result_list}
+    assert rows["mozzarella"].usage_count == 3  # noqa: PLR2004
+    assert rows["mozzarella"].with_parts_count == 2  # noqa: PLR2004
+    assert rows["milk"].with_parts_count == 0
+
+
+def test_the_action_shows_what_each_reference_becomes_and_changes_nothing(
+    admin_client: Client, cheese: dict[str, ReferenceIngredient]
+):
+    response = admin_client.post(
+        reverse(REFERENCES),
+        {
+            "action": "make_preparation",
+            "_selected_action": [cheese["mozzarella"].pk],
+        },
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    page = response.content.decode()
+    assert "mozzarella" in page
+    # The components it gets: the parts seen on the label.
+    assert "milk" in page
+    assert "salt" in page
+    assert not Preparation.objects.exists()
+    assert ReferenceIngredient.objects.filter(name_en="mozzarella").exists()
+
+
+def test_applying_makes_the_preparation_and_repoints_the_ingredients(
+    admin_client: Client, cheese: dict[str, ReferenceIngredient]
+):
+    mozzarella = cheese["mozzarella"]
+
+    response = made_preparations(admin_client, [mozzarella], apply="on")
+
+    preparation = Preparation.objects.get()
+    assert (preparation.name_en, preparation.name_fr) == ("mozzarella", "mozzarelle")
+    assert set(preparation.components.all()) == {cheese["milk"], cheese["salt"]}
+    assert not ReferenceIngredient.objects.filter(name_en="mozzarella").exists()
+    assert [i.preparation for i in Ingredient.objects.filter(parent=None)] == [
+        preparation
+    ]
+    assert any("mozzarella" in m for m in messages_of(response))
+    assert response.redirect_chain
+
+
+def test_only_the_selected_references_are_converted(
+    admin_client: Client, cheese: dict[str, ReferenceIngredient]
+):
+    made_preparations(admin_client, [cheese["mozzarella"]], apply="on")
+
+    assert set(ReferenceIngredient.objects.values_list("name_en", flat=True)) == {
+        "milk",
+        "salt",
+    }
+
+
+def test_a_reference_that_cannot_be_converted_is_told_and_the_others_are(
+    admin_client: Client, cheese: dict[str, ReferenceIngredient]
+):
+    gnocchi = ReferenceIngredient.objects.create(name_en="gnocchi")
+    Preparation.objects.create(name_en="Gnocchi")
+    refused = [cheese["mozzarella"], gnocchi]
+    pizza = Preparation.objects.create(name_en="pizza")
+    pizza.components.add(cheese["mozzarella"])
+    seen_with(cheese["salt"], cheese["milk"], barcode="4")
+
+    shown = made_preparations(admin_client, [*refused, cheese["salt"]])
+    response = made_preparations(admin_client, [*refused, cheese["salt"]], apply="on")
+
+    page = shown.content.decode()
+    assert "already has the name of gnocchi" in page
+    assert "component of pizza" in page
+    # Only the salt is converted, the others stay as they were.
+    assert set(Preparation.objects.values_list("name_en", flat=True)) == {
+        "Gnocchi",
+        "pizza",
+        "salt",
+    }
+    assert ReferenceIngredient.objects.filter(name_en="mozzarella").exists()
+    assert ReferenceIngredient.objects.filter(name_en="gnocchi").exists()
+    texts = messages_of(response)
+    assert any("already has the name of gnocchi" in m for m in texts)
+    assert any("component of pizza" in m for m in texts)
+    assert any("made into preparations: salt" in m for m in texts)
+
+
+def test_when_none_can_be_converted_the_curator_is_told_and_gets_no_page(
+    admin_client: Client, cheese: dict[str, ReferenceIngredient]
+):
+    Preparation.objects.create(name_en="mozzarella")
+
+    response = made_preparations(admin_client, [cheese["mozzarella"]])
+
+    assert any("already has the name" in m for m in messages_of(response))
+    assert "Make preparations" not in response.content.decode()
+    assert ReferenceIngredient.objects.filter(name_en="mozzarella").exists()
+
+
+def test_making_a_preparation_needs_the_permissions_it_uses(
+    client: Client, cheese: dict[str, ReferenceIngredient]
+):
+    editor = UserFactory(is_staff=True)
+    editor.user_permissions.add(
+        *Permission.objects.filter(
+            codename__in=(
+                "view_referenceingredient",
+                "change_referenceingredient",
+                "change_ingredient",
+                "delete_referenceingredient",
+                # Not "add_preparation".
+            )
+        )
+    )
+    client.force_login(editor)
+
+    made_preparations(client, [cheese["mozzarella"]], apply="on")
+
+    assert not Preparation.objects.exists()
+    assert ReferenceIngredient.objects.filter(name_en="mozzarella").exists()
+
+
+# ----------------------------------------------------------------------------
 # Preparations
 # ----------------------------------------------------------------------------
 def prepared_for(preparation: Preparation, *barcodes: str) -> None:

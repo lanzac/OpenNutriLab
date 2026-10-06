@@ -513,6 +513,56 @@ msgstr "Un ingrédient de référence a déjà ce nom."
 msgid "Preparation, %(status)s"
 msgstr "Préparation, %(status)s"
 
+msgid "Seen with parts"
+msgstr "Vu avec ses parties"
+
+msgid "Make a preparation of the selected references"
+msgstr "Transformer les références sélectionnées en préparations"
+
+msgid "Make preparations"
+msgstr "Transformer en préparations"
+
+#, python-format
+msgid ""
+"%(count)d reference(s) made into preparations: %(names)s. Check their "
+"components, then mark them as curated."
+msgstr ""
+"%(count)d référence(s) transformée(s) en préparations : %(names)s. Vérifiez "
+"leurs composants, puis marquez-les comme validées."
+
+#, python-format
+msgid "A preparation already has the name of %(name)s."
+msgstr "Une préparation a déjà le nom de %(name)s."
+
+#, python-format
+msgid "%(name)s is a component of %(preparations)s: take it out there first."
+msgstr ""
+"%(name)s est un composant de %(preparations)s : retirez-le d'abord de là."
+
+msgid ""
+"A preparation is made of several ingredients (a mozzarella, a sauce). Each "
+"reference below becomes one: its names, status, notes and source foods move "
+"to a new preparation, every ingredient that used it points to the "
+"preparation instead, the references it was seen made of on labels become the "
+"preparation's components, and the reference is deleted. The parts a label "
+"lists stay where they are. A reference that cannot be converted is left as "
+"it is."
+msgstr ""
+"Une préparation est faite de plusieurs ingrédients (une mozzarella, une "
+"sauce). Chaque référence ci-dessous en devient une : ses noms, son statut, "
+"ses notes et ses aliments sources passent à une nouvelle préparation, chaque "
+"ingrédient qui l'utilisait pointe vers la préparation, les références dont "
+"elle a été vue faite sur des étiquettes deviennent ses composants, et la "
+"référence est supprimée. Les parties qu'une étiquette liste restent à leur "
+"place. Une référence qui ne peut pas être transformée est laissée telle "
+"quelle."
+
+msgid "Components it gets"
+msgstr "Composants obtenus"
+
+msgid "None: no label lists its parts."
+msgstr "Aucun : aucune étiquette ne liste ses parties."
+
 #~ msgid "Fat"
 #~ msgstr "Matières grasses"
 

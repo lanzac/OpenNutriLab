@@ -1,0 +1,93 @@
+{% extends "admin/base_site.html" %}
+
+{% load i18n admin_urls %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+    .conversions td {
+      vertical-align: top;
+    }
+
+    .conversions ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .conversions .refusal {
+      color: var(--error-fg);
+    }
+  </style>
+{% endblock extrastyle %}
+{% block breadcrumbs %}
+  <div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% translate "Home" %}</a>
+    › <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+    › <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+    › {% translate "Make preparations" %}
+  </div>
+{% endblock breadcrumbs %}
+{% block content %}
+  <p>
+    {% blocktranslate trimmed %}
+      A preparation is made of several ingredients (a mozzarella, a sauce). Each
+      reference below becomes one: its names, status, notes and source foods move
+      to a new preparation, every ingredient that used it points to the
+      preparation instead, the references it was seen made of on labels become the
+      preparation's components, and the reference is deleted. The parts a label
+      lists stay where they are. A reference that cannot be converted is left as it
+      is.
+    {% endblocktranslate %}
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="make_preparation" />
+    {% for pk in selected_ids %}<input type="hidden" name="{{ action_checkbox_name }}" value="{{ pk }}" />{% endfor %}
+    <div class="module">
+      <table class="conversions">
+        <thead>
+          <tr>
+            <th>{% translate "Reference" %}</th>
+            <th>{% translate "Components it gets" %}</th>
+            <th>{% translate "Source foods" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr class="{% cycle 'row1' 'row2' %}">
+              <td>
+                <a href="{% url opts|admin_urlname:'change' row.reference.pk|admin_urlquote %}">
+                  <strong>{{ row.reference.name_en|default:"-" }}</strong>
+                  / {{ row.reference.name_fr|default:"-" }}
+                </a>
+                <br />
+                <small>{% blocktranslate count count=row.uses %}used by {{ count }} ingredient{% plural %}used by {{ count }} ingredients{% endblocktranslate %}</small>
+              </td>
+              <td>
+                {% if row.refusal %}
+                  <span class="refusal">{{ row.refusal }}</span>
+                {% elif row.parts %}
+                  <ul>
+                    {% for part in row.parts %}<li>{{ part.name }}</li>{% endfor %}
+                  </ul>
+                {% else %}
+                  {% translate "None: no label lists its parts." %}
+                {% endif %}
+              </td>
+              <td>{{ row.foods }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="submit-row">
+      <input type="submit"
+             name="apply"
+             class="default"
+             value="{% translate 'Make preparations' %}" />
+      <a href="{% url opts|admin_urlname:'changelist' %}"
+         class="button cancel-link">{% translate "Cancel" %}</a>
+    </div>
+  </form>
+{% endblock content %}

@@ -1,6 +1,6 @@
 # Plan: preparations next to reference ingredients
 
-Status: steps 1 and 2 done (2026-10-06); the rest is planned. Written 2026-10-05,
+Status: steps 1 to 3 done (2026-10-06); the rest is planned. Written 2026-10-05,
 after the nutrient estimation batch, `docs/plans/lot-estimation.md`.
 
 ## Why
@@ -123,9 +123,35 @@ Each one has a recommendation. They were not put to the user one by one.
      (decision 3), and a preparation's default references are not written as
      children when the label lists no parts: they are read when it is estimated
      (step 4).
-3. **"Make a preparation"** on the references' admin, with the count of times seen
-   with parts, and its tests (usages repointed, names and foods moved, components
-   from the parts seen, nothing left behind, a name in use refused).
+3. **"Make a preparation"** (done) on the references' admin, with the count of times
+   seen with parts, and its tests (usages repointed, names and foods moved,
+   components from the parts seen, nothing left behind, a name in use refused).
+   - Done as planned, with these differences. The conversion is a service,
+     `preparation_services.convert_to_preparation`, that the admin calls, so it
+     can be used elsewhere. The action has two steps, like the proposals of
+     foods: a page says what each reference becomes (its components, the foods
+     it brings, what is refused and why), and nothing is deleted before the
+     second one ("apply"). It needs the permissions of what it does: add a
+     preparation, change ingredients, delete references.
+   - The status moves as it is, as the plan says: a curated reference gives a
+     curated preparation. Its components are marked in the description ("to
+     check") when they come from the labels, since the status does not say it.
+   - Two refusals, both leaving everything as it was: a name a preparation
+     already has (the same word in the other language is not one), and a
+     reference that is a component of a preparation (a preparation is made of
+     references, and taking it out there would lose what that one is made of).
+     The others of a selection are converted anyway, and the curator is told for
+     each that is not.
+   - The components are the references the label listed under it, once each. A
+     part that is a preparation is not taken: a preparation is made of references
+     only, and its own parts are its own.
+   - The label's parts are never touched: they stay the children of the ingredient,
+     which is repointed in place (same row, same percentage).
+   - On the development database, a dry run (rolled back) of the three that are
+     preparations, then the curator's own conversion in the admin, gave the same:
+     mozzarella (components: milk, salt, microbial rennet, and "Acid", which comes
+     from the additive heading "acidifiant : acide citrique" read as an
+     ingredient, see "Out of scope"), gnocchi, préparation d'oignon.
 4. **Estimation.** What is left of decision 4: the default references of a preparation
    that has no source food and whose label lists no parts (the hull of their
    compositions), and the sources of those references credited in the report. The

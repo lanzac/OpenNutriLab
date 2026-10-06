@@ -7,6 +7,7 @@ from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.db import transaction
 from django.db.models import Count
 from django.db.models import OuterRef
+from django.db.models import Q
 from django.db.models import QuerySet
 from django.db.models import Subquery
 from django.db.models.functions import Coalesce
@@ -32,6 +33,10 @@ from .models import ReferenceIngredient
 from .models import Source
 from .models import SourceFood
 from .models import SourceFoodNutrient
+from .services.preparation_services import PreparationConversionError
+from .services.preparation_services import convert_to_preparation
+from .services.preparation_services import ensure_convertible
+from .services.preparation_services import parts_seen
 from .services.product_services import plain_amount
 from .services.reference_composition import Estimate
 from .services.reference_composition import reference_composition
@@ -207,10 +212,19 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
     """
     Where the references are curated: those to review come with how many
     products use them and how many source foods they draw on, the most used
-    first, and a reference's page suggests foods that may fit it.
+    first, and a reference's page suggests foods that may fit it. A reference
+    that is made of several ingredients is a preparation: how many times each was
+    seen with parts on a label says which may be, and an action converts them.
     """
 
-    list_display = ("name_en", "name_fr", "status", "used_by", "source_food_count")
+    list_display = (
+        "name_en",
+        "name_fr",
+        "status",
+        "used_by",
+        "seen_with_parts",
+        "source_food_count",
+    )
     list_filter = ("status", HasSourceFoodsFilter)
     search_fields = ("name_fr", "name_en")
     autocomplete_fields = ("source_foods",)
@@ -224,13 +238,16 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
         "composition",
     )
     readonly_fields = ("suggested_foods", "composition")
-    actions = ("propose_foods", "mark_curated")
+    actions = ("propose_foods", "mark_curated", "make_preparation")
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[ReferenceIngredient]:
         # Not super(): it sorts by get_ordering before the counts exist. The
         # list and the autocomplete apply that ordering to this queryset.
         return ReferenceIngredient.objects.annotate(
             usage_count=Count("usages", distinct=True),
+            with_parts_count=Count(
+                "usages", filter=Q(usages__sub_ingredients__isnull=False), distinct=True
+            ),
             food_count=Count("source_foods", distinct=True),
         )
 
@@ -241,6 +258,16 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
     def used_by(self, obj: ReferenceIngredient) -> int:
         count: object = getattr(obj, "usage_count", None)
         return count if isinstance(count, int) else obj.usages.count()
+
+    @admin.display(
+        description=gettext_lazy("Seen with parts"), ordering="with_parts_count"
+    )
+    def seen_with_parts(self, obj: ReferenceIngredient) -> int:
+        """The times a label listed its parts: what a preparation looks like."""
+        count: object = getattr(obj, "with_parts_count", None)
+        if isinstance(count, int):
+            return count
+        return obj.usages.filter(sub_ingredients__isnull=False).distinct().count()
 
     @admin.display(description=gettext_lazy("Source foods"), ordering="food_count")
     def source_food_count(self, obj: ReferenceIngredient) -> int:
@@ -392,6 +419,89 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
             )
             % {"linked": linked, "curated": curated},
         )
+
+    def has_make_preparation_permission(self, request: HttpRequest) -> bool:
+        """It adds a preparation, repoints ingredients and deletes a reference."""
+        return request.user.has_perms(
+            (
+                "products.add_preparation",
+                "products.change_ingredient",
+                "products.delete_referenceingredient",
+            )
+        )
+
+    @admin.action(
+        description=gettext_lazy("Make a preparation of the selected references"),
+        permissions=["make_preparation"],
+    )
+    def make_preparation(
+        self, request: HttpRequest, queryset: QuerySet[ReferenceIngredient]
+    ) -> HttpResponseBase | None:
+        """
+        Turn each selected reference into a preparation (see preparation_services).
+
+        Two steps on one action, as the proposals are: the first shows what each
+        reference becomes, and which cannot, the second (the form's "apply")
+        converts. Nothing is deleted without that second step.
+        """
+        selected = list(queryset.order_by("name_en", "name_fr", "id"))
+        if "apply" in request.POST:
+            self._make_preparations(request, selected)
+            return HttpResponseRedirect(request.get_full_path())
+        rows: list[tuple[ReferenceIngredient, str, list[ReferenceIngredient]]] = []
+        for reference in selected:
+            try:
+                ensure_convertible(reference)
+            except PreparationConversionError as e:
+                rows.append((reference, str(e), []))
+            else:
+                rows.append((reference, "", parts_seen(reference)))
+        if all(refusal for _reference, refusal, _parts in rows):
+            for _reference, refusal, _parts in rows:
+                self.message_user(request, refusal, level=messages.ERROR)
+            return None
+        context = {
+            **self.admin_site.each_context(request),
+            "title": _("Make preparations"),
+            "opts": self.opts,
+            "rows": [
+                {
+                    "reference": reference,
+                    "uses": self.used_by(reference),
+                    "foods": self.source_food_count(reference),
+                    "refusal": refusal,
+                    "parts": parts,
+                }
+                for reference, refusal, parts in rows
+            ],
+            "selected_ids": request.POST.getlist(ACTION_CHECKBOX_NAME),
+            "action_checkbox_name": ACTION_CHECKBOX_NAME,
+        }
+        return TemplateResponse(
+            request, "admin/products/referenceingredient/make_preparation.html", context
+        )
+
+    def _make_preparations(
+        self, request: HttpRequest, references: list[ReferenceIngredient]
+    ) -> None:
+        made: list[str] = []
+        for reference in references:
+            name = reference.name
+            try:
+                convert_to_preparation(reference)
+            except PreparationConversionError as e:
+                self.message_user(request, str(e), level=messages.ERROR)
+            else:
+                made.append(name)
+        if made:
+            self.message_user(
+                request,
+                _(
+                    "%(count)d reference(s) made into preparations: %(names)s. "
+                    "Check their components, then mark them as curated."
+                )
+                % {"count": len(made), "names": ", ".join(made)},
+            )
 
     @admin.action(description=gettext_lazy("Mark the selected references as curated"))
     def mark_curated(
