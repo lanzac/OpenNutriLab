@@ -239,6 +239,107 @@ class HasEnglishNameFilter(admin.SimpleListFilter):
         return queryset
 
 
+def _usage_count(item: Any) -> int:
+    count: object = getattr(item, "usage_count", None)
+    return count if isinstance(count, int) else item.usages.count()
+
+
+def propose_english_names_page(
+    model_admin: admin.ModelAdmin[Any], request: HttpRequest, queryset: QuerySet[Any]
+) -> HttpResponseBase | None:
+    """
+    Propose an English name for each selected reference, preparation or additive
+    that has none (see services.english_names).
+
+    Two steps on one action, as for the foods: the first shows a proposal for
+    each, with where it comes from, in a field that can be edited, the second
+    (the form's "apply") gives the ticked ones the name in their field. Nothing is
+    written without that second step.
+    """
+    waiting = list(
+        queryset.filter(name_en="")
+        .prefetch_related("source_foods")
+        .order_by("name_fr", "id")
+    )
+    if "apply" in request.POST:
+        _give_english_names(model_admin, request, waiting)
+        return HttpResponseRedirect(request.get_full_path())
+    if not waiting:
+        model_admin.message_user(
+            request,
+            _("The selected ones already have an English name."),
+            level=messages.WARNING,
+        )
+        return None
+    proposed = propose_names_for(waiting)
+    if proposed.translator_failed:
+        model_admin.message_user(
+            request,
+            _(
+                "The translator did not answer: the names it would have "
+                "proposed are left blank."
+            ),
+            level=messages.WARNING,
+        )
+    context = {
+        **model_admin.admin_site.each_context(request),
+        "title": _("Propose English names"),
+        "opts": model_admin.opts,
+        "proposals": [
+            (proposal, _usage_count(proposal.item)) for proposal in proposed.proposals
+        ],
+        "translator_set": translation_enabled(),
+        "selected_ids": request.POST.getlist(ACTION_CHECKBOX_NAME),
+        "action_checkbox_name": ACTION_CHECKBOX_NAME,
+    }
+    return TemplateResponse(request, "admin/products/english_names.html", context)
+
+
+def _give_english_names(
+    model_admin: admin.ModelAdmin[Any], request: HttpRequest, items: list[Any]
+) -> None:
+    given = 0
+    for item in items:
+        name = clean_name(request.POST.get(f"name_{item.pk}", ""))
+        if f"apply_{item.pk}" not in request.POST or not name:
+            continue
+        if other := taken_by(name, item):
+            _english_name_refused(
+                model_admin,
+                request,
+                item,
+                _("%(name)s is already the English name of %(other)s.")
+                % {"name": name, "other": other},
+            )
+            continue
+        item.name_en = name
+        try:
+            item.clean_fields()
+            with transaction.atomic():
+                item.save(update_fields=["name_en"])
+        except ValidationError as e:
+            _english_name_refused(model_admin, request, item, " ".join(e.messages))
+        except IntegrityError:
+            # Another request gave it since the check.
+            _english_name_refused(
+                model_admin,
+                request,
+                item,
+                _("%(name)s is already the English name of another.") % {"name": name},
+            )
+        else:
+            given += 1
+    model_admin.message_user(
+        request, _("%(count)d item(s) given an English name.") % {"count": given}
+    )
+
+
+def _english_name_refused(
+    model_admin: admin.ModelAdmin[Any], request: HttpRequest, item: Any, why: str
+) -> None:
+    model_admin.message_user(request, f"{item.name}: {why}", level=messages.ERROR)
+
+
 class KnownAsAdditiveFilter(admin.SimpleListFilter):
     """The references that have the name of an additive (see additive_services)."""
 
@@ -488,97 +589,7 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
     def propose_english_names(
         self, request: HttpRequest, queryset: QuerySet[ReferenceIngredient]
     ) -> HttpResponseBase | None:
-        """
-        Propose an English name for each selected reference that has none.
-
-        Two steps on one action, as for the foods: the first shows a proposal for
-        each, with where it comes from, in a field that can be edited, the second
-        (the form's "apply") gives the ticked references the name in its field.
-        Nothing is written without that second step.
-        """
-        waiting = list(
-            queryset.filter(name_en="")
-            .prefetch_related("source_foods")
-            .order_by("name_fr", "id")
-        )
-        if "apply" in request.POST:
-            self._give_english_names(request, waiting)
-            return HttpResponseRedirect(request.get_full_path())
-        if not waiting:
-            self.message_user(
-                request,
-                _("The selected references already have an English name."),
-                level=messages.WARNING,
-            )
-            return None
-        proposed = propose_names_for(waiting)
-        if proposed.translator_failed:
-            self.message_user(
-                request,
-                _(
-                    "The translator did not answer: the names it would have "
-                    "proposed are left blank."
-                ),
-                level=messages.WARNING,
-            )
-        context = {
-            **self.admin_site.each_context(request),
-            "title": _("Propose English names"),
-            "opts": self.opts,
-            "proposals": [
-                (proposal, self.used_by(proposal.reference))
-                for proposal in proposed.proposals
-            ],
-            "translator_set": translation_enabled(),
-            "selected_ids": request.POST.getlist(ACTION_CHECKBOX_NAME),
-            "action_checkbox_name": ACTION_CHECKBOX_NAME,
-        }
-        return TemplateResponse(
-            request, "admin/products/referenceingredient/english_names.html", context
-        )
-
-    def _give_english_names(
-        self, request: HttpRequest, references: list[ReferenceIngredient]
-    ) -> None:
-        given = 0
-        for reference in references:
-            name = clean_name(request.POST.get(f"name_{reference.pk}", ""))
-            if f"apply_{reference.pk}" not in request.POST or not name:
-                continue
-            if other := taken_by(name, reference):
-                self._english_name_refused(
-                    request,
-                    reference,
-                    _("%(name)s is already the English name of %(other)s.")
-                    % {"name": name, "other": other},
-                )
-                continue
-            reference.name_en = name
-            try:
-                reference.clean_fields()
-                with transaction.atomic():
-                    reference.save(update_fields=["name_en"])
-            except ValidationError as e:
-                self._english_name_refused(request, reference, " ".join(e.messages))
-            except IntegrityError:
-                # Another request gave it since the check.
-                self._english_name_refused(
-                    request,
-                    reference,
-                    _("%(name)s is already the English name of another.")
-                    % {"name": name},
-                )
-            else:
-                given += 1
-        self.message_user(
-            request,
-            _("%(count)d reference(s) given an English name.") % {"count": given},
-        )
-
-    def _english_name_refused(
-        self, request: HttpRequest, reference: ReferenceIngredient, why: str
-    ) -> None:
-        self.message_user(request, f"{reference.name}: {why}", level=messages.ERROR)
+        return propose_english_names_page(self, request, queryset)
 
     def has_make_additive_permission(self, request: HttpRequest) -> bool:
         """It adds an additive, repoints ingredients and deletes a reference."""
@@ -786,7 +797,7 @@ class PreparationAdmin(admin.ModelAdmin[Preparation]):
         "component_count",
         "source_food_count",
     )
-    list_filter = ("status", HasSourceFoodsFilter)
+    list_filter = ("status", HasSourceFoodsFilter, HasEnglishNameFilter)
     search_fields = ("name_fr", "name_en")
     autocomplete_fields = ("components", "source_foods")
     fields = (
@@ -797,7 +808,7 @@ class PreparationAdmin(admin.ModelAdmin[Preparation]):
         "components",
         "source_foods",
     )
-    actions = ("mark_curated",)
+    actions = ("propose_english_names", "mark_curated")
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Preparation]:
         # Not super(): it sorts by get_ordering before the counts exist.
@@ -824,6 +835,15 @@ class PreparationAdmin(admin.ModelAdmin[Preparation]):
     def source_food_count(self, obj: Preparation) -> int:
         count: object = getattr(obj, "food_count", None)
         return count if isinstance(count, int) else obj.source_foods.count()
+
+    @admin.action(
+        description=gettext_lazy("Propose English names for the selected preparations"),
+        permissions=["change"],
+    )
+    def propose_english_names(
+        self, request: HttpRequest, queryset: QuerySet[Preparation]
+    ) -> HttpResponseBase | None:
+        return propose_english_names_page(self, request, queryset)
 
     @admin.action(description=gettext_lazy("Mark the selected preparations as curated"))
     def mark_curated(
@@ -870,7 +890,7 @@ class AdditiveAdmin(admin.ModelAdmin[Additive]):
         "nutrient_count",
         "source_food_count",
     )
-    list_filter = ("status", "function", HasSourceFoodsFilter)
+    list_filter = ("status", "function", HasSourceFoodsFilter, HasEnglishNameFilter)
     search_fields = ("code", "name_fr", "name_en")
     autocomplete_fields = ("source_foods",)
     fields = (
@@ -883,7 +903,7 @@ class AdditiveAdmin(admin.ModelAdmin[Additive]):
         "source_foods",
     )
     inlines = (AdditiveNutrientInline,)
-    actions = ("mark_curated",)
+    actions = ("propose_english_names", "mark_curated")
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Additive]:
         # Not super(): it sorts by get_ordering before the counts exist.
@@ -910,6 +930,15 @@ class AdditiveAdmin(admin.ModelAdmin[Additive]):
     def source_food_count(self, obj: Additive) -> int:
         count: object = getattr(obj, "food_count", None)
         return count if isinstance(count, int) else obj.source_foods.count()
+
+    @admin.action(
+        description=gettext_lazy("Propose English names for the selected additives"),
+        permissions=["change"],
+    )
+    def propose_english_names(
+        self, request: HttpRequest, queryset: QuerySet[Additive]
+    ) -> HttpResponseBase | None:
+        return propose_english_names_page(self, request, queryset)
 
     @admin.action(description=gettext_lazy("Mark the selected additives as curated"))
     def mark_curated(self, request: HttpRequest, queryset: QuerySet[Additive]) -> None:

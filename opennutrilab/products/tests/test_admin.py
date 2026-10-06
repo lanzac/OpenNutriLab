@@ -1000,9 +1000,7 @@ def test_only_the_ticked_references_are_named_with_what_is_in_their_field(
     assert (onion.name_en, juice.name_en) == ("roasted onion", "")
     # The status is the curator's to change: a name is not a curation.
     assert onion.status == ReferenceIngredient.Status.TO_REVIEW
-    assert any(
-        "1 reference(s) given an English name" in m for m in messages_of(response)
-    )
+    assert any("1 item(s) given an English name" in m for m in messages_of(response))
 
 
 def test_a_ticked_reference_with_an_empty_field_is_left_alone(
@@ -1099,6 +1097,130 @@ def test_proposing_names_needs_the_permission_to_change_references(
 
     onion.refresh_from_db()
     assert onion.name_en == ""
+
+
+# ----------------------------------------------------------------------------
+# Proposing English names for additives and preparations
+# ----------------------------------------------------------------------------
+def names_proposed_for(client: Client, url: str, items: list[Any], **extra: Any) -> Any:
+    return client.post(
+        reverse(url),
+        {
+            "action": "propose_english_names",
+            "_selected_action": [i.pk for i in items],
+            **extra,
+        },
+        follow=True,
+    )
+
+
+def test_the_additives_are_given_an_english_name_the_same_way(
+    admin_client: Client, settings: SettingsWrapper
+):
+    settings.TRANSLATION_URL = "http://translator:5000"
+    xanthan = Additive.objects.create(name_fr="gomme xanthane", code="E415")
+    named = Additive.objects.create(name_en="citric acid", code="E330")
+
+    with patch(TRANSLATE, return_value="xanthan gum"):
+        page = names_proposed_for(admin_client, ADDITIVES, [xanthan, named])
+
+    html = page.content.decode()
+    assert 'value="xanthan gum"' in html
+    assert "Machine translation" in html
+    # What has its English name is not proposed one, and the page says what it is.
+    assert "citric acid" not in html
+    assert ">Additive<" in html
+
+    names_proposed_for(
+        admin_client,
+        ADDITIVES,
+        [xanthan],
+        apply="on",
+        **{f"apply_{xanthan.pk}": "on", f"name_{xanthan.pk}": "xanthan gum"},
+    )
+
+    xanthan.refresh_from_db()
+    assert xanthan.name_en == "xanthan gum"
+    # Its code and class are what they were.
+    assert xanthan.code == "E415"
+
+
+def test_an_additive_cannot_be_given_the_english_name_of_a_reference(
+    admin_client: Client,
+):
+    ReferenceIngredient.objects.create(name_en="Xanthan gum")
+    xanthan = Additive.objects.create(name_fr="gomme xanthane", code="E415")
+
+    response = names_proposed_for(
+        admin_client,
+        ADDITIVES,
+        [xanthan],
+        apply="on",
+        **{f"apply_{xanthan.pk}": "on", f"name_{xanthan.pk}": "xanthan gum"},
+    )
+
+    xanthan.refresh_from_db()
+    assert xanthan.name_en == ""
+    assert any(
+        "already the English name of Xanthan gum" in m for m in messages_of(response)
+    )
+
+
+def test_the_additives_are_filtered_by_having_an_english_name(admin_client: Client):
+    Additive.objects.create(name_fr="gomme xanthane", code="E415")
+    Additive.objects.create(name_en="citric acid", code="E330")
+
+    response = admin_client.get(reverse(ADDITIVES), {"english_name": "without"})
+
+    assert [a.code for a in response.context["cl"].result_list] == ["E415"]
+
+
+def test_the_preparations_are_given_an_english_name_the_same_way(
+    admin_client: Client,
+):
+    gnocchi = Preparation.objects.create(name_fr="gnocchi à la pomme de terre")
+    IngredientTaxon.objects.create(
+        off_id="en:potato-gnocchi",
+        name_en="potato gnocchi",
+        name_fr="gnocchi à la pomme de terre",
+    )
+
+    page = names_proposed_for(admin_client, PREPARATIONS, [gnocchi])
+
+    assert 'value="potato gnocchi"' in page.content.decode()
+    assert "OpenFoodFacts taxonomy" in page.content.decode()
+
+    names_proposed_for(
+        admin_client,
+        PREPARATIONS,
+        [gnocchi],
+        apply="on",
+        **{f"apply_{gnocchi.pk}": "on", f"name_{gnocchi.pk}": "potato gnocchi"},
+    )
+
+    gnocchi.refresh_from_db()
+    assert gnocchi.name_en == "potato gnocchi"
+    assert gnocchi.status == Preparation.Status.TO_REVIEW
+
+
+def test_proposing_names_for_additives_needs_the_permission_to_change_them(
+    client: Client,
+):
+    viewer = UserFactory(is_staff=True)
+    viewer.user_permissions.add(Permission.objects.get(codename="view_additive"))
+    client.force_login(viewer)
+    xanthan = Additive.objects.create(name_fr="gomme xanthane", code="E415")
+
+    names_proposed_for(
+        client,
+        ADDITIVES,
+        [xanthan],
+        apply="on",
+        **{f"apply_{xanthan.pk}": "on", f"name_{xanthan.pk}": "xanthan gum"},
+    )
+
+    xanthan.refresh_from_db()
+    assert xanthan.name_en == ""
 
 
 # ----------------------------------------------------------------------------

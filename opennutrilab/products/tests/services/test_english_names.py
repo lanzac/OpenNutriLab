@@ -13,6 +13,7 @@ from opennutrilab.products.models import SourceFood
 from opennutrilab.products.services.english_names import MACHINE_LIMIT
 from opennutrilab.products.services.english_names import NameSource
 from opennutrilab.products.services.english_names import propose_english_names
+from opennutrilab.products.services.english_names import taken_by
 
 pytestmark = pytest.mark.django_db
 
@@ -188,3 +189,39 @@ def test_a_name_is_not_taken_by_the_reference_it_is_proposed_for():
         (proposal,) = propose(french("oignon")).proposals
 
     assert proposal.taken_by == ""
+
+
+def test_an_additive_is_proposed_an_english_name_as_a_reference_is():
+    IngredientTaxon.objects.create(
+        off_id="en:xanthan-gum", name_en="xanthan gum", name_fr="gomme xanthane"
+    )
+    xanthan = Additive.objects.create(name_fr="gomme xanthane", code="E415")
+
+    (proposal,) = propose_english_names([xanthan]).proposals
+
+    assert proposal.item == xanthan
+    assert (proposal.name_en, proposal.source) == ("xanthan gum", NameSource.TAXONOMY)
+
+
+def test_a_preparation_is_proposed_the_english_name_of_its_one_source_food(
+    ciqual: Source,
+):
+    mozzarella = Preparation.objects.create(name_fr="mozzarella")
+    mozzarella.source_foods.add(
+        SourceFood.objects.create(source=ciqual, code="12120", name_en="Mozzarella")
+    )
+
+    (proposal,) = propose_english_names([mozzarella]).proposals
+
+    assert (proposal.name_en, proposal.source) == ("Mozzarella", NameSource.FOOD)
+
+
+def test_the_name_of_another_kind_is_taken_and_ones_own_table_is_not_blamed():
+    ReferenceIngredient.objects.create(name_en="xanthan gum")
+    xanthan = Additive.objects.create(name_fr="gomme xanthane", code="E415")
+    other = Additive.objects.create(name_en="Pectin", code="E440")
+
+    assert taken_by("Xanthan Gum", xanthan) == "xanthan gum"
+    assert taken_by("pectin", xanthan) == "Pectin"
+    # It is not taken by itself.
+    assert taken_by("pectin", other) == ""

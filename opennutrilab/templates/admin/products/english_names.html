@@ -35,10 +35,10 @@
 {% block content %}
   <p>
     {% blocktranslate trimmed %}
-      For each reference with no English name, the name it may have, and where it
+      For each one with no English name, the name it may have, and where it
       comes from. The English name is what labels are looked up by, so check each
-      one: edit it if need be, and tick the references to name. Nothing is written
-      until you apply. A machine translation is not ticked for you.
+      one: edit it if need be, and tick the ones to name. Nothing is written until
+      you apply. A machine translation is not ticked for you.
     {% endblocktranslate %}
   </p>
   {% if not translator_set %}
@@ -55,7 +55,7 @@
         <thead>
           <tr>
             <th>{% translate "Give" %}</th>
-            <th>{% translate "Reference" %}</th>
+            <th>{{ opts.verbose_name|capfirst }}</th>
             <th>{% translate "English name" %}</th>
           </tr>
         </thead>
@@ -64,19 +64,19 @@
             <tr class="{% cycle 'row1' 'row2' %}">
               <td>
                 <input type="checkbox"
-                       name="apply_{{ proposal.reference.pk }}"
+                       name="apply_{{ proposal.item.pk }}"
                        {% if proposal.name_en and not proposal.taken_by and proposal.source.value != "machine" %}checked{% endif %} />
               </td>
               <td>
-                <a href="{% url opts|admin_urlname:'change' proposal.reference.pk|admin_urlquote %}">
-                  <strong>{{ proposal.reference.name_fr|default:"-" }}</strong>
+                <a href="{% url opts|admin_urlname:'change' proposal.item.pk|admin_urlquote %}">
+                  <strong>{{ proposal.item.name_fr|default:"-" }}</strong>
                 </a>
                 <br />
                 <small>{% blocktranslate count count=uses %}used by {{ count }} ingredient{% plural %}used by {{ count }} ingredients{% endblocktranslate %}</small>
               </td>
               <td>
                 <input type="text"
-                       name="name_{{ proposal.reference.pk }}"
+                       name="name_{{ proposal.item.pk }}"
                        value="{{ proposal.name_en }}"
                        maxlength="255" />
                 <div class="source">
