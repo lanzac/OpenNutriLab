@@ -78,6 +78,9 @@ repos:
     rev: v1.36.4
 
     hooks:
+      # The HTML of tests/data is a fixture (what a web page answered), not a template.
       - id: djlint-reformat-django
+        exclude: ^opennutrilab/products/tests/data/
 
       - id: djlint-django
+        exclude: ^opennutrilab/products/tests/data/

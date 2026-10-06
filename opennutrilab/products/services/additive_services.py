@@ -4,8 +4,8 @@ Turning a reference ingredient into an additive, or into the one it already is.
 A reference is created for any name a label lists that nothing has, so an "acide
 citrique" ends up one unless the label gave it a class or an E number. Only a person
 can say it is an additive, as for a preparation (see preparation_services), but the
-list of additives imported into the table (the `import_off_additives` command) says
-which references are known as additives: the one that has the name of an additive.
+table of additives, which the Commission's list fills (see additive_sync), says which
+references are known as additives: the one that has the name of an additive.
 
 Converting one that is known merges it into that additive: its ingredients point to
 the additive, what the additive lacks is completed from the reference (the foods it

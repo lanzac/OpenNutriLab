@@ -1,0 +1,2127 @@
+{
+  "generated": "2026-10-06",
+  "sources": {
+    "union_list": "https://api.datalake.sante.service.ec.europa.eu/food-additives/food-additives-list",
+    "french_names": "https://fr.wikipedia.org/wiki/Liste_des_additifs_alimentaires (revision 239644140), CC BY-SA 4.0"
+  },
+  "additives": [
+    {
+      "code": "E100",
+      "name_en": "Curcumin",
+      "name_fr": "Curcumines",
+      "ref": "POL-FAD-IMPORT-2985"
+    },
+    {
+      "code": "E101",
+      "name_en": "Riboflavins",
+      "name_fr": "Riboflavines",
+      "ref": "POL-FAD-IMPORT-2986"
+    },
+    {
+      "code": "E102",
+      "name_en": "Tartrazine",
+      "name_fr": "Tartrazine",
+      "ref": "POL-FAD-IMPORT-2987"
+    },
+    {
+      "code": "E104",
+      "name_en": "Quinoline Yellow",
+      "name_fr": "Jaune de quinoléine",
+      "ref": "POL-FAD-IMPORT-2988"
+    },
+    {
+      "code": "E110",
+      "name_en": "Sunset Yellow FCF/Orange Yellow S",
+      "name_fr": "Jaune orangé S",
+      "ref": "POL-FAD-IMPORT-2989"
+    },
+    {
+      "code": "E120",
+      "name_en": "Carminic acid, Carmine",
+      "name_fr": "Acide carminique",
+      "ref": "POL-FAD-IMPORT-2990"
+    },
+    {
+      "code": "E122",
+      "name_en": "Azorubine, Carmoisine",
+      "name_fr": "Azorubine",
+      "ref": "POL-FAD-IMPORT-2991"
+    },
+    {
+      "code": "E123",
+      "name_en": "Amaranth",
+      "name_fr": "Amarante",
+      "ref": "POL-FAD-IMPORT-2992"
+    },
+    {
+      "code": "E124",
+      "name_en": "Ponceau 4R, Cochineal Red A",
+      "name_fr": "Ponceau 4R",
+      "ref": "POL-FAD-IMPORT-2993"
+    },
+    {
+      "code": "E127",
+      "name_en": "Erythrosine",
+      "name_fr": "Érythrosine",
+      "ref": "POL-FAD-IMPORT-2994"
+    },
+    {
+      "code": "E129",
+      "name_en": "Allura Red AC",
+      "name_fr": "Rouge allura AC",
+      "ref": "POL-FAD-IMPORT-2995"
+    },
+    {
+      "code": "E131",
+      "name_en": "Patent Blue V",
+      "name_fr": "Bleu patenté V",
+      "ref": "POL-FAD-IMPORT-2996"
+    },
+    {
+      "code": "E132",
+      "name_en": "Indigotine, Indigo carmine",
+      "name_fr": "Carmin d'indigo",
+      "ref": "POL-FAD-IMPORT-2997"
+    },
+    {
+      "code": "E133",
+      "name_en": "Brilliant Blue FCF",
+      "name_fr": "Bleu brillant FCF",
+      "ref": "POL-FAD-IMPORT-2998"
+    },
+    {
+      "code": "E140",
+      "name_en": "Chlorophylls and Chlorophyllins",
+      "name_fr": "Chlorophylles et chlorophyllines",
+      "ref": "POL-FAD-IMPORT-2999"
+    },
+    {
+      "code": "E141",
+      "name_en": "Copper complexes of chlorophylls and chlorophyllins",
+      "name_fr": "Complexes cuivre-chlorophylles et chlorophyllines",
+      "ref": "POL-FAD-IMPORT-3000"
+    },
+    {
+      "code": "E142",
+      "name_en": "Green S",
+      "name_fr": "Vert acide brillant BS",
+      "ref": "POL-FAD-IMPORT-3001"
+    },
+    {
+      "code": "E150A",
+      "name_en": "Plain caramel",
+      "name_fr": "Caramel ordinaire",
+      "ref": "POL-FAD-IMPORT-3002"
+    },
+    {
+      "code": "E150B",
+      "name_en": "Caustic sulphite caramel",
+      "name_fr": "Caramel de sulfite caustique",
+      "ref": "POL-FAD-IMPORT-3004"
+    },
+    {
+      "code": "E150C",
+      "name_en": "Ammonia caramel",
+      "name_fr": "Caramel ammoniacal",
+      "ref": "POL-FAD-IMPORT-3005"
+    },
+    {
+      "code": "E150D",
+      "name_en": "Sulphite ammonia caramel",
+      "name_fr": "Caramel au sulfite d'ammonium",
+      "ref": "POL-FAD-IMPORT-3006"
+    },
+    {
+      "code": "E151",
+      "name_en": "Brilliant Black PN",
+      "name_fr": "Noir brillant BN",
+      "ref": "POL-FAD-IMPORT-3007"
+    },
+    {
+      "code": "E153",
+      "name_en": "Vegetable carbon",
+      "name_fr": "Charbon végétal",
+      "ref": "POL-FAD-IMPORT-3008"
+    },
+    {
+      "code": "E155",
+      "name_en": "Brown HT",
+      "name_fr": "Brun chocolat HT",
+      "ref": "POL-FAD-IMPORT-3009"
+    },
+    {
+      "code": "E160A",
+      "name_en": "Carotenes",
+      "name_fr": "β-carotène",
+      "ref": "POL-FAD-IMPORT-3010"
+    },
+    {
+      "code": "E160B",
+      "name_en": "Annatto, Bixin, Norbixin/Deleted from the Union List of authorised additives",
+      "name_fr": "Rocou",
+      "ref": "POL-FAD-IMPORT-3011"
+    },
+    {
+      "code": "E160BI",
+      "name_en": "Annatto bixin",
+      "name_fr": "Bixine",
+      "ref": "POL-FAD-IMPORT-3379"
+    },
+    {
+      "code": "E160BII",
+      "name_en": "Annatto norbixin",
+      "name_fr": "Norbixine",
+      "ref": "POL-FAD-IMPORT-3380"
+    },
+    {
+      "code": "E160C",
+      "name_en": "Paprika extract, capsanthin, capsorubin",
+      "name_fr": "Extrait de paprika",
+      "ref": "POL-FAD-IMPORT-3012"
+    },
+    {
+      "code": "E160D",
+      "name_en": "Lycopene",
+      "name_fr": "Lycopène",
+      "ref": "POL-FAD-IMPORT-3013"
+    },
+    {
+      "code": "E160E",
+      "name_en": "Beta-apo-8'-carotenal (C 30)",
+      "name_fr": "β-apo-8′-carotenal",
+      "ref": "POL-FAD-IMPORT-3014"
+    },
+    {
+      "code": "E161B",
+      "name_en": "Lutein",
+      "name_fr": "Lutéine",
+      "ref": "POL-FAD-IMPORT-3015"
+    },
+    {
+      "code": "E161G",
+      "name_en": "Canthaxanthin",
+      "name_fr": "Canthaxanthine",
+      "ref": "POL-FAD-IMPORT-3016"
+    },
+    {
+      "code": "E162",
+      "name_en": "Beetroot Red, betanin",
+      "name_fr": "Rouge de betterave",
+      "ref": "POL-FAD-IMPORT-3017"
+    },
+    {
+      "code": "E163",
+      "name_en": "Anthocyanins",
+      "name_fr": "Anthocyanes",
+      "ref": "POL-FAD-IMPORT-3018"
+    },
+    {
+      "code": "E170",
+      "name_en": "Calcium carbonate",
+      "name_fr": "Carbonate de calcium",
+      "ref": "POL-FAD-IMPORT-3019"
+    },
+    {
+      "code": "E171",
+      "name_en": "Titanium dioxide",
+      "name_fr": "Oxyde de titane",
+      "ref": "POL-FAD-IMPORT-3020"
+    },
+    {
+      "code": "E172",
+      "name_en": "Iron oxides and hydroxides",
+      "name_fr": "Oxyde et hydroxyde de fer",
+      "ref": "POL-FAD-IMPORT-3021"
+    },
+    {
+      "code": "E173",
+      "name_en": "Aluminium",
+      "name_fr": "Aluminium",
+      "ref": "POL-FAD-IMPORT-3022"
+    },
+    {
+      "code": "E174",
+      "name_en": "Silver",
+      "name_fr": "Argent",
+      "ref": "POL-FAD-IMPORT-3023"
+    },
+    {
+      "code": "E175",
+      "name_en": "Gold",
+      "name_fr": "Or",
+      "ref": "POL-FAD-IMPORT-3024"
+    },
+    {
+      "code": "E180",
+      "name_en": "Litholrubine BK",
+      "name_fr": "Lithol-rubine BK",
+      "ref": "POL-FAD-IMPORT-3025"
+    },
+    {
+      "code": "E200",
+      "name_en": "Sorbic acid",
+      "name_fr": "Acide sorbique",
+      "ref": "POL-FAD-IMPORT-3026"
+    },
+    {
+      "code": "E202",
+      "name_en": "Potassium sorbate",
+      "name_fr": "Sorbate de potassium",
+      "ref": "POL-FAD-IMPORT-3031"
+    },
+    {
+      "code": "E203",
+      "name_en": "Calcium sorbate/Deleted from the Union list",
+      "name_fr": "Sorbate de calcium",
+      "ref": "POL-FAD-IMPORT-3032"
+    },
+    {
+      "code": "E210",
+      "name_en": "Benzoic acid",
+      "name_fr": "Acide benzoïque",
+      "ref": "POL-FAD-IMPORT-3033"
+    },
+    {
+      "code": "E211",
+      "name_en": "Sodium benzoate",
+      "name_fr": "Benzoate de sodium",
+      "ref": "POL-FAD-IMPORT-3035"
+    },
+    {
+      "code": "E212",
+      "name_en": "Potassium benzoate",
+      "name_fr": "Benzoate de potassium",
+      "ref": "POL-FAD-IMPORT-3036"
+    },
+    {
+      "code": "E213",
+      "name_en": "Calcium benzoate",
+      "name_fr": "Benzoate de calcium",
+      "ref": "POL-FAD-IMPORT-3037"
+    },
+    {
+      "code": "E214",
+      "name_en": "Ethyl-p-hydroxybenzoate",
+      "name_fr": "4-Hydroxybenzoate d'éthyle",
+      "ref": "POL-FAD-IMPORT-3038"
+    },
+    {
+      "code": "E215",
+      "name_en": "Sodium ethyl p-hydroxybenzoate",
+      "name_fr": "Dérivé sodique du 4-hydroxybenzoate d'éthyle",
+      "ref": "POL-FAD-IMPORT-3040"
+    },
+    {
+      "code": "E218",
+      "name_en": "Methyl p-hydroxybenzoate",
+      "name_fr": "4-Hydroxybenzoate de méthyle",
+      "ref": "POL-FAD-IMPORT-3041"
+    },
+    {
+      "code": "E219",
+      "name_en": "Sodium methyl p-hydroxybenzoate",
+      "name_fr": "Dérivé sodique du 4-hydroxybenzoate de méthyle",
+      "ref": "POL-FAD-IMPORT-3042"
+    },
+    {
+      "code": "E220",
+      "name_en": "Sulphur dioxide",
+      "name_fr": "Anhydride sulfureux",
+      "ref": "POL-FAD-IMPORT-3043"
+    },
+    {
+      "code": "E221",
+      "name_en": "Sodium sulphite",
+      "name_fr": "Sulfite de sodium",
+      "ref": "POL-FAD-IMPORT-3045"
+    },
+    {
+      "code": "E222",
+      "name_en": "Sodium hydrogen sulphite",
+      "name_fr": "Bisulfite de sodium",
+      "ref": "POL-FAD-IMPORT-3046"
+    },
+    {
+      "code": "E223",
+      "name_en": "Sodium metabisulphite",
+      "name_fr": "Disulfite de sodium",
+      "ref": "POL-FAD-IMPORT-3047"
+    },
+    {
+      "code": "E224",
+      "name_en": "Potassium metabisulphite",
+      "name_fr": "Disulfite de potassium",
+      "ref": "POL-FAD-IMPORT-3048"
+    },
+    {
+      "code": "E226",
+      "name_en": "Calcium sulphite",
+      "name_fr": "Sulfite de calcium",
+      "ref": "POL-FAD-IMPORT-3049"
+    },
+    {
+      "code": "E227",
+      "name_en": "Calcium hydrogen sulphite",
+      "name_fr": "Sulfite acide de calcium",
+      "ref": "POL-FAD-IMPORT-3050"
+    },
+    {
+      "code": "E228",
+      "name_en": "Potassium hydrogen sulphite",
+      "name_fr": "Sulfite acide de potassium",
+      "ref": "POL-FAD-IMPORT-3051"
+    },
+    {
+      "code": "E234",
+      "name_en": "Nisin",
+      "name_fr": "Nisine",
+      "ref": "POL-FAD-IMPORT-3052"
+    },
+    {
+      "code": "E235",
+      "name_en": "Natamycin",
+      "name_fr": "Natamycine",
+      "ref": "POL-FAD-IMPORT-3053"
+    },
+    {
+      "code": "E239",
+      "name_en": "Hexamethylene tetramine",
+      "name_fr": "Hexaméthylènetétramine",
+      "ref": "POL-FAD-IMPORT-3054"
+    },
+    {
+      "code": "E242",
+      "name_en": "Dimethyl dicarbonate",
+      "name_fr": "Dicarbonate de diméthyle",
+      "ref": "POL-FAD-IMPORT-3055"
+    },
+    {
+      "code": "E243",
+      "name_en": "Ethyl lauroyl arginate",
+      "name_fr": "Arginate d’éthyle laurique",
+      "ref": "POL-FAD-IMPORT-3349"
+    },
+    {
+      "code": "E246",
+      "name_en": "Glycolipids",
+      "name_fr": "",
+      "ref": "POL-FAD-IMPORT-3376"
+    },
+    {
+      "code": "E249",
+      "name_en": "Potassium nitrite",
+      "name_fr": "Nitrite de potassium",
+      "ref": "POL-FAD-IMPORT-3056"
+    },
+    {
+      "code": "E250",
+      "name_en": "Sodium nitrite",
+      "name_fr": "Nitrite de sodium",
+      "ref": "POL-FAD-IMPORT-3058"
+    },
+    {
+      "code": "E251",
+      "name_en": "Sodium nitrate",
+      "name_fr": "Nitrate de sodium",
+      "ref": "POL-FAD-IMPORT-3059"
+    },
+    {
+      "code": "E252",
+      "name_en": "Potassium nitrate",
+      "name_fr": "Nitrate de potassium",
+      "ref": "POL-FAD-IMPORT-3061"
+    },
+    {
+      "code": "E260",
+      "name_en": "Acetic acid",
+      "name_fr": "Acide acétique",
+      "ref": "POL-FAD-IMPORT-3062"
+    },
+    {
+      "code": "E261",
+      "name_en": "Potassium acetates",
+      "name_fr": "Acétates de potassium",
+      "ref": "POL-FAD-IMPORT-3063"
+    },
+    {
+      "code": "E262",
+      "name_en": "Sodium acetates",
+      "name_fr": "Acétates de sodium",
+      "ref": "POL-FAD-IMPORT-3064"
+    },
+    {
+      "code": "E262II",
+      "name_en": "Sodium diacetate",
+      "name_fr": "Diacétate de sodium",
+      "ref": "POL-FAD-IMPORT-3382"
+    },
+    {
+      "code": "E263",
+      "name_en": "Calcium acetate",
+      "name_fr": "Acétate de calcium",
+      "ref": "POL-FAD-IMPORT-3065"
+    },
+    {
+      "code": "E267",
+      "name_en": "Buffered vinegar",
+      "name_fr": "",
+      "ref": "POL-FAD-IMPORT-3385"
+    },
+    {
+      "code": "E270",
+      "name_en": "Lactic acid",
+      "name_fr": "Acide lactique",
+      "ref": "POL-FAD-IMPORT-3066"
+    },
+    {
+      "code": "E280",
+      "name_en": "Propionic acid",
+      "name_fr": "Acide propanoïque",
+      "ref": "POL-FAD-IMPORT-3067"
+    },
+    {
+      "code": "E281",
+      "name_en": "Sodium propionate",
+      "name_fr": "Propanoate de sodium",
+      "ref": "POL-FAD-IMPORT-3069"
+    },
+    {
+      "code": "E282",
+      "name_en": "Calcium propionate",
+      "name_fr": "Propanoate de calcium",
+      "ref": "POL-FAD-IMPORT-3070"
+    },
+    {
+      "code": "E283",
+      "name_en": "Potassium propionate",
+      "name_fr": "Propanoate de potassium",
+      "ref": "POL-FAD-IMPORT-3071"
+    },
+    {
+      "code": "E284",
+      "name_en": "Boric acid",
+      "name_fr": "Acide borique",
+      "ref": "POL-FAD-IMPORT-3072"
+    },
+    {
+      "code": "E285",
+      "name_en": "Sodium tetraborate (borax)",
+      "name_fr": "Tétraborate de sodium",
+      "ref": "POL-FAD-IMPORT-3073"
+    },
+    {
+      "code": "E290",
+      "name_en": "Carbon dioxide",
+      "name_fr": "Dioxyde de carbone",
+      "ref": "POL-FAD-IMPORT-3074"
+    },
+    {
+      "code": "E296",
+      "name_en": "Malic acid",
+      "name_fr": "Acide malique (DL-",
+      "ref": "POL-FAD-IMPORT-3075"
+    },
+    {
+      "code": "E297",
+      "name_en": "Fumaric acid",
+      "name_fr": "Acide fumarique",
+      "ref": "POL-FAD-IMPORT-3076"
+    },
+    {
+      "code": "E300",
+      "name_en": "Ascorbic acid",
+      "name_fr": "Acide ascorbique",
+      "ref": "POL-FAD-IMPORT-3077"
+    },
+    {
+      "code": "E301",
+      "name_en": "Sodium ascorbate",
+      "name_fr": "Ascorbate de sodium",
+      "ref": "POL-FAD-IMPORT-3078"
+    },
+    {
+      "code": "E302",
+      "name_en": "Calcium ascorbate",
+      "name_fr": "Ascorbate de calcium",
+      "ref": "POL-FAD-IMPORT-3079"
+    },
+    {
+      "code": "E304",
+      "name_en": "Fatty acid esters of ascorbic acid",
+      "name_fr": "Esters d'ascorbyle",
+      "ref": "POL-FAD-IMPORT-3080"
+    },
+    {
+      "code": "E304I",
+      "name_en": "L-Ascorbyl Palmitate",
+      "name_fr": "Palmitate d'ascorbyle",
+      "ref": "POL-FAD-16782"
+    },
+    {
+      "code": "E306",
+      "name_en": "Tocopherol-rich extract",
+      "name_fr": "Extrait riche en tocophérols",
+      "ref": "POL-FAD-IMPORT-3081"
+    },
+    {
+      "code": "E307",
+      "name_en": "Alpha-tocopherol",
+      "name_fr": "α-Tocophérol de synthèse",
+      "ref": "POL-FAD-IMPORT-3082"
+    },
+    {
+      "code": "E308",
+      "name_en": "Gamma-tocopherol",
+      "name_fr": "γ-Tocophérol de synthèse",
+      "ref": "POL-FAD-IMPORT-3083"
+    },
+    {
+      "code": "E309",
+      "name_en": "Delta-tocopherol",
+      "name_fr": "δ-Tocophérol de synthèse",
+      "ref": "POL-FAD-IMPORT-3084"
+    },
+    {
+      "code": "E310",
+      "name_en": "Propyl gallate",
+      "name_fr": "Gallate de propyle",
+      "ref": "POL-FAD-IMPORT-3085"
+    },
+    {
+      "code": "E315",
+      "name_en": "Erythorbic acid",
+      "name_fr": "Acide érythorbique",
+      "ref": "POL-FAD-IMPORT-3090"
+    },
+    {
+      "code": "E316",
+      "name_en": "Sodium erythorbate",
+      "name_fr": "Erythorbate de sodium",
+      "ref": "POL-FAD-IMPORT-3091"
+    },
+    {
+      "code": "E319",
+      "name_en": "Tertiary-butyl hydroquinone (TBHQ)",
+      "name_fr": "Butylhydroquinone tertiaire",
+      "ref": "POL-FAD-IMPORT-3092"
+    },
+    {
+      "code": "E320",
+      "name_en": "Butylated hydroxyanisole (BHA)",
+      "name_fr": "Buthylhydroxyanisol",
+      "ref": "POL-FAD-IMPORT-3093"
+    },
+    {
+      "code": "E321",
+      "name_en": "Butylated hydroxytoluene (BHT)",
+      "name_fr": "Buthylhydroxytoluène",
+      "ref": "POL-FAD-IMPORT-3094"
+    },
+    {
+      "code": "E322",
+      "name_en": "Lecithins",
+      "name_fr": "Lécithines",
+      "ref": "POL-FAD-IMPORT-3095"
+    },
+    {
+      "code": "E322A",
+      "name_en": "Oat lecithin",
+      "name_fr": "",
+      "ref": "POL-FAD-IMPORT-3387"
+    },
+    {
+      "code": "E325",
+      "name_en": "Sodium lactate",
+      "name_fr": "Lactate de sodium",
+      "ref": "POL-FAD-IMPORT-3096"
+    },
+    {
+      "code": "E326",
+      "name_en": "Potassium lactate",
+      "name_fr": "Lactate de potassium",
+      "ref": "POL-FAD-IMPORT-3097"
+    },
+    {
+      "code": "E327",
+      "name_en": "Calcium lactate",
+      "name_fr": "Lactate de calcium",
+      "ref": "POL-FAD-IMPORT-3098"
+    },
+    {
+      "code": "E330",
+      "name_en": "Citric acid",
+      "name_fr": "Acide citrique",
+      "ref": "POL-FAD-IMPORT-3099"
+    },
+    {
+      "code": "E331",
+      "name_en": "Sodium citrates",
+      "name_fr": "Citrates de sodium (monosodique",
+      "ref": "POL-FAD-IMPORT-3100"
+    },
+    {
+      "code": "E332",
+      "name_en": "Potassium citrates",
+      "name_fr": "Citrates de potassium (monopotassique",
+      "ref": "POL-FAD-IMPORT-3101"
+    },
+    {
+      "code": "E333",
+      "name_en": "Calcium citrates",
+      "name_fr": "Citrates de calcium (monocalcique",
+      "ref": "POL-FAD-IMPORT-3102"
+    },
+    {
+      "code": "E334",
+      "name_en": "Tartaric acid (L(+)-)",
+      "name_fr": "Acide tartrique",
+      "ref": "POL-FAD-IMPORT-3103"
+    },
+    {
+      "code": "E335",
+      "name_en": "Sodium tartrates",
+      "name_fr": "Tartrates de sodium",
+      "ref": "POL-FAD-IMPORT-3104"
+    },
+    {
+      "code": "E336",
+      "name_en": "Potassium tartrates",
+      "name_fr": "Tartrates de potassium",
+      "ref": "POL-FAD-IMPORT-3105"
+    },
+    {
+      "code": "E337",
+      "name_en": "Sodium potassium tartrate",
+      "name_fr": "Tartrate double de sodium et de potassium",
+      "ref": "POL-FAD-IMPORT-3106"
+    },
+    {
+      "code": "E338",
+      "name_en": "Phosphoric acid",
+      "name_fr": "Acide orthophosphorique",
+      "ref": "POL-FAD-IMPORT-3107"
+    },
+    {
+      "code": "E339",
+      "name_en": "Sodium phosphates",
+      "name_fr": "Orthophosphates de sodium",
+      "ref": "POL-FAD-IMPORT-3109"
+    },
+    {
+      "code": "E340",
+      "name_en": "Potassium phosphates",
+      "name_fr": "Orthophosphates de potassium",
+      "ref": "POL-FAD-IMPORT-3110"
+    },
+    {
+      "code": "E341",
+      "name_en": "Calcium phosphates",
+      "name_fr": "Orthophosphates de calcium",
+      "ref": "POL-FAD-IMPORT-3111"
+    },
+    {
+      "code": "E341III",
+      "name_en": "Tricalcium phosphate",
+      "name_fr": "Orthophosphate tricalcique",
+      "ref": "POL-FAD-IMPORT-3336"
+    },
+    {
+      "code": "E343",
+      "name_en": "Magnesium phosphates",
+      "name_fr": "Orthophosphates de magnésium",
+      "ref": "POL-FAD-IMPORT-3112"
+    },
+    {
+      "code": "E345I",
+      "name_en": "Trimagnesium dicitrate",
+      "name_fr": "",
+      "ref": "POL-FAD-10321"
+    },
+    {
+      "code": "E350",
+      "name_en": "Sodium malates",
+      "name_fr": "Malates de sodium",
+      "ref": "POL-FAD-IMPORT-3113"
+    },
+    {
+      "code": "E351",
+      "name_en": "Potassium malate",
+      "name_fr": "Malates de potassium",
+      "ref": "POL-FAD-IMPORT-3114"
+    },
+    {
+      "code": "E352",
+      "name_en": "Calcium malates",
+      "name_fr": "Malates de calcium",
+      "ref": "POL-FAD-IMPORT-3115"
+    },
+    {
+      "code": "E353",
+      "name_en": "Metatartaric acid",
+      "name_fr": "Acide métatartrique",
+      "ref": "POL-FAD-IMPORT-3116"
+    },
+    {
+      "code": "E354",
+      "name_en": "Calcium tartrate",
+      "name_fr": "Tartrate de calcium",
+      "ref": "POL-FAD-IMPORT-3117"
+    },
+    {
+      "code": "E355",
+      "name_en": "Adipic acid",
+      "name_fr": "Acide adipique",
+      "ref": "POL-FAD-IMPORT-3118"
+    },
+    {
+      "code": "E356",
+      "name_en": "Sodium adipate",
+      "name_fr": "Adipate de sodium",
+      "ref": "POL-FAD-IMPORT-3120"
+    },
+    {
+      "code": "E357",
+      "name_en": "Potassium adipate",
+      "name_fr": "Adipate de potassium",
+      "ref": "POL-FAD-IMPORT-3121"
+    },
+    {
+      "code": "E363",
+      "name_en": "Succinic acid",
+      "name_fr": "Acide succinique",
+      "ref": "POL-FAD-IMPORT-3122"
+    },
+    {
+      "code": "E380",
+      "name_en": "Triammonium citrate",
+      "name_fr": "Citrate de triammonium",
+      "ref": "POL-FAD-IMPORT-3123"
+    },
+    {
+      "code": "E385",
+      "name_en": "Calcium disodium ethylene diamine tetra-acetate (Calcium disodium EDTA)",
+      "name_fr": "EDTA calcio-disodique",
+      "ref": "POL-FAD-IMPORT-3124"
+    },
+    {
+      "code": "E392",
+      "name_en": "Extracts of rosemary",
+      "name_fr": "Extrait de romarin",
+      "ref": "POL-FAD-IMPORT-3125"
+    },
+    {
+      "code": "E400",
+      "name_en": "Alginic acid",
+      "name_fr": "Acide alginique",
+      "ref": "POL-FAD-IMPORT-3126"
+    },
+    {
+      "code": "E401",
+      "name_en": "Sodium alginate",
+      "name_fr": "Alginate de sodium",
+      "ref": "POL-FAD-IMPORT-3128"
+    },
+    {
+      "code": "E402",
+      "name_en": "Potassium alginate",
+      "name_fr": "Alginate de potassium",
+      "ref": "POL-FAD-IMPORT-3129"
+    },
+    {
+      "code": "E403",
+      "name_en": "Ammonium alginate",
+      "name_fr": "Alginate d'ammonium",
+      "ref": "POL-FAD-IMPORT-3130"
+    },
+    {
+      "code": "E404",
+      "name_en": "Calcium alginate",
+      "name_fr": "Alginate de calcium",
+      "ref": "POL-FAD-IMPORT-3131"
+    },
+    {
+      "code": "E405",
+      "name_en": "Propane-1, 2-diol alginate",
+      "name_fr": "Alginate de propane-1,2-diol",
+      "ref": "POL-FAD-IMPORT-3132"
+    },
+    {
+      "code": "E406",
+      "name_en": "Agar",
+      "name_fr": "Agar-agar",
+      "ref": "POL-FAD-IMPORT-3133"
+    },
+    {
+      "code": "E407",
+      "name_en": "Carrageenan",
+      "name_fr": "Carraghénanes",
+      "ref": "POL-FAD-IMPORT-3134"
+    },
+    {
+      "code": "E407A",
+      "name_en": "Processed euchema seaweed",
+      "name_fr": "Algues eucheuma transformées",
+      "ref": "POL-FAD-IMPORT-3135"
+    },
+    {
+      "code": "E410",
+      "name_en": "Locust bean gum",
+      "name_fr": "Farine de graines de caroube",
+      "ref": "POL-FAD-IMPORT-3136"
+    },
+    {
+      "code": "E412",
+      "name_en": "Guar gum",
+      "name_fr": "Gomme de guar",
+      "ref": "POL-FAD-IMPORT-3137"
+    },
+    {
+      "code": "E413",
+      "name_en": "Tragacanth",
+      "name_fr": "Gomme de dragon",
+      "ref": "POL-FAD-IMPORT-3138"
+    },
+    {
+      "code": "E414",
+      "name_en": "Gum arabic (acacia gum)",
+      "name_fr": "Gomme d'acacia",
+      "ref": "POL-FAD-IMPORT-3139"
+    },
+    {
+      "code": "E415",
+      "name_en": "Xanthan gum",
+      "name_fr": "Gomme xanthane",
+      "ref": "POL-FAD-IMPORT-3140"
+    },
+    {
+      "code": "E416",
+      "name_en": "Karaya gum",
+      "name_fr": "Gomme karaya",
+      "ref": "POL-FAD-IMPORT-3141"
+    },
+    {
+      "code": "E417",
+      "name_en": "Tara gum",
+      "name_fr": "Gomme tara",
+      "ref": "POL-FAD-IMPORT-3142"
+    },
+    {
+      "code": "E418",
+      "name_en": "Gellan gum",
+      "name_fr": "Gomme gellane",
+      "ref": "POL-FAD-IMPORT-3143"
+    },
+    {
+      "code": "E420",
+      "name_en": "Sorbitols",
+      "name_fr": "Sorbitols",
+      "ref": "POL-FAD-IMPORT-3144"
+    },
+    {
+      "code": "E421",
+      "name_en": "Mannitol",
+      "name_fr": "Mannitol",
+      "ref": "POL-FAD-IMPORT-3145"
+    },
+    {
+      "code": "E422",
+      "name_en": "Glycerol",
+      "name_fr": "Glycérol",
+      "ref": "POL-FAD-IMPORT-3146"
+    },
+    {
+      "code": "E423",
+      "name_en": "Octenyl succinic acid modified gum arabic",
+      "name_fr": "Acide octénylsuccinique",
+      "ref": "POL-FAD-IMPORT-3337"
+    },
+    {
+      "code": "E425",
+      "name_en": "Konjac",
+      "name_fr": "Konjac",
+      "ref": "POL-FAD-IMPORT-3147"
+    },
+    {
+      "code": "E426",
+      "name_en": "Soybean hemicellulose",
+      "name_fr": "Hémicellulose de soja",
+      "ref": "POL-FAD-IMPORT-3148"
+    },
+    {
+      "code": "E427",
+      "name_en": "Cassia gum",
+      "name_fr": "Gomme de casse",
+      "ref": "POL-FAD-IMPORT-3149"
+    },
+    {
+      "code": "E431",
+      "name_en": "Polyoxyethylene (40) stearate",
+      "name_fr": "Stéarate de polyoxyéthylène",
+      "ref": "POL-FAD-IMPORT-3150"
+    },
+    {
+      "code": "E432",
+      "name_en": "Polyoxyethylene sorbitan monolaurate (polysorbate 20)",
+      "name_fr": "Monolaurate de polyoxyéthylène sorbitane",
+      "ref": "POL-FAD-IMPORT-3151"
+    },
+    {
+      "code": "E433",
+      "name_en": "Polyoxyethylene sorbitan monooleate (polysorbate 80)",
+      "name_fr": "Monooléate de polyoxyéthylène de sorbitane",
+      "ref": "POL-FAD-IMPORT-3153"
+    },
+    {
+      "code": "E434",
+      "name_en": "Polyoxyethylene sorbitan monopalmitate (polysorbate 40)",
+      "name_fr": "Monopalmitate de polyoxyéthylène sorbitane",
+      "ref": "POL-FAD-IMPORT-3154"
+    },
+    {
+      "code": "E435",
+      "name_en": "Polyoxyethylene sorbitan monostearate (polysorbate 60)",
+      "name_fr": "Monostéarate de polyoxyéthylène sorbitane",
+      "ref": "POL-FAD-IMPORT-3155"
+    },
+    {
+      "code": "E436",
+      "name_en": "Polyoxyethylene sorbitan tristearate (polysorbate 65)",
+      "name_fr": "Tristéarate de polyoxyéthylène sorbitane",
+      "ref": "POL-FAD-IMPORT-3156"
+    },
+    {
+      "code": "E440",
+      "name_en": "Pectins",
+      "name_fr": "Pectines",
+      "ref": "POL-FAD-IMPORT-3157"
+    },
+    {
+      "code": "E442",
+      "name_en": "Ammonium phosphatides",
+      "name_fr": "Phosphatides d'ammonium",
+      "ref": "POL-FAD-IMPORT-3158"
+    },
+    {
+      "code": "E444",
+      "name_en": "Sucrose acetate isobutyrate",
+      "name_fr": "Acétate isobutyrate de saccharose",
+      "ref": "POL-FAD-IMPORT-3159"
+    },
+    {
+      "code": "E445",
+      "name_en": "Glycerol esters of wood rosins",
+      "name_fr": "Ester glycérique de résines de bois",
+      "ref": "POL-FAD-IMPORT-3160"
+    },
+    {
+      "code": "E450",
+      "name_en": "Diphosphates",
+      "name_fr": "Diphosphates",
+      "ref": "POL-FAD-IMPORT-3161"
+    },
+    {
+      "code": "E450IX",
+      "name_en": "Magnesium dihydrogen diphosphate",
+      "name_fr": "Diphosphate déshydrogéné de magnésium",
+      "ref": "POL-FAD-IMPORT-3360"
+    },
+    {
+      "code": "E451",
+      "name_en": "Triphosphates",
+      "name_fr": "Triphosphates",
+      "ref": "POL-FAD-IMPORT-3162"
+    },
+    {
+      "code": "E452",
+      "name_en": "Polyphosphates",
+      "name_fr": "Polyphosphates",
+      "ref": "POL-FAD-IMPORT-3163"
+    },
+    {
+      "code": "E456",
+      "name_en": "Potassium Polyaspartate",
+      "name_fr": "",
+      "ref": "POL-FAD-IMPORT-3366"
+    },
+    {
+      "code": "E459",
+      "name_en": "Beta-cyclodextrin",
+      "name_fr": "β-Cyclodextrine",
+      "ref": "POL-FAD-IMPORT-3164"
+    },
+    {
+      "code": "E460",
+      "name_en": "Cellulose",
+      "name_fr": "Celluloses",
+      "ref": "POL-FAD-16781"
+    },
+    {
+      "code": "E460I",
+      "name_en": "Microcrystalline cellulose, Cellulose gel",
+      "name_fr": "Cellulose microcristalline",
+      "ref": "POL-FAD-IMPORT-3165"
+    },
+    {
+      "code": "E460II",
+      "name_en": "Powdered cellulose",
+      "name_fr": "Cellulose en poudre",
+      "ref": "POL-FAD-IMPORT-3365"
+    },
+    {
+      "code": "E461",
+      "name_en": "Methyl cellulose",
+      "name_fr": "Méthylcellulose",
+      "ref": "POL-FAD-IMPORT-3166"
+    },
+    {
+      "code": "E462",
+      "name_en": "Ethyl cellulose",
+      "name_fr": "Éthylcellulose",
+      "ref": "POL-FAD-IMPORT-3167"
+    },
+    {
+      "code": "E463",
+      "name_en": "Hydroxypropyl cellulose",
+      "name_fr": "Hydroxypropylcellulose",
+      "ref": "POL-FAD-IMPORT-3168"
+    },
+    {
+      "code": "E463A",
+      "name_en": "Low-substituted hydroxypropyl cellulose (L-HPC)",
+      "name_fr": "",
+      "ref": "POL-FAD-IMPORT-3374"
+    },
+    {
+      "code": "E464",
+      "name_en": "Hydroxypropyl methyl cellulose",
+      "name_fr": "Hydroxypropylméthylcellulose",
+      "ref": "POL-FAD-IMPORT-3169"
+    },
+    {
+      "code": "E465",
+      "name_en": "Ethyl methyl cellulose",
+      "name_fr": "Éthylméthylcellulose",
+      "ref": "POL-FAD-IMPORT-3170"
+    },
+    {
+      "code": "E466",
+      "name_en": "Sodium carboxy methyl cellulose, cellulose gum",
+      "name_fr": "Carboxyméthylcellulose",
+      "ref": "POL-FAD-IMPORT-3171"
+    },
+    {
+      "code": "E468",
+      "name_en": "Cross-linked sodium carboxy methyl cellulose",
+      "name_fr": "Carboxyméthylcellulose de sodium réticulée",
+      "ref": "POL-FAD-IMPORT-3172"
+    },
+    {
+      "code": "E469",
+      "name_en": "Enzymatically hydrolysed carboxy methyl cellulose",
+      "name_fr": "Carboxyméthylcellulose hydrolysée de manière enzymatique",
+      "ref": "POL-FAD-IMPORT-3173"
+    },
+    {
+      "code": "E470A",
+      "name_en": "Sodium, potassium and calcium salts of fatty acids",
+      "name_fr": "Sels de sodium",
+      "ref": "POL-FAD-IMPORT-3174"
+    },
+    {
+      "code": "E470B",
+      "name_en": "Magnesium salts of fatty acids",
+      "name_fr": "Sels de magnésium d'acides gras",
+      "ref": "POL-FAD-IMPORT-3175"
+    },
+    {
+      "code": "E471",
+      "name_en": "Mono-and diglycerides of fatty acids",
+      "name_fr": "Mono- et diglycérides d'acides gras alimentaires",
+      "ref": "POL-FAD-IMPORT-3176"
+    },
+    {
+      "code": "E472A",
+      "name_en": "Acetic acid esters of mono- and diglycerides of fatty acids",
+      "name_fr": "Esters acétiques des mono- et diglycérides d’acides gras",
+      "ref": "POL-FAD-IMPORT-3177"
+    },
+    {
+      "code": "E472B",
+      "name_en": "Lactic acid esters of mono- and diglycerides of fatty acids",
+      "name_fr": "Esters lactiques des mono- et diglycérides d’acides gras",
+      "ref": "POL-FAD-IMPORT-3178"
+    },
+    {
+      "code": "E472C",
+      "name_en": "Citric acid esters of mono- and diglycerides of fatty acids",
+      "name_fr": "Esters citriques des mono- et diglycérides d’acides gras",
+      "ref": "POL-FAD-IMPORT-3179"
+    },
+    {
+      "code": "E472D",
+      "name_en": "Tartaric acid esters of mono- and diglycerides of fatty acids",
+      "name_fr": "Esters tartriques des mono- et diglycérides d’acides gras",
+      "ref": "POL-FAD-IMPORT-3180"
+    },
+    {
+      "code": "E472E",
+      "name_en": "Mono and diacetyl tartaric acid esters of mono- and diglycerides of fatty acids",
+      "name_fr": "Esters mono- et diacétyltartriques des mono- et diglycérides d’acides gras",
+      "ref": "POL-FAD-IMPORT-3181"
+    },
+    {
+      "code": "E472F",
+      "name_en": "Mixed acetic and tartaric acid esters of mono- and diglycerides of fatty acids",
+      "name_fr": "Esters mixtes acétiques et tartriques des mono- et diglycérides d’acides gras",
+      "ref": "POL-FAD-IMPORT-3182"
+    },
+    {
+      "code": "E473",
+      "name_en": "Sucrose esters of fatty acids",
+      "name_fr": "Sucroester d'acide gras",
+      "ref": "POL-FAD-IMPORT-3183"
+    },
+    {
+      "code": "E474",
+      "name_en": "Sucroglycerides",
+      "name_fr": "Sucroglycérides",
+      "ref": "POL-FAD-IMPORT-3185"
+    },
+    {
+      "code": "E475",
+      "name_en": "Polyglycerol esters of fatty acids",
+      "name_fr": "Esters polyglycériques d'acides gras",
+      "ref": "POL-FAD-IMPORT-3186"
+    },
+    {
+      "code": "E476",
+      "name_en": "Polyglycerol polyricinoleate",
+      "name_fr": "Esters polyglycériques d'acides gras d'huile de ricin",
+      "ref": "POL-FAD-IMPORT-3187"
+    },
+    {
+      "code": "E477",
+      "name_en": "Propane-1,2-diol esters of fatty acids",
+      "name_fr": "Esters du propylène glycol d'acide gras",
+      "ref": "POL-FAD-IMPORT-3188"
+    },
+    {
+      "code": "E479B",
+      "name_en": "Thermally oxidized soya bean oil interacted with mono and diglycerides of fatty acids",
+      "name_fr": "Huile de soja oxydée par chauffage ayant réagi avec des mono- et diglycérides d'acides gras",
+      "ref": "POL-FAD-IMPORT-3189"
+    },
+    {
+      "code": "E481",
+      "name_en": "Sodium stearoyl-2-lactylate",
+      "name_fr": "Stéaroyl-2-lactylate de sodium",
+      "ref": "POL-FAD-IMPORT-3190"
+    },
+    {
+      "code": "E482",
+      "name_en": "Calcium stearoyl-2-lactylate",
+      "name_fr": "Stéaroyl-2-lactylate de calcium",
+      "ref": "POL-FAD-IMPORT-3192"
+    },
+    {
+      "code": "E483",
+      "name_en": "Stearyl tartrate",
+      "name_fr": "Tartrate de stéaryle",
+      "ref": "POL-FAD-IMPORT-3193"
+    },
+    {
+      "code": "E491",
+      "name_en": "Sorbitan monostearate",
+      "name_fr": "Monostéarate de sorbitane",
+      "ref": "POL-FAD-IMPORT-3194"
+    },
+    {
+      "code": "E492",
+      "name_en": "Sorbitan tristearate",
+      "name_fr": "Tristéarate de sorbitane",
+      "ref": "POL-FAD-IMPORT-3196"
+    },
+    {
+      "code": "E493",
+      "name_en": "Sorbitan monolaurate",
+      "name_fr": "Monolaurate de sorbitane",
+      "ref": "POL-FAD-IMPORT-3197"
+    },
+    {
+      "code": "E494",
+      "name_en": "Sorbitan monooleate",
+      "name_fr": "Monoléate de sorbitane",
+      "ref": "POL-FAD-IMPORT-3198"
+    },
+    {
+      "code": "E495",
+      "name_en": "Sorbitan monopalmitate",
+      "name_fr": "Monopalmitate de sorbitane",
+      "ref": "POL-FAD-IMPORT-3199"
+    },
+    {
+      "code": "E499",
+      "name_en": "Stigmasterol-rich plant sterols",
+      "name_fr": "",
+      "ref": "POL-FAD-IMPORT-3342"
+    },
+    {
+      "code": "E500",
+      "name_en": "Sodium carbonates",
+      "name_fr": "Carbonates de sodium",
+      "ref": "POL-FAD-IMPORT-3200"
+    },
+    {
+      "code": "E500II",
+      "name_en": "Sodium hydrogenate carbonate",
+      "name_fr": "Carbonate acide de sodium",
+      "ref": "POL-FAD-IMPORT-3361"
+    },
+    {
+      "code": "E501",
+      "name_en": "Potassium carbonate",
+      "name_fr": "Carbonates de potassium",
+      "ref": "POL-FAD-IMPORT-3202"
+    },
+    {
+      "code": "E501II",
+      "name_en": "Potassium hydrogen carbonate",
+      "name_fr": "Carbonate acide de potassium",
+      "ref": "POL-FAD-IMPORT-3362"
+    },
+    {
+      "code": "E503",
+      "name_en": "Ammonium carbonates",
+      "name_fr": "Carbonates d'ammonium",
+      "ref": "POL-FAD-IMPORT-3203"
+    },
+    {
+      "code": "E504",
+      "name_en": "Magnesium carbonates",
+      "name_fr": "Carbonates de magnésium",
+      "ref": "POL-FAD-IMPORT-3204"
+    },
+    {
+      "code": "E507",
+      "name_en": "Hydrochloric acid",
+      "name_fr": "Acide chlorhydrique",
+      "ref": "POL-FAD-IMPORT-3205"
+    },
+    {
+      "code": "E508",
+      "name_en": "Potassium chloride",
+      "name_fr": "Chlorure de potassium",
+      "ref": "POL-FAD-IMPORT-3206"
+    },
+    {
+      "code": "E509",
+      "name_en": "Calcium chloride",
+      "name_fr": "Chlorure de calcium",
+      "ref": "POL-FAD-IMPORT-3207"
+    },
+    {
+      "code": "E511",
+      "name_en": "Magnesium chloride",
+      "name_fr": "Chlorure de magnésium",
+      "ref": "POL-FAD-IMPORT-3208"
+    },
+    {
+      "code": "E512",
+      "name_en": "Stannous chloride",
+      "name_fr": "Chlorure stanneux",
+      "ref": "POL-FAD-IMPORT-3209"
+    },
+    {
+      "code": "E513",
+      "name_en": "Sulphuric acid",
+      "name_fr": "Acide sulfurique",
+      "ref": "POL-FAD-IMPORT-3210"
+    },
+    {
+      "code": "E514",
+      "name_en": "Sodium sulphates",
+      "name_fr": "Sulfates de sodium",
+      "ref": "POL-FAD-IMPORT-3211"
+    },
+    {
+      "code": "E515",
+      "name_en": "Potassium sulphates",
+      "name_fr": "Sulfate de potassium",
+      "ref": "POL-FAD-IMPORT-3212"
+    },
+    {
+      "code": "E516",
+      "name_en": "Calcium sulphate",
+      "name_fr": "Sulfate de calcium",
+      "ref": "POL-FAD-IMPORT-3213"
+    },
+    {
+      "code": "E517",
+      "name_en": "Ammonium sulphate",
+      "name_fr": "Sulfate d'ammonium",
+      "ref": "POL-FAD-IMPORT-3214"
+    },
+    {
+      "code": "E520",
+      "name_en": "Aluminium sulphate",
+      "name_fr": "Sulfate d'aluminium",
+      "ref": "POL-FAD-IMPORT-3215"
+    },
+    {
+      "code": "E521",
+      "name_en": "Aluminium sodium sulphate",
+      "name_fr": "Sulfate d'aluminium sodique",
+      "ref": "POL-FAD-IMPORT-3217"
+    },
+    {
+      "code": "E522",
+      "name_en": "Aluminium potassium sulphate",
+      "name_fr": "Sulfate d'aluminium potassique",
+      "ref": "POL-FAD-IMPORT-3218"
+    },
+    {
+      "code": "E523",
+      "name_en": "Aluminium ammonium sulphate",
+      "name_fr": "Sulfate d'aluminium ammonique",
+      "ref": "POL-FAD-IMPORT-3219"
+    },
+    {
+      "code": "E524",
+      "name_en": "Sodium hydroxide",
+      "name_fr": "Hydroxyde de sodium",
+      "ref": "POL-FAD-IMPORT-3220"
+    },
+    {
+      "code": "E525",
+      "name_en": "Potassium hydroxide",
+      "name_fr": "Hydroxyde de potassium",
+      "ref": "POL-FAD-IMPORT-3222"
+    },
+    {
+      "code": "E526",
+      "name_en": "Calcium hydroxide",
+      "name_fr": "Hydroxyde de calcium",
+      "ref": "POL-FAD-IMPORT-3223"
+    },
+    {
+      "code": "E527",
+      "name_en": "Ammonium hydroxide",
+      "name_fr": "Hydroxyde d'ammonium",
+      "ref": "POL-FAD-IMPORT-3224"
+    },
+    {
+      "code": "E528",
+      "name_en": "Magnesium hydroxide",
+      "name_fr": "Hydroxyde de magnésium",
+      "ref": "POL-FAD-IMPORT-3225"
+    },
+    {
+      "code": "E529",
+      "name_en": "Calcium oxide",
+      "name_fr": "Oxyde de calcium",
+      "ref": "POL-FAD-IMPORT-3226"
+    },
+    {
+      "code": "E530",
+      "name_en": "Magnesium oxide",
+      "name_fr": "Oxyde de magnésium périclase",
+      "ref": "POL-FAD-IMPORT-3227"
+    },
+    {
+      "code": "E534",
+      "name_en": "Iron (III) meso-Tartrate",
+      "name_fr": "",
+      "ref": "POL-FAD-IMPORT-3340"
+    },
+    {
+      "code": "E535",
+      "name_en": "Sodium ferrocyanide",
+      "name_fr": "Ferrocyanure de sodium",
+      "ref": "POL-FAD-IMPORT-3228"
+    },
+    {
+      "code": "E536",
+      "name_en": "Potassium ferrocyanide",
+      "name_fr": "Ferrocyanure de potassium",
+      "ref": "POL-FAD-IMPORT-3230"
+    },
+    {
+      "code": "E538",
+      "name_en": "Calcium ferrocyanide",
+      "name_fr": "Ferrocyanure de calcium",
+      "ref": "POL-FAD-IMPORT-3231"
+    },
+    {
+      "code": "E541",
+      "name_en": "Sodium aluminium phosphate acidic",
+      "name_fr": "Phosphate d'aluminium sodique et de sodium",
+      "ref": "POL-FAD-IMPORT-3232"
+    },
+    {
+      "code": "E551",
+      "name_en": "Silicon dioxide",
+      "name_fr": "Dioxyde de silicium",
+      "ref": "POL-FAD-IMPORT-3233"
+    },
+    {
+      "code": "E552",
+      "name_en": "Calcium silicate",
+      "name_fr": "Silicate de calcium",
+      "ref": "POL-FAD-IMPORT-3235"
+    },
+    {
+      "code": "E553A",
+      "name_en": "Magnesium silicate",
+      "name_fr": "Silicate de magnésium synthétique",
+      "ref": "POL-FAD-IMPORT-3236"
+    },
+    {
+      "code": "E553B",
+      "name_en": "Talc",
+      "name_fr": "Talc",
+      "ref": "POL-FAD-IMPORT-3237"
+    },
+    {
+      "code": "E554",
+      "name_en": "Sodium aluminium silicate",
+      "name_fr": "Silicate alumino-sodique",
+      "ref": "POL-FAD-IMPORT-3238"
+    },
+    {
+      "code": "E555",
+      "name_en": "Potassium aluminium silicate",
+      "name_fr": "Silicate alumino-potassique",
+      "ref": "POL-FAD-IMPORT-3239"
+    },
+    {
+      "code": "E556",
+      "name_en": "Calcium aluminium silicate",
+      "name_fr": "Silicate alumino-calcique",
+      "ref": "POL-FAD-IMPORT-3240"
+    },
+    {
+      "code": "E558",
+      "name_en": "Bentonite",
+      "name_fr": "Bentonite",
+      "ref": "POL-FAD-IMPORT-3241"
+    },
+    {
+      "code": "E559",
+      "name_en": "Aluminium silicate (Kaolin)",
+      "name_fr": "Silicate d'aluminium",
+      "ref": "POL-FAD-IMPORT-3242"
+    },
+    {
+      "code": "E570",
+      "name_en": "Fatty acids",
+      "name_fr": "Acide stéarique",
+      "ref": "POL-FAD-IMPORT-3243"
+    },
+    {
+      "code": "E574",
+      "name_en": "Gluconic acid",
+      "name_fr": "Acide gluconique",
+      "ref": "POL-FAD-IMPORT-3244"
+    },
+    {
+      "code": "E575",
+      "name_en": "Glucono-delta-lactone",
+      "name_fr": "δ-Gluconolactone",
+      "ref": "POL-FAD-IMPORT-3245"
+    },
+    {
+      "code": "E576",
+      "name_en": "Sodium gluconate",
+      "name_fr": "Gluconate de sodium",
+      "ref": "POL-FAD-IMPORT-3246"
+    },
+    {
+      "code": "E577",
+      "name_en": "Potassium gluconate",
+      "name_fr": "Gluconate de potassium",
+      "ref": "POL-FAD-IMPORT-3247"
+    },
+    {
+      "code": "E578",
+      "name_en": "Calcium gluconate",
+      "name_fr": "Gluconate de calcium",
+      "ref": "POL-FAD-IMPORT-3248"
+    },
+    {
+      "code": "E579",
+      "name_en": "Ferrous gluconate",
+      "name_fr": "Gluconate ferreux",
+      "ref": "POL-FAD-IMPORT-3249"
+    },
+    {
+      "code": "E585",
+      "name_en": "Ferrous lactate",
+      "name_fr": "Lactate ferreux",
+      "ref": "POL-FAD-IMPORT-3250"
+    },
+    {
+      "code": "E586",
+      "name_en": "4-Hexylresorcinol",
+      "name_fr": "4-Hexylrésorcinol",
+      "ref": "POL-FAD-IMPORT-3251"
+    },
+    {
+      "code": "E620",
+      "name_en": "Glutamic acid",
+      "name_fr": "Acide glutamique",
+      "ref": "POL-FAD-IMPORT-3252"
+    },
+    {
+      "code": "E621",
+      "name_en": "Monosodium glutamate",
+      "name_fr": "Glutamate monosodique",
+      "ref": "POL-FAD-IMPORT-3254"
+    },
+    {
+      "code": "E622",
+      "name_en": "Monopotassium glutamate",
+      "name_fr": "Glutamate monopotassique",
+      "ref": "POL-FAD-IMPORT-3255"
+    },
+    {
+      "code": "E623",
+      "name_en": "Calcium diglutamate",
+      "name_fr": "Diglutamate de calcium",
+      "ref": "POL-FAD-IMPORT-3256"
+    },
+    {
+      "code": "E624",
+      "name_en": "Monoammonium glutamate",
+      "name_fr": "Glutamate d'ammonium",
+      "ref": "POL-FAD-IMPORT-3257"
+    },
+    {
+      "code": "E625",
+      "name_en": "Magnesium diglutamate",
+      "name_fr": "Diglutamate de magnésium",
+      "ref": "POL-FAD-IMPORT-3258"
+    },
+    {
+      "code": "E626",
+      "name_en": "Guanylic acid",
+      "name_fr": "Guanosine monophosphate",
+      "ref": "POL-FAD-IMPORT-3259"
+    },
+    {
+      "code": "E627",
+      "name_en": "Disodium guanylate",
+      "name_fr": "Guanylate disodique",
+      "ref": "POL-FAD-IMPORT-3261"
+    },
+    {
+      "code": "E628",
+      "name_en": "Dipotassium guanylate",
+      "name_fr": "Guanylate dipotassique",
+      "ref": "POL-FAD-IMPORT-3262"
+    },
+    {
+      "code": "E629",
+      "name_en": "Calcium guanylate",
+      "name_fr": "Guanylate de calcium",
+      "ref": "POL-FAD-IMPORT-3263"
+    },
+    {
+      "code": "E630",
+      "name_en": "Inosinic acid",
+      "name_fr": "Acide inosinique",
+      "ref": "POL-FAD-IMPORT-3264"
+    },
+    {
+      "code": "E631",
+      "name_en": "Disodium inosinate",
+      "name_fr": "Inosinate disodique",
+      "ref": "POL-FAD-IMPORT-3265"
+    },
+    {
+      "code": "E632",
+      "name_en": "Dipotassium inosinate",
+      "name_fr": "Inosinate dipotassique",
+      "ref": "POL-FAD-IMPORT-3266"
+    },
+    {
+      "code": "E633",
+      "name_en": "Calcium inosinate",
+      "name_fr": "Inosinate de calcium",
+      "ref": "POL-FAD-IMPORT-3267"
+    },
+    {
+      "code": "E634",
+      "name_en": "Calcium 5'-ribonucleotides",
+      "name_fr": "5'-Ribonucléotide calcique",
+      "ref": "POL-FAD-IMPORT-3268"
+    },
+    {
+      "code": "E635",
+      "name_en": "Disodium 5'-ribonucleotides",
+      "name_fr": "5'-Ribonucléotide disodique",
+      "ref": "POL-FAD-IMPORT-3269"
+    },
+    {
+      "code": "E640",
+      "name_en": "Glycine and its sodium salt",
+      "name_fr": "Glycine et son sel de sodium",
+      "ref": "POL-FAD-IMPORT-3270"
+    },
+    {
+      "code": "E641",
+      "name_en": "L-leucine",
+      "name_fr": "L-leucine",
+      "ref": "POL-FAD-IMPORT-3346"
+    },
+    {
+      "code": "E650",
+      "name_en": "Zinc acetate",
+      "name_fr": "Acétate de zinc",
+      "ref": "POL-FAD-IMPORT-3271"
+    },
+    {
+      "code": "E900",
+      "name_en": "Dimethyl polysiloxane",
+      "name_fr": "Polydiméthylsiloxane",
+      "ref": "POL-FAD-IMPORT-3272"
+    },
+    {
+      "code": "E901",
+      "name_en": "Beeswax, white and yellow",
+      "name_fr": "Cire d'abeille jaunâtre",
+      "ref": "POL-FAD-IMPORT-3273"
+    },
+    {
+      "code": "E902",
+      "name_en": "Candelilla wax",
+      "name_fr": "Cire de Candelilla",
+      "ref": "POL-FAD-IMPORT-3274"
+    },
+    {
+      "code": "E903",
+      "name_en": "Carnauba wax",
+      "name_fr": "Cire de carnauba",
+      "ref": "POL-FAD-IMPORT-3275"
+    },
+    {
+      "code": "E904",
+      "name_en": "Shellac",
+      "name_fr": "Gomme-laque",
+      "ref": "POL-FAD-IMPORT-3276"
+    },
+    {
+      "code": "E905",
+      "name_en": "Microcrystalline wax",
+      "name_fr": "Paraffine",
+      "ref": "POL-FAD-IMPORT-3277"
+    },
+    {
+      "code": "E905A",
+      "name_en": "High viscosity mineral oils",
+      "name_fr": "Huile minérale de qualité alimentaire",
+      "ref": "POL-FAD-IMPORT-3335"
+    },
+    {
+      "code": "E907",
+      "name_en": "Hydrogenated poly-1-decene",
+      "name_fr": "Poly-1-décène hydrogéné",
+      "ref": "POL-FAD-IMPORT-3278"
+    },
+    {
+      "code": "E912",
+      "name_en": "Montan acid esters",
+      "name_fr": "Ester de l'acide montanique",
+      "ref": "POL-FAD-IMPORT-3279"
+    },
+    {
+      "code": "E914",
+      "name_en": "Oxidised polyethylene wax",
+      "name_fr": "Cire de polyéthylène oxydée",
+      "ref": "POL-FAD-IMPORT-3280"
+    },
+    {
+      "code": "E920",
+      "name_en": "L-cysteine",
+      "name_fr": "L-Cystéine et ses chlorhydrates - sels de sodium et potassium",
+      "ref": "POL-FAD-IMPORT-3281"
+    },
+    {
+      "code": "E926",
+      "name_en": "Chlorine dioxide",
+      "name_fr": "Peroxyde de chlore",
+      "ref": "POL-FAD-IMPORT-3345"
+    },
+    {
+      "code": "E927B",
+      "name_en": "Carbamide",
+      "name_fr": "Carbamide",
+      "ref": "POL-FAD-IMPORT-3282"
+    },
+    {
+      "code": "E938",
+      "name_en": "Argon",
+      "name_fr": "Argon",
+      "ref": "POL-FAD-IMPORT-3283"
+    },
+    {
+      "code": "E939",
+      "name_en": "Helium",
+      "name_fr": "Hélium",
+      "ref": "POL-FAD-IMPORT-3284"
+    },
+    {
+      "code": "E941",
+      "name_en": "Nitrogen",
+      "name_fr": "Diazote",
+      "ref": "POL-FAD-IMPORT-3285"
+    },
+    {
+      "code": "E942",
+      "name_en": "Nitrous oxide",
+      "name_fr": "Protoxyde d'azote",
+      "ref": "POL-FAD-IMPORT-3286"
+    },
+    {
+      "code": "E943A",
+      "name_en": "Butane",
+      "name_fr": "Butane",
+      "ref": "POL-FAD-IMPORT-3287"
+    },
+    {
+      "code": "E943B",
+      "name_en": "Isobutane",
+      "name_fr": "Isobutane",
+      "ref": "POL-FAD-IMPORT-3288"
+    },
+    {
+      "code": "E944",
+      "name_en": "Propane",
+      "name_fr": "Propane",
+      "ref": "POL-FAD-IMPORT-3289"
+    },
+    {
+      "code": "E948",
+      "name_en": "Oxygen",
+      "name_fr": "Dioxygène",
+      "ref": "POL-FAD-IMPORT-3290"
+    },
+    {
+      "code": "E949",
+      "name_en": "Hydrogen",
+      "name_fr": "Dihydrogène",
+      "ref": "POL-FAD-IMPORT-3291"
+    },
+    {
+      "code": "E950",
+      "name_en": "Acesulfame K",
+      "name_fr": "Acésulfame K",
+      "ref": "POL-FAD-IMPORT-3292"
+    },
+    {
+      "code": "E951",
+      "name_en": "Aspartame",
+      "name_fr": "Aspartame",
+      "ref": "POL-FAD-IMPORT-3293"
+    },
+    {
+      "code": "E952",
+      "name_en": "Cyclamic acid and its Na and Ca salts",
+      "name_fr": "Acide cyclamique et ses sels",
+      "ref": "POL-FAD-IMPORT-3294"
+    },
+    {
+      "code": "E953",
+      "name_en": "Isomalt",
+      "name_fr": "Isomalt",
+      "ref": "POL-FAD-IMPORT-3295"
+    },
+    {
+      "code": "E954",
+      "name_en": "Saccharin and its Na, K and Ca salts",
+      "name_fr": "Saccharine et ses sels",
+      "ref": "POL-FAD-IMPORT-3296"
+    },
+    {
+      "code": "E955",
+      "name_en": "Sucralose",
+      "name_fr": "Sucralose",
+      "ref": "POL-FAD-IMPORT-3297"
+    },
+    {
+      "code": "E957",
+      "name_en": "Thaumatin",
+      "name_fr": "Thaumatine",
+      "ref": "POL-FAD-IMPORT-3298"
+    },
+    {
+      "code": "E959",
+      "name_en": "Neohesperidine DC",
+      "name_fr": "Néohespéridine dihydrochalcone",
+      "ref": "POL-FAD-IMPORT-3299"
+    },
+    {
+      "code": "E960A",
+      "name_en": "Steviol glycosides from Stevia",
+      "name_fr": "",
+      "ref": "POL-FAD-06121"
+    },
+    {
+      "code": "E960B",
+      "name_en": "Steviol glycosides from fermentation",
+      "name_fr": "",
+      "ref": "POL-FAD-13301"
+    },
+    {
+      "code": "E960C",
+      "name_en": "Enzymatically produced steviol glycosides",
+      "name_fr": "",
+      "ref": "POL-FAD-06122"
+    },
+    {
+      "code": "E960D",
+      "name_en": "Glucosylated steviol glycosides",
+      "name_fr": "",
+      "ref": "POL-FAD-06123"
+    },
+    {
+      "code": "E961",
+      "name_en": "Neotame",
+      "name_fr": "Néotame",
+      "ref": "POL-FAD-IMPORT-3300"
+    },
+    {
+      "code": "E962",
+      "name_en": "Salt of aspartame-acesulfame",
+      "name_fr": "Sel d'aspartame-acésulfame",
+      "ref": "POL-FAD-IMPORT-3301"
+    },
+    {
+      "code": "E964",
+      "name_en": "Polyglycitol syrup",
+      "name_fr": "Sirop de polyglycitol",
+      "ref": "POL-FAD-IMPORT-3338"
+    },
+    {
+      "code": "E965",
+      "name_en": "Maltitols",
+      "name_fr": "Maltitol",
+      "ref": "POL-FAD-IMPORT-3302"
+    },
+    {
+      "code": "E966",
+      "name_en": "Lactitol",
+      "name_fr": "Lactitol",
+      "ref": "POL-FAD-IMPORT-3303"
+    },
+    {
+      "code": "E967",
+      "name_en": "Xylitol",
+      "name_fr": "Xylitol",
+      "ref": "POL-FAD-IMPORT-3304"
+    },
+    {
+      "code": "E968",
+      "name_en": "Erythritol",
+      "name_fr": "Érythritol",
+      "ref": "POL-FAD-IMPORT-3305"
+    },
+    {
+      "code": "E969",
+      "name_en": "Advantame",
+      "name_fr": "Advantame",
+      "ref": "POL-FAD-IMPORT-3344"
+    },
+    {
+      "code": "E999",
+      "name_en": "Quillaia extract",
+      "name_fr": "Extraits de quillaia",
+      "ref": "POL-FAD-IMPORT-3306"
+    },
+    {
+      "code": "E1103",
+      "name_en": "Invertase",
+      "name_fr": "Invertase",
+      "ref": "POL-FAD-IMPORT-3307"
+    },
+    {
+      "code": "E1105",
+      "name_en": "Lysozyme",
+      "name_fr": "Lysozyme",
+      "ref": "POL-FAD-IMPORT-3308"
+    },
+    {
+      "code": "E1200",
+      "name_en": "Polydextrose",
+      "name_fr": "Polydextrose",
+      "ref": "POL-FAD-IMPORT-3309"
+    },
+    {
+      "code": "E1201",
+      "name_en": "Polyvinylpyrrolidone",
+      "name_fr": "Poly vinyl pyrrolidone",
+      "ref": "POL-FAD-IMPORT-3310"
+    },
+    {
+      "code": "E1202",
+      "name_en": "Polyvinylpolypyrrolidone",
+      "name_fr": "Polyvinyl polypyrrolidone",
+      "ref": "POL-FAD-IMPORT-3311"
+    },
+    {
+      "code": "E1203",
+      "name_en": "Polyvinyl alcohol (PVA)",
+      "name_fr": "Alcool polyvinylique",
+      "ref": "POL-FAD-IMPORT-3312"
+    },
+    {
+      "code": "E1204",
+      "name_en": "Pullulan",
+      "name_fr": "Pullulane",
+      "ref": "POL-FAD-IMPORT-3313"
+    },
+    {
+      "code": "E1205",
+      "name_en": "Basic methacrylate copolymer",
+      "name_fr": "Copolymère méthacrylate basique",
+      "ref": "POL-FAD-IMPORT-3314"
+    },
+    {
+      "code": "E1206",
+      "name_en": "Neutral Methacrylate Copolymer",
+      "name_fr": "Copolymère méthacrylate neutre",
+      "ref": "POL-FAD-IMPORT-3354"
+    },
+    {
+      "code": "E1207",
+      "name_en": "Anionic methacrylate copolymer",
+      "name_fr": "Copolymère méthacrylate anionique",
+      "ref": "POL-FAD-IMPORT-3355"
+    },
+    {
+      "code": "E1208",
+      "name_en": "Polyvinylpyrrolidone-vinyl acetate copolymer",
+      "name_fr": "Copolymère d'acétate de vinyle et de polyvinylpyrrolidone",
+      "ref": "POL-FAD-IMPORT-3334"
+    },
+    {
+      "code": "E1209",
+      "name_en": "Polyvinyl alcohol-polyethylene glycol-graft co-polymer",
+      "name_fr": "Alcool polyvinyle-glycol de polyéthylène graft copolymère Copolymère de PVA et PEG",
+      "ref": "POL-FAD-IMPORT-3351"
+    },
+    {
+      "code": "E1210",
+      "name_en": "Carbomer",
+      "name_fr": "",
+      "ref": "POL-FAD-IMPORT-3378"
+    },
+    {
+      "code": "E1404",
+      "name_en": "Oxidised starch",
+      "name_fr": "Amidon oxydé",
+      "ref": "POL-FAD-IMPORT-3315"
+    },
+    {
+      "code": "E1410",
+      "name_en": "Monostarch phosphate",
+      "name_fr": "Phosphate d'amidon",
+      "ref": "POL-FAD-IMPORT-3316"
+    },
+    {
+      "code": "E1412",
+      "name_en": "Distarch phosphate",
+      "name_fr": "Phosphate de diamidon",
+      "ref": "POL-FAD-IMPORT-3317"
+    },
+    {
+      "code": "E1413",
+      "name_en": "Phosphated distarch phosphate",
+      "name_fr": "Phosphate de diamidon phosphaté",
+      "ref": "POL-FAD-IMPORT-3318"
+    },
+    {
+      "code": "E1414",
+      "name_en": "Acetylated distarch phosphate",
+      "name_fr": "Phosphate de diamidon acétylé",
+      "ref": "POL-FAD-IMPORT-3319"
+    },
+    {
+      "code": "E1420",
+      "name_en": "Acetylated starch",
+      "name_fr": "Amidon acétylé",
+      "ref": "POL-FAD-IMPORT-3320"
+    },
+    {
+      "code": "E1422",
+      "name_en": "Acetylated distarch adipate",
+      "name_fr": "Adipate de diamidon acétylé",
+      "ref": "POL-FAD-IMPORT-3321"
+    },
+    {
+      "code": "E1440",
+      "name_en": "Hydroxy propyl starch",
+      "name_fr": "Amidon hydroxypropyle",
+      "ref": "POL-FAD-IMPORT-3322"
+    },
+    {
+      "code": "E1442",
+      "name_en": "Hydroxy propyl distarch phosphate",
+      "name_fr": "Phosphate de diamidon hydroxypropyle",
+      "ref": "POL-FAD-IMPORT-3323"
+    },
+    {
+      "code": "E1450",
+      "name_en": "Starch sodium octenyl succinate",
+      "name_fr": "Octényle succinate d’amidon sodique",
+      "ref": "POL-FAD-IMPORT-3324"
+    },
+    {
+      "code": "E1451",
+      "name_en": "Acetylated oxidised starch",
+      "name_fr": "Amidon oxydé acétylé",
+      "ref": "POL-FAD-IMPORT-3325"
+    },
+    {
+      "code": "E1452",
+      "name_en": "Starch Aluminium Octenyl Succinate",
+      "name_fr": "Succinate octénylique aluminique d'amidon",
+      "ref": "POL-FAD-IMPORT-3326"
+    },
+    {
+      "code": "E1505",
+      "name_en": "Triethyl citrate",
+      "name_fr": "Citrate de triéthyle",
+      "ref": "POL-FAD-IMPORT-3327"
+    },
+    {
+      "code": "E1517",
+      "name_en": "Glyceryl diacetate (diacetin)",
+      "name_fr": "Diacétine",
+      "ref": "POL-FAD-IMPORT-3328"
+    },
+    {
+      "code": "E1518",
+      "name_en": "Glyceryl triacetate (triacetin)",
+      "name_fr": "Triacétine",
+      "ref": "POL-FAD-IMPORT-3329"
+    },
+    {
+      "code": "E1519",
+      "name_en": "Benzyl alcohol",
+      "name_fr": "Alcool benzylique",
+      "ref": "POL-FAD-IMPORT-3330"
+    },
+    {
+      "code": "E1520",
+      "name_en": "Propane-1, 2-diol (propylene glycol)",
+      "name_fr": "Propylène glycol",
+      "ref": "POL-FAD-IMPORT-3331"
+    },
+    {
+      "code": "E1521",
+      "name_en": "Polyethylene glycol",
+      "name_fr": "Polyéthylène glycol",
+      "ref": "POL-FAD-IMPORT-3332"
+    }
+  ]
+}
