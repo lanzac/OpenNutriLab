@@ -487,6 +487,26 @@ def test_the_ingredients_come_with_the_percentages_the_label_prints():
     ]
 
 
+def test_the_class_and_the_code_an_additive_has_on_the_label_travel_with_it():
+    inputs, warnings = ingredient_inputs_from_label(
+        "Lait, mozzarella [lait, sel, acidifiant : acide citrique], "
+        "conservateur (E202), lécithines (E322)",
+        "fr",
+    )
+
+    assert warnings == []
+    mozzarella = inputs[1]
+    assert [(p.name, p.function, p.code) for p in mozzarella.sub_ingredients] == [
+        ("lait", "", ""),
+        ("sel", "", ""),
+        ("acide citrique", "acid", ""),
+    ]
+    assert [(i.name, i.function, i.code) for i in inputs[2:]] == [
+        ("e202", "preservative", ""),
+        ("lécithines", "", "E322"),
+    ]
+
+
 def test_a_text_that_looks_badly_read_gives_no_ingredient_and_says_why():
     inputs, warnings = ingredient_inputs_from_label(
         "Sucre, émulsifiants : lécithines [SOJA), vanilline", "fr"

@@ -22,6 +22,17 @@ so what cannot be read as a list (a note in parentheses, a heading) is left out
 rather than turned into an ingredient, and a name that is wrong is the curator's
 to see: it makes a reference to review.
 
+A functional class of additives heading a list is not an ingredient either.
+"Acidifiant : acide citrique" and "colorant (E150a)" list additives, and the class
+is what the text says they are for: it is not kept as an ingredient with the
+additive in it, and the additive carries it (`function`). With a colon the class
+applies to the item that follows it, since the text does not say where the list
+ends; in parentheses to all of them, but only when they are E numbers, or when the
+class is not a word that is also an ingredient ("amidon modifié (maïs)" is
+cornstarch). A class with nothing after it is read as any word is. An E number
+written next to a name, in either order ("acide citrique (E330)", "E330 (acide
+citrique)"), is that additive's code (`code`), not one of its parts.
+
 A note in parentheses, such as "(origine : Italie)" or "(bio)", says nothing of
 what an ingredient is made of and is ignored wherever it stands, so that the
 parentheses that do list its parts are read whether it comes before them or not:
@@ -62,6 +73,10 @@ class LabelItem(NamedTuple):
     name: str
     percentage: Decimal | None = None
     parts: tuple["LabelItem", ...] = ()
+    # The functional class a heading gave it ("acidifiant : ..."), as an
+    # Additive.Function value, and the E number written next to its name.
+    function: str = ""
+    code: str = ""
 
 
 class Problem(TextChoices):
@@ -208,6 +223,102 @@ _INTRO = re.compile(
 _ORGANIC = re.compile(
     r"\b(?:bio|biologiques?|organic|biologic[oa]s?|ecol[óo]gic[oa]s?)\b", re.IGNORECASE
 )
+# The functional classes of additives, as the words a label uses for them, folded
+# (see _folded), the plural next to the singular. The values are those of
+# Additive.Function (a test keeps them together).
+_CLASS_WORDS = {
+    "acid": (
+        "acidifiant", "acidifiants", "acidulant", "acidulants",
+        "acidifier", "acidifiers", "acid", "acids",
+    ),
+    "acidity_regulator": (
+        "correcteur d'acidite", "correcteurs d'acidite",
+        "regulateur d'acidite", "regulateurs d'acidite",
+        "acidity regulator", "acidity regulators",
+    ),
+    "anti_caking_agent": (
+        "anti-agglomerant", "anti-agglomerants", "antiagglomerant",
+        "antiagglomerants", "agent anti-agglomerant", "agents anti-agglomerants",
+        "anti-caking agent", "anti-caking agents", "anticaking agent",
+        "anticaking agents",
+    ),
+    "anti_foaming_agent": (
+        "antimousse", "antimousses", "anti-mousse", "anti-mousses",
+        "anti-foaming agent", "anti-foaming agents", "antifoaming agent",
+        "antifoaming agents",
+    ),
+    "antioxidant": ("antioxydant", "antioxydants", "antioxidant", "antioxidants"),
+    "bulking_agent": (
+        "agent de charge", "agents de charge", "bulking agent", "bulking agents",
+    ),
+    "carrier": ("support", "supports", "carrier", "carriers"),
+    "colour": (
+        "colorant", "colorants", "colour", "colours", "color", "colors",
+        "colorante", "colorantes",
+    ),
+    "emulsifier": (
+        "emulsifiant", "emulsifiants", "emulsifier", "emulsifiers", "emulsionante",
+        "emulsionantes",
+    ),
+    "emulsifying_salt": (
+        "sel de fonte", "sels de fonte", "emulsifying salt", "emulsifying salts",
+    ),
+    "firming_agent": (
+        "affermissant", "affermissants", "firming agent", "firming agents",
+    ),
+    "flavour_enhancer": (
+        "exhausteur de gout", "exhausteurs de gout", "flavour enhancer",
+        "flavour enhancers", "flavor enhancer", "flavor enhancers",
+    ),
+    "flour_treatment_agent": (
+        "agent de traitement de la farine", "agents de traitement de la farine",
+        "flour treatment agent", "flour treatment agents",
+    ),
+    "foaming_agent": (
+        "agent moussant", "agents moussants", "foaming agent", "foaming agents",
+    ),
+    "gelling_agent": ("gelifiant", "gelifiants", "gelling agent", "gelling agents"),
+    "glazing_agent": (
+        "agent d'enrobage", "agents d'enrobage", "agent de glacage",
+        "agents de glacage", "glazing agent", "glazing agents",
+    ),
+    "humectant": ("humectant", "humectants"),
+    "modified_starch": (
+        "amidon modifie", "amidons modifies", "modified starch", "modified starches",
+    ),
+    "packaging_gas": (
+        "gaz d'emballage", "packaging gas", "packaging gases",
+    ),
+    "preservative": (
+        "conservateur", "conservateurs", "preservative", "preservatives",
+        "conservante", "conservantes",
+    ),
+    "propellant": ("gaz propulseur", "propellant", "propellants", "propellent gas"),
+    "raising_agent": (
+        "poudre a lever", "poudres a lever", "agent levant", "agents levants",
+        "raising agent", "raising agents",
+    ),
+    "sequestrant": ("sequestrant", "sequestrants"),
+    "stabiliser": (
+        "stabilisant", "stabilisants", "stabiliser", "stabilisers", "stabilizer",
+        "stabilizers",
+    ),
+    "sweetener": ("edulcorant", "edulcorants", "sweetener", "sweeteners"),
+    "thickener": (
+        "epaississant", "epaississants", "thickener", "thickeners",
+        "thickening agent", "thickening agents",
+    ),
+}  # fmt: skip
+_CLASS_OF = {
+    word: function for function, words in _CLASS_WORDS.items() for word in words
+}
+# Classes whose word is also what an ingredient is called ("amidon modifié (maïs)",
+# "poudre à lever"): their parentheses are read as additives only when E numbers.
+_ALSO_INGREDIENTS = frozenset({"modified_starch", "raising_agent", "carrier"})
+# An E number as a label writes it: "E330", "E 330", "e330", "E160a", "E1001(ii)".
+_E_NUMBER = re.compile(
+    r"e\s?-?(\d{3,4})\s?([a-z]{1,3})?\s?(?:\(([ivx]+)\))?", re.IGNORECASE
+)
 _MARKS = str.maketrans("", "", "*†‡°_")
 _BRACKETS = str.maketrans("[]{}", "()()")
 _MAX_DECIMALS = 2
@@ -297,9 +408,21 @@ def _statement_at(text: str, index: int) -> bool:
     return not previous.isalnum() and bool(_STATEMENT.match(text, index))
 
 
+def e_number(name: str) -> str:
+    """
+    The code of an additive when the name is one, as it is stored: "E330" for
+    "e 330", "E1001II" for "E1001(ii)". Blank when the name is not an E number,
+    which is all a word with other letters or fewer digits is.
+    """
+    found = _E_NUMBER.fullmatch(" ".join(name.split()))
+    if found is None:
+        return ""
+    digits, letters, roman = found.groups(default="")
+    return f"E{digits}{letters}{roman}".upper()
+
+
 def _parse_list(text: str) -> list[LabelItem]:
-    items = (_parse_item(piece) for piece in _split(text))
-    return [item for item in items if item is not None]
+    return [item for piece in _split(text) for item in _parse_items(piece)]
 
 
 def _split(text: str) -> list[str]:
@@ -339,22 +462,71 @@ def _matching(text: str, open_at: int) -> int:
     return len(text)
 
 
-def _parse_item(raw: str) -> LabelItem | None:
-    head, inner, tail = _split_parenthesis(_without_notes(raw.strip()))
-    # "émulsifiants : lécithines (soja)": the heading names it, the rest is in it.
-    if ":" in head:
-        head, _, after = head.partition(":")
-        inner = f"{after} ({inner})" if inner and after.strip() else after or inner
+def _class_of(heading: str) -> str:
+    """The Additive.Function a heading names, "" if it names none."""
+    return _CLASS_OF.get(_folded(_name(heading) or ""), "")
 
-    percentage = _percentage(head) or _percentage(tail)
-    parts: tuple[LabelItem, ...] = ()
-    if inner.strip():
-        parts = tuple(_parse_list(inner))
+
+def _parse_items(raw: str) -> list[LabelItem]:
+    """What one piece of the list says: an ingredient, or the additives of a class."""
+    head, inner, tail = _split_parenthesis(_without_notes(raw.strip()))
+    if ":" in head:
+        title, _colon, after = head.partition(":")
+        # "émulsifiants : lécithines (soja)": the heading names it, the rest is in it.
+        listed = f"{after} ({inner})" if inner and after.strip() else after or inner
+        function = _class_of(title)
+        if (
+            function
+            and listed.strip()
+            and not (_percentage(title) or _percentage(tail))
+        ):
+            # "acidifiant : acide citrique": the class is what the item that
+            # follows is for, and is not an ingredient.
+            return _under_class(function, listed)
+        head, inner = title, listed
+    elif (
+        (function := _class_of(head))
+        and inner.strip()
+        and not (_percentage(head) or _percentage(tail))
+    ):
+        # "colorant (E150a)": the class and what it is for, in parentheses.
+        listed_items = _parse_list(inner)
+        if listed_items and (
+            function not in _ALSO_INGREDIENTS
+            or all(e_number(item.name) for item in listed_items)
+        ):
+            return [item._replace(function=function) for item in listed_items]
 
     name = _name(head)
     if name is None:
-        return None
-    return LabelItem(name, percentage, parts)
+        return []
+    return [_with_code(name, _percentage(head) or _percentage(tail), inner)]
+
+
+def _under_class(function: str, listed: str) -> list[LabelItem]:
+    return [item._replace(function=function) for item in _parse_list(listed)]
+
+
+def _with_code(name: str, percentage: Decimal | None, inner: str) -> LabelItem:
+    """
+    The ingredient `name` with what is in its parentheses as its parts, or as its
+    code when that is an E number: "acide citrique (E330)" is one additive, and so
+    is "E330 (acide citrique)", which is named by what is in the parentheses.
+    """
+    if not inner.strip():
+        return LabelItem(name, percentage)
+    code = e_number(_name(inner) or "")
+    if code and not e_number(name):
+        return LabelItem(name, percentage, code=code)
+    named = _name(inner)
+    if (
+        e_number(name)
+        and named is not None
+        and not any(char in inner for char in ",;")
+        and not any(char.isdigit() for char in inner)
+    ):
+        return LabelItem(named, percentage, code=e_number(name))
+    return LabelItem(name, percentage, tuple(_parse_list(inner)))
 
 
 def _folded(text: str) -> str:
@@ -516,7 +688,12 @@ def _odd_names(items: list[LabelItem], *, root: bool = True) -> list[LabelWarnin
     for item in items:
         if len(item.name.split()) > _LONG_NAME_WORDS:
             found.append(LabelWarning(Problem.LONG_NAME, item.name[:40] + "…"))
-        if root and sum(char.isalpha() for char in item.name) <= 2:  # noqa: PLR2004
+        # An E number is short, and is a name.
+        if (
+            root
+            and not e_number(item.name)
+            and sum(char.isalpha() for char in item.name) <= 2  # noqa: PLR2004
+        ):
             found.append(LabelWarning(Problem.SHORT_NAME, item.name))
         found += _odd_names(list(item.parts), root=False)
     return found

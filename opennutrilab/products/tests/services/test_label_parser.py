@@ -4,8 +4,13 @@ from typing import Any
 import pytest
 from django.utils import translation
 
+from opennutrilab.products.models import Additive
+from opennutrilab.products.services.label_parser import (
+    _CLASS_WORDS,  # pyright: ignore[reportPrivateUsage]
+)
 from opennutrilab.products.services.label_parser import LabelItem
 from opennutrilab.products.services.label_parser import Problem
+from opennutrilab.products.services.label_parser import e_number
 from opennutrilab.products.services.label_parser import parse_label
 from opennutrilab.products.services.label_parser import read_label
 
@@ -94,7 +99,8 @@ def test_a_note_ahead_of_the_parts_does_not_hide_them_or_take_their_percentage()
                 ("lait", None, []),
                 ("sel", None, []),
                 ("présure microbienne", None, []),
-                ("acidifiant", None, [("acide citrique", None, [])]),
+                # The class that headed it is what it is for, not an ingredient.
+                ("acide citrique", None, []),
             ],
         ),
         ("tomate cerise", "4.2", []),
@@ -230,11 +236,12 @@ def test_a_percentage_with_a_space_and_a_decimal_comma_is_read_whole():
 
 
 def test_a_heading_with_a_colon_names_the_ingredient_the_rest_is_in():
-    text = "Sucre, émulsifiants : lécithines [SOJA]; vanilline, sel"
+    """A heading that is not a class of additives: the rest is in what it names."""
+    text = "Sucre, préparation de fruits : fraises [SOJA]; vanilline, sel"
 
     assert tree(parse_label(text)) == [
         ("sucre", None, []),
-        ("émulsifiants", None, [("lécithines", None, [])]),
+        ("préparation de fruits", None, [("fraises", None, [])]),
         ("vanilline", None, []),
         ("sel", None, []),
     ]
@@ -306,7 +313,7 @@ def test_labels_in_other_languages_are_read_the_same_way():
     ]
     assert tree(parse_label(spanish)) == [
         ("agua carbonatada", None, []),
-        ("colorante", None, [("e-150d", None, [])]),
+        ("e-150d", None, []),
         ("aromas naturales", None, [("cafeína", None, [])]),
     ]
 
@@ -442,3 +449,243 @@ def test_a_missing_list_is_said_and_there_is_nothing_to_stop(text: str | None):
     assert reading.items == []
     assert problems(text) == [Problem.MISSING]
     assert not reading.warnings[0].stops_reading
+
+
+# ----------------------------------------------------------------------------
+# Additives: the class that heads them, and the E number next to a name
+# ----------------------------------------------------------------------------
+def classes(items: list[LabelItem] | tuple[LabelItem, ...]) -> list[Any]:
+    """Names with the class and the code the label gave them, and their parts."""
+    return [
+        (i.name, i.function, i.code, classes(i.parts)) if i.parts else
+        (i.name, i.function, i.code)
+        for i in items
+    ]  # fmt: skip
+
+
+@pytest.mark.parametrize(
+    ("name", "code"),
+    [
+        ("E330", "E330"),
+        ("e330", "E330"),
+        ("E 330", "E330"),
+        ("E-150d", "E150D"),
+        ("  e  330 ", "E330"),
+        ("E160a", "E160A"),
+        ("E 160 a", "E160A"),
+        ("E1001(ii)", "E1001II"),
+        ("E1001ii", "E1001II"),
+        ("E100", "E100"),
+    ],
+)
+def test_an_e_number_is_read_as_the_code_it_is(name: str, code: str):
+    assert e_number(name) == code
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "",
+        "E",
+        "E33",
+        "E12345",
+        "acide citrique",
+        "E330 acid",
+        "vitamine E",
+        "eau",
+        "E3a0",
+    ],
+)
+def test_a_name_that_is_not_an_e_number_gives_no_code(name: str):
+    assert e_number(name) == ""
+
+
+def test_a_class_with_a_colon_is_what_the_item_that_follows_is_for():
+    items = parse_label("Farine, acidifiant : acide citrique, sel")
+
+    assert classes(items) == [
+        ("farine", "", ""),
+        ("acide citrique", "acid", ""),
+        ("sel", "", ""),
+    ]
+
+
+def test_a_class_with_a_colon_applies_to_the_item_that_follows_and_no_further():
+    """The text does not say where the list ends, so it is not guessed."""
+    items = parse_label("Sucre, colorants : caramel, rocou, sel")
+
+    assert classes(items) == [
+        ("sucre", "", ""),
+        ("caramel", "colour", ""),
+        ("rocou", "", ""),
+        ("sel", "", ""),
+    ]
+
+
+def test_a_class_with_a_colon_keeps_the_parts_of_the_item_that_follows():
+    items = parse_label("Chocolat, émulsifiants : lécithines (tournesol), vanilline")
+
+    assert classes(items) == [
+        ("chocolat", "", ""),
+        ("lécithines", "emulsifier", "", [("tournesol", "", "")]),
+        ("vanilline", "", ""),
+    ]
+
+
+def test_a_class_with_a_colon_and_its_item_inside_a_bracketed_list():
+    """The label of the gnocchi: the mozzarella lists an acidifier among its parts."""
+    items = parse_label("Mozzarella 6 % [lait, sel, acidifiant : acide citrique]")
+
+    assert tree(items) == [
+        (
+            "mozzarella",
+            "6",
+            [("lait", None, []), ("sel", None, []), ("acide citrique", None, [])],
+        )
+    ]
+    [mozzarella] = items
+    assert [part.function for part in mozzarella.parts] == ["", "", "acid"]
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("colorant (E150a)", [("e150a", "colour", "")]),
+        (
+            "conservateurs (E202, E211)",
+            [("e202", "preservative", ""), ("e211", "preservative", "")],
+        ),
+        ("colorants (E 150 a)", [("e 150 a", "colour", "")]),
+        ("antioxydant (acide ascorbique)", [("acide ascorbique", "antioxidant", "")]),
+        ("épaississants (pectines, gomme guar)", [
+            ("pectines", "thickener", ""),
+            ("gomme guar", "thickener", ""),
+        ]),
+        (
+            "preservative (potassium sorbate)",
+            [("potassium sorbate", "preservative", "")],
+        ),
+        ("colour (E150d)", [("e150d", "colour", "")]),
+        ("stabilisants (E412)", [("e412", "stabiliser", "")]),
+    ],
+)  # fmt: skip
+def test_a_class_with_parentheses_is_what_every_item_in_them_is_for(
+    text: str, expected: list[tuple[str, str, str]]
+):
+    assert classes(parse_label(text)) == expected
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "amidon modifié (maïs)",
+        "poudre à lever (bicarbonate de sodium)",
+        "support (huile)",
+    ],
+)
+def test_a_class_that_is_also_an_ingredient_is_a_heading_only_with_e_numbers(
+    text: str,
+):
+    [item] = parse_label(text)
+
+    assert item.function == ""
+    assert [part.name for part in item.parts]
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("amidons modifiés (E1422)", [("e1422", "modified_starch", "")]),
+        ("poudres à lever (E500, E450)", [
+            ("e500", "raising_agent", ""),
+            ("e450", "raising_agent", ""),
+        ]),
+    ],
+)  # fmt: skip
+def test_those_classes_head_a_list_of_e_numbers_all_the_same(
+    text: str, expected: list[tuple[str, str, str]]
+):
+    assert classes(parse_label(text)) == expected
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["sucre, antioxydant, sel", "sucre, colorants :, sel", "sucre, stabilisant"],
+)
+def test_a_class_with_nothing_after_it_is_read_as_any_word_is(text: str):
+    reading = read_label(text)
+
+    assert [i.function for i in reading.items] == [""] * len(reading.items)
+    assert any(
+        item.name in ("antioxydant", "colorants", "stabilisant")
+        for item in reading.items
+    )
+    assert reading.warnings == []
+
+
+def test_a_class_with_a_percentage_is_still_an_ingredient():
+    """A share written on the heading cannot go to the items under it."""
+    items = parse_label("Chocolat, émulsifiants 0,5 % (lécithines), sel")
+
+    assert classes(items) == [
+        ("chocolat", "", ""),
+        ("émulsifiants", "", "", [("lécithines", "", "")]),
+        ("sel", "", ""),
+    ]
+    assert items[1].percentage == D("0.5")
+
+
+@pytest.mark.parametrize(
+    ("text", "name", "code"),
+    [
+        ("acide citrique (E330)", "acide citrique", "E330"),
+        ("Acide citrique (e 330)", "acide citrique", "E330"),
+        ("E330 (acide citrique)", "acide citrique", "E330"),
+        ("E 471 (mono- et diglycérides)", "mono- et diglycérides", "E471"),
+    ],
+)  # fmt: skip
+def test_an_e_number_next_to_a_name_is_its_code_and_not_one_of_its_parts(
+    text: str, name: str, code: str
+):
+    [item] = parse_label(text)
+
+    assert (item.name, item.code, item.parts) == (name, code, ())
+
+
+def test_the_percentage_of_an_additive_with_a_code_is_kept():
+    [item] = parse_label("acide citrique (E330) 0,2 %")
+
+    assert (item.name, item.code, item.percentage) == (
+        "acide citrique",
+        "E330",
+        D("0.2"),
+    )
+
+
+def test_two_codes_or_more_in_parentheses_stay_the_parts_they_were():
+    [item] = parse_label("lécithines (E322, E471)")
+
+    assert (item.name, item.code, [p.name for p in item.parts]) == (
+        "lécithines",
+        "",
+        ["e322", "e471"],
+    )
+
+
+def test_an_allergen_next_to_a_code_is_still_dropped_and_the_code_is_the_name():
+    [item] = parse_label("E322 (soja)")
+
+    assert (item.name, item.code) == ("e322", "")
+    assert item.parts == ()
+
+
+def test_an_e_number_among_ingredients_is_not_a_name_that_is_too_short():
+    reading = read_label("Farine de blé, E330, sel")
+
+    assert [i.name for i in reading.items] == ["farine de blé", "e330", "sel"]
+    assert reading.warnings == []
+
+
+def test_every_class_of_additives_has_its_words_and_is_one_of_the_closed_list():
+    assert set(_CLASS_WORDS) == set(Additive.Function.values)
+    assert all(words for words in _CLASS_WORDS.values())

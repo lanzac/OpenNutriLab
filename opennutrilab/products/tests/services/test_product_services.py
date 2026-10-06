@@ -14,6 +14,9 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.files.uploadedfile import UploadedFile
 from django.db.models.fields.files import ImageFieldFile
 
+from opennutrilab.products.api.openfoodfacts.services import (
+    ingredient_inputs_from_label,
+)
 from opennutrilab.products.api.schemas.inbound import ProductCreate
 from opennutrilab.products.api.schemas.inbound import ProductUpdate
 from opennutrilab.products.models import Additive
@@ -650,3 +653,30 @@ def test_save_image_overwrite_deletes_existing_file_at_target_path(
 
     # verify that delete was called for the existing file at the target path
     storage_mock.delete.assert_any_call("images/new.jpg")
+
+
+@pytest.mark.django_db
+def test_a_label_with_a_class_and_a_code_is_written_with_its_additives():
+    inputs, warnings = ingredient_inputs_from_label(
+        "Gnocchi, mozzarella [lait, sel, acidifiant : acide citrique], "
+        "colorant (E160a)",
+        "fr",
+    )
+    assert warnings == []
+
+    product = create_product(create_payload(ingredients=inputs)).product
+
+    additives = {a.name_fr or a.name_en: a for a in Additive.objects.all()}
+    assert set(additives) == {"acide citrique", "E160A"}
+    assert additives["acide citrique"].function == "acid"
+    assert additives["E160A"].function == "colour"
+    cheese = product.ingredients.get(preparation=None, reference__name_fr="mozzarella")
+    assert [i.item.name for i in cheese.sub_ingredients.order_by("id")] == [
+        "lait",
+        "sel",
+        "acide citrique",
+    ]
+    assert cheese.sub_ingredients.get(additive=additives["acide citrique"])
+    assert product.ingredients.filter(parent=None, additive__isnull=False).count() == 1
+    # The class that headed them is no ingredient.
+    assert not ReferenceIngredient.objects.filter(name_fr="acidifiant").exists()

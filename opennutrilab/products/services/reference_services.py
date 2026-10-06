@@ -20,7 +20,6 @@ description: OFF's data is imperfect and never becomes part of the curated
 models.
 """
 
-import re
 from collections import defaultdict
 from collections.abc import Iterable
 from collections.abc import Iterator
@@ -45,6 +44,7 @@ from opennutrilab.products.models import IngredientTaxon
 from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import ReferenceIngredient
 from opennutrilab.products.models import SourceFood
+from opennutrilab.products.services.label_parser import e_number
 
 # What the Source of a CIQUAL table is named after (ciqual-2025, ...).
 CIQUAL_SOURCE_PREFIX = "ciqual"
@@ -55,11 +55,6 @@ SUGGESTION_MIN_WORD = 3
 
 # What an ingredient of a product is.
 type Item = ReferenceIngredient | Preparation | Additive
-
-# An E number as a label writes it: "E330", "E 330", "e330", "E160a", "E1001(ii)".
-_E_NUMBER = re.compile(
-    r"e\s?(\d{3,4})\s?([a-z]{1,3})?\s?(?:\(([ivx]+)\))?", re.IGNORECASE
-)
 
 
 class Correspondence(NamedTuple):
@@ -94,19 +89,6 @@ def name_keys(name: str) -> tuple[str, ...]:
 def _singular(word: str) -> str:
     plural = len(word) > 3 and word.endswith("s") and not word.endswith("ss")  # noqa: PLR2004
     return word[:-1] if plural else word
-
-
-def e_number(name: str) -> str:
-    """
-    The code of an additive when the name is one, as it is stored: "E330" for
-    "e 330", "E1001II" for "E1001(ii)". Blank when the name is not an E number,
-    which is all a word with other letters or fewer digits is.
-    """
-    found = _E_NUMBER.fullmatch(clean_name(name))
-    if found is None:
-        return ""
-    digits, letters, roman = found.groups(default="")
-    return f"E{digits}{letters}{roman}".upper()
 
 
 def walk_ingredients(items: Iterable[IngredientInput]) -> Iterator[IngredientInput]:
@@ -256,11 +238,19 @@ def existing_references(
     return found
 
 
+def _code_of(item: IngredientInput) -> str:
+    """The E number an ingredient is, or has written next to it, if any."""
+    return e_number(item.name) or e_number(item.code)
+
+
+def _function_of(item: IngredientInput) -> str:
+    """The class the label gave it, if it is one of the closed list."""
+    return item.function if item.function in Additive.Function.values else ""
+
+
 def _by_code(items: Iterable[IngredientInput]) -> dict[str, Additive]:
     """The additives that have the E numbers these names are, by name_key."""
-    codes = {
-        name_key(i.name): e_number(i.name).lower() for i in items if e_number(i.name)
-    }
+    codes = {name_key(i.name): _code_of(i).lower() for i in items if _code_of(i)}
     if not codes:
         return {}
     additives = {
@@ -280,8 +270,12 @@ def resolve_references(
     name_key of its name.
 
     An ingredient nothing has the name of, in either language or through its
-    English correspondence, gets a reference created, to review, and an E number
-    no additive has gets an additive, to review, so every name is in the result.
+    English correspondence, gets a reference created, to review, so every name is
+    in the result. What the label says of an additive is the one thing that makes
+    a name one: an E number, written as the name or next to it, or a functional
+    class that headed it ("acidifiant : acide citrique"). Such an ingredient gets
+    an additive, to review. A class the label gave to an additive that has none is
+    filled in.
     """
     flat = list(walk_ingredients(items))
     references = existing_references(flat)
@@ -295,52 +289,102 @@ def resolve_references(
         key = name_key(item.name)
         if key in references:
             continue
-        if code := e_number(item.name):
-            if code not in created_codes:
-                created_codes[code] = _create_additive(
-                    item, code, correspondences.get(key)
-                )
-            references[key] = created_codes[code]
-            continue
-        reference = next(
-            (created[k] for k in name_keys(item.name) if k in created), None
-        )
-        if reference is None:
-            reference = _create_reference(item, correspondences.get(key))
-            for name in (reference.name_en, reference.name_fr):
+        code = _code_of(item)
+        made = created_codes.get(code) if code else None
+        if made is None:
+            made = next(
+                (created[k] for k in name_keys(item.name) if k in created), None
+            )
+        if made is None:
+            if code or _function_of(item):
+                made = _create_additive(item, code, correspondences.get(key))
+            else:
+                made = _create_reference(item, correspondences.get(key))
+            for name in (made.name_en, made.name_fr):
                 for variant in name_keys(name) if name else ():
-                    created.setdefault(variant, reference)
-        references[key] = reference
+                    created.setdefault(variant, made)
+            if isinstance(made, Additive) and code:
+                created_codes[code] = made
+        references[key] = made
+    _fill_functions(flat, references)
     return references
+
+
+def _fill_functions(
+    items: Sequence[IngredientInput], references: Mapping[str, Item]
+) -> None:
+    """The class a label gives an additive that has none, once for each."""
+    done: set[int] = set()
+    for item in items:
+        found = references.get(name_key(item.name))
+        if (
+            (function := _function_of(item))
+            and isinstance(found, Additive)
+            and not found.function
+            and found.pk not in done
+        ):
+            found.function = function
+            found.save(update_fields=["function"])
+            done.add(found.pk)
+
+
+def _names(
+    item: IngredientInput, correspondence: Correspondence | None
+) -> tuple[str, str]:
+    """
+    The (English, French) names of what is created for an ingredient: the
+    taxonomy's correspondence when there is one, else the name typed, where its
+    language says it goes (see _is_french).
+    """
+    if correspondence is not None:
+        return correspondence.name_en, correspondence.name_fr
+    if _is_french(item):
+        return "", clean_name(item.name)
+    return clean_name(item.name), ""
 
 
 def _create_additive(
     item: IngredientInput, code: str, correspondence: Correspondence | None
 ) -> Additive:
     """
-    An additive to review for an E number no additive has.
+    An additive to review, for an E number or a name the label gave a class to.
 
-    Its English name is the code, which is all the label says; the taxonomy's
-    French name is kept when it gives one that is more than the code. The curator
-    names it and gives its class.
+    Named as an E number is, by the code (the taxonomy's French name is kept when
+    it says more than the code), and as a reference is for a name, by what the
+    label says. It has the class the label gave it, if it gave one, and the code
+    written next to it. The curator completes it.
     """
-    name_fr = clean_name(correspondence.name_fr) if correspondence else ""
-    if e_number(name_fr) == code:
-        name_fr = ""
+    if e_number(item.name):
+        name_en = code
+        name_fr = clean_name(correspondence.name_fr) if correspondence else ""
+        if e_number(name_fr) == code:
+            name_fr = ""
+    else:
+        name_en, name_fr = _names(item, correspondence)
     try:
         with transaction.atomic():
             return Additive.objects.create(
-                name_en=code,
+                name_en=name_en,
                 name_fr=name_fr,
                 code=code,
+                function=_function_of(item),
                 description=_creation_note(item, None),
                 status=Additive.Status.TO_REVIEW,
             )
     except IntegrityError:
         # Another request created it since it was looked up.
-        existing = Additive.objects.alias(key=Lower("code")).filter(key=code.lower())
-        if (found := existing.first()) is not None:
-            return found
+        if code:
+            existing = Additive.objects.alias(key=Lower("code")).filter(
+                key=code.lower()
+            )
+            if (found := existing.first()) is not None:
+                return found
+        named = find_references([name_en, name_fr])
+        for name in (name_en, name_fr):
+            if name and name_key(name) in named:
+                found_by_name = named[name_key(name)]
+                if isinstance(found_by_name, Additive):
+                    return found_by_name
         raise
 
 
@@ -361,12 +405,7 @@ def _create_reference(
     the new reference to it. A proxy code never does: it is an approximation,
     and is only noted in the description.
     """
-    if correspondence is not None:
-        name_en, name_fr = correspondence
-    elif _is_french(item):
-        name_en, name_fr = "", clean_name(item.name)
-    else:
-        name_en, name_fr = clean_name(item.name), ""
+    name_en, name_fr = _names(item, correspondence)
     food = _ciqual_food(item.off_ciqual_food_code)
     try:
         with transaction.atomic():

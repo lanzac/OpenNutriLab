@@ -16,7 +16,6 @@ from opennutrilab.products.services.reference_services import ReferenceNameError
 from opennutrilab.products.services.reference_services import (
     create_reference_from_foods,
 )
-from opennutrilab.products.services.reference_services import e_number
 from opennutrilab.products.services.reference_services import existing_references
 from opennutrilab.products.services.reference_services import find_references
 from opennutrilab.products.services.reference_services import name_key
@@ -630,42 +629,6 @@ def test_a_french_wording_is_translated_through_the_french_names_of_the_taxonomy
 # ----------------------------------------------------------------------------
 # Additives, and the E numbers a label writes
 # ----------------------------------------------------------------------------
-@pytest.mark.parametrize(
-    ("name", "code"),
-    [
-        ("E330", "E330"),
-        ("e330", "E330"),
-        ("E 330", "E330"),
-        ("  e  330 ", "E330"),
-        ("E160a", "E160A"),
-        ("E 160 a", "E160A"),
-        ("E1001(ii)", "E1001II"),
-        ("E1001ii", "E1001II"),
-        ("E100", "E100"),
-    ],
-)
-def test_an_e_number_is_read_as_the_code_it_is(name: str, code: str):
-    assert e_number(name) == code
-
-
-@pytest.mark.parametrize(
-    "name",
-    [
-        "",
-        "E",
-        "E33",
-        "E12345",
-        "acide citrique",
-        "E330 acid",
-        "vitamine E",
-        "eau",
-        "E3a0",
-    ],
-)
-def test_a_name_that_is_not_an_e_number_gives_no_code(name: str):
-    assert e_number(name) == ""
-
-
 @pytest.mark.django_db
 def test_an_additive_is_found_by_either_of_its_names_and_by_its_code():
     citric = Additive.objects.create(
@@ -766,3 +729,105 @@ def test_a_reference_is_not_created_when_an_additive_has_the_name(
         create_reference_from_foods(carrots)
 
     assert not ReferenceIngredient.objects.exists()
+
+
+@pytest.mark.django_db
+def test_an_unknown_name_the_label_gave_a_class_to_makes_an_additive_to_review():
+    resolved = resolve_references(
+        [ingredient("acide citrique", function="acid", language="fr")]
+    )
+
+    created = resolved["acide citrique"]
+    assert isinstance(created, Additive)
+    assert (created.name_fr, created.name_en, created.code) == (
+        "acide citrique",
+        "",
+        "",
+    )
+    assert (created.function, created.status) == ("acid", Additive.Status.TO_REVIEW)
+    assert not ReferenceIngredient.objects.exists()
+
+
+@pytest.mark.django_db
+def test_a_name_with_its_e_number_next_to_it_makes_an_additive_with_both():
+    resolved = resolve_references(
+        [ingredient("acide citrique", code="E 330", language="fr")]
+    )
+
+    created = resolved["acide citrique"]
+    assert isinstance(created, Additive)
+    assert (created.name_fr, created.code) == ("acide citrique", "E330")
+
+
+@pytest.mark.django_db
+def test_an_additive_is_found_by_the_code_written_next_to_whatever_name():
+    citric = Additive.objects.create(name_en="citric acid", code="E330")
+
+    resolved = resolve_references([ingredient("acide citrique", code="e330")])
+
+    assert resolved == {"acide citrique": citric}
+    assert Additive.objects.count() == 1
+    assert not ReferenceIngredient.objects.exists()
+
+
+@pytest.mark.django_db
+def test_an_e_number_and_the_same_additive_named_are_one_additive():
+    resolved = resolve_references(
+        [ingredient("E330"), ingredient("acide citrique", code="E330")]
+    )
+
+    assert resolved["e330"] == resolved["acide citrique"]
+    assert Additive.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_the_class_a_label_gives_fills_one_an_additive_has_none_of():
+    citric = Additive.objects.create(name_en="citric acid", name_fr="acide citrique")
+
+    resolve_references([ingredient("acide citrique", function="acid")])
+
+    citric.refresh_from_db()
+    assert citric.function == "acid"
+
+
+@pytest.mark.django_db
+def test_the_class_a_label_gives_never_changes_the_one_an_additive_has():
+    citric = Additive.objects.create(
+        name_en="citric acid", name_fr="acide citrique", function="acid"
+    )
+
+    resolve_references([ingredient("acide citrique", function="preservative")])
+
+    citric.refresh_from_db()
+    assert citric.function == "acid"
+
+
+@pytest.mark.django_db
+def test_a_class_that_is_not_one_of_the_closed_list_makes_nothing_of_a_name():
+    resolved = resolve_references([ingredient("sel de table", function="a_made_up")])
+
+    assert isinstance(resolved["sel de table"], ReferenceIngredient)
+    assert not Additive.objects.exists()
+
+
+@pytest.mark.django_db
+def test_a_reference_that_has_the_name_stays_the_reference_whatever_the_class():
+    """The curator converts it: until then it is what the table says it is."""
+    reference = ReferenceIngredient.objects.create(name_fr="acide citrique")
+
+    resolved = resolve_references([ingredient("acide citrique", function="acid")])
+
+    assert resolved == {"acide citrique": reference}
+    assert not Additive.objects.exists()
+
+
+@pytest.mark.django_db
+def test_looking_up_an_additive_by_its_code_next_to_a_name_creates_nothing():
+    citric = Additive.objects.create(name_en="citric acid", code="E330")
+
+    found = existing_references(
+        [ingredient("acide citrique", code="E330"), ingredient("autre", code="E999")]
+    )
+
+    assert found == {"acide citrique": citric}
+    assert Additive.objects.count() == 1

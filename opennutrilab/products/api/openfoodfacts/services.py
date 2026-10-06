@@ -138,6 +138,8 @@ def _ingredient_input(item: LabelItem, language: str) -> IngredientInput:
     return IngredientInput(
         name=item.name[:255],
         percentage=item.percentage,
+        function=item.function,
+        code=item.code,
         language=language[:10],
         sub_ingredients=[_ingredient_input(part, language) for part in item.parts],
     )

@@ -45,6 +45,11 @@ class IngredientInput(Schema):
     language: str = Field(default="", max_length=10)
     # As declared on the label; never an estimate.
     percentage: Decimal | None = Field(default=None, ge=0, le=100)
+    # What the label says it is, when it does: the functional class that headed it
+    # ("acidifiant : acide citrique", a value of Additive.Function) and the E number
+    # written next to its name. Either one makes it an additive.
+    function: str = Field(default="", max_length=30)
+    code: str = Field(default="", max_length=10)
     # Raw OpenFoodFacts data, stored for reference only.
     off_id: str = Field(default="", max_length=255)
     off_ciqual_food_code: str = Field(default="", max_length=10)
