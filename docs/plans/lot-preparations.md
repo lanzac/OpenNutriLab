@@ -1,6 +1,6 @@
 # Plan: preparations next to reference ingredients
 
-Status: steps 1 to 3 done (2026-10-06); the rest is planned. Written 2026-10-05,
+Status: all five steps done (2026-10-06). Written 2026-10-05,
 after the nutrient estimation batch, `docs/plans/lot-estimation.md`.
 
 ## Why
@@ -152,11 +152,36 @@ Each one has a recommendation. They were not put to the user one by one.
      mozzarella (components: milk, salt, microbial rennet, and "Acid", which comes
      from the additive heading "acidifiant : acide citrique" read as an
      ingredient, see "Out of scope"), gnocchi, préparation d'oignon.
-4. **Estimation.** What is left of decision 4: the default references of a preparation
-   that has no source food and whose label lists no parts (the hull of their
-   compositions), and the sources of those references credited in the report. The
-   rest (source foods, the label's parts, no composition) works from step 1.
-5. **Docs and translations**: the roadmap, this plan, the `.po`.
+4. **Estimation** (done). What was left of decision 4: the default references of a
+   preparation that has no source food and whose label lists no parts (the hull of
+   their compositions), and the sources of those references credited in the
+   report. The rest (source foods, the label's parts, no composition) worked from
+   step 1.
+   - `reference_composition.components_composition` is the hull: a nutrient is
+     somewhere from the lowest to the highest of its components', the amount is
+     the mean of theirs, and it has no grade, so its quality in the confidence is
+     the lowest (a quarter). `percentage_estimation.load` uses it for an
+     ingredient that is a preparation with no source food and no part listed
+     _under that ingredient_: the same preparation can be counted by its parts in
+     one place of a product and by its components in another.
+   - **Decision taken, to confirm: all or nothing.** A component with no
+     composition gives the preparation none, and a nutrient one component does not
+     give is left out of it. The shares are not known, so a component with nothing
+     could be most of the preparation (the dehydrated potato of the gnocchi is),
+     and a nutrient missing from a food is not zero. The warning of the estimation
+     then names the preparation, as for any ingredient with no composition. The
+     curator's way out is to link foods to that component or to take it out of the
+     components. The cost is that a minor component without composition (rennet,
+     ferments, an additive) blocks the hull until the additives are apart (see
+     "After the batch").
+   - The report credits the sources of the components of the preparations that
+     count by them. It credits them also when one component had none and the hull
+     was left empty, which is more than was used and never less.
+   - Nothing changes on the development database: its three preparations have the
+     parts their label lists, which count.
+5. **Docs and translations** (done): the roadmap, this plan. The `.po` got the
+   entries of step 3 with it, and step 4 has no text for a reader to translate: the
+   French catalogue has no message untranslated or fuzzy.
 
 ## Out of scope
 
@@ -167,7 +192,44 @@ Each one has a recommendation. They were not put to the user one by one.
   much simpler, and a recipe with proportions is where that would come back.
 - Function words that head a list of additives are not ingredients either:
   "acidifiant : acide citrique" is read as an ingredient `acidifiant` with `acide
-citrique` in it, and `acidifiant` ends up a reference to review. A list of the
-  classes (acidifiant, émulsifiant, colorant, conservateur, épaississant,
-  antioxydant, ...) to read as headings only would be a change of the label
-  parser. Not decided.
+citrique` in it, and `acidifiant` ends up a reference to review. The classes
+  (acidifiant, émulsifiant, colorant, conservateur...) are a closed list, so
+  reading them as headings only is a rule of the label parser and not a guess. It
+  belongs to the additives lot, below.
+
+## After the batch
+
+What the user decided on 2026-10-06, after steps 1 to 3, and what stays open.
+
+- **A transformed food that is one material stays a reference**: tomate cerise
+  mi-séchée, pomme de terre déshydratée, oignon grillé, huile d'olive vierge extra.
+  No table for the transformation, and no "base food and state" with a fallback to
+  the raw food, since a dried food is several times more concentrated than the raw
+  one and the estimate would be wrong without saying so. What changes the nutrients
+  is the food the reference is linked to, and CIQUAL names the state ("Huile
+  d'olive vierge extra", "Flocons de pomme de terre, nature, déshydratés", "Tomate,
+  séchée", "Oignon, cuit"). Several foods on one reference give an interval that
+  holds them all, which says honestly that "mi-séchée" is between the raw and the
+  dried. What the label does not say (how grilled) is not modelled.
+- **Additives get their own table, in a lot of their own** (not planned in detail
+  yet). Their lists are closed (E numbers, functional classes) and OpenFoodFacts
+  separates them too. CIQUAL has almost nothing for them (among the imported foods:
+  gelatine, sodium bicarbonate, dried agar, baking powder, soy lecithin), so as
+  references each would stay "to review, no composition" for good, and add a
+  warning and lower the confidence for a share of about 1 %. It also settles the
+  heading question above: the class is a property of the additive. A third nullable
+  link on `Ingredient`, exactly one of three, as in step 1; at a fourth kind, a
+  single link would be worth it. Some additives are vitamins or minerals (E300
+  ascorbic acid, E101 riboflavin, E160a carotenes, E306 to E309 tocopherols, E170
+  calcium carbonate), so an additive must be able to say which nutrient it brings
+  and how much per 100 g (from its specification and its formula, not from a food
+  table), source foods being the second way. Whether flavourings, ferments and
+  rennet go in the same table is left for that lot: for now they stay references.
+- **A proposal of the English name** of a reference that has none (6 of the 32
+  references in the development database), for the curator to accept. It is
+  computed and shown, never written in `name_en`: that is a key by which labels
+  are looked up, and "mark as curated" accepts whatever has one.
+- **The composition of a preparation in its admin page**, as a reference's page
+  shows it (its foods' values, or the range of its components').
+- **Components with no composition** (see step 4) may need a softer rule once
+  additives and minor ingredients are apart.

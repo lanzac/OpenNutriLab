@@ -6,8 +6,8 @@ once it is done.
 ## Estimate a product's nutrients: what is left
 
 The core feature is built: a product's vitamins (and minerals, fatty acids...)
-are deduced from its ingredients, each linked to a reference ingredient whose
-composition comes from CIQUAL, as intervals with a confidence, and checked
+are deduced from its ingredients, each linked to a reference ingredient (or to a
+preparation, made of several of them) whose composition comes from CIQUAL, as intervals with a confidence, and checked
 against the values the label declares. It is served at
 `/api/v1/products/{barcode}/estimate` and shown on the product's edit page. How
 it works, what it does not do and the questions it leaves open are in
@@ -23,6 +23,18 @@ it works, what it does not do and the questions it leaves open are in
 - **Processing.** Drying and cooking change compositions and destroy part of
   some vitamins, and are not modelled: the output says so, and the result stays
   an estimate. The design is sketched under "Out of scope" in the plan.
+
+## Curating the ingredients: what is left
+
+Reference ingredients hold true ingredients only, and what is made of several
+(mozzarella, gnocchi) is a preparation: both are built and the references' admin
+turns one into the other (`docs/plans/lot-preparations.md`). What is decided and
+not started, with the reasons in that plan's "After the batch":
+
+- **A table for the additives** (E330, "acidifiant"), apart from the references,
+  able to say which vitamin or mineral an additive brings.
+- **A proposal of the English name** of a reference that has none, for the
+  curator to accept.
 
 ## Upgrade to Django 6.0, for background tasks
 
