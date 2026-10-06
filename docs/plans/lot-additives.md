@@ -49,20 +49,29 @@ the model gives the word, and as references they cause three problems:
 microbienne, acidifiant : acide citrique]`. The two ways a label writes an
   additive are the name ("acide citrique") with or without its class heading, and
   the code ("E330"), alone or after the name ("acide citrique (E330)").
-- The European Commission's Food and Feed Information Portal publishes the Union
-  list of food additives (Regulation (EC) 1333/2008). Its page is a JavaScript app
-  that calls `https://ec.europa.eu/food/food-feed-portal/backend/api/policy-items?
-foodDomain=fin&authorisationType=fad_auth`, which returns 412 policy items in 12 MB
-  of nested JSON: 376 substances and 36 groups of additives (the groups are those of
-  its conditions of use). 352 substances have a usable E number. It gives the English
-  name, an occasional synonym, the group, and the conditions of use by food category;
-  **no French name and no functional class**. Its list has flaws of its own: 24
-  substances are left out (2 marked "removed from the Union list", 20 with no number
-  yet, placeholders such as `E XXX` and `..`, a range "E 334 - 337"), a name can
-  carry HTML, and "Carbomer" is written `1210`.
-- OpenFoodFacts also publishes a taxonomy of additives
-  (`static.openfoodfacts.org/data/taxonomies/additives.json`, next to the
-  ingredients one). Measured on 2026-10-06: 764 entries, of which 729 have an E
+- The European Commission publishes the Union list of food additives (Regulation (EC)
+  1333/2008) through its DG SANTE data API, which needs no key: `GET
+https://api.datalake.sante.service.ec.europa.eu/food-additives/food-additives-list
+?format=json&api-version=v2.0`, 100 items to a page and a `nextLink` to the next
+  (five pages, under a second). It is the same data as the Food and Feed Information
+  Portal's page: 412 items, 376 substances and 36 groups of additives (the groups its
+  conditions of use are written for). Each item has `additive_e_code`,
+  `additive_name` (English), `additive_type`, `policy_item_code` and a link to the
+  portal; **no French name and no functional class**. 353 substances have a usable E
+  number. Its list has flaws of its own: 23 substances are left out (2 marked
+  "removed from the Union list", 20 with no number yet, placeholders such as `E XXX`
+  and `..`, a range "E 334 - 337"), a name can carry HTML or a stray quote, and
+  "Carbomer" is written `1210`.
+- The French Wikipedia page "Liste des additifs alimentaires" has tables of E numbers
+  with their French names (706 rows, the sub-forms included), CC BY-SA 4.0, read
+  through the MediaWiki API. A cell often lists several names ("Acide ascorbique,
+  vitamine C", "Gomme xanthane ou gomme de maïs") and the first is taken, without a
+  trailing explanation in parentheses. It has a name for 340 of the 353 substances;
+  the 13 that have none are the most recent authorisations (E960a to d, E322a, E1210,
+  E246, E267...).
+- **OpenFoodFacts' taxonomy of additives was tried first and dropped**
+  (`static.openfoodfacts.org/data/taxonomies/additives.json`). Measured on
+  2026-10-06: 764 entries, of which 729 have an E
   number (the 35 others are not additives: `en:no7`, `de:quellkohlensäure`, a bare
   class `en:colour`...), 711 have an English name and 654 a French one, written
   "E330 - Acide citrique". It has no synonyms ("Lécithines" is there, "lécithine de
@@ -141,22 +150,24 @@ were told to the user before they were built.
    foods too ("agar-agar", "caramel"). A class that was read as an ingredient
    (`Acidifiant`) is not converted: it is deleted once the parser has been fixed
    and the label read again.
-7. **The list of additives** (step 5): **the Union list creates them, and
-   OpenFoodFacts' list only completes their names.** The substances of the Union
-   list that have an E number (352) are imported as additives **to review**, **with
-   no class** (neither list gives a reliable one: the label's class, or the curator,
-   gives it), with their code and their English name. OpenFoodFacts' list gives the
-   French names of those that are there, and creates nothing. An additive that
-   exists already with the same code or, with no code, the same name, is completed
-   with what it lacks, never made twice and never overwritten. A name that a
-   reference or a preparation has is kept on the additive all the same, and
-   reported: that is the sign that the reference is to be merged (decision 6), and
-   until it is, the reference is what a label finds. A name two entries share goes
-   to the first, and the second keeps its code as its name. An option deletes what
-   the first version of the import (OpenFoodFacts' list alone) had created that the
-   Union list does not have, if nothing has touched it. The data is the Commission's
-   and OpenFoodFacts', under their licences, as the ingredients taxonomy already
-   is.
+7. **The table of additives is the Commission's list, loaded by a migration**
+   (step 5), and nothing of OpenFoodFacts' list is in it. The substances of the Union
+   list that have an E number (353) are loaded as additives **to review**, **with no
+   class** (neither list gives a reliable one: the label's class, or the curator,
+   gives it), with their code, their English name and the French name of Wikipedia
+   when there is one. They are kept as a dataset in the repository, which a migration
+   loads, so that no command is needed to have the table; one command rebuilds the
+   dataset from the two sources and loads it again, for when the list changes. An
+   additive that exists already with the same code or, with no code, the same name, is
+   completed with what it lacks, never made twice and never overwritten. What an
+   import made and nothing has touched (to review, unused, no nutrient, no source food)
+   is deleted and loaded again, which also clears what the first version of this step
+   left. A name that a reference or a preparation has is kept on the additive all the
+   same, and reported: that is the sign that the reference is to be merged (decision
+   6), and until it is, the reference is what a label finds. A name two entries share
+   goes to the first, and the second keeps its code as its name. The statuses stay "to
+   review": the data is the Commission's, but the French names are Wikipedia's, and
+   curating is the curator's.
 8. **Existing products** keep their ingredients until their label is read again.
    A command reads again, from the text stored with each product and with no
    network, every product that has one, replacing its tree as saving does. One
@@ -243,25 +254,31 @@ were told to the user before they were built.
      `--language` says otherwise, since the text does not say it and it decides
      where the names of what is new go. `--dry-run` keeps nothing, and says how
      many references, preparations and additives would be made.
-5. **The list of additives** (done, decision 7): `import_eu_additives` imports the
-   substances of the Union list that have an E number, as additives to review with no
-   class, and says which references have the name of one and what it left out and
-   why; `import_off_additives` completes their names (the French ones), and creates
-   nothing. Both read a local file with `--path`. `import_eu_additives` has
-   `--prune` and `--dry-run`.
-   - **The first version of this step was wrong, and was replaced the same day**:
-     it had OpenFoodFacts' list create the additives, which put 726 in the
+5. **The table of additives** (done, decision 7): the dataset
+   `products/data/additives.json`, the migration 0013 that loads it, and the command
+   `regenerate_additives` (`--dry-run`, `--offline`) that rebuilds it from the
+   Commission's API and Wikipedia and loads it again.
+   - **Two earlier versions of this step were wrong, and were replaced the same day.**
+     The first had OpenFoodFacts' list create the additives, which put 726 in the
      development database, among them sub-forms, enzymes and colours that are no
-     longer authorised. The Union list, which the user pointed to, is the one that
-     says which additives exist.
-   - Run on the development database (rolled back), `import_eu_additives --prune`
-     creates 6 additives, finds 346 already there, leaves out 24 substances and
-     deletes 380 untouched ones, which leaves 352; E330 keeps its use, its name and
-     its class. 10 of the 352 have no French name (OpenFoodFacts does not have
-     them: E345i, E423, E456, E463a, E499, E534, E160bi, E450ix, E960b, E969).
-   - A number the list wrote without its E (`1210`) is read as the code it is, and
-     a long suffix (`E160aiii`, `E450viii`) is read when it is attached to the
-     number, so that `E330 acid` is not a code.
+     longer authorised. The second took the Union list from the portal's own backend
+     and OpenFoodFacts' for the French names, with three commands to run in order, and
+     still left OpenFoodFacts' data in the table. The user asked for a clean source
+     (the Commission's data API for the list, Wikipedia for the French names), no
+     OpenFoodFacts data in the table, and no command to run: the migration does it,
+     and one command regenerates.
+   - `additive_sources` reads the two sources (no database), `additive_sync` loads a
+     dataset into the table (the migration calls it with the historical model).
+     The tests start from an empty table, since the migration fills it: the root
+     `conftest.py` empties it once the test database is built.
+   - On the development database (rolled back), the migration leaves 353 additives
+     from the Commission's list, none from OpenFoodFacts, 346 of them rebuilt, and
+     E330, which is used, kept with its use and its class and its note on where it
+     comes from rewritten. 12 have no French name. One additive entered by hand, with
+     no note of origin, was left as it was.
+   - A number the list wrote without its E (`1210`) is read as the code it is, and a
+     long suffix (`E160aiii`) is read when it is attached to the number, so that
+     `E330 acid` is not a code.
    - The additives' admin has the action "Propose English names" and the filter
      "without an English name", as the references' and the preparations' do (one
      shared page and service, see the plan of the preparations). The other
