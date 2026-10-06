@@ -47,6 +47,11 @@ logs *args:
 manage +args:
     @docker compose run --rm django python ./manage.py {{args}}
 
+# translator: Start the translation server the admin proposes English names with.
+translator:
+    @echo "Starting the translation server (its first start downloads the models)..."
+    @docker compose --profile translation up -d libretranslate
+
 # vite-shell: Open a bash shell in the opennutrilab_local_vite container.
 vite-shell:
     @docker exec -it opennutrilab_local_vite bash

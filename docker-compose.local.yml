@@ -9,6 +9,7 @@ volumes:
   opennutrilab_pre_commit_cache: {} # persistent pre-commit cache
   opennutrilab_local_claude_config: {} # persistent ~/.claude (Claude Code session history/settings)
   opennutrilab_local_playwright_cache: {} # persistent ~/.cache/ms-playwright (~115 MB of browser binaries)
+  opennutrilab_local_libretranslate_models: {} # the French and English models, downloaded once
 
 # =========================
 # Services
@@ -71,6 +72,31 @@ services:
     container_name: opennutrilab_local_mailpit
     ports:
       - '8025:8025'
+
+  # -------------------------
+  # Machine translation (optional)
+  # -------------------------
+  # Proposes the English name of a reference ingredient in the admin (see
+  # docs/deployment.md). Not started by `just up`: `just translator` starts it.
+  # It loads only French and English and downloads their models on its first
+  # start, which takes a few minutes, during which the admin says it did not answer.
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    container_name: opennutrilab_local_libretranslate
+    profiles:
+      - translation
+    environment:
+      LT_LOAD_ONLY: en,fr
+    volumes:
+      - opennutrilab_local_libretranslate_models:/home/libretranslate/.local:rw
+    healthcheck:
+      test: ['CMD', './venv/bin/python', 'scripts/healthcheck.py']
+      interval: 10s
+      timeout: 4s
+      retries: 4
+      start_period: 5s
+    ports:
+      - '5000:5000'
 
   # -------------------------
   # Vite dev server (frontend/)

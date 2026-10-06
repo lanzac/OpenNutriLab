@@ -205,15 +205,22 @@ reference draws on). A third, a machine translation of the French name, needs a
 server. It is off while `TRANSLATION_URL` is empty, and nothing is ever written
 without the curator accepting it.
 
-The server is [LibreTranslate](https://libretranslate.com), which the Compose
-files do not run: it is a separate program with its own image
+The server is [LibreTranslate](https://libretranslate.com). In development,
+`just translator` starts it (a service of `docker-compose.local.yml`, in the
+`translation` profile so that `just up` does not) and `.envs/.local/.django` points
+the site at it. The production Compose file does not run one: it is a separate
+program with its own image
 (`libretranslate/libretranslate`), AGPL-licensed, that the site calls over HTTP
 (`POST <url>/translate` with `q`, `source`, `target`). Run it where the site can
 reach it, with `LT_LOAD_ONLY=en,fr` so that it loads only the two languages it is
 asked for, and set `TRANSLATION_URL` in `.envs/.production/.django` (and
 `TRANSLATION_API_KEY` if it asks for one). It has not been run with this stack
 yet, so its memory use and the quality of its translations of short culinary names
-are still to be measured. Replacing it with another translator means replacing
+are still to be measured. The site sends what the official API takes (a JSON
+`POST` with `q`, `source`, `target`, `format`, and `api_key` when one is set), so
+the hosted service at `https://libretranslate.com` works too, with
+`TRANSLATION_URL=https://libretranslate.com` and the key it gives: only the
+ingredient names leave the site. Replacing it with another translator means replacing
 `translate` in `opennutrilab/products/services/translation.py`.
 
 ## What this does not cover

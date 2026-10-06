@@ -2,3 +2,8 @@
 # ------------------------------------------------------------------------------
 USE_DOCKER=yes
 IPYTHONDIR=/app/.ipython
+
+# Translation of ingredient names
+# ------------------------------------------------------------------------------
+# The server `just translator` starts. Empty, the admin does not translate.
+TRANSLATION_URL=http://libretranslate:5000
