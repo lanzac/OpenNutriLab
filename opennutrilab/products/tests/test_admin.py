@@ -9,6 +9,7 @@ from django.contrib.auth.models import Permission
 from django.http.response import HttpResponse
 from django.test import Client
 from django.urls import reverse
+from pytest_django.fixtures import SettingsWrapper
 
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import IngredientTaxon
@@ -719,8 +720,11 @@ def test_the_references_are_filtered_by_having_an_english_name(
 
 
 def test_the_proposals_are_shown_with_their_source_and_nothing_is_written(
-    admin_client: Client, unnamed: dict[str, ReferenceIngredient]
+    admin_client: Client,
+    unnamed: dict[str, ReferenceIngredient],
+    settings: SettingsWrapper,
 ):
+    settings.TRANSLATION_URL = "http://translator:5000"
     with patch(TRANSLATE, return_value="grilled onion"):
         response = names_proposed(admin_client, list(unnamed.values()))
 
@@ -737,8 +741,11 @@ def test_the_proposals_are_shown_with_their_source_and_nothing_is_written(
 
 
 def test_a_machine_translation_is_not_ticked_for_the_curator(
-    admin_client: Client, unnamed: dict[str, ReferenceIngredient]
+    admin_client: Client,
+    unnamed: dict[str, ReferenceIngredient],
+    settings: SettingsWrapper,
 ):
+    settings.TRANSLATION_URL = "http://translator:5000"
     with patch(TRANSLATE, return_value="grilled onion"):
         response = names_proposed(admin_client, [unnamed["onion"]])
 
@@ -765,17 +772,21 @@ def test_a_name_from_the_taxonomy_is_ticked_already(
     assert "checked" in box.group(0)
 
 
-def test_the_page_says_when_no_translator_is_set(
+def test_the_page_says_when_no_translator_is_set_and_does_not_blame_one(
     admin_client: Client, unnamed: dict[str, ReferenceIngredient]
 ):
     response = names_proposed(admin_client, [unnamed["onion"]])
 
     assert "No translator is set" in response.content.decode()
+    assert not any("did not answer" in m for m in messages_of(response))
 
 
 def test_a_translator_that_does_not_answer_is_reported(
-    admin_client: Client, unnamed: dict[str, ReferenceIngredient]
+    admin_client: Client,
+    unnamed: dict[str, ReferenceIngredient],
+    settings: SettingsWrapper,
 ):
+    settings.TRANSLATION_URL = "http://translator:5000"
     with patch(TRANSLATE, return_value=None):
         response = names_proposed(admin_client, [unnamed["onion"]])
 

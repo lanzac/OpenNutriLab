@@ -2,6 +2,7 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
+from pytest_django.fixtures import SettingsWrapper
 
 from opennutrilab.products.models import IngredientTaxon
 from opennutrilab.products.models import Preparation
@@ -23,6 +24,12 @@ def french(name: str) -> ReferenceIngredient:
 
 def propose(*references: ReferenceIngredient) -> Any:
     return propose_english_names(list(references))
+
+
+@pytest.fixture(autouse=True)
+def translator(settings: SettingsWrapper) -> None:
+    """A translator is set; what asks it is patched (see TRANSLATE)."""
+    settings.TRANSLATION_URL = "http://translator:5000"
 
 
 @pytest.fixture
@@ -107,6 +114,19 @@ def test_a_translator_that_does_not_answer_is_asked_once_and_reported():
 
     assert result.translator_failed
     assert translate.call_count == 1
+
+
+def test_no_translator_set_is_not_asked_and_not_reported_as_failing(
+    settings: SettingsWrapper,
+):
+    settings.TRANSLATION_URL = ""
+
+    with patch(TRANSLATE) as translate:
+        result = propose(french("oignon grillé"))
+
+    translate.assert_not_called()
+    assert not result.translator_failed
+    assert [(p.name_en, p.source) for p in result.proposals] == [("", None)]
 
 
 def test_a_translator_that_answers_is_not_reported_as_failing():

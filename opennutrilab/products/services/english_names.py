@@ -30,6 +30,7 @@ from opennutrilab.products.services.reference_services import clean_name
 from opennutrilab.products.services.reference_services import english_correspondences
 from opennutrilab.products.services.reference_services import name_key
 from opennutrilab.products.services.translation import translate
+from opennutrilab.products.services.translation import translation_enabled
 
 # Translations asked of the server in one go: each is a request, and the page
 # waits for them.
@@ -54,7 +55,7 @@ class NameProposal(NamedTuple):
 
 class ProposedNames(NamedTuple):
     proposals: list[NameProposal]
-    # Whether the translator was asked and did not answer.
+    # Whether a translator is set, was asked and did not answer.
     translator_failed: bool
 
 
@@ -68,6 +69,9 @@ def propose_english_names(references: Sequence[ReferenceIngredient]) -> Proposed
         for reference in references
         if reference.name_fr
     )
+    # No translator set is not a translator that fails: it is not asked, and the
+    # curator is not told it did not answer.
+    machine = translation_enabled()
     asked = 0
     failed = False
     proposals: list[NameProposal] = []
@@ -75,7 +79,13 @@ def propose_english_names(references: Sequence[ReferenceIngredient]) -> Proposed
         name, source = _from_taxonomy(reference, taxonomy)
         if not name:
             name, source = _from_food(reference)
-        if not name and reference.name_fr and not failed and asked < MACHINE_LIMIT:
+        if (
+            not name
+            and machine
+            and reference.name_fr
+            and not failed
+            and asked < MACHINE_LIMIT
+        ):
             asked += 1
             translated = translate(reference.name_fr)
             if translated is None:
