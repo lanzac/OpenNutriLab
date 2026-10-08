@@ -506,6 +506,27 @@ def test_a_preparation_with_no_food_and_no_part_listed_counts_as_a_range(
     assert result.warnings == []
 
 
+def test_a_preparation_made_of_a_preparation_counts_by_it_as_a_range(
+    source: Source,
+):
+    sauce = made_of(
+        reference(source, "2", proteins="8"),
+        reference(source, "3", proteins="28"),
+        name="sauce",
+    )
+    meatball = Preparation.objects.create(name_en="meatball")
+    meatball.preparation_components.add(sauce)
+    product = product_with(proteins="15")
+    oats = add(product, reference(source, "1", proteins="20"))
+    second = Ingredient.objects.create(product=product, preparation=meatball)
+
+    result = estimate_percentages(product)
+
+    # The meatball is a range as its sauce is: 7.5 to 28.5 per 100 g.
+    assert_spans(result, {oats.id: (50, 66.67), second.id: (33.33, 50)})
+    assert result.warnings == []
+
+
 def test_the_parts_the_label_lists_count_and_not_the_default_references(
     source: Source,
 ):

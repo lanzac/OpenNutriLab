@@ -265,7 +265,11 @@ def load(product: Product) -> Loaded:
     ingredients = list(
         product.ingredients.select_related(
             "reference", "preparation", "additive"
-        ).prefetch_related("preparation__source_foods", "preparation__components")
+        ).prefetch_related(
+            "preparation__source_foods",
+            "preparation__components",
+            "preparation__preparation_components",
+        )
     )
     catalogue = {nutrient.code: nutrient for nutrient in Nutrient.objects.all()}
     derived = list(derived_nutrients())

@@ -26,9 +26,10 @@ it works, what it does not do and the questions it leaves open are in
 
 ## Curating the ingredients: what is left
 
-Reference ingredients hold true ingredients only, and what is made of several
-(mozzarella, gnocchi) is a preparation: both are built and the references' admin
-turns one into the other (`docs/plans/lot-preparations.md`). What is decided and
+Reference ingredients hold true ingredients only: whatever a label lists the parts
+of (mozzarella, gnocchi, a sauce, "haricot rouge cuit (eau, haricot rouge)") is a
+preparation, made when a product is read, and a preparation can be made of others
+(`docs/plans/lot-preparations.md`, "The rule, 2026-10-06"). What is decided and
 not started, with the reasons in that plan's "After the batch":
 
 - **The additives' nutrients**: the table of additives is built and filled

@@ -34,6 +34,7 @@ from opennutrilab.products.api.schemas.outbound import SourceOut
 from opennutrilab.products.api.schemas.outbound import WarningOut
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import Nutrient
+from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import Source
 from opennutrilab.products.services.estimate_validation import CONVENTIONS
@@ -182,19 +183,42 @@ def _ingredients(
     return [build(root) for root in children[None]]
 
 
+def _recipes_by_default(product: Product) -> set[int]:
+    """
+    The preparations of the product that count by what they are made of, and the
+    preparations those are made of, however deep (see percentage_estimation): a
+    preparation with no source food whose label lists no parts.
+
+    A nested preparation is taken whether or not it has foods of its own, which is
+    more than is used and never less.
+    """
+    reached = set(
+        Ingredient.objects.filter(
+            product=product,
+            preparation__isnull=False,
+            preparation__source_foods__isnull=True,
+            sub_ingredients__isnull=True,
+        ).values_list("preparation", flat=True)
+    )
+    frontier = set(reached)
+    while frontier:
+        frontier = set(
+            Preparation.objects.filter(used_in_preparations__in=frontier).values_list(
+                "pk", flat=True
+            )
+        )
+        frontier -= reached
+        reached |= frontier
+    return reached
+
+
 def _sources(product: Product) -> list[SourceOut]:
     """
     The sources of the foods the product's references, preparations and additives
-    draw on, and of those of the references a preparation is made of when it counts
-    by them
-    (see percentage_estimation): one with no source food whose label lists no parts.
+    draw on, and of those of what a preparation is made of when it counts by that
+    (see _recipes_by_default).
     """
-    by_default = Ingredient.objects.filter(
-        product=product,
-        preparation__isnull=False,
-        preparation__source_foods__isnull=True,
-        sub_ingredients__isnull=True,
-    ).values("preparation")
+    by_default = _recipes_by_default(product)
     return [
         SourceOut(
             code=source.code,
@@ -208,6 +232,7 @@ def _sources(product: Product) -> list[SourceOut]:
             | Q(foods__preparations__usages__product=product)
             | Q(foods__additives__usages__product=product)
             | Q(foods__reference_ingredients__used_in_preparations__in=by_default)
+            | Q(foods__preparations__in=by_default)
         )
         .distinct()
         .order_by("code")

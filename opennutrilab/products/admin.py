@@ -43,6 +43,7 @@ from .services.additive_services import convert_to_additive
 from .services.additive_services import ensure_convertible as ensure_additive
 from .services.english_names import propose_english_names as propose_names_for
 from .services.english_names import taken_by
+from .services.preparation_services import Part
 from .services.preparation_services import PreparationConversionError
 from .services.preparation_services import convert_to_preparation
 from .services.preparation_services import ensure_convertible
@@ -364,8 +365,9 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
     Where the references are curated: those to review come with how many
     products use them and how many source foods they draw on, the most used
     first, and a reference's page suggests foods that may fit it. A reference
-    that is made of several ingredients is a preparation: how many times each was
-    seen with parts on a label says which may be, and an action converts them.
+    whose parts a label lists is a preparation, and is made one when a product is
+    read: how many times each was seen with parts on a label says which are yet to
+    be converted, and an action converts them.
     """
 
     list_display = (
@@ -705,7 +707,7 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
         if "apply" in request.POST:
             self._make_preparations(request, selected)
             return HttpResponseRedirect(request.get_full_path())
-        rows: list[tuple[ReferenceIngredient, str, list[ReferenceIngredient]]] = []
+        rows: list[tuple[ReferenceIngredient, str, list[Part]]] = []
         for reference in selected:
             try:
                 ensure_convertible(reference)
@@ -783,10 +785,10 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
 @admin.register(Preparation)
 class PreparationAdmin(admin.ModelAdmin[Preparation]):
     """
-    What is made of several ingredients ("mozzarella", "gnocchi"), curated apart
-    from the true ingredients: the references it is made of, which stand in when
-    a label lists none of its parts, and the source foods it draws on when its
-    composition is known. The most used come first.
+    What a label lists the parts of ("mozzarella", "gnocchi", "boulette"), curated
+    apart from the true ingredients: the references and the preparations it is
+    made of, which stand in when a label lists none of its parts, and the source
+    foods it draws on when its composition is known. The most used come first.
     """
 
     list_display = (
@@ -799,13 +801,14 @@ class PreparationAdmin(admin.ModelAdmin[Preparation]):
     )
     list_filter = ("status", HasSourceFoodsFilter, HasEnglishNameFilter)
     search_fields = ("name_fr", "name_en")
-    autocomplete_fields = ("components", "source_foods")
+    autocomplete_fields = ("components", "preparation_components", "source_foods")
     fields = (
         "name_en",
         "name_fr",
         "status",
         "description",
         "components",
+        "preparation_components",
         "source_foods",
     )
     actions = ("propose_english_names", "mark_curated")
@@ -814,7 +817,8 @@ class PreparationAdmin(admin.ModelAdmin[Preparation]):
         # Not super(): it sorts by get_ordering before the counts exist.
         return Preparation.objects.annotate(
             usage_count=Count("usages", distinct=True),
-            component_count=Count("components", distinct=True),
+            component_count=Count("components", distinct=True)
+            + Count("preparation_components", distinct=True),
             food_count=Count("source_foods", distinct=True),
         )
 
@@ -829,7 +833,9 @@ class PreparationAdmin(admin.ModelAdmin[Preparation]):
     @admin.display(description=gettext_lazy("Components"), ordering="component_count")
     def component_count(self, obj: Preparation) -> int:
         count: object = getattr(obj, "component_count", None)
-        return count if isinstance(count, int) else obj.components.count()
+        if isinstance(count, int):
+            return count
+        return obj.components.count() + obj.preparation_components.count()
 
     @admin.display(description=gettext_lazy("Source foods"), ordering="food_count")
     def source_food_count(self, obj: Preparation) -> int:

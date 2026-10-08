@@ -184,8 +184,11 @@ def test_the_text_the_ingredients_were_read_from_is_written_and_served(
 
 
 @pytest.mark.django_db
-def test_an_ingredient_is_served_as_its_reference(api_client: Client):
-    """No name and no OpenFoodFacts data of its own: the reference says it all."""
+def test_an_ingredient_is_served_as_the_one_it_is(api_client: Client):
+    """
+    No name and no OpenFoodFacts data of its own: what it is says it all. One whose
+    parts the label lists is a preparation, one that has none a reference.
+    """
     payload = _minimal_payload("3297760097969", "Created Via API")
     payload["ingredients"] = [
         {
@@ -209,12 +212,12 @@ def test_an_ingredient_is_served_as_its_reference(api_client: Client):
         "additive",
         "sub_ingredients",
     }
-    # A true ingredient: the other two are null.
-    assert dates["preparation"] is None
+    # It lists its parts: a preparation, and the other two are null.
+    assert dates["reference"] is None
     assert dates["additive"] is None
     assert dates["percentage"] == "7.00"
-    assert dates["reference"] == {
-        "id": ReferenceIngredient.objects.get(name_en="Dates").pk,
+    assert dates["preparation"] == {
+        "id": Preparation.objects.get(name_en="Dates").pk,
         "name": "Dates",
         "status": "to_review",
     }
@@ -255,7 +258,8 @@ def test_a_products_tree_is_read_in_a_fixed_number_of_queries(
 
     def names(ingredients: list[dict[str, Any]]) -> list[Any]:
         return [
-            (i["reference"]["name"], names(i["sub_ingredients"])) for i in ingredients
+            ((i["reference"] or i["preparation"])["name"], names(i["sub_ingredients"]))
+            for i in ingredients
         ]
 
     assert names(tree) == [
@@ -409,7 +413,7 @@ def test_the_estimate_is_served_with_its_parts(api_client: Client):
         "estimated",
         "sub_ingredients",
     }
-    assert dates["preparation"] is None
+    assert dates["reference"] is None
     assert dates["additive"] is None
     # The label's figure and the estimate are two fields.
     assert dates["declared"] == "7.00"

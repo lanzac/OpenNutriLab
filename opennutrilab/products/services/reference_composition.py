@@ -23,8 +23,9 @@ food's amount when there is one food. The interval is the range that holds all o
 theirs.
 
 A preparation that draws on no food has, when its label lists none of its parts,
-the composition of the references it is made of (components_composition). Their
-shares are not known, so it is a range and not a fit.
+the composition of the references and the preparations it is made of
+(components_composition). Their shares are not known, so it is a range and not a
+fit.
 """
 
 from collections import defaultdict
@@ -115,28 +116,52 @@ def reference_composition(
 
 
 def components_composition(
-    preparation: Preparation, derived: Iterable[Nutrient] | None = None
+    preparation: Preparation,
+    derived: Iterable[Nutrient] | None = None,
+    _visiting: frozenset[int] = frozenset(),
 ) -> dict[str, Estimate]:
     """
-    What a preparation is, if all that is known is the references it is made of.
+    What a preparation is, if all that is known is what it is made of.
 
     Their shares are not known, so a nutrient is somewhere between the lowest and
     the highest of its components', whatever the mix is: the widest reading that
     is true of every recipe. The amount is the mean of theirs. It has no grade,
     since it is not measured on anything: it says "made of these", and no more.
 
+    A component may be a preparation, which counts by its foods if it has some and
+    else by what it is made of in turn. A preparation that is made of itself, however
+    far down, says nothing: that part has no composition.
+
     It stands only when every component says something. A component with no
     composition could be most of the preparation, and a nutrient one of them does
     not give is not zero, so the preparation has none then, or lacks that nutrient.
     """
+    visiting = _visiting | {preparation.pk}
     parts = [
         reference_composition(component, derived)
         for component in preparation.components.all()
     ]
+    parts.extend(
+        _preparation_part(part, derived, visiting)
+        for part in preparation.preparation_components.all()
+    )
     if not parts or not all(parts):
         return {}
     shared = set(parts[0]).intersection(*parts[1:])
     return {code: _hull([part[code] for part in parts]) for code in shared}
+
+
+def _preparation_part(
+    part: Preparation, derived: Iterable[Nutrient] | None, visiting: frozenset[int]
+) -> dict[str, Estimate]:
+    """What a preparation that is a component of another is, if anything is known."""
+    if part.pk in visiting:
+        return {}
+    if composition := reference_composition(part, derived):
+        return composition
+    if part.source_foods.exists():
+        return {}
+    return components_composition(part, derived, visiting)
 
 
 def _hull(estimates: Sequence[Estimate]) -> Estimate:

@@ -1046,7 +1046,9 @@ def test_rows_from_db_rebuild_the_tree(
         )
     ).product
 
-    with translation.override("en-us"), django_assert_max_num_queries(3):
+    # The ingredients, then the foods of each kind there is (here two: the
+    # references, and the preparation "Milk powder" that lists its parts).
+    with translation.override("en-us"), django_assert_max_num_queries(4):
         rows = ingredient_rows_from_db(product)
 
     assert [r["name"] for r in rows] == ["Sugar", "Milk powder"]
@@ -1055,8 +1057,9 @@ def test_rows_from_db_rebuild_the_tree(
     assert [(c["name"], c["reference"]) for c in rows[1]["ingredients"]] == [
         ("milk", "Curated")
     ]
-    # A reference created for a name nobody had is still to review.
-    assert [r["reference"] for r in rows] == ["To review", "To review"]
+    # What is created for a name nobody had is still to review, and an ingredient
+    # whose parts the label lists is a preparation.
+    assert [r["reference"] for r in rows] == ["To review", "Preparation, to review"]
     assert Ingredient.objects.filter(product=product).count() == 3  # noqa: PLR2004
 
 
@@ -1148,7 +1151,7 @@ def test_rows_from_db_show_the_name_in_the_language_served(
     assert [r["name"] for r in rows] == ["datte", "Épices"]
     assert [c["name"] for c in rows[0]["ingredients"]] == ["flocons d'avoine"]
     assert [r["name"] for r in english_rows] == ["date", "Épices"]
-    assert ReferenceIngredient.objects.get(name_en="date").name_fr == "datte"
+    assert Preparation.objects.get(name_en="date").name_fr == "datte"
 
 
 @pytest.mark.django_db

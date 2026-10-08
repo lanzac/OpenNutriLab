@@ -331,9 +331,9 @@ def test_an_estimate_is_served_in_a_few_queries_however_many_ingredients(
     for i in range(6):
         add(product, reference(source, str(i), vitamin_c=str(i + 1)))
 
-    # What the estimate takes (5 + 6 + 1), the catalogue, the ingredients and the
-    # sources.
-    with django_assert_max_num_queries(5 + 6 + 1 + 3):
+    # What the estimate takes (5 + 6 + 1), the catalogue, the ingredients, the
+    # preparations that count by their recipe and the sources.
+    with django_assert_max_num_queries(5 + 6 + 1 + 4):
         build_estimate(product)
 
 
@@ -374,6 +374,27 @@ def test_the_sources_of_the_references_a_preparation_counts_by_are_credited(
     credited = {s.code for s in build_estimate(product).sources}
 
     assert credited == {"other"}
+
+
+def test_the_sources_of_the_preparations_a_preparation_is_made_of_are_credited(
+    source: Source,
+):
+    """However deep: the meatball counts by its beans, which count by their sauce."""
+    product = product_of(proteins="15")
+    _other, beans = components_source(source)
+    third = Source.objects.create(code="third", name="Third", attribution="Third.")
+    sauce = Preparation.objects.create(name_en="sauce")
+    sauce.source_foods.add(
+        SourceFood.objects.create(source=third, code="s1", name_fr="Sauce")
+    )
+    beans.preparation_components.add(sauce)
+    meatball = Preparation.objects.create(name_en="meatball")
+    meatball.preparation_components.add(beans)
+    Ingredient.objects.create(product=product, preparation=meatball)
+
+    credited = {s.code for s in build_estimate(product).sources}
+
+    assert credited == {"other", "third"}
 
 
 def test_the_sources_of_default_references_are_not_credited_when_not_used(

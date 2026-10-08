@@ -234,8 +234,8 @@ class Ingredient(models.Model):
         related_name="sub_ingredients",
     )
     # One of the three is set, and protected: what is in use cannot be deleted. An
-    # ingredient nothing has the name of gets a reference created, to review,
-    # which the curator may turn into a preparation.
+    # ingredient nothing has the name of gets a reference created, to review, or a
+    # preparation when the label lists its parts.
     reference: "models.ForeignKey[ReferenceIngredient | None]" = models.ForeignKey(
         "ReferenceIngredient",
         null=True,
@@ -591,8 +591,8 @@ def _refuse_names_of_others(
 
 class ReferenceIngredient(CuratedItem):
     """
-    A curated true ingredient, e.g. "carotte crue": made of nothing else a label
-    would list. What is made of several ingredients is a Preparation.
+    A curated true ingredient, e.g. "carotte crue": made of nothing a label
+    lists. What a label lists the parts of is a Preparation.
 
     Its composition is aggregated from the source foods it draws on, so that
     more sources make it more complete and more reliable.
@@ -656,11 +656,16 @@ class Preparation(CuratedItem):
     product used as an ingredient, which is not an ingredient to be linked to a
     food as milk or salt are.
 
+    Every ingredient a label lists the parts of is one (see
+    services.preparation_services), and one can be made of others: "boulette"
+    lists "haricot rouge cuit (eau, haricot rouge)".
+
     It stands between what a label says and the true ingredients. It points to
-    the references it is made of, which are its default recipe: used when the
-    label does not list its parts, never over those the label does list. It may
-    also draw on source foods, whose composition is measured (CIQUAL's
-    "Mozzarella"), and which counts at its level, as a reference's does.
+    the references and the preparations it is made of, which are its default
+    recipe: used when the label does not list its parts, never over those the
+    label does list. It may also draw on source foods, whose composition is
+    measured (CIQUAL's "Mozzarella"), and which counts at its level, as a
+    reference's does.
     """
 
     components: "models.ManyToManyField[ReferenceIngredient, Any]" = (
@@ -671,12 +676,22 @@ class Preparation(CuratedItem):
             help_text=_("The ingredients it is made of, when the label lists none."),
         )
     )
+    preparation_components: "models.ManyToManyField[Preparation, Any]" = (
+        models.ManyToManyField(
+            "self",
+            symmetrical=False,
+            blank=True,
+            related_name="used_in_preparations",
+            help_text=_("The preparations it is made of, when the label lists none."),
+        )
+    )
     source_foods: "models.ManyToManyField[SourceFood, Any]" = models.ManyToManyField(
         SourceFood, blank=True, related_name="preparations"
     )
 
     if TYPE_CHECKING:
         usages: RelatedManager["Ingredient"]
+        used_in_preparations: RelatedManager["Preparation"]
 
     class Meta(CuratedItem.Meta):
         constraints = [

@@ -619,29 +619,34 @@ def test_a_reference_that_cannot_be_converted_is_told_and_the_others_are(
 ):
     gnocchi = ReferenceIngredient.objects.create(name_en="gnocchi")
     Preparation.objects.create(name_en="Gnocchi")
-    refused = [cheese["mozzarella"], gnocchi]
-    pizza = Preparation.objects.create(name_en="pizza")
-    pizza.components.add(cheese["mozzarella"])
     seen_with(cheese["salt"], cheese["milk"], barcode="4")
 
-    shown = made_preparations(admin_client, [*refused, cheese["salt"]])
-    response = made_preparations(admin_client, [*refused, cheese["salt"]], apply="on")
+    shown = made_preparations(admin_client, [gnocchi, cheese["salt"]])
+    response = made_preparations(admin_client, [gnocchi, cheese["salt"]], apply="on")
 
-    page = shown.content.decode()
-    assert "already has the name of gnocchi" in page
-    assert "component of pizza" in page
-    # Only the salt is converted, the others stay as they were.
+    assert "already has the name of gnocchi" in shown.content.decode()
+    # Only the salt is converted, the other stays as it was.
     assert set(Preparation.objects.values_list("name_en", flat=True)) == {
         "Gnocchi",
-        "pizza",
         "salt",
     }
-    assert ReferenceIngredient.objects.filter(name_en="mozzarella").exists()
     assert ReferenceIngredient.objects.filter(name_en="gnocchi").exists()
     texts = messages_of(response)
     assert any("already has the name of gnocchi" in m for m in texts)
-    assert any("component of pizza" in m for m in texts)
     assert any("made into preparations: salt" in m for m in texts)
+
+
+def test_a_reference_that_is_a_component_of_a_preparation_is_converted_in_it(
+    admin_client: Client, cheese: dict[str, ReferenceIngredient]
+):
+    pizza = Preparation.objects.create(name_en="pizza")
+    pizza.components.add(cheese["mozzarella"], cheese["salt"])
+
+    made_preparations(admin_client, [cheese["mozzarella"]], apply="on")
+
+    mozzarella = Preparation.objects.get(name_en="mozzarella")
+    assert list(pizza.components.all()) == [cheese["salt"]]
+    assert list(pizza.preparation_components.all()) == [mozzarella]
 
 
 def test_when_none_can_be_converted_the_curator_is_told_and_gets_no_page(
@@ -1242,9 +1247,8 @@ def test_the_preparations_are_listed_most_used_first_with_their_counts(
     twice = Preparation.objects.create(name_en="twice")
     prepared_for(twice, "3229820794556", "3017620422003")
     prepared_for(once, "3229820794556")
-    twice.components.set(
-        [ReferenceIngredient.objects.create(name_en=n) for n in ("milk", "salt")]
-    )
+    twice.components.set([ReferenceIngredient.objects.create(name_en="milk")])
+    twice.preparation_components.set([once])
     twice.source_foods.add(
         SourceFood.objects.create(
             source=Source.objects.create(code="ciqual-2025", name="Ciqual"), code="1"
@@ -1264,6 +1268,7 @@ def test_the_preparations_are_listed_most_used_first_with_their_counts(
 
 def test_a_preparation_is_edited_with_its_components_and_foods(admin_client: Client):
     milk = ReferenceIngredient.objects.create(name_en="milk")
+    brine = Preparation.objects.create(name_en="brine")
     mozzarella = Preparation.objects.create(name_en="mozzarella")
 
     page = admin_client.get(
@@ -1277,12 +1282,14 @@ def test_a_preparation_is_edited_with_its_components_and_foods(admin_client: Cli
             "status": "to_review",
             "description": "",
             "components": [milk.pk],
+            "preparation_components": [brine.pk],
         },
     )
 
     assert page.status_code == HTTPStatus.OK
     assert response.status_code == HTTPStatus.FOUND
     assert list(mozzarella.components.all()) == [milk]
+    assert list(mozzarella.preparation_components.all()) == [brine]
     assert (
         admin_client.get(reverse("admin:products_preparation_add")).status_code
         == HTTPStatus.OK

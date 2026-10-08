@@ -442,3 +442,95 @@ def test_the_components_of_one_preparation_are_not_those_of_another(source: Sour
     made_of(reference_of(other), name="pizza")
 
     assert components_composition(made_of_one)["fat"].amount == D(10)
+
+
+# ----------------------------------------------------------------------------
+# A preparation made of other preparations
+# ----------------------------------------------------------------------------
+def made_of_preparations(
+    *preparations: Preparation, name: str = "boulette"
+) -> Preparation:
+    preparation = Preparation.objects.create(name_en=name)
+    preparation.preparation_components.add(*preparations)
+    return preparation
+
+
+def test_a_component_that_is_a_preparation_counts_by_its_foods(source: Source):
+    milk, cream = food(source, "1"), food(source, "2")
+    value(milk, "fat", "3.5", minimum="3", maximum="4")
+    value(cream, "fat", "30", minimum="28", maximum="32")
+    sauce = Preparation.objects.create(name_en="sauce")
+    sauce.source_foods.add(cream)
+
+    mixed = made_of(reference_of(milk))
+    mixed.preparation_components.add(sauce)
+
+    estimate = components_composition(mixed)["fat"]
+
+    assert (estimate.low, estimate.amount, estimate.high) == (D(3), D("16.75"), D(32))
+    assert set(estimate.foods) == {milk, cream}
+
+
+def test_a_component_that_is_a_preparation_with_no_food_counts_by_its_components(
+    source: Source,
+):
+    milk, cream = food(source, "1"), food(source, "2")
+    value(milk, "fat", "3.5", minimum="3", maximum="4")
+    value(cream, "fat", "30", minimum="28", maximum="32")
+    sauce = made_of(reference_of(cream), name="sauce")
+
+    mixed = made_of_preparations(sauce)
+    mixed.components.add(reference_of(milk))
+
+    estimate = components_composition(mixed)["fat"]
+
+    assert (estimate.low, estimate.high) == (D(3), D(32))
+
+
+def test_preparations_in_preparations_are_followed_all_the_way_down(source: Source):
+    cream = food(source)
+    value(cream, "fat", "30")
+    sauce = made_of(reference_of(cream), name="sauce")
+    filling = made_of_preparations(sauce, name="filling")
+
+    assert components_composition(made_of_preparations(filling))["fat"].amount == D(30)
+
+
+def test_a_component_that_is_a_preparation_saying_nothing_leaves_none(source: Source):
+    milk = food(source)
+    value(milk, "fat", "3.5")
+    unknown = Preparation.objects.create(name_en="unknown")
+
+    mixed = made_of(reference_of(milk))
+    mixed.preparation_components.add(unknown)
+
+    assert components_composition(mixed) == {}
+
+
+def test_a_component_that_has_foods_but_no_value_does_not_fall_back_on_its_parts(
+    source: Source,
+):
+    milk, cream = food(source, "1"), food(source, "2")
+    value(milk, "fat", "3.5")
+    value(cream, "fat", "30")
+    sauce = made_of(reference_of(cream), name="sauce")
+    sauce.source_foods.add(food(source, "3"))  # A food that measured nothing.
+
+    mixed = made_of(reference_of(milk))
+    mixed.preparation_components.add(sauce)
+
+    assert components_composition(mixed) == {}
+
+
+def test_a_preparation_made_of_itself_says_nothing_and_does_not_loop(source: Source):
+    milk = food(source)
+    value(milk, "fat", "3.5")
+    one = made_of(reference_of(milk), name="one")
+    other = made_of_preparations(one, name="other")
+    one.preparation_components.add(other)  # A cycle: one -> other -> one.
+
+    assert components_composition(one) == {}
+    assert components_composition(other) == {}
+    own = made_of(reference_of(milk), name="own")
+    own.preparation_components.add(own)
+    assert components_composition(own) == {}

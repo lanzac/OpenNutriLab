@@ -1,7 +1,10 @@
 # Plan: preparations next to reference ingredients
 
-Status: all five steps done (2026-10-06). Written 2026-10-05,
-after the nutrient estimation batch, `docs/plans/lot-estimation.md`.
+Status: all five steps done (2026-10-06), then the rule simplified the same day:
+**an ingredient whose parts a label lists is a preparation**, and a preparation can
+be made of another (see "The rule, 2026-10-06" below, which replaces what says
+otherwise in this plan). Written 2026-10-05, after the nutrient estimation batch,
+`docs/plans/lot-estimation.md`.
 
 ## Why
 
@@ -182,6 +185,48 @@ Each one has a recommendation. They were not put to the user one by one.
 5. **Docs and translations** (done): the roadmap, this plan. The `.po` got the
    entries of step 3 with it, and step 4 has no text for a reader to translate: the
    French catalogue has no message untranslated or fuzzy.
+
+## The rule, 2026-10-06
+
+The user dropped the human judgement: **every ingredient that has sub-ingredients
+on a label is a preparation, and a preparation can contain another preparation.**
+It replaces the ground rules above that say a food made of parts can stay a
+reference (raisins secs, dattes, purée de tomate, "tomate confite mi-séchée",
+"quinoa cuit (eau, quinoa)") and decision 3, "No automatic classification". The
+first case it was asked for: "boulette au haricot rouge", which a label lists with
+some twenty parts and which stayed a reference to review.
+
+- **Where it is applied**: `preparation_services.make_preparations_of_listed_parts`,
+  called by `product_services._replace_ingredients` after the names are found. A
+  name no one has is still created as a reference to review (that code is
+  untouched) and is converted at once; a reference that was there already
+  (curated, with its foods) is converted the same way, with `convert_to_preparation`:
+  names, status, notes and source foods move, ingredients are repointed, nothing is
+  lost. The parts come first (a part with parts is made a preparation before its
+  parent), so a parent is given the preparations among its parts. A name is one
+  kind everywhere: once one label lists its parts, it is a preparation on every
+  label that has it, with or without parts.
+- **What it does not touch**: an additive (found by its E number or its class) that
+  lists parts stays an additive; a preparation that exists stays as it is; a
+  reference that cannot be converted (a preparation already has its name, which
+  only a database edited by hand allows) stays a reference.
+- **Its recipe**: the parts the label lists, and those seen on other labels, become
+  the preparation's components, for the curator to check ("Made from a reference
+  ingredient..." in its notes when it was converted). They stand in when a label
+  lists none of its parts, as before.
+- **Preparations in preparations**: `Preparation.preparation_components` (migration 0014) next to `components`. `components_composition` follows them all the way
+  down: a nested preparation counts by its foods when it has any, else by what it is
+  made of, and one that is made of itself, however far, says nothing (no loop). The
+  report credits the sources of the nested preparations too. A reference that is a
+  component of a preparation is no longer refused a conversion: the preparation is
+  made of the new preparation instead.
+- **Consequences to know**: a label that lists a name among its own parts ("dattes
+  (dattes, farine de riz)") has the preparation in itself in the label's tree; it
+  is left out of its own components. Flavourings, ferments and anything else a label
+  lists parts for are preparations too, whatever the 2026-10-06 decisions below say
+  of them. The references that were seen with parts before the rule stay references
+  until their products are read again (`reread_ingredients`) or the curator uses the
+  admin action, which stays.
 
 ## Out of scope
 

@@ -159,13 +159,134 @@ def test_an_ingredient_no_reference_has_the_name_of_gets_one_to_review():
     product = create_product(create_payload()).product
 
     references = ReferenceIngredient.objects.order_by("id")
-    assert [r.name_en for r in references] == ["Sucre", "Lait écrémé en poudre", "lait"]
+    assert [r.name_en for r in references] == ["Sucre", "lait"]
     assert {r.status for r in references} == {ReferenceIngredient.Status.TO_REVIEW}
-    assert [i.reference for i in product.ingredients.order_by("id")] == [
-        references[0],
-        references[1],
-        references[2],
+    assert (
+        product.ingredients.get(parent=None, reference__isnull=False).reference
+        == (references[0])
+    )
+
+
+@pytest.mark.django_db
+def test_an_ingredient_whose_parts_the_label_lists_is_a_preparation_to_review():
+    product = create_product(create_payload()).product
+
+    powder = Preparation.objects.get()
+    assert powder.name_en == "Lait écrémé en poudre"
+    assert powder.status == Preparation.Status.TO_REVIEW
+    # Its parts are what the label lists for it, and its recipe until one does.
+    assert [
+        (i.preparation, i.reference) for i in product.ingredients.filter(parent=None)
+    ] == [
+        (None, ReferenceIngredient.objects.get(name_en="Sucre")),
+        (powder, None),
     ]
+    [part] = Ingredient.objects.filter(parent__preparation=powder)
+    assert part.reference == ReferenceIngredient.objects.get(name_en="lait")
+    assert list(powder.components.all()) == [part.reference]
+    assert not powder.preparation_components.exists()
+
+
+@pytest.mark.django_db
+def test_a_reference_whose_parts_a_label_lists_becomes_a_preparation():
+    """The curator's own conversion, done when the label says it has parts."""
+    dates = ReferenceIngredient.objects.create(
+        name_en="date", name_fr="datte", status=ReferenceIngredient.Status.CURATED
+    )
+    earlier = create_product(
+        create_payload(barcode="3297760097969", ingredients=[{"name": "datte"}])
+    ).product
+
+    product = create_product(
+        create_payload(
+            ingredients=[
+                {
+                    "name": "datte",
+                    "percentage": "7",
+                    "sub_ingredients": [{"name": "farine de riz"}],
+                }
+            ]
+        )
+    ).product
+
+    preparation = Preparation.objects.get(name_en="date")
+    assert preparation.status == Preparation.Status.CURATED
+    assert not ReferenceIngredient.objects.filter(pk=dates.pk).exists()
+    # Every label that has it, not only the one that listed its parts.
+    assert [i.preparation for i in earlier.ingredients.all()] == [preparation]
+    assert [i.preparation for i in product.ingredients.filter(parent=None)] == [
+        preparation
+    ]
+    assert [r.name_en for r in preparation.components.all()] == ["farine de riz"]
+
+
+@pytest.mark.django_db
+def test_a_preparation_can_be_made_of_another():
+    product = create_product(
+        create_payload(
+            ingredients=[
+                {
+                    "name": "boulette",
+                    "sub_ingredients": [
+                        {
+                            "name": "haricot cuit",
+                            "sub_ingredients": [{"name": "eau"}, {"name": "haricot"}],
+                        },
+                        {"name": "oignon"},
+                    ],
+                }
+            ]
+        )
+    ).product
+
+    meatball = Preparation.objects.get(name_en="boulette")
+    beans = Preparation.objects.get(name_en="haricot cuit")
+    assert [i.preparation for i in product.ingredients.filter(parent=None)] == [
+        meatball
+    ]
+    assert [i.preparation for i in meatball.usages.get().sub_ingredients.all()] == [
+        beans,
+        None,
+    ]
+    assert list(meatball.preparation_components.all()) == [beans]
+    assert [r.name_en for r in meatball.components.all()] == ["oignon"]
+    assert [r.name_en for r in beans.components.all()] == ["eau", "haricot"]
+    assert set(ReferenceIngredient.objects.values_list("name_en", flat=True)) == {
+        "eau",
+        "haricot",
+        "oignon",
+    }
+
+
+@pytest.mark.django_db
+def test_a_name_without_parts_is_a_reference_whichever_label_it_is_on():
+    create_product(
+        create_payload(
+            barcode="3297760097969",
+            ingredients=[{"name": "datte", "sub_ingredients": [{"name": "sucre"}]}],
+        )
+    )
+
+    product = create_product(create_payload(ingredients=[{"name": "sucre"}])).product
+
+    sugar = product.ingredients.get()
+    assert sugar.preparation is None
+    assert sugar.item.name_en == "sucre"
+    assert Preparation.objects.get().name_en == "datte"
+
+
+@pytest.mark.django_db
+def test_an_additive_that_lists_parts_stays_an_additive():
+    citric = Additive.objects.create(name_en="citric acid", code="E330")
+
+    product = create_product(
+        create_payload(
+            ingredients=[{"name": "E330", "sub_ingredients": [{"name": "sucre"}]}]
+        )
+    ).product
+
+    assert [i.additive for i in product.ingredients.filter(parent=None)] == [citric]
+    assert not Preparation.objects.exists()
 
 
 @pytest.mark.django_db
@@ -670,7 +791,7 @@ def test_a_label_with_a_class_and_a_code_is_written_with_its_additives():
     assert set(additives) == {"acide citrique", "E160A"}
     assert additives["acide citrique"].function == "acid"
     assert additives["E160A"].function == "colour"
-    cheese = product.ingredients.get(preparation=None, reference__name_fr="mozzarella")
+    cheese = product.ingredients.get(preparation__name_fr="mozzarella")
     assert [i.item.name for i in cheese.sub_ingredients.order_by("id")] == [
         "lait",
         "sel",

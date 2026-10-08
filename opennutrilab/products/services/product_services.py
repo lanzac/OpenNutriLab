@@ -39,6 +39,9 @@ from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductNutrient
 from opennutrilab.products.services.label_parser import LabelWarning
+from opennutrilab.products.services.preparation_services import (
+    make_preparations_of_listed_parts,
+)
 from opennutrilab.products.services.reference_services import Item
 from opennutrilab.products.services.reference_services import name_key
 from opennutrilab.products.services.reference_services import resolve_references
@@ -210,12 +213,13 @@ def _replace_ingredients(product: Product, items: list[IngredientInput]) -> None
 
     Each ingredient is the reference ingredient, the preparation or the additive
     that has its name, a reference being created when none has, and an additive
-    for an E number (see reference_services).
+    for an E number (see reference_services). One whose parts the label lists is
+    a preparation, whichever it was found to be (see preparation_services).
     Nothing of the old tree needs carrying over: the name finds the same one
     again. A preparation takes the parts the label lists for it as its children,
     as any ingredient does.
     """
-    linked = resolve_references(items)
+    linked = make_preparations_of_listed_parts(items, resolve_references(items))
     product.ingredients.all().delete()
     _create_ingredients(product, items, parent=None, linked=linked)
 

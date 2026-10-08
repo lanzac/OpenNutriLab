@@ -9,10 +9,11 @@ looked up as it is, in either language, in the references, the preparations
 and the additives (a name is one of them, never two), and if none has it, through
 its English correspondence, as OpenFoodFacts' taxonomy gives it ("flocons
 d'avoine" is "oat flakes"). When there is still none, a reference is created, to
-review, so that every ingredient is one of the three. Nothing guesses that a name
-is a preparation or an additive: the curator converts it. The one thing the text
-does say is an E number ("E330", "E 330"): it is an additive, is found by its
-code, and an E number no additive has gets one created, to review.
+review, so that every ingredient is one of the three. What the text says of an
+ingredient is what makes it more than a reference: an E number ("E330", "E 330")
+is an additive, found by its code (and one no additive has gets one created, to
+review), and a list of parts makes it a preparation, which is done after this
+(see preparation_services) and not here: this only finds or creates a reference.
 
 What OpenFoodFacts said (its id, its CIQUAL codes) is used only to find the
 correspondence and to create that reference, and only kept as a note in its
