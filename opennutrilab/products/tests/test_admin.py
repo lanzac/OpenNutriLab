@@ -1492,6 +1492,32 @@ def test_an_ingredient_that_is_an_additive_is_listed_by_its_name(
     assert "citric acid (E330)" in response.content.decode()
 
 
+def test_the_ingredients_are_searched_by_the_name_of_what_they_are_and_by_product(
+    admin_client: Client,
+):
+    oats = ReferenceIngredient.objects.create(name_en="oats", name_fr="avoine")
+    mozzarella = Preparation.objects.create(name_en="mozzarella")
+    citric = Additive.objects.create(name_en="citric acid", code="E330")
+    product = Product.objects.create(barcode="3229820794556", name="Granola bar")
+    other = Product.objects.create(barcode="3017620422003", name="Pizza")
+    Ingredient.objects.create(product=product, reference=oats)
+    Ingredient.objects.create(product=other, preparation=mozzarella)
+    Ingredient.objects.create(product=other, additive=citric)
+    url = reverse("admin:products_ingredient_changelist")
+
+    def found(term: str) -> list[str]:
+        response = admin_client.get(url, {"q": term})
+        assert response.status_code == HTTPStatus.OK
+        return [i.item.name_en for i in response.context["cl"].result_list]
+
+    assert found("avoine") == ["oats"]
+    assert found("mozza") == ["mozzarella"]
+    assert found("E330") == ["citric acid"]
+    assert found("granola") == ["oats"]
+    assert found("3017620422003") == ["mozzarella", "citric acid"]
+    assert found("nothing like it") == []
+
+
 def test_additives_are_marked_as_curated_when_they_have_their_english_name(
     admin_client: Client,
 ):

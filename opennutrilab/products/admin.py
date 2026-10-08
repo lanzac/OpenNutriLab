@@ -99,6 +99,19 @@ class ProductAdmin(admin.ModelAdmin[Product]):
 class IngredientAdmin(admin.ModelAdmin[Ingredient]):
     list_display = ("indented_name", "product", "percentage")
     list_filter = ("product",)
+    # An ingredient has no name of its own: it is searched by the names of what it
+    # is, and by the product it is in.
+    search_fields = (
+        "reference__name_fr",
+        "reference__name_en",
+        "preparation__name_fr",
+        "preparation__name_en",
+        "additive__name_fr",
+        "additive__name_en",
+        "additive__code",
+        "product__name",
+        "product__barcode",
+    )
     list_select_related = ("product", "reference", "preparation", "additive")
     autocomplete_fields = ("reference", "preparation", "additive")
     ordering = ("id",)
