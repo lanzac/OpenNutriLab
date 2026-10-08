@@ -22,6 +22,12 @@ amounts weighted by the grade of each (A 4, B 3, C 2, D 1, none 1), which is the
 food's amount when there is one food. The interval is the range that holds all of
 theirs.
 
+That is for foods that measure one thing, as two tables' carrots do. A name that
+does not say its form ("haricot rouge") has foods that are different things, dried,
+cooked, canned, whose mean is no food at all. A reference that names a default
+food takes its amount from that one, and the interval still holds every food's:
+what is not known is shown as a range, and not hidden by a choice.
+
 A preparation that draws on no food has, when its label lists none of its parts,
 the composition of the references and the preparations it is made of
 (components_composition). Their shares are not known, so it is a range and not a
@@ -29,6 +35,7 @@ fit.
 """
 
 from collections import defaultdict
+from collections.abc import Collection
 from collections.abc import Iterable
 from collections.abc import Sequence
 from decimal import Decimal
@@ -42,6 +49,8 @@ from opennutrilab.products.models import SourceFood
 from opennutrilab.products.models import SourceFoodNutrient
 from opennutrilab.products.services.derived_nutrients import derived_amount
 from opennutrilab.products.services.derived_nutrients import derived_nutrients
+from opennutrilab.products.services.food_forms import Form
+from opennutrilab.products.services.food_forms import form_of_food
 
 Qualifier = SourceFoodNutrient.Qualifier
 
@@ -80,6 +89,7 @@ class _Measure(NamedTuple):
 def reference_composition(
     item: ReferenceIngredient | Preparation | Additive,
     derived: Iterable[Nutrient] | None = None,
+    forms: Collection[Form] | None = None,
 ) -> dict[str, Estimate]:
     """
     What the foods of a reference, of a preparation or of an additive say
@@ -87,6 +97,11 @@ def reference_composition(
 
     One with no source food has no composition. `derived` is derived_nutrients()
     when not given; pass it when computing many, to read the catalogue once.
+
+    `forms` limits a reference to its foods in those forms, when it has some: an
+    ingredient the label says went into a cooking is the raw one, not the cooked.
+    A reference with none in those forms keeps all of its foods, as it would be
+    left with nothing otherwise.
     """
     drawn_on = (
         {"food__reference_ingredients": item}
@@ -95,6 +110,7 @@ def reference_composition(
         if isinstance(item, Preparation)
         else {"food__additives": item}
     )
+    default_pk = item.default_food_id if isinstance(item, ReferenceIngredient) else None
     rows = list(
         SourceFoodNutrient.objects.filter(**drawn_on)
         .select_related("food__source", "nutrient")
@@ -103,6 +119,13 @@ def reference_composition(
     by_food: defaultdict[int, list[SourceFoodNutrient]] = defaultdict(list)
     for row in rows:
         by_food[row.food_id].append(row)
+    if forms is not None and isinstance(item, ReferenceIngredient):
+        in_those_forms = {
+            pk: food_rows
+            for pk, food_rows in by_food.items()
+            if form_of_food(food_rows[0].food) in forms
+        }
+        by_food = defaultdict(list, in_those_forms or by_food)
     derivations = list(derived_nutrients() if derived is None else derived)
 
     per_nutrient: defaultdict[str, list[tuple[SourceFood, _Measure]]] = defaultdict(
@@ -112,7 +135,7 @@ def reference_composition(
         food = food_rows[0].food
         for code, measure in _food_measures(food_rows, derivations).items():
             per_nutrient[code].append((food, measure))
-    return {code: _combine(found) for code, found in per_nutrient.items()}
+    return {code: _combine(found, default_pk) for code, found in per_nutrient.items()}
 
 
 def components_composition(
@@ -269,10 +292,18 @@ def _worst_grade(grades: Iterable[str]) -> str:
     return max(found, key=GRADES_WORST_LAST.index)
 
 
-def _combine(found: Sequence[tuple[SourceFood, _Measure]]) -> Estimate:
+def _combine(
+    found: Sequence[tuple[SourceFood, _Measure]], default_pk: int | None = None
+) -> Estimate:
+    # The value comes from the default food when it measured the nutrient, and
+    # else from all of them, as it would without one. A default the reference no
+    # longer draws on is not in `found`, and counts for nothing.
+    giving = [
+        (food, m) for food, m in found if food.pk == default_pk and m.amount is not None
+    ] or list(found)
     weighted = [
         (m.amount, GRADE_WEIGHTS.get(m.grade, NO_GRADE_WEIGHT))
-        for _, m in found
+        for _, m in giving
         if m.amount is not None
     ]
     amount = (
@@ -291,7 +322,10 @@ def _combine(found: Sequence[tuple[SourceFood, _Measure]]) -> Estimate:
         for q in (Qualifier.EXACT, Qualifier.LESS_THAN, Qualifier.TRACES)
         if q in qualifiers
     )
-    grades = sorted({m.grade for _, m in found if m.grade}, key=GRADES_WORST_LAST.index)
+    # The grade is that of what the value comes from.
+    grades = sorted(
+        {m.grade for _, m in giving if m.grade}, key=GRADES_WORST_LAST.index
+    )
     return Estimate(
         amount=amount,
         low=min(lows) if lows else None,

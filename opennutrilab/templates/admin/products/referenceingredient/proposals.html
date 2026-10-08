@@ -67,6 +67,13 @@
       OpenFoodFacts agree are ticked already.
     {% endblocktranslate %}
   </p>
+  <p>
+    {% blocktranslate trimmed %}
+      Where a name does not say the form ("haricot rouge" can be dried, cooked or
+      canned), all the forms are listed: untick those to leave out, and choose the
+      default, which gives the value. The others only widen its range.
+    {% endblocktranslate %}
+  </p>
   <form method="post">
     {% csrf_token %}
     <input type="hidden" name="action" value="propose_foods" />
@@ -103,7 +110,35 @@
                 <span class="badge badge-{{ proposal.confidence.value }}">{{ proposal.confidence.label }}</span>
               </td>
               <td>
-                {% if proposal.candidates %}
+                {% if proposal.default %}
+                  <p>
+                    <small>{% translate "The name does not say which of these it is, and they differ: all are listed." %}</small>
+                  </p>
+                  <ul>
+                    {% for candidate in proposal.candidates %}
+                      <li>
+                        <label>
+                          <input type="checkbox"
+                                 name="foods_{{ proposal.reference.pk }}"
+                                 value="{{ candidate.food.pk }}"
+                                 {% if not candidate.unlikely %}checked{% endif %} />
+                          <strong>{{ candidate.food.code }}</strong>
+                          {{ candidate.food.name_fr|default:candidate.food.name_en }}
+                        </label>
+                        {% if candidate.unlikely %}
+                          <div class="why">{% translate "A label names it as such, so it is not ticked" %}</div>
+                        {% endif %}
+                        <label class="why">
+                          <input type="radio"
+                                 name="default_{{ proposal.reference.pk }}"
+                                 value="{{ candidate.food.pk }}"
+                                 {% if candidate.food == proposal.default %}checked{% endif %} />
+                          {% translate "default" %}
+                        </label>
+                      </li>
+                    {% endfor %}
+                  </ul>
+                {% elif proposal.candidates %}
                   <ul>
                     {% for candidate in proposal.candidates %}
                       <li>

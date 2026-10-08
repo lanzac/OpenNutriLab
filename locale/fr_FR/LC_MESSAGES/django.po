@@ -891,6 +891,12 @@ msgstr "Sans aliments sources"
 msgid "Source foods"
 msgstr "Aliments sources"
 
+msgid "The default food must be one of the source foods."
+msgstr "L'aliment par défaut doit être l'un des aliments sources."
+
+msgid "When the foods above are different forms of it (dried, cooked, canned), the one whose figures give the value: the range still spans them all. Leave empty when they measure the same food: the value is then their mean."
+msgstr "Quand les aliments ci-dessus sont différentes formes de la référence (sec, cuit, appertisé), celui dont les chiffres donnent la valeur : la fourchette les couvre toujours tous. À laisser vide quand ils mesurent le même aliment : la valeur est alors leur moyenne."
+
 msgid "Foods that may fit"
 msgstr "Aliments qui pourraient convenir"
 
@@ -942,6 +948,12 @@ msgstr "OpenFoodFacts donne ce code CIQUAL"
 msgid "Cooked or prepared, which the reference is not"
 msgstr "Cuit ou préparé, ce que la référence n'est pas"
 
+msgid "A form of the same food as the others"
+msgstr "Une forme du même aliment que les autres"
+
+msgid "Proposed as the default form"
+msgstr "Proposée comme forme par défaut"
+
 msgid "For each reference, the foods that may be what it is, found by its name and by the CIQUAL code OpenFoodFacts gives. Nothing is linked until you apply: tick the references to link, and choose the food for each. Those where the name and OpenFoodFacts agree are ticked already."
 msgstr "Pour chaque référence, les aliments qui pourraient être ce qu'elle est, trouvés d'après son nom et d'après le code CIQUAL que donne OpenFoodFacts. Rien n'est relié tant que vous n'avez pas appliqué : cochez les références à relier et choisissez l'aliment de chacune. Celles où le nom et OpenFoodFacts s'accordent sont déjà cochées."
 
@@ -964,6 +976,21 @@ msgstr[1] "utilisée par %(count)s ingrédients"
 
 msgid "None of these"
 msgstr "Aucun de ceux-ci"
+
+msgid "Where a name does not say the form (\"haricot rouge\" can be dried, cooked or canned), all the forms are listed: untick those to leave out, and choose the default, which gives the value. The others only widen its range."
+msgstr "Quand un nom ne dit pas la forme (« haricot rouge » peut être sec, cuit ou appertisé), toutes les formes sont listées : décochez celles à écarter et choisissez celle par défaut, qui donne la valeur. Les autres ne font qu'élargir sa fourchette."
+
+msgid "The name does not say which of these it is, and they differ: all are listed."
+msgstr "Le nom ne dit pas lequel c'est, et ils diffèrent : tous sont listés."
+
+msgid "A label names it as such, so it is not ticked"
+msgstr "Une étiquette le nomme ainsi : il n'est pas coché"
+
+msgid "Same name, but a very different composition"
+msgstr "Même nom, mais une composition très différente"
+
+msgid "default"
+msgstr "par défaut"
 
 msgid "No food found by name or by OpenFoodFacts: link one by hand in the reference's page."
 msgstr "Aucun aliment trouvé par le nom ni par OpenFoodFacts : reliez-en un à la main dans la page de la référence."

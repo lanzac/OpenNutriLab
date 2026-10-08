@@ -38,13 +38,15 @@ from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductNutrient
+from opennutrilab.products.models import ReferenceIngredient
 from opennutrilab.products.services.label_parser import LabelWarning
 from opennutrilab.products.services.preparation_services import (
     make_preparations_of_listed_parts,
 )
+from opennutrilab.products.services.reference_proposals import link_confident_foods
 from opennutrilab.products.services.reference_services import Item
 from opennutrilab.products.services.reference_services import name_key
-from opennutrilab.products.services.reference_services import resolve_references
+from opennutrilab.products.services.reference_services import resolve_references_and_new
 
 logger = logging.getLogger(__name__)
 
@@ -219,7 +221,19 @@ def _replace_ingredients(product: Product, items: list[IngredientInput]) -> None
     again. A preparation takes the parts the label lists for it as its children,
     as any ingredient does.
     """
-    linked = make_preparations_of_listed_parts(items, resolve_references(items))
+    references, new = resolve_references_and_new(items)
+    linked = make_preparations_of_listed_parts(items, references)
+    # After the preparations are made, so that a reference whose parts the label
+    # lists, and that has just become one, is not given a food. Only a food that
+    # is certain is linked here; the rest waits for a curator.
+    new_pks = {reference.pk for reference in new}
+    link_confident_foods(
+        {
+            found.pk: found
+            for found in linked.values()
+            if isinstance(found, ReferenceIngredient) and found.pk in new_pks
+        }.values()
+    )
     product.ingredients.all().delete()
     _create_ingredients(product, items, parent=None, linked=linked)
 

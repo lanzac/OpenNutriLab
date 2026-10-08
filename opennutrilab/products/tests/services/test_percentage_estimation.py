@@ -668,3 +668,103 @@ def test_a_reference_a_preparation_and_an_additive_with_one_id_are_not_confused(
     assert proteins[first.id][0] > 19  # noqa: PLR2004
     assert proteins[second.id][1] < 11  # noqa: PLR2004
     assert proteins[third.id][0] > 29  # noqa: PLR2004
+
+
+# ----------------------------------------------------------------------------
+# What went into a cooking is the food before it
+# ----------------------------------------------------------------------------
+def barley(source: Source) -> ReferenceIngredient:
+    """A reference with dry and boiled barley, the boiled one being the default."""
+    foods: dict[str, SourceFood] = {}
+    for code, name, proteins in (
+        ("1", "Orge perlée, crue", "10"),
+        ("2", "Orge perlée, bouillie/cuite", "3"),
+    ):
+        food = SourceFood.objects.create(source=source, code=code, name_fr=name)
+        for nutrient in ("fat", "carbohydrates", "proteins"):
+            SourceFoodNutrient.objects.create(
+                food=food,
+                nutrient=Nutrient.objects.get(code=nutrient),
+                amount=D(proteins if nutrient == "proteins" else "1"),
+                confidence="A",
+            )
+        foods[code] = food
+    ref = ReferenceIngredient.objects.create(
+        name_en="pearl barley", name_fr="orge perlée"
+    )
+    ref.source_foods.add(*foods.values())
+    ref.default_food = foods["2"]
+    ref.save()
+    return ref
+
+
+def cooked_preparation(name: str, *, water: bool) -> tuple[Product, Ingredient]:
+    """A product with a preparation of this name, listing barley (and water)."""
+    preparation = Preparation.objects.create(name_fr=name, name_en=name)
+    product = product_with(proteins=None)
+    root = Ingredient.objects.create(product=product, preparation=preparation)
+    if water:
+        add(
+            product,
+            ReferenceIngredient.objects.get_or_create(name_en="water", name_fr="eau")[
+                0
+            ],
+            parent=root,
+        )
+    return product, root
+
+
+def proteins_of_the_barley(product: Product) -> tuple[Decimal, Decimal | None]:
+    loaded = load(product)
+    ingredients = list(product.ingredients.select_related("reference"))
+    position = next(
+        n
+        for n, i in enumerate(ingredients)
+        if i.reference and i.reference.name_fr == "orge perlée"
+    )
+    proteins = loaded.compositions[position]["proteins"]
+    assert proteins.low is not None
+    return proteins.low, proteins.high
+
+
+def test_a_part_of_a_cooked_preparation_that_lists_water_is_read_before_the_cooking(
+    source: Source,
+):
+    product, root = cooked_preparation(
+        "petit épeautre et orge perlée cuits", water=True
+    )
+    add(product, barley(source), parent=root, percentage="3.2")
+
+    low, high = proteins_of_the_barley(product)
+
+    # The dry barley alone: not down to the boiled barley's 3 g.
+    assert (low, high) == (D("9.5"), D("10.5"))
+
+
+def test_without_water_among_the_parts_both_forms_stay(source: Source):
+    product, root = cooked_preparation(
+        "petit épeautre et orge perlée cuits", water=False
+    )
+    add(product, barley(source), parent=root, percentage="3.2")
+
+    low, high = proteins_of_the_barley(product)
+
+    assert (low, high) == (D("2.5"), D("10.5"))
+
+
+def test_a_preparation_that_is_not_said_to_be_cooked_leaves_both_forms(source: Source):
+    product, root = cooked_preparation("mélange de céréales", water=True)
+    add(product, barley(source), parent=root, percentage="3.2")
+
+    low, high = proteins_of_the_barley(product)
+
+    assert (low, high) == (D("2.5"), D("10.5"))
+
+
+def test_a_reference_at_the_top_of_the_list_is_not_narrowed(source: Source):
+    product = product_with(proteins=None)
+    add(product, barley(source))
+
+    low, high = proteins_of_the_barley(product)
+
+    assert (low, high) == (D("2.5"), D("10.5"))

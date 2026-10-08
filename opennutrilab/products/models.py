@@ -605,6 +605,25 @@ class ReferenceIngredient(CuratedItem):
     source_foods: "models.ManyToManyField[SourceFood, Any]" = models.ManyToManyField(
         SourceFood, blank=True, related_name="reference_ingredients"
     )
+    default_food_id: int | None
+
+    # A name that does not say the form it is in ("haricot rouge") can be several
+    # foods: dried, cooked, canned. They are alternatives and not measurements of
+    # one food, so the one named here gives the value and the others only widen
+    # the range. Counts only while the food is one of `source_foods`.
+    default_food: "models.ForeignKey[SourceFood | None]" = models.ForeignKey(
+        SourceFood,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text=_(
+            "When the foods above are different forms of it (dried, cooked, "
+            "canned), the one whose figures give the value: the range still "
+            "spans them all. Leave empty when they measure the same food: "
+            "the value is then their mean."
+        ),
+    )
 
     if TYPE_CHECKING:
         usages: RelatedManager["Ingredient"]

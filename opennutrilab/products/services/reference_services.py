@@ -266,9 +266,16 @@ def _by_code(items: Iterable[IngredientInput]) -> dict[str, Additive]:
 def resolve_references(
     items: Iterable[IngredientInput],
 ) -> dict[str, Item]:
+    """See resolve_references_and_new."""
+    return resolve_references_and_new(items)[0]
+
+
+def resolve_references_and_new(
+    items: Iterable[IngredientInput],
+) -> tuple[dict[str, Item], list[ReferenceIngredient]]:
     """
     The reference, preparation or additive of every ingredient of these trees, by
-    name_key of its name.
+    name_key of its name, and the references that were created for it.
 
     An ingredient nothing has the name of, in either language or through its
     English correspondence, gets a reference created, to review, so every name is
@@ -286,6 +293,7 @@ def resolve_references(
     # written in the plural, or listed twice, to find it.
     created: dict[str, Item] = {}
     created_codes: dict[str, Additive] = {}
+    new_references: list[ReferenceIngredient] = []
     for item in missing:
         key = name_key(item.name)
         if key in references:
@@ -301,6 +309,8 @@ def resolve_references(
                 made = _create_additive(item, code, correspondences.get(key))
             else:
                 made = _create_reference(item, correspondences.get(key))
+                if isinstance(made, ReferenceIngredient):
+                    new_references.append(made)
             for name in (made.name_en, made.name_fr):
                 for variant in name_keys(name) if name else ():
                     created.setdefault(variant, made)
@@ -308,7 +318,7 @@ def resolve_references(
                 created_codes[code] = made
         references[key] = made
     _fill_functions(flat, references)
-    return references
+    return references, new_references
 
 
 def _fill_functions(

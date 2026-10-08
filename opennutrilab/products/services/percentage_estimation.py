@@ -31,6 +31,13 @@ worked out from dried grapes, not from fresh ones and oil, whose water would
 count for nothing but a quarter of the sugars. The sub-ingredients are used when
 the ingredient has no composition of its own, and still get a percentage.
 
+One more narrowing, from the label. A preparation whose name says it was cooked or
+canned and whose parts include water ("petit épeautre et orge perlée cuits (eau,
+petit épeautre, orge perlée, sel)") lists what went into the cooking, each as its
+weight when used, so a part is the food before it, raw or dry, and not the cooked
+one: the water is already one of the parts. A reference with no raw or dry food
+keeps all of its foods.
+
 A preparation has its own when it draws on source foods, and then it counts even
 if the label lists its parts. Failing that, the parts the label lists count. A
 preparation with neither falls back on the references it is made of, as a range
@@ -73,9 +80,15 @@ from django.utils.translation import gettext_lazy as _
 from numpy.typing import NDArray
 from scipy.optimize import linprog
 
+from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Product
 from opennutrilab.products.services.derived_nutrients import derived_nutrients
+from opennutrilab.products.services.food_forms import CANNED_WORDS
+from opennutrilab.products.services.food_forms import COOKED_WORDS
+from opennutrilab.products.services.food_forms import Form
+from opennutrilab.products.services.food_forms import fold
+from opennutrilab.products.services.food_forms import has_a_word_of
 from opennutrilab.products.services.reference_composition import Estimate
 from opennutrilab.products.services.reference_composition import components_composition
 from opennutrilab.products.services.reference_composition import reference_composition
@@ -102,6 +115,11 @@ _SEED = 0
 # What the solver leaves of a rule that holds exactly.
 _TOLERANCE = 1e-7
 _DIGITS = Decimal("0.01")
+
+# What went into a cooking is the food before it: raw, or dry.
+BEFORE_COOKING = frozenset({Form.RAW, Form.DRIED})
+# The words of a name that say its food was cooked or canned.
+PROCESSED_WORDS = COOKED_WORDS | CANNED_WORDS
 
 Range = tuple[float, float]
 Matrix = NDArray[np.float64]
@@ -277,10 +295,20 @@ def load(product: Product) -> Loaded:
     items = {(type(i.item), i.item.pk): i.item for i in ingredients}
     own = {key: reference_composition(item, derived) for key, item in items.items()}
     listed_parts = {i.parent_id for i in ingredients if i.parent_id is not None}
+    before_cooking = _parts_that_went_into_a_cooking(ingredients)
+    raw: dict[tuple[type, int], dict[str, Estimate]] = {}
     by_default: dict[int, dict[str, Estimate]] = {}
     full: list[dict[str, Estimate]] = []
     for i in ingredients:
-        composition = own[type(i.item), i.item.pk]
+        key = (type(i.item), i.item.pk)
+        if i.id in before_cooking:
+            if key not in raw:
+                raw[key] = reference_composition(
+                    items[key], derived, forms=BEFORE_COOKING
+                )
+            composition = raw[key]
+        else:
+            composition = own[key]
         # Only a preparation with no food and no part listed here: see the module.
         if (
             not composition
@@ -317,6 +345,48 @@ def load(product: Product) -> Loaded:
         full,
         {code: nutrient.parent_id for code, nutrient in catalogue.items()},
         {code: nutrient.unit for code, nutrient in catalogue.items()},
+    )
+
+
+def _parts_that_went_into_a_cooking(ingredients: Sequence[Ingredient]) -> set[int]:
+    """
+    The ingredients (ids) that are references listed as the parts of a preparation
+    whose name says it was cooked or canned, when water is among them.
+
+    "petit épeautre et orge perlée cuits (eau, petit épeautre 3,2 %, orge perlée
+    3,2 %, sel)": the label gives each part as its weight when it was used
+    (Regulation 1169/2011, annex VIII), and lists the cooking water as one of them,
+    so the barley is the dry grain. Counted as cooked barley it would bring its
+    water a second time. The cooking is said by the parent, not by the part, which
+    is why its name does not carry it.
+    """
+    by_id = {i.id: i for i in ingredients}
+    siblings: defaultdict[int, list[Ingredient]] = defaultdict(list)
+    for i in ingredients:
+        if i.parent_id is not None:
+            siblings[i.parent_id].append(i)
+    cooking = {
+        parent_id
+        for parent_id, parts in siblings.items()
+        if (parent := by_id[parent_id]).preparation is not None
+        and any(
+            has_a_word_of(name, PROCESSED_WORDS)
+            for name in (parent.preparation.name_fr, parent.preparation.name_en)
+        )
+        and any(_is_water(part) for part in parts)
+    }
+    return {
+        i.id
+        for parent_id in cooking
+        for i in siblings[parent_id]
+        if i.reference is not None and not _is_water(i)
+    }
+
+
+def _is_water(ingredient: Ingredient) -> bool:
+    reference = ingredient.reference
+    return reference is not None and (
+        fold(reference.name_fr) == "eau" or fold(reference.name_en) == "water"
     )
 
 

@@ -1541,3 +1541,184 @@ def test_the_forms_refuse_a_name_an_additive_has(admin_client: Client):
     assert "An additive already has this name." in as_preparation.content.decode()
     assert not ReferenceIngredient.objects.exists()
     assert not Preparation.objects.exists()
+
+
+# ----------------------------------------------------------------------------
+# Proposing foods for a name that does not say the form
+# ----------------------------------------------------------------------------
+@pytest.fixture
+def beans() -> dict[str, Any]:
+    ciqual = Source.objects.create(code="ciqual-2025", name="Ciqual")
+    foods = {
+        code: SourceFood.objects.create(
+            source=ciqual,
+            code=code,
+            name_fr=fr,
+            name_en=en,
+            food_subgroup="légumineuses",
+        )
+        for code, fr, en in [
+            ("20525", "Haricot rouge, sec", "Red kidney bean, dried"),
+            (
+                "20503",
+                "Haricot rouge, bouilli/cuit à l'eau",
+                "Red kidney bean, boiled/cooked in water",
+            ),
+            (
+                "20524",
+                "Haricot rouge, appertisé, égoutté",
+                "Red kidney bean, canned, drained",
+            ),
+        ]
+    }
+    return {
+        "foods": foods,
+        "reference": ReferenceIngredient.objects.create(
+            name_en="red kidney bean", name_fr="haricot rouge"
+        ),
+    }
+
+
+def test_the_forms_of_a_food_are_listed_with_a_default_and_not_ticked_to_link(
+    admin_client: Client, beans: dict[str, Any]
+):
+    reference, foods = beans["reference"], beans["foods"]
+
+    page = foods_proposed(admin_client, [reference]).content.decode()
+
+    assert not ticked(page, f"link_{reference.pk}")
+    for food in foods.values():
+        assert re.search(
+            rf'name="foods_{reference.pk}"\s+value="{food.pk}"\s+checked', page
+        )
+    default = re.search(
+        rf'name="default_{reference.pk}"\s+value="(\d+)"\s+checked', page
+    )
+    assert default
+    assert int(default.group(1)) == foods["20525"].pk
+
+
+def test_the_forms_ticked_are_linked_with_the_default_chosen(
+    admin_client: Client, beans: dict[str, Any]
+):
+    reference, foods = beans["reference"], beans["foods"]
+
+    apply_proposals(
+        admin_client,
+        [reference],
+        **{
+            f"link_{reference.pk}": "on",
+            f"foods_{reference.pk}": [f.pk for f in foods.values()],
+            f"default_{reference.pk}": foods["20524"].pk,
+        },
+    )
+
+    reference.refresh_from_db()
+    assert set(reference.source_foods.all()) == set(foods.values())
+    assert reference.default_food == foods["20524"]
+
+
+def test_a_form_that_is_unticked_is_left_out(
+    admin_client: Client, beans: dict[str, Any]
+):
+    reference, foods = beans["reference"], beans["foods"]
+
+    apply_proposals(
+        admin_client,
+        [reference],
+        **{
+            f"link_{reference.pk}": "on",
+            f"foods_{reference.pk}": [foods["20503"].pk, foods["20524"].pk],
+            f"default_{reference.pk}": foods["20503"].pk,
+        },
+    )
+
+    assert set(reference.source_foods.all()) == {foods["20503"], foods["20524"]}
+
+
+def test_when_the_default_is_unticked_the_first_form_left_takes_its_place(
+    admin_client: Client, beans: dict[str, Any]
+):
+    """Otherwise the forms would be averaged into a food that does not exist."""
+    reference, foods = beans["reference"], beans["foods"]
+
+    apply_proposals(
+        admin_client,
+        [reference],
+        **{
+            f"link_{reference.pk}": "on",
+            f"foods_{reference.pk}": [foods["20524"].pk, foods["20525"].pk],
+            f"default_{reference.pk}": foods["20503"].pk,
+        },
+    )
+
+    reference.refresh_from_db()
+    assert reference.default_food == foods["20524"]
+
+
+def test_a_single_form_ticked_needs_no_default(
+    admin_client: Client, beans: dict[str, Any]
+):
+    reference, foods = beans["reference"], beans["foods"]
+
+    apply_proposals(
+        admin_client,
+        [reference],
+        **{
+            f"link_{reference.pk}": "on",
+            f"foods_{reference.pk}": [foods["20503"].pk],
+            f"default_{reference.pk}": foods["20503"].pk,
+        },
+    )
+
+    reference.refresh_from_db()
+    assert list(reference.source_foods.all()) == [foods["20503"]]
+    assert reference.default_food is None
+
+
+def change_reference(client: Client, reference: ReferenceIngredient, **data: Any):
+    return client.post(
+        reverse("admin:products_referenceingredient_change", args=[reference.pk]),
+        {
+            "name_en": reference.name_en,
+            "name_fr": reference.name_fr,
+            "status": reference.status,
+            "description": "",
+            **data,
+        },
+    )
+
+
+def test_a_default_food_has_to_be_one_the_reference_draws_on(
+    admin_client: Client, beans: dict[str, Any]
+):
+    reference, foods = beans["reference"], beans["foods"]
+
+    response = change_reference(
+        admin_client,
+        reference,
+        source_foods=[foods["20503"].pk],
+        default_food=foods["20525"].pk,
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    assert "must be one of the source foods" in response.content.decode()
+    reference.refresh_from_db()
+    assert reference.default_food is None
+
+
+def test_a_default_food_among_the_foods_is_saved(
+    admin_client: Client, beans: dict[str, Any]
+):
+    reference, foods = beans["reference"], beans["foods"]
+
+    response = change_reference(
+        admin_client,
+        reference,
+        source_foods=[foods["20503"].pk, foods["20525"].pk],
+        default_food=foods["20503"].pk,
+    )
+
+    assert response.status_code == HTTPStatus.FOUND
+    reference.refresh_from_db()
+    assert reference.default_food == foods["20503"]

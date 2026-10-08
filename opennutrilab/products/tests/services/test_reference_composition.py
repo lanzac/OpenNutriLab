@@ -14,6 +14,7 @@ from opennutrilab.products.models import SourceFoodNutrient
 from opennutrilab.products.services.ciqual_import import ensure_nutrients
 from opennutrilab.products.services.ciqual_import import read_constituents
 from opennutrilab.products.services.derived_nutrients import ensure_derivations
+from opennutrilab.products.services.food_forms import Form
 from opennutrilab.products.services.reference_composition import components_composition
 from opennutrilab.products.services.reference_composition import reference_composition
 
@@ -299,6 +300,150 @@ def test_the_composition_is_read_in_a_few_queries_however_many_foods(
     # The values, and the catalogue's derivations with their terms.
     with django_assert_max_num_queries(3):
         reference_composition(reference)
+
+
+# ----------------------------------------------------------------------------
+# Foods that are forms of one thing: the default gives the value
+# ----------------------------------------------------------------------------
+def forms(source: Source) -> tuple[ReferenceIngredient, SourceFood, SourceFood]:
+    """A reference of dried and cooked beans, the cooked one being the default."""
+    dried, cooked = food(source, "1"), food(source, "2")
+    value(dried, "proteins", "22.5", grade="A", minimum="21", maximum="24")
+    value(cooked, "proteins", "9.6", grade="B", minimum="9", maximum="10.2")
+    reference = reference_of(dried, cooked)
+    reference.default_food = cooked
+    reference.save()
+    return reference, dried, cooked
+
+
+def test_the_default_gives_the_value_and_the_range_still_holds_every_form(
+    source: Source,
+):
+    reference, dried, cooked = forms(source)
+
+    estimate = reference_composition(reference)["proteins"]
+
+    # Not the mean of the two, which is no food: the cooked beans' figure, with the
+    # dried beans' as the top of what it may be.
+    assert estimate.amount == D("9.6")
+    assert (estimate.low, estimate.high) == (D(9), D(24))
+    assert set(estimate.foods) == {dried, cooked}
+
+
+def test_the_grade_is_that_of_the_default_which_the_value_comes_from(source: Source):
+    reference, _dried, _cooked = forms(source)
+
+    assert reference_composition(reference)["proteins"].grades == ("B",)
+
+
+def test_without_a_default_the_foods_are_averaged_as_before(source: Source):
+    reference, _dried, _cooked = forms(source)
+    reference.default_food = None
+    reference.save()
+
+    estimate = reference_composition(reference)["proteins"]
+
+    # (22.5 x 4 + 9.6 x 3) / 7
+    assert estimate.amount == D("16.971429")
+
+
+def test_a_nutrient_the_default_did_not_measure_comes_from_the_others(source: Source):
+    reference, dried, _cooked = forms(source)
+    value(dried, "vitamin_c", "4.5")
+
+    estimate = reference_composition(reference)["vitamin_c"]
+
+    assert estimate.amount == D("4.5")
+    assert estimate.foods == (dried,)
+
+
+def test_a_default_the_reference_no_longer_draws_on_counts_for_nothing(
+    source: Source,
+):
+    reference, dried, cooked = forms(source)
+    reference.source_foods.remove(cooked)
+
+    estimate = reference_composition(reference)["proteins"]
+
+    assert estimate.amount == D("22.5")
+    assert estimate.foods == (dried,)
+
+
+def test_a_default_does_not_cost_a_query(
+    source: Source, django_assert_max_num_queries: Any
+):
+    reference, _dried, _cooked = forms(source)
+
+    with django_assert_max_num_queries(3):
+        reference_composition(reference)
+
+
+# ----------------------------------------------------------------------------
+# An ingredient that went into a cooking is read in the forms before it
+# ----------------------------------------------------------------------------
+def beans(source: Source) -> tuple[ReferenceIngredient, SourceFood, SourceFood]:
+    """A reference of dry and boiled beans, the boiled one being the default."""
+    dry = SourceFood.objects.create(
+        source=source, code="1", name_fr="Haricot rouge, sec", name_en="Bean, dried"
+    )
+    boiled = SourceFood.objects.create(
+        source=source,
+        code="2",
+        name_fr="Haricot rouge, bouilli/cuit à l'eau",
+        name_en="Bean, boiled",
+    )
+    value(dry, "water", "11.8", grade="A")
+    value(boiled, "water", "65", grade="A")
+    reference = reference_of(dry, boiled)
+    reference.default_food = boiled
+    reference.save()
+    return reference, dry, boiled
+
+
+def test_limiting_to_the_forms_before_cooking_leaves_the_dry_beans(source: Source):
+    reference, dry, _boiled = beans(source)
+
+    water = reference_composition(reference, forms={Form.RAW, Form.DRIED})["water"]
+
+    assert (water.low, water.high) == (D("11.75"), D("11.85"))
+    assert water.foods == (dry,)
+    # The default was the boiled beans, which are left out: the value is the dry ones'.
+    assert water.amount == D("11.8")
+
+
+def test_without_the_limit_the_range_holds_both_forms(source: Source):
+    reference, _dry, _boiled = beans(source)
+
+    water = reference_composition(reference)["water"]
+
+    assert (water.amount, water.low, water.high) == (D(65), D("11.75"), D("65.5"))
+
+
+def test_a_reference_with_no_food_in_those_forms_keeps_all_of_its_foods(
+    source: Source,
+):
+    boiled = food(source, "3")
+    boiled.name_fr = "Haricot rouge, bouilli/cuit à l'eau"
+    boiled.save()
+    value(boiled, "water", "65")
+    reference = reference_of(boiled)
+
+    water = reference_composition(reference, forms={Form.RAW, Form.DRIED})["water"]
+
+    assert water.amount == D(65)
+
+
+def test_the_limit_is_for_references_and_not_for_preparations(source: Source):
+    cooked = food(source, "4")
+    cooked.name_fr = "Quinoa, cuit"
+    cooked.save()
+    value(cooked, "water", "70")
+    preparation = Preparation.objects.create(name_en="cooked quinoa")
+    preparation.source_foods.add(cooked)
+
+    water = reference_composition(preparation, forms={Form.RAW})["water"]
+
+    assert water.amount == D(70)
 
 
 # ----------------------------------------------------------------------------

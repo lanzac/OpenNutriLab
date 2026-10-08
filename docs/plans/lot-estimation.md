@@ -350,6 +350,91 @@ written.
      medium is the name alone with one plain match, low is anything else.
      Replayed on the four links made by hand on the muesli, the top proposal
      was the same four times. Code: `services/reference_proposals.py`.
+   - **A name that does not say its form** (added 2026-10-08). "Haricot rouge"
+     is dried, boiled and canned in CIQUAL, with figures that differ by two or
+     three (protein 22.5, 9.6 and 8.3 g; sodium 12, 8 and 269 mg), and "betterave"
+     raw and cooked differ by nine in folates while their macros are the same,
+     which the label cannot show since nobody declares folates. So the forms of
+     one food are alternatives, not measurements of one thing, and the mean the
+     composition took of the foods of a reference (grade-weighted) is no food.
+     - `ReferenceIngredient.default_food` names the one that gives the value; the
+       range still holds every linked food. Without a default the foods are
+       averaged as before (two tables' carrots), so nothing existing changes. The
+       default counts only while it is one of the reference's foods, and the
+       admin refuses one that is not. The grade of the value is the default's.
+       Code: `_combine` in `services/reference_composition.py`.
+     - The proposal recognises the forms: foods whose name is the reference's once
+       the words of state are taken out (cru, sec, cuit, bouilli, appertisé,
+       surgelé... and their English; "sans sel ajouté" and "aliment moyen" are
+       not another food), and which differ in form. Frozen and fresh are one
+       form. A dried form is always listed, since any food may be dried, but is
+       ticked only for pulses, herbs and spices; for a fruit or a vegetable a
+       label names it ("tomate séchée", "raisin sec"), so it is shown unticked and
+       is never the default. The default is the
+       food as it comes: raw, and dried for a pulse (the user, 2026-10-08). A
+       label gives an ingredient's share as its weight at the time of use
+       (Regulation 1169/2011, annex VIII: the quantity of the ingredient used,
+       related to the finished product when moisture is lost), and says "cuit",
+       "appertisé" when it was used cooked or canned, so the bare name is the
+       food before any of that. It was cooked for vegetables, pulses and tubers
+       at first, which counted the cooking water twice under a preparation like
+       "petit épeautre et orge perlée cuits (eau, ...)". It stays a proposal for
+       the curator, not a fact. It is never high confidence. The page lists
+       the forms ticked with a default to choose; if the default is unticked the
+       first form left takes its place, so that forms are never averaged by
+       accident.
+     - **The words keep one food for each form**, whatever else the name says:
+       "Maïs doux, en épis, cuit", "Maïs doux, appertisé" and "Maïs doux, surgelé,
+       cru" are three forms of "maïs" ("doux" and "en épis" do not split them). Of
+       several foods in one form the fresh, named one with the fewest such words is
+       kept ("Tomate, crue" and not "Tomate verte, crue"). When the foods kept are
+       not one food in several forms but different ones (a cep raw, a shiitake
+       cooked for "champignon"), the proposal is low confidence, since the default
+       is then a guess.
+     - **A second detection reads the figures** (`_foods_that_differ_a_lot`), for
+       what no word of state says: coriander's leaf and seed, ginger fresh and
+       ground, the wheat flours from T45 to T150. Two to eight foods under one name
+       (more is a family of varieties, like milk) are alternatives when their
+       energy differs by more than 1.5 times, or their water by more than 20 g per
+       100 g, or at least two nutrients are two times apart **and** apart by 15 % of
+       the daily reference value per 100 g (the threshold of a "source of" claim,
+       Regulation 1169/2011 annex XIII) for a vitamin or a mineral, or 5 g for
+       fibre, protein, fat and carbohydrates (100 mg for sodium). Selenium and
+       iodine are not counted (CIQUAL's figures for them swing for no reason a name
+       explains). It only adds to the words, never removes: raw and cooked beetroot
+       have the same energy and water and a ninth of the folates. Checked on CIQUAL
+       2025 on 2026-10-08: energy and water alone found 89 of the 130 names whose
+       foods differ that much and missed wheat flour; the full test flags 141 of the
+       173 names of vegetables, fruits, herbs, spices, cereals and flours that have
+       two foods or more, most of them by the words (raw, cooked, canned).
+     - **What went into a cooking is read before it** (`_parts_that_went_into_a_cooking`
+       in `services/percentage_estimation.py`, 2026-10-08). "Petit épeautre et orge
+       perlée cuits (eau, petit épeautre 3,2 %, orge perlée 3,2 %, sel)": the
+       cooking is said by the parent, and the parts are the ingredients as used
+       (annex VIII), the water being one of them. So under a preparation whose
+       name says it was cooked or canned (cuit, bouilli, appertisé, cooked...) and
+       whose parts include water, each reference part is limited to its raw and
+       dried foods (`reference_composition(..., forms=)`); cooked barley would
+       bring its water a second time. A reference with no raw or dry food keeps
+       all its foods, and a preparation or an additive is never limited. It
+       narrows the range and, if the default was a cooked food, takes the value
+       from the raw ones. The reading of CIQUAL's wording is in
+       `services/food_forms.py`, shared with the proposals. Not done: the same for
+       a cooked preparation that lists no water ("légumes cuits (carotte,
+       poireau)"), which the same reasoning would cover; and a mention of the
+       narrowing in the estimate's output.
+     - **A reference just created is linked without a curator only when the
+       proposal is high confidence**: the name and OpenFoodFacts agree on a
+       plain food that is not one of several forms (`link_confident_foods`, called
+       by `_replace_ingredients` after the preparations are made). It stays to
+       review, and its description says so. Everything else waits for the admin
+       action; nothing is ever linked to a reference that already existed.
+     - Confidence is unchanged: its parts (coverage, quality, the shares'
+       uncertainty, agreement) do not read the width of a composition, so an
+       unknown form widens the range of a nutrient and does not lower the score.
+       Whether it should is open.
+     - The references curated before this (oignon, poivron rouge, framboise are
+       linked to the raw food) were not revisited.
    - What follows is the plan as written.
    - Admin worklist: the references still _to review_, most used first
      (`usages`), with their source foods. What a reference was created from

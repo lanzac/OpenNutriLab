@@ -1,6 +1,7 @@
 from decimal import Decimal
 from typing import Any
 
+from django import forms
 from django.contrib import admin
 from django.contrib import messages
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
@@ -359,6 +360,21 @@ class KnownAsAdditiveFilter(admin.SimpleListFilter):
         return queryset
 
 
+class ReferenceIngredientForm(forms.ModelForm):
+    """A default food has to be one the reference draws on."""
+
+    def clean(self) -> dict[str, Any]:
+        cleaned = super().clean() or {}
+        default = cleaned.get("default_food")
+        foods = cleaned.get("source_foods")
+        if default is not None and (foods is None or default not in foods):
+            self.add_error(
+                "default_food",
+                _("The default food must be one of the source foods."),
+            )
+        return cleaned
+
+
 @admin.register(ReferenceIngredient)
 class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
     """
@@ -385,13 +401,15 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
         KnownAsAdditiveFilter,
     )
     search_fields = ("name_fr", "name_en")
-    autocomplete_fields = ("source_foods",)
+    form = ReferenceIngredientForm
+    autocomplete_fields = ("source_foods", "default_food")
     fields = (
         "name_en",
         "name_fr",
         "status",
         "description",
         "source_foods",
+        "default_food",
         "suggested_foods",
         "composition",
     )
@@ -561,15 +579,20 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
             for reference in references:
                 if f"link_{reference.pk}" not in request.POST:
                     continue
-                choice = request.POST.get(f"choice_{reference.pk}", "")
-                food = (
-                    SourceFood.objects.filter(pk=int(choice)).first()
-                    if choice.isdigit()
-                    else None
-                )
-                if food is None:
+                foods = self._chosen_foods(request, reference)
+                if not foods:
                     continue
-                reference.source_foods.add(food)
+                reference.source_foods.add(*foods)
+                # Several foods ticked are forms of one thing: a default gives the
+                # value, or their mean would be no food. If the one proposed was
+                # unticked, the first of those left (the page lists the likeliest
+                # first) takes its place. One food alone needs none.
+                if len(foods) > 1:
+                    default_pk = request.POST.get(f"default_{reference.pk}", "")
+                    reference.default_food = next(
+                        (f for f in foods if str(f.pk) == default_pk), foods[0]
+                    )
+                    reference.save(update_fields=["default_food"])
                 linked += 1
                 if mark_curated and reference.name_en:
                     reference.status = ReferenceIngredient.Status.CURATED
@@ -583,6 +606,30 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
             )
             % {"linked": linked, "curated": curated},
         )
+
+    @staticmethod
+    def _chosen_foods(
+        request: HttpRequest, reference: ReferenceIngredient
+    ) -> list[SourceFood]:
+        """
+        The foods ticked for a reference: the forms of its food, or the one
+        food chosen among the candidates.
+        """
+        ticked = [
+            int(pk)
+            for pk in request.POST.getlist(f"foods_{reference.pk}")
+            if pk.isdigit()
+        ]
+        if ticked:
+            found = SourceFood.objects.in_bulk(ticked)
+            return [found[pk] for pk in dict.fromkeys(ticked) if pk in found]
+        choice = request.POST.get(f"choice_{reference.pk}", "")
+        food = (
+            SourceFood.objects.filter(pk=int(choice)).first()
+            if choice.isdigit()
+            else None
+        )
+        return [food] if food is not None else []
 
     @admin.action(
         description=gettext_lazy("Propose English names for the selected references"),

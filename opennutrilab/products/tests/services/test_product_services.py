@@ -21,10 +21,13 @@ from opennutrilab.products.api.schemas.inbound import ProductCreate
 from opennutrilab.products.api.schemas.inbound import ProductUpdate
 from opennutrilab.products.models import Additive
 from opennutrilab.products.models import Ingredient
+from opennutrilab.products.models import IngredientTaxon
 from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductNutrient
 from opennutrilab.products.models import ReferenceIngredient
+from opennutrilab.products.models import Source
+from opennutrilab.products.models import SourceFood
 from opennutrilab.products.services.product_services import ProductAlreadyExistsError
 from opennutrilab.products.services.product_services import UnknownNutrientError
 from opennutrilab.products.services.product_services import create_product
@@ -165,6 +168,97 @@ def test_an_ingredient_no_reference_has_the_name_of_gets_one_to_review():
         product.ingredients.get(parent=None, reference__isnull=False).reference
         == (references[0])
     )
+
+
+def ciqual_foods(*foods: tuple[str, str, str, str]) -> list[SourceFood]:
+    """CIQUAL foods given as (code, name in French, in English, subgroup)."""
+    ciqual = Source.objects.create(code="ciqual-2025", name="Ciqual", version="2025")
+    return [
+        SourceFood.objects.create(
+            source=ciqual, code=code, name_fr=fr, name_en=en, food_subgroup=subgroup
+        )
+        for code, fr, en, subgroup in foods
+    ]
+
+
+@pytest.mark.django_db
+def test_a_new_reference_is_linked_to_the_food_its_name_and_openfoodfacts_agree_on():
+    [cassis] = ciqual_foods(("13007", "Cassis, cru", "Blackcurrant, raw", "fruits"))
+    IngredientTaxon.objects.create(
+        off_id="en:blackcurrant",
+        name_en="blackcurrant",
+        name_fr="cassis",
+        ciqual_food_code="13007",
+    )
+
+    create_product(create_payload(ingredients=[{"name": "cassis"}]))
+
+    reference = ReferenceIngredient.objects.get()
+    assert list(reference.source_foods.all()) == [cassis]
+    # A curator still reviews it.
+    assert reference.status == ReferenceIngredient.Status.TO_REVIEW
+    assert "Linked to ciqual-2025 13007" in reference.description
+
+
+@pytest.mark.django_db
+def test_a_new_reference_whose_food_comes_in_several_forms_is_left_to_a_curator():
+    ciqual_foods(
+        ("20525", "Haricot rouge, sec", "Red kidney bean, dried", "légumineuses"),
+        (
+            "20503",
+            "Haricot rouge, bouilli/cuit à l'eau",
+            "Red kidney bean, boiled/cooked in water",
+            "légumineuses",
+        ),
+    )
+    IngredientTaxon.objects.create(
+        off_id="en:red-kidney-bean",
+        name_en="red kidney bean",
+        name_fr="haricot rouge",
+        ciqual_food_code="20503",
+    )
+
+    create_product(create_payload(ingredients=[{"name": "haricot rouge"}]))
+
+    assert not ReferenceIngredient.objects.get().source_foods.exists()
+
+
+@pytest.mark.django_db
+def test_a_reference_found_by_its_name_is_not_given_a_food_again():
+    ciqual_foods(("13007", "Cassis, cru", "Blackcurrant, raw", "fruits"))
+    IngredientTaxon.objects.create(
+        off_id="en:blackcurrant",
+        name_en="blackcurrant",
+        name_fr="cassis",
+        ciqual_food_code="13007",
+    )
+    kept = ReferenceIngredient.objects.create(name_en="blackcurrant", name_fr="cassis")
+
+    create_product(create_payload(ingredients=[{"name": "cassis"}]))
+
+    # It was there, not created by this label: a curator may have left it bare.
+    assert not kept.source_foods.exists()
+
+
+@pytest.mark.django_db
+def test_a_reference_that_becomes_a_preparation_is_not_given_a_food():
+    [cassis] = ciqual_foods(("13007", "Cassis, cru", "Blackcurrant, raw", "fruits"))
+    IngredientTaxon.objects.create(
+        off_id="en:blackcurrant",
+        name_en="blackcurrant",
+        name_fr="cassis",
+        ciqual_food_code="13007",
+    )
+
+    create_product(
+        create_payload(
+            ingredients=[{"name": "cassis", "sub_ingredients": [{"name": "sucre"}]}]
+        )
+    )
+
+    preparation = Preparation.objects.get(name_fr="cassis")
+    assert not preparation.source_foods.exists()
+    assert not ReferenceIngredient.objects.filter(source_foods=cassis).exists()
 
 
 @pytest.mark.django_db
