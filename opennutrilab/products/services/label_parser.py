@@ -16,11 +16,18 @@ the ingredients in the parentheses that follow it:
 
 Only what the text says is kept: no name is corrected or guessed. Names come out
 in lower case, without the marks a label adds around them (the asterisk of
-organic ingredients, the capitals of allergens, the word "bio"). The list ends
-where the label's own sentence does, before "Peut contenir...". Labels differ,
-so what cannot be read as a list (a note in parentheses, a heading) is left out
-rather than turned into an ingredient, and a name that is wrong is the curator's
-to see: it makes a reference to review.
+organic ingredients, the capitals of allergens, the word "bio"). The one thing put
+back is the accent that capitals are printed without: "GLUTEN de BLE" is "gluten de
+blé". It is done for the few French words the allergens are written in capitals
+with (_CAPITALS_ACCENTED), and only for a word in capitals: "ble" in lower case is
+what the text says. The list ends where the label's own sentence does, before
+"Peut contenir...". Labels differ, so what cannot be read as a list (a note in
+parentheses, a heading) is left out rather than turned into an ingredient, and a
+name that is wrong is the curator's to see: it makes a reference to review.
+
+A percentage may be written in parentheses right after the name it belongs to, as
+some labels do: "Dattes (38 %)" is "Dattes 38 %". Parentheses that hold nothing
+else are that percentage and no part of the ingredient (see _percent_beside).
 
 A functional class of additives heading a list is not an ingredient either.
 "Acidifiant : acide citrique" and "colorant (E150a)" list additives, and the class
@@ -49,7 +56,7 @@ the parentheses say: "(lait écrémé)" and "(blé, eau)" list parts, and are re
 A text can also have been read badly from the label, by whoever entered it or by
 the software that did: a bracket closed by a parenthesis, a letter taken for a
 digit, the nutrition table or an address caught in the list, a percentage on its
-own (after a comma, or in parentheses of its own). Nothing is done to
+own (after a comma, or in parentheses with no name before them). Nothing is done to
 repair it: guessing what was meant would put invented ingredients in a product.
 read_label says so and reads nothing, and the text is corrected where it comes
 from. Its absence of warnings is no proof either: a word that is missing
@@ -322,6 +329,21 @@ _E_NUMBER = re.compile(
     r"e\s?-?(\d{3,4})(?:\s?([a-z])|([a-z]{1,4}))?\s?(?:\(([ivx]+)\))?",
     re.IGNORECASE,
 )
+# The words of the allergens that a label prints in capitals without their accent,
+# as the lower case word they are. Only those that are French and nothing else:
+# "SESAME", "CACAHUETE" and "CEREALES" are as well English and Spanish words, which
+# have no accent, so they are left as written.
+_CAPITALS_ACCENTED = {
+    "BLE": "blé",
+    "EPEAUTRE": "épeautre",
+    "OEUF": "œuf",
+    "OEUFS": "œufs",
+    "CRUSTACE": "crustacé",
+    "CRUSTACES": "crustacés",
+    "CELERI": "céleri",
+    "BRESIL": "brésil",
+}
+_CAPITAL_WORD = re.compile(r"\b[A-Z]{2,}\b")
 _MARKS = str.maketrans("", "", "*†‡°_")
 _BRACKETS = str.maketrans("[]{}", "()()")
 _MAX_DECIMALS = 2
@@ -472,7 +494,7 @@ def _class_of(heading: str) -> str:
 
 def _parse_items(raw: str) -> list[LabelItem]:
     """What one piece of the list says: an ingredient, or the additives of a class."""
-    head, inner, tail = _split_parenthesis(_without_notes(raw.strip()))
+    head, inner, tail = _split_parenthesis(_percent_beside(_without_notes(raw.strip())))
     if ":" in head:
         title, _colon, after = head.partition(":")
         # "émulsifiants : lécithines (soja)": the heading names it, the rest is in it.
@@ -576,6 +598,28 @@ def _split_parenthesis(raw: str) -> tuple[str, str, str]:
     return raw[:open_at], raw[open_at + 1 : close_at], raw[close_at + 1 :]
 
 
+def _percent_beside(text: str) -> str:
+    """
+    `text` with a percentage that is alone in its parentheses written next to the
+    name before them: "Dattes (38 %)" is "Dattes 38 %", and "Dattes (38 %) (dattes,
+    riz)" is "Dattes 38 % (dattes, riz)", where the parts are read as any are.
+
+    Only when it is plain whose percentage it is: a name before the parentheses,
+    which has no percentage of its own, and none after them. "Dattes 7 % (7 %)"
+    and "(7 %)" are left as they are, for what they are: a percentage with no name.
+    """
+    head, inner, tail = _split_parenthesis(text)
+    if (
+        _BARE_PERCENT.match(inner)
+        and _percentage(inner) is not None
+        and _name(head) is not None
+        and not _PERCENT.search(head)
+        and not _PERCENT.search(tail)
+    ):
+        return f"{head.rstrip()} {inner.strip()}{tail}"
+    return text
+
+
 def _percentage(text: str) -> Decimal | None:
     """The first percentage in `text`, if it can be kept as it is written."""
     match = _PERCENT.search(text)
@@ -598,8 +642,12 @@ def _name(text: str) -> str | None:
     text = " ".join(text.split()).strip(_EDGE)
     while (match := _INTRO.match(text)) is not None:
         text = text[match.end() :].strip()
-    name = text.strip(_EDGE).lower()
+    name = _CAPITAL_WORD.sub(_accent_back, text.strip(_EDGE)).lower()
     return name if any(char.isalpha() for char in name) else None
+
+
+def _accent_back(word: re.Match[str]) -> str:
+    return _CAPITALS_ACCENTED.get(word.group(0), word.group(0))
 
 
 # ----------------------------------------------------------------------------
@@ -631,13 +679,13 @@ def _nameless_percentages(text: str) -> list[str]:
     """
     The places in a list that are a percentage and nothing else: "huile d'olive,
     2,3 %" (a comma between a percentage and its ingredient makes it nobody's) and
-    "dattes (7 %)" (a percentage is written next to the ingredient, not in
-    parentheses of its own). Reading on would lose it, or put it where it is not,
-    without a word.
+    "(7 %)" or "dattes 7 % (7 %)" (a percentage in parentheses is the one of the
+    name before them, if there is one and it has none: see _percent_beside).
+    Reading on would lose it, or put it where it is not, without a word.
     """
     found: list[str] = []
     for raw in _split(text):
-        piece = _without_notes(raw.strip())
+        piece = _percent_beside(_without_notes(raw.strip()))
         if _BARE_PERCENT.match(piece):
             found.append(piece.strip(_EDGE + "()"))
             continue

@@ -256,6 +256,34 @@ def test_a_percentage_after_the_parenthesis_belongs_to_the_ingredient():
     ]
 
 
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("GLUTEN de BLE", ["gluten de blé"]),
+        (
+            "Farine de BLE, GLUTEN de BLE, sel",
+            ["farine de blé", "gluten de blé", "sel"],
+        ),
+        ("FARINE DE BLE, OEUFS, EPEAUTRE", ["farine de blé", "œufs", "épeautre"]),
+        (
+            "CELERI, CRUSTACES, noix du BRESIL",
+            ["céleri", "crustacés", "noix du brésil"],
+        ),
+        # What a label spells with the accent is kept, and so is a word that is not
+        # in capitals: the text says "ble".
+        ("GLUTEN de BLÉ", ["gluten de blé"]),
+        ("gluten de ble", ["gluten de ble"]),
+        # Words that are not French only are left as written.
+        ("SESAME, CEREALES, CACAHUETE", ["sesame", "cereales", "cacahuete"]),
+        ("WHEAT FLOUR, MAIS", ["wheat flour", "mais"]),
+    ],
+)
+def test_capitals_get_back_the_accent_labels_print_them_without(
+    text: str, expected: list[str]
+):
+    assert [i.name for i in parse_label(text)] == expected
+
+
 def test_allergens_and_the_organic_mark_do_not_change_a_name():
     text = "Farine de BLÉ bio 63%, **noisettes**, <b>lait</b> écrémé, _soja_"
 
@@ -359,10 +387,11 @@ def test_a_bracket_closed_by_a_parenthesis_stops_the_reading():
         ("Farine, 5 %, sel", Problem.NAMELESS_PERCENT),
         ("Glucides (sucres, 5 %), sel", Problem.NAMELESS_PERCENT),
         ("Farine; soit 12 %; sel", Problem.NAMELESS_PERCENT),
-        # A percentage is written next to its ingredient, not in parentheses of its own.
-        ("Dattes (7 %), sel", Problem.NAMELESS_PERCENT),
-        ("Farine (min. 12 %), sel", Problem.NAMELESS_PERCENT),
+        # A percentage in parentheses is its name's only when it is plain whose it is.
+        ("Farine, (7 %), sel", Problem.NAMELESS_PERCENT),
         ("Dattes 7 % (7 %), sel", Problem.NAMELESS_PERCENT),
+        ("Dattes (7 %) 8 %, sel", Problem.NAMELESS_PERCENT),
+        ("Dattes (150 %), sel", Problem.NAMELESS_PERCENT),
         ("Farine, a, sel", Problem.SHORT_NAME),
         ("Peut contenir des traces de lait", Problem.NOTHING_READ),
     ],
@@ -394,6 +423,69 @@ PARTS_WITH_PERCENTAGE: list[tuple[str, Any]] = [
 def test_a_name_and_a_percentage_in_parentheses_are_a_part(text: str, first: Any):
     assert tree(parse_label(text))[0] == first
     assert read_label(text).warnings == []
+
+
+# The percentage some labels write in parentheses right after the name: the same
+# as one written next to it.
+ENGLISH_BAR = (
+    "Dates (38%), Peanuts (35%), Chicory fibre (10%), Peanut flour (8%), "
+    "Hazelnuts (5%), Fat-reduced cocoa powder (3%), natural flavouring."
+)
+
+
+def test_a_percentage_in_parentheses_after_the_name_is_the_ingredients():
+    """Product 5060088700112: the reading used to stop on its first percentage."""
+    reading = read_label(ENGLISH_BAR)
+
+    assert tree(reading.items) == [
+        ("dates", "38", []),
+        ("peanuts", "35", []),
+        ("chicory fibre", "10", []),
+        ("peanut flour", "8", []),
+        ("hazelnuts", "5", []),
+        ("fat-reduced cocoa powder", "3", []),
+        ("natural flavouring", None, []),
+    ]
+    assert reading.warnings == []
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Dattes (7 %), sel", ("dattes", "7", [])),
+        ("Farine (min. 12 %), sel", ("farine", "12", [])),
+        ("Sucre (56,3%), sel", ("sucre", "56.3", [])),
+        ("Dattes (bio) (7 %), sel", ("dattes", "7", [])),
+        # What follows names the parts, as it does after a percentage written beside.
+        (
+            "Dattes (7 %) (dattes, farine de riz), sel",
+            ("dattes", "7", [("dattes", None, []), ("farine de riz", None, [])]),
+        ),
+        (
+            "Chocolat (12 %) [cacao, sucre], sel",
+            ("chocolat", "12", [("cacao", None, []), ("sucre", None, [])]),
+        ),
+        # Inside the parts.
+        (
+            "Chocolat (cacao (70 %), sucre), sel",
+            ("chocolat", None, [("cacao", "70", []), ("sucre", None, [])]),
+        ),
+    ],
+)
+def test_a_percentage_in_parentheses_is_read_as_one_written_beside(
+    text: str, expected: Any
+):
+    assert tree(parse_label(text))[0] == expected
+    assert read_label(text).warnings == []
+
+
+def test_a_percentage_in_parentheses_after_a_class_is_the_additives():
+    items = parse_label("Acidifiant : acide citrique (0,5 %), sel")
+
+    assert [(i.name, i.percentage, i.function) for i in items] == [
+        ("acide citrique", D("0.5"), "acid"),
+        ("sel", None, ""),
+    ]
 
 
 @pytest.mark.parametrize(
