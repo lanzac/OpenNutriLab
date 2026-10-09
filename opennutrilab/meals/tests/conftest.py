@@ -3,7 +3,9 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from django.utils import timezone
 
+from opennutrilab.meals.models import Profile
 from opennutrilab.products.models import InventoryItem
 from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Product
@@ -53,3 +55,15 @@ def stock(user: User, *products: Product) -> None:
     """Put products in a user's inventory."""
     for product in products:
         InventoryItem.objects.create(user=user, product=product)
+
+
+def make_profile(user: User) -> Profile:
+    """The profile of the user the plan names: a man of 31, 180 cm and 61 kg."""
+    return Profile.objects.create(
+        user=user,
+        sex="male",
+        birth_year=timezone.localdate().year - 31,
+        height=Decimal(180),
+        weight=Decimal(61),
+        activity_level=Decimal("1.7"),
+    )

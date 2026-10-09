@@ -5,6 +5,7 @@ A meal is made of products from the user's inventory. They are counted in servin
 of the product, which needs a serving (see Product.serving_quantity), or in grams.
 """
 
+from collections.abc import Iterable
 from datetime import date
 from decimal import Decimal
 
@@ -50,6 +51,20 @@ def add_item(  # noqa: PLR0913
             )
     except IntegrityError as e:
         raise AlreadyInMealError(product.pk) from e
+
+
+def replace_day(
+    user: User, day: date, items: Iterable[tuple[str, Product, Decimal, str]]
+) -> None:
+    """
+    Make the meals of a day what `items` say, (kind, product, quantity, unit) each,
+    in place of what they were. All or nothing: an item that cannot be put in a
+    meal leaves the day as it was.
+    """
+    with transaction.atomic():
+        Meal.objects.filter(user=user, date=day).delete()
+        for kind, product, quantity, unit in items:
+            add_item(user, day, kind, product, quantity, unit)
 
 
 def change_item(item: MealItem, quantity: Decimal, unit: str) -> MealItem:

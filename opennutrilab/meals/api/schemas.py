@@ -14,6 +14,7 @@ from opennutrilab.meals.services.day_report import NeedStatus
 from opennutrilab.meals.services.day_report import RatioStatus
 from opennutrilab.meals.services.day_report import Total
 from opennutrilab.meals.services.needs import Kind
+from opennutrilab.meals.services.proposals import Proposal
 from opennutrilab.products.api.schemas.outbound import ServingOut
 from opennutrilab.products.api.schemas.outbound import serving_of
 from opennutrilab.products.models import Nutrient
@@ -23,6 +24,19 @@ class ItemIn(Schema):
     barcode: str
     quantity: Decimal = Field(gt=0, max_digits=7, decimal_places=2)
     unit: Literal["serving", "g"] = "serving"
+
+
+class PlacedItemIn(Schema):
+    """A product in a meal of a day that is put in place of the day's."""
+
+    kind: Literal["breakfast", "lunch", "snack", "dinner"]
+    barcode: str
+    quantity: Decimal = Field(gt=0, max_digits=7, decimal_places=2)
+    unit: Literal["serving", "g"] = "serving"
+
+
+class DayIn(Schema):
+    items: list[PlacedItemIn]
 
 
 class ItemChange(Schema):
@@ -125,6 +139,55 @@ class DayOut(Schema):
     # None without a profile to work them out from.
     needs: list[NeedOut] | None
     ratios: list[RatioOut] | None
+
+
+class ProposedItemOut(Schema):
+    kind: str
+    barcode: str
+    quantity: Decimal
+    unit: str
+
+
+class SkippedOut(Schema):
+    """A product of the inventory the day could not be made of: why, in a code."""
+
+    barcode: str
+    name: str
+    reason: str
+
+
+class ProposalOut(Schema):
+    # "optimal", "time_limit" (the best found when the time was up), "failed", or
+    # "no_candidates".
+    status: str
+    # What the day misses, weighed; lower is closer to the needs.
+    objective: float | None
+    items: list[ProposedItemOut]
+    skipped: list[SkippedOut]
+    # The proposed day as it would be, not saved: items have no id.
+    day: DayOut
+
+
+def proposal_out(proposal: Proposal, report: DayReport) -> ProposalOut:
+    """A proposal, with the report of the day it makes."""
+    return ProposalOut(
+        status=proposal.status,
+        objective=proposal.objective,
+        items=[
+            ProposedItemOut(
+                kind=item.kind,
+                barcode=item.product.pk,
+                quantity=item.quantity,
+                unit=item.unit,
+            )
+            for item in proposal.items
+        ],
+        skipped=[
+            SkippedOut(barcode=found.barcode, name=found.name, reason=found.reason)
+            for found in proposal.skipped
+        ],
+        day=day_out(report),
+    )
 
 
 def day_out(report: DayReport) -> DayOut:

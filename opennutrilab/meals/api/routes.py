@@ -7,16 +7,21 @@ from django.shortcuts import get_object_or_404
 from ninja import Router
 from ninja.errors import HttpError
 
+from opennutrilab.meals.api.schemas import DayIn
 from opennutrilab.meals.api.schemas import DayOut
 from opennutrilab.meals.api.schemas import ItemChange
 from opennutrilab.meals.api.schemas import ItemIn
 from opennutrilab.meals.api.schemas import LimitsIn
 from opennutrilab.meals.api.schemas import LimitsOut
+from opennutrilab.meals.api.schemas import ProposalOut
 from opennutrilab.meals.api.schemas import day_out
+from opennutrilab.meals.api.schemas import proposal_out
 from opennutrilab.meals.models import MealItem
 from opennutrilab.meals.services import limits as limits_services
 from opennutrilab.meals.services import meal_services
+from opennutrilab.meals.services import proposals
 from opennutrilab.meals.services.day_report import day_report
+from opennutrilab.meals.services.day_report import report_of
 from opennutrilab.products.models import Product
 from opennutrilab.users.models import User
 
@@ -85,6 +90,57 @@ def get_day(request: HttpRequest, day: date) -> DayOut:
     that has none yet, once).
     """
     return day_out(day_report(_user(request), day))
+
+
+@router.post(path="/{day}/propose", response=ProposalOut)
+def propose_day(request: HttpRequest, day: date) -> ProposalOut:
+    """
+    The best day from the user's inventory for the needs of their profile, as a
+    proposal: nothing is written, and what is already in the day is not counted.
+
+    It may take some seconds (the solver is given 20 at most), and longer the first
+    time for the products whose estimate was never worked out.
+    """
+    user = _user(request)
+    try:
+        proposal = proposals.propose_day(user)
+    except proposals.NoProfileError as e:
+        raise HttpError(422, "Fill in your profile first.") from e
+    kept: dict[str, list[MealItem]] = {}
+    for item in proposal.items:
+        kept.setdefault(item.kind, []).append(
+            MealItem(product=item.product, quantity=item.quantity, unit=item.unit)
+        )
+    return proposal_out(proposal, report_of(user, day, kept))
+
+
+@router.put(path="/{day}", response=DayOut)
+def replace_day(request: HttpRequest, day: date, data: DayIn) -> DayOut:
+    """
+    Make the meals of a day what the items say, in place of what they were: to take
+    a proposed day. All or nothing.
+    """
+    user = _user(request)
+    found = Product.objects.in_bulk({item.barcode for item in data.items})
+    unknown = sorted({item.barcode for item in data.items} - found.keys())
+    if unknown:
+        raise HttpError(404, f"Unknown products: {', '.join(unknown)}")
+    try:
+        meal_services.replace_day(
+            user,
+            day,
+            [
+                (item.kind, found[item.barcode], item.quantity, item.unit)
+                for item in data.items
+            ],
+        )
+    except meal_services.NotInInventoryError as e:
+        raise HttpError(422, "A product is not in your inventory.") from e
+    except meal_services.NoServingError as e:
+        raise HttpError(422, "A product has no serving: give grams.") from e
+    except meal_services.AlreadyInMealError as e:
+        raise HttpError(409, "A product is twice in the same meal.") from e
+    return day_out(day_report(user, day))
 
 
 @router.post(path="/{day}/{kind}/items", response=DayOut)
