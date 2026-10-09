@@ -20,6 +20,7 @@ from opennutrilab.meals.services.needs import Ratio
 from opennutrilab.meals.services.optimiser import DEFAULT_SPLIT
 from opennutrilab.meals.services.optimiser import KINDS
 from opennutrilab.meals.services.optimiser import Candidate
+from opennutrilab.meals.services.optimiser import Options
 from opennutrilab.meals.services.optimiser import Plan
 from opennutrilab.meals.services.optimiser import Weights
 from opennutrilab.meals.services.optimiser import optimise
@@ -364,3 +365,80 @@ def test_no_day_is_given_when_the_solver_finds_none(monkeypatch: pytest.MonkeyPa
     plan = optimise([OATS], needs_of())
 
     assert plan == Plan("failed", None, [])
+
+
+# ----------------------------------------------------------------------------
+# Foods that are not in the inventory
+# ----------------------------------------------------------------------------
+def new(
+    barcode: str, per_100g: Mapping[str, float], max_grams: float = 50.0
+) -> Candidate:
+    return product(barcode, per_100g, max_grams=max_grams)._replace(new=True)
+
+
+def test_a_new_food_is_taken_when_it_closes_a_need_the_inventory_cannot():
+    flax = new("flax", {"energy": 3700, "alpha_linolenic_acid": 50})
+    candidates = [OATS, flax]
+    wanted = needs_of(need(("alpha_linolenic_acid",), low=EPA_DHA_NEED))
+
+    without = optimise([OATS], wanted)
+    with_new = optimise(candidates, wanted)
+
+    assert "flax" not in {pick.barcode for pick in without.picks}
+    assert (
+        brought(with_new, candidates, "alpha_linolenic_acid") >= EPA_DHA_NEED - EPSILON
+    )
+    assert with_new.objective is not None
+    assert without.objective is not None
+    assert with_new.objective < without.objective
+
+
+def test_a_new_food_that_closes_too_little_is_not_worth_its_price():
+    # It brings a hundredth of the need for 10 g: much less than what it costs.
+    weak = new("weak", {"energy": 1600, "alpha_linolenic_acid": 0.05})
+    candidates = [OATS, weak]
+    wanted = needs_of(need(("alpha_linolenic_acid",), low=EPA_DHA_NEED))
+
+    plan = optimise(candidates, wanted)
+
+    assert "weak" not in {pick.barcode for pick in plan.picks}
+
+
+def test_the_same_food_is_cheaper_when_it_is_in_the_inventory():
+    # A third of the need for a tenth of the price of a new food: the same food is
+    # taken from the inventory, and not as a new one.
+    seeds = {"energy": 1600, "alpha_linolenic_acid": 3.0}
+    wanted = needs_of(need(("alpha_linolenic_acid",), low=EPA_DHA_NEED))
+    owned = product("seeds", seeds, max_grams=50)
+    bought = new("seeds", seeds)
+
+    got = optimise([OATS, owned], wanted)
+    asked = optimise([OATS, bought], wanted)
+
+    assert got.objective is not None
+    assert asked.objective is not None
+    assert got.objective < asked.objective
+
+
+def test_at_most_so_many_new_foods_are_used():
+    foods = [
+        new(f"food{n}", {"energy": 1600, f"nutrient{n}": 50.0}, max_grams=100)
+        for n in range(4)
+    ]
+    wanted = needs_of(*(need((f"nutrient{n}",), low=10.0) for n in range(4)))
+
+    free = optimise([OATS, *foods], wanted)
+    capped = optimise([OATS, *foods], wanted, options=Options(max_new=2))
+
+    used = {pick.barcode for pick in capped.picks} - {"oats"}
+    assert len({p.barcode for p in free.picks} - {"oats"}) == 4  # noqa: PLR2004
+    assert len(used) == 2  # noqa: PLR2004
+
+
+def test_the_foods_of_the_inventory_are_not_counted_in_the_most_new():
+    foods = [new("flax", {"energy": 3700, "alpha_linolenic_acid": 50})]
+    wanted = needs_of(need(("alpha_linolenic_acid",), low=EPA_DHA_NEED))
+
+    plan = optimise([OATS, LENTILS, *foods], wanted, options=Options(max_new=1))
+
+    assert {"oats", "flax"} <= {pick.barcode for pick in plan.picks}

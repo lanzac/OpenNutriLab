@@ -29,9 +29,14 @@ And a small cost for each product used and for each product in each meal, so tha
 day is not made of twenty products or of the same one in four places. The price of
 each is a few hundredths of a missed need.
 
+A candidate can be **new**: a food that is not in the inventory, which a suggestion
+(services.suggestions) would have the user get. It costs more (`Weights.new`, on top)
+and a day may use at most `Options.max_new` of them, so that only the few that close
+the most of what the inventory misses are worth it.
+
 The products are those of the inventory, so the day is as good as they allow: where
 the inventory cannot meet a target the plan says how far it is, and the suggestions
-(a later step) say what could.
+say what could.
 """
 
 import math
@@ -81,6 +86,28 @@ class Weights(NamedTuple):
     # A product used in the day, and a product in a meal.
     food: float = 0.03
     pair: float = 0.01
+    # A food that is not in the inventory, which a suggestion would have the user
+    # get: on top of `food`, so that it is only worth it for a gain of this share of
+    # a need or more.
+    new: float = 0.15
+
+
+class Options(NamedTuple):
+    """How a day is looked for, apart from what it is held to."""
+
+    # How the energy of a day is shared between its meals.
+    split: Mapping[str, float] = DEFAULT_SPLIT
+    # Seconds the solver is given.
+    time_limit: float = 20.0
+    # The most foods that are not in the inventory a day may use; None, any number.
+    max_new: int | None = None
+    # Whether the products of the inventory are counted in whole steps. Without, they
+    # are in any quantity, and a new food is only asked whether it is in the day, in
+    # no meal in particular: not a day to eat, but a much quicker way to see which
+    # new foods are worth having in it.
+    whole_steps: bool = True
+    # How far from the best the solver may stop at, as a share of the cost.
+    gap: float = MIP_GAP
 
 
 class Candidate(NamedTuple):
@@ -99,6 +126,8 @@ class Candidate(NamedTuple):
     max_grams: float
     # The meals it may be in.
     meals: frozenset[str]
+    # Not a product of the inventory: a food a suggestion would have the user get.
+    new: bool = False
 
 
 class Pick(NamedTuple):
@@ -185,15 +214,14 @@ def optimise(
     needs: Needs,
     *,
     weights: Weights = Weights(),  # noqa: B008
-    split: Mapping[str, float] = DEFAULT_SPLIT,
-    time_limit: float = 20.0,
+    options: Options = Options(),  # noqa: B008
 ) -> Plan:
     """The best day from some candidates, for some needs. See the module."""
-    day = _Day(candidates, weights)
+    day = _Day(candidates, weights, options)
     day.add_needs(needs)
-    day.add_split(needs, split)
+    day.add_split(needs, options.split)
     day.add_ratios(needs)
-    status, values, objective = day.model.solve(time_limit, MIP_GAP)
+    status, values, objective = day.model.solve(options.time_limit, options.gap)
     if values is None:
         return Plan("failed", None, [])
     return Plan(status, objective, day.picks(values))
@@ -202,32 +230,71 @@ def optimise(
 class _Day:
     """The programme of a day: what is decided, and what it is held to."""
 
-    def __init__(self, candidates: Iterable[Candidate], weights: Weights) -> None:
+    def __init__(
+        self, candidates: Iterable[Candidate], weights: Weights, options: Options
+    ) -> None:
         self.weights = weights
+        self.options = options
         self.model = _Model()
         self.usable = [c for c in candidates if c.max_grams >= c.step_grams > 0]
         # The number of steps of a product in a meal, by (product, meal).
         self.steps: dict[tuple[int, str], int] = {}
+        # Whether each new food is used in the day.
+        self.new_used: list[int] = []
         for number, candidate in enumerate(self.usable):
             self._add_product(number, candidate)
+        if options.max_new is not None and self.new_used:
+            self.model.row(dict.fromkeys(self.new_used, 1.0), high=options.max_new)
+
+    def _add_loose(self, number: int, candidate: Candidate) -> None:
+        """
+        A product in any quantity in each meal it may be in, and whether it is in the
+        day at all, which is all that is asked of a new food (a whole number only for
+        those): what a quick look needs, with no choice of a meal for each.
+        """
+        model, weights = self.model, self.weights
+        most = candidate.max_grams / candidate.step_grams
+        in_meals = [
+            (kind, model.var(upper=most)) for kind in KINDS if kind in candidate.meals
+        ]
+        if not in_meals:
+            return
+        cost = weights.food + (weights.new if candidate.new else 0.0)
+        used = model.var(upper=1, cost=cost, integer=candidate.new)
+        if candidate.new:
+            self.new_used.append(used)
+        model.row({**{x: 1.0 for _kind, x in in_meals}, used: -most}, high=0)
+        for kind, x in in_meals:
+            self.steps[number, kind] = x
 
     def _add_product(self, number: int, candidate: Candidate) -> None:
         """A whole number of steps of a product in each meal it may be in."""
+        if not self.options.whole_steps:
+            self._add_loose(number, candidate)
+            return
         model, weights = self.model, self.weights
         most = math.floor(candidate.max_grams / candidate.step_grams + 1e-9)
         in_meals: list[int] = []
         for kind in KINDS:
             if kind not in candidate.meals:
                 continue
-            x = model.var(upper=most, integer=True)
+            # A new food is an order of magnitude, not a count of steps: its quantity
+            # is a number (the page rounds it), which a solver finds far faster.
+            x = model.var(upper=most, integer=not candidate.new)
             there = model.var(upper=1, cost=weights.pair, integer=True)
             model.row({x: 1, there: -most}, high=0)
             self.steps[number, kind] = x
             in_meals.append(there)
         if not in_meals:
             return
-        used = model.var(upper=1, cost=weights.food, integer=True)
-        model.row({**dict.fromkeys(in_meals, 1.0), used: -len(in_meals)}, high=0)
+        cost = weights.food + (weights.new if candidate.new else 0.0)
+        used = model.var(upper=1, cost=cost, integer=True)
+        if candidate.new:
+            self.new_used.append(used)
+            # In one meal: it is to be got and eaten, not spread.
+            model.row({**dict.fromkeys(in_meals, 1.0), used: -1.0}, high=0)
+        else:
+            model.row({**dict.fromkeys(in_meals, 1.0), used: -len(in_meals)}, high=0)
         # The most of it in a day.
         in_day = {x: 1.0 for (n, _kind), x in self.steps.items() if n == number}
         model.row(in_day, high=most)
@@ -291,7 +358,7 @@ class _Day:
         for ratio in needs.ratios:
             numerator = self.terms(ratio.numerator)
             denominator = self.terms(ratio.denominator)
-            scale = _reference(ratio.denominator, needs) or 1.0
+            scale = reference_amount(ratio.denominator, needs) or 1.0
             weight = (
                 self.weights.target if ratio.kind == Kind.TARGET else self.weights.ratio
             )
@@ -338,7 +405,7 @@ def _difference(
     return dict(found)
 
 
-def _reference(terms: Mapping[str, Weight], needs: Needs) -> float:
+def reference_amount(terms: Mapping[str, Weight], needs: Needs) -> float:
     """
     What a ratio's denominator is at the needs, which a violation of the ratio is
     taken over: the lower end of the need of each nutrient in it (see _need_of).

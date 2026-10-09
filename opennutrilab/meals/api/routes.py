@@ -14,12 +14,15 @@ from opennutrilab.meals.api.schemas import ItemIn
 from opennutrilab.meals.api.schemas import LimitsIn
 from opennutrilab.meals.api.schemas import LimitsOut
 from opennutrilab.meals.api.schemas import ProposalOut
+from opennutrilab.meals.api.schemas import SuggestionsOut
 from opennutrilab.meals.api.schemas import day_out
 from opennutrilab.meals.api.schemas import proposal_out
+from opennutrilab.meals.api.schemas import suggestions_out
 from opennutrilab.meals.models import MealItem
 from opennutrilab.meals.services import limits as limits_services
 from opennutrilab.meals.services import meal_services
 from opennutrilab.meals.services import proposals
+from opennutrilab.meals.services import suggestions
 from opennutrilab.meals.services.day_report import day_report
 from opennutrilab.meals.services.day_report import report_of
 from opennutrilab.products.models import Product
@@ -112,6 +115,22 @@ def propose_day(request: HttpRequest, day: date) -> ProposalOut:
             MealItem(product=item.product, quantity=item.quantity, unit=item.unit)
         )
     return proposal_out(proposal, report_of(user, day, kept))
+
+
+@router.post(path="/{day}/suggest", response=SuggestionsOut)
+def suggest_foods(request: HttpRequest, day: date) -> SuggestionsOut:
+    """
+    What to get for the inventory to meet the needs: foods of the CIQUAL table, at
+    most a few, that close what the best day from the inventory misses, with how much
+    of each and where, and the day they make. Nothing is written.
+
+    It takes about ten seconds: the foods are chosen, then the day is worked out.
+    """
+    try:
+        found = suggestions.suggest_foods(_user(request), day)
+    except proposals.NoProfileError as e:
+        raise HttpError(422, "Fill in your profile first.") from e
+    return suggestions_out(found)
 
 
 @router.put(path="/{day}", response=DayOut)

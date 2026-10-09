@@ -288,7 +288,7 @@ def test_servings_of_a_product_that_lost_its_serving_are_left_out(
     assert report.mass == D(0)
     assert report.totals == {}
     # The item is still there to be seen, and to be put right.
-    assert [i.pk for i in report.meals[0].items] == [item.pk]
+    assert [i.id for i in report.meals[0].items] == [item.pk]
 
 
 def test_without_a_profile_there_are_no_needs(user: User, catalogue: None):

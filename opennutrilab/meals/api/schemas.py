@@ -8,13 +8,17 @@ from typing import Literal
 from ninja import Field
 from ninja import Schema
 
+from opennutrilab.meals.models import Meal
+from opennutrilab.meals.models import MealItem
 from opennutrilab.meals.services.day_report import DayReport
+from opennutrilab.meals.services.day_report import GenericItem
 from opennutrilab.meals.services.day_report import MealReport
 from opennutrilab.meals.services.day_report import NeedStatus
 from opennutrilab.meals.services.day_report import RatioStatus
 from opennutrilab.meals.services.day_report import Total
 from opennutrilab.meals.services.needs import Kind
 from opennutrilab.meals.services.proposals import Proposal
+from opennutrilab.meals.services.suggestions import Suggestions
 from opennutrilab.products.api.schemas.outbound import ServingOut
 from opennutrilab.products.api.schemas.outbound import serving_of
 from opennutrilab.products.models import Nutrient
@@ -86,6 +90,10 @@ class MealItemOut(Schema):
     # None for servings of a product that has no serving any more.
     grams: Decimal | None
     serving: ServingOut | None
+    # A food of a table that a suggestion names, and not a product: it has no serving,
+    # and its sheet in the table is at `url`.
+    generic: bool = False
+    url: str = ""
 
 
 class MealOut(Schema):
@@ -139,6 +147,84 @@ class DayOut(Schema):
     # None without a profile to work them out from.
     needs: list[NeedOut] | None
     ratios: list[RatioOut] | None
+
+
+class HelpOut(Schema):
+    """What a suggested food closes of something the day misses."""
+
+    name: str
+    unit: str
+    amount: Decimal
+    # The share of what the day should bring that this food brings: 1 is all of it.
+    share: Decimal
+    # For a ratio, the nutrients that are raised to close it.
+    raised: str
+
+
+class SuggestedMealOut(Schema):
+    kind: str
+    label: str
+    grams: Decimal
+
+
+class SuggestedFoodOut(Schema):
+    code: str
+    name: str
+    group: str
+    url: str
+    grams: Decimal
+    meals: list[SuggestedMealOut]
+    helps: list[HelpOut]
+
+
+class SuggestionsOut(Schema):
+    # "optimal", "time_limit", "failed", "no_gaps" (the inventory misses nothing),
+    # "no_foods" or "no_suggestion" (none is worth its price).
+    status: str
+    # How many of the `total` needs and ratios the day misses, from the inventory
+    # alone and with the suggested foods.
+    missed_before: int
+    missed_after: int
+    total: int
+    foods: list[SuggestedFoodOut]
+    # The day with the suggested foods, which are items that are not products.
+    day: DayOut
+
+
+def suggestions_out(found: Suggestions) -> SuggestionsOut:
+    """Suggestions, with the report of the day they make."""
+    labels = {str(value): str(label) for value, label in Meal.Kind.choices}
+    return SuggestionsOut(
+        status=found.status,
+        missed_before=found.missed_before,
+        missed_after=found.missed_after,
+        total=found.total,
+        foods=[
+            SuggestedFoodOut(
+                code=item.food.code,
+                name=item.food.name,
+                group=item.food.group,
+                url=item.food.url,
+                grams=item.grams,
+                meals=[
+                    SuggestedMealOut(kind=kind, label=labels[kind], grams=grams)
+                    for kind, grams in item.picks
+                ],
+                helps=[
+                    HelpOut(
+                        name=h.name,
+                        unit=h.unit,
+                        amount=h.amount,
+                        share=h.share,
+                        raised=h.raised,
+                    )
+                    for h in item.helps
+                ],
+            )
+            for item in found.foods
+        ],
+        day=day_out(found.report),
+    )
 
 
 class ProposedItemOut(Schema):
@@ -238,7 +324,11 @@ def _meal(meal: MealReport) -> MealOut:
                 quantity=item.quantity,
                 unit=item.unit,
                 grams=item.grams,
-                serving=serving_of(item.product),
+                serving=(
+                    serving_of(item.product) if isinstance(item, MealItem) else None
+                ),
+                generic=isinstance(item, GenericItem),
+                url=item.food.url if isinstance(item, GenericItem) else "",
             )
             for item in meal.items
         ],

@@ -10,6 +10,7 @@ and is only proposed: nothing is written until the user takes it (see
 meal_services.replace_day).
 """
 
+from collections.abc import Mapping
 from decimal import Decimal
 from typing import NamedTuple
 
@@ -21,6 +22,8 @@ from opennutrilab.meals.services.limits import limits_of
 from opennutrilab.meals.services.needs import daily_needs
 from opennutrilab.meals.services.optimiser import KINDS
 from opennutrilab.meals.services.optimiser import Candidate
+from opennutrilab.meals.services.optimiser import Options
+from opennutrilab.meals.services.optimiser import Plan
 from opennutrilab.meals.services.optimiser import optimise
 from opennutrilab.products.models import InventoryItem
 from opennutrilab.products.models import Product
@@ -105,24 +108,27 @@ def candidate_of(
     )
 
 
-def propose_day(user: User, *, time_limit: float = 20.0) -> Proposal:
-    """
-    The best day from the user's inventory for the needs of their profile.
+class Inventory(NamedTuple):
+    """The products of a user's inventory, as the optimiser counts them."""
 
-    The estimate of each product of the inventory is worked out first where it was
-    never (about a second each), which `refresh_estimates` does ahead of time.
+    products: dict[str, Product]
+    candidates: list[Candidate]
+    skipped: list[Skipped]
+
+
+def load_inventory(user: User) -> Inventory:
     """
-    profile = Profile.objects.filter(user=user).first()
-    if profile is None:
-        raise NoProfileError(user.pk)
-    needs = daily_needs(profile)
+    The products of the user's inventory, and those of them a day can be made of.
+
+    The estimate of each is worked out first where it never was (about a second
+    each), which `refresh_estimates` does ahead of time.
+    """
     products = [
         item.product
         for item in InventoryItem.objects.filter(user=user).select_related("product")
     ]
     composition = compositions(products)
     limits = limits_of(user)
-
     candidates: list[Candidate] = []
     skipped: list[Skipped] = []
     for product in products:
@@ -133,18 +139,37 @@ def propose_day(user: User, *, time_limit: float = 20.0) -> Proposal:
             skipped.append(Skipped(product.pk, product.name, NO_ENERGY))
         else:
             candidates.append(found)
-    if not candidates:
-        return Proposal("no_candidates", None, [], skipped)
+    return Inventory({p.pk: p for p in products}, candidates, skipped)
 
-    plan = optimise(candidates, needs, time_limit=time_limit)
-    by_barcode = {product.pk: product for product in products}
-    items = [
+
+def items_of(plan: Plan, products: Mapping[str, Product]) -> list[ProposedItem]:
+    """The picks of a plan as items of meals, in the quantity they are counted in."""
+    return [
         ProposedItem(
             kind=pick.kind,
-            product=by_barcode[pick.barcode],
+            product=products[pick.barcode],
             quantity=Decimal(str(round(pick.quantity, 2))),
             unit=pick.unit,
         )
         for pick in plan.picks
+        if pick.barcode in products
     ]
-    return Proposal(plan.status, plan.objective, items, skipped)
+
+
+def propose_day(user: User, *, time_limit: float = 20.0) -> Proposal:
+    """The best day from the user's inventory for the needs of their profile."""
+    profile = Profile.objects.filter(user=user).first()
+    if profile is None:
+        raise NoProfileError(user.pk)
+    needs = daily_needs(profile)
+    inventory = load_inventory(user)
+    if not inventory.candidates:
+        return Proposal("no_candidates", None, [], inventory.skipped)
+
+    plan = optimise(inventory.candidates, needs, options=Options(time_limit=time_limit))
+    return Proposal(
+        plan.status,
+        plan.objective,
+        items_of(plan, inventory.products),
+        inventory.skipped,
+    )

@@ -94,10 +94,48 @@ class RatioStatus(NamedTuple):
     verdict: Verdict
 
 
+class GenericFood(NamedTuple):
+    """
+    A food of a table that is no product of the inventory, as a suggestion names it:
+    "huile de lin", not a brand. It has no serving and is counted in grams.
+    """
+
+    code: str
+    name: str
+    group: str
+    url: str
+
+    @property
+    def pk(self) -> str:
+        """The key it goes by where a product goes by its barcode."""
+        return f"ciqual:{self.code}"
+
+
+class GenericItem(NamedTuple):
+    """Some grams of a generic food in a meal: an item that is not saved."""
+
+    food: GenericFood
+    quantity: Decimal
+    id: None = None
+    unit: str = "g"
+
+    @property
+    def product(self) -> GenericFood:
+        return self.food
+
+    @property
+    def product_id(self) -> str:
+        return self.food.pk
+
+    @property
+    def grams(self) -> Decimal:
+        return self.quantity
+
+
 class MealReport(NamedTuple):
     kind: str
     label: str
-    items: list[MealItem]
+    items: list[MealItem | GenericItem]
     # The grams of the items that have a mass; an item of servings of a product that
     # has none is left out of every total.
     mass: Decimal
@@ -268,18 +306,27 @@ def day_report(user: User, day: date) -> DayReport:
 
 
 def report_of(
-    user: User, day: date, items: Mapping[str, Sequence[MealItem]]
+    user: User,
+    day: date,
+    items: Mapping[str, Sequence[MealItem | GenericItem]],
+    foods: Mapping[str, Mapping[str, Amount]] | None = None,
 ) -> DayReport:
     """
     The report of a day made of `items`, by kind of meal. They need not be saved:
     a day that is only proposed (services.proposals) is reported the same way.
+
+    `foods` are the compositions of the generic foods among the items, by their key
+    (GenericFood.pk): they are no product, so no estimate is kept for them.
     """
     products = {
-        item.product_id: item.product for found in items.values() for item in found
+        item.product_id: item.product
+        for found in items.values()
+        for item in found
+        if isinstance(item, MealItem)
     }
-    composition = compositions(products.values())
+    composition = {**compositions(products.values()), **(foods or {})}
 
-    def portions(found: Sequence[MealItem]) -> list[Portion]:
+    def portions(found: Sequence[MealItem | GenericItem]) -> list[Portion]:
         return [
             Portion(item.grams, composition[item.product_id])
             for item in found

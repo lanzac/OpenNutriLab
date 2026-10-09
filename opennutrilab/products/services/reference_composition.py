@@ -217,6 +217,16 @@ def _food_measures(
     return measures
 
 
+def food_composition(
+    rows: Sequence[SourceFoodNutrient], derived: Iterable[Nutrient]
+) -> dict[str, Measure]:
+    """
+    What one food says by itself, by nutrient code: `rows` are all its values, and
+    the nutrients the derivations give are added where its own values allow.
+    """
+    return _food_measures(rows, derived)
+
+
 def measure_of(row: SourceFoodNutrient) -> Measure | None:
     """What one value of a food says, or None when it was not measured."""
     if row.qualifier == Qualifier.TRACES.value:
