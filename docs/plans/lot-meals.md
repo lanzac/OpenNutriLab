@@ -328,9 +328,63 @@ the others are recommendations they did not object to. Work goes on the branch
        own energy (within 5 %, they differ by as much).
    - 74 tests in the app and 25 on the page (Vitest); checked in Chromium on the
      development products, in French, with no console error.
-7. **The optimiser** (decision 5): the service, its endpoint, a "propose a day"
+7. **The optimiser** (done) (decision 5): the service, its endpoint, a "propose a day"
    button. Tested on small made-up cases whose optimum is known, then on the
    development inventory.
+   - `services/optimiser.py`: a mixed-integer linear programme solved by HiGHS
+     through `scipy.optimize.milp`. For each product and each meal it may be in, a
+     whole number of **steps**: half a serving for a product that has one, 10 g for
+     one that has not. The amounts are the points of the products' compositions
+     (the label where it declares, the estimate for the rest: step 3).
+   - **Every target is soft**, so that there is always an answer. A lower end is
+     `amount / low + shortfall >= 1`, an upper end `amount / high - excess <= 1`:
+     a shortfall or an excess is the share of the need that is missed, whatever the
+     nutrient's unit, and costs its weight. Weights: **energy 10** (a day of 1,000
+     kcal that meets every vitamin is not a day), **need 1**, **ANSES' ratios 1**,
+     **the user's own ratios 3**, the energy of each meal 1.
+   - The energy of the day is held to the person's, within 5 %; the energy of each
+     meal near its share (25, 35, 10 and 30 %) **within 25 %**.
+   - A ratio is linear (`numerator - high x denominator <= 0` and
+     `numerator - low x denominator >= 0`) and its violation is taken over what the
+     denominator is at the need (EPA is half of the need for EPA + DHA, omega-6 is
+     linoleic acid's), so that a ratio costs the same whatever its unit.
+   - **A ratio can be kept by taking none of either**: DHA:EPA is 1:1 for 0 g of each.
+     What stops it is the need for EPA and DHA, and the weights say which gives way
+     (tested both ways: the ratio weighed little, the need is met at 2:1; weighed
+     much, no fish oil at all).
+   - A small cost for each product used (0.03) and for each product in each meal
+     (0.01), so that a day is not twenty products or the same one in four places.
+     The solver gets 20 s and stops within 0.5 % of the best.
+   - **Limits per product** (the fields step 4 left to this one): the meals a product
+     may be in and the most of it a day, in servings or in grams, in `ItemLimits`
+     (meals 0003, in the `meals` app and not on `InventoryItem`, as `meals` depends
+     on `products` and not the other way round). Without them a product may be in any
+     meal, up to 6 servings and never more than 500 g.
+   - `services/proposals.py` turns the inventory into candidates (a product with no
+     energy value is left out and named), and the API gives `POST
+/api/v1/meals/{day}/propose`, which **writes nothing** and answers with the day
+     it would make as a report (items with no id), and `PUT /api/v1/meals/{day}`,
+     which puts a list of items in place of the day's meals, all or nothing. `GET`
+     and `PUT /api/v1/meals/limits/` serve and set the limits.
+   - The page: a "Proposer un jour" button, a preview (the four meals read only and
+     the day's table), "Utiliser ce jour" (asking first when the day has something in
+     it) or "Fermer", and, under the day, the limits of each product. A proposal is
+     dropped when the day changes.
+   - **On the development inventory** (5 products, bars only at the snack and at most
+     2 servings): solved to optimality in 0.04 s, 2,595 kcal (2,518 to 2,783), proteins,
+     carbohydrates, fibre and sugars within their ends, and the misses the inventory
+     cannot fix: EPA and DHA (0.01 g of 0.5), most vitamins, calcium, iodine, selenium,
+     omega-3 over omega-6 at 0.23 (target 1), sodium a little above 2,300 mg, DHA over
+     EPA at 1.7. **These are what step 8 is to suggest**.
+   - Known limits: the plan ignores what is already in the day; it is solved in the
+     request (20 s at most), which will want a background task if the inventory grows;
+     it has no idea of a meal (the vegetarian balls came out at breakfast), which the
+     limits are for; the amounts are the estimate's points, so a day can differ from
+     its report by the intervals it shows; a product with no energy value is left out.
+   - 21 tests of the optimiser (known optima: a need only one product can meet, a
+     limit, a cap, the meals a product may be in, steps in servings, the ratios both
+     ways, determinism, what the solver may answer), 17 on the proposals and the API,
+     13 on the limits; 16 on the page, 3 mutations of its behaviour checked to fail.
 8. **Suggestions** (decision 6).
 
 ## Out of scope
