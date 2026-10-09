@@ -3,6 +3,16 @@
 Planned changes that are decided but not started, and why. Remove an entry
 once it is done.
 
+## Meals, and the best day from one's inventory
+
+Each product gets a serving (a slice of bread, a bar), each user an inventory and a
+profile, and a new page makes up the meals of a day with what each meal and the day
+bring against the person's needs (the ANSES references). In the end, a tool works
+out the best day from the inventory, with two targets of the user's own, DHA:EPA 1:1
+and omega-3:omega-6 1:1, and suggests foods when the inventory cannot reach them.
+Decided with the user on 2026-10-09; the plan and its steps are in
+`docs/plans/lot-meals.md`.
+
 ## Estimate a product's nutrients: what is left
 
 The core feature is built: a product's vitamins (and minerals, fatty acids...)
