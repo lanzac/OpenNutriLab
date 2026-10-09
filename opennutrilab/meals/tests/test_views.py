@@ -160,6 +160,12 @@ def test_the_labels_of_the_meals_page_are_translated_by_the_server(
     assert labels["useDay"] == "Utiliser ce jour"
     assert labels["proposal_time_limit"].startswith("Le temps est écoulé")
     assert labels["save"] == "Sauvegarder"
+    assert labels["suggestFoods"] == "Suggérer des aliments"
+    assert labels["suggestionsTitle"] == "Aliments à se procurer"
+    # The figures are put in by the page, and the text keeps where they go.
+    assert "%(after)s" in labels["suggestion_optimal"]
+    assert "%(percent)s" in labels["ofNeed"]
+    assert labels["coversNeed"] == "couvre le besoin"
 
 
 @pytest.mark.django_db

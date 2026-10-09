@@ -248,4 +248,39 @@ def meals_labels() -> dict[str, str]:
         "product": _("Product"),
         "save": _("Save"),
         "saved": _("Saved"),
+        "suggestFoods": _("Suggest foods"),
+        "suggesting": _("Looking for foods…"),
+        "suggestError": _("No food could be suggested."),
+        "suggestionsTitle": _("Foods to get"),
+        # %(before)s, %(after)s and %(total)s are put in client-side.
+        "suggestion_optimal": _(
+            "With these foods, %(after)s of the %(total)s needs and ratios are not "
+            "met, against %(before)s without them."
+        ),
+        "suggestion_time_limit": _(
+            "The time ran out: with the best foods found, %(after)s of the "
+            "%(total)s needs and ratios are not met, against %(before)s without."
+        ),
+        "suggestion_failed": _("No day could be worked out."),
+        "suggestion_no_gaps": _(
+            "Your inventory misses nothing: there is nothing to suggest."
+        ),
+        "suggestion_no_foods": _(
+            "No food of the table would close what your inventory misses."
+        ),
+        "suggestion_no_suggestion": _(
+            "No food is worth getting for what your inventory misses."
+        ),
+        "suggestionCaution": _(
+            "A suggestion is worked out from composition alone. It takes no account "
+            "of contaminants (mercury in some fish), of too much of one thing "
+            "(vitamin A in liver), of cooking or of taste: check it before acting on "
+            "it. It is a kind of food: the product that is that food is for you to "
+            "find."
+        ),
+        "suggestedDay": _("See the day with these foods"),
+        "suggestedFood": _("suggested"),
+        "coversNeed": _("covers the need"),
+        # %(percent)s is put in client-side, with its percent sign.
+        "ofNeed": _("%(percent)s of the need"),
     }

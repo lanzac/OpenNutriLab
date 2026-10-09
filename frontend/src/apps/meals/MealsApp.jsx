@@ -8,12 +8,14 @@ import {
   proposeDay,
   removeItem,
   replaceDay,
+  suggestFoods,
 } from './api/client.js';
 import { DaySummary } from './DaySummary.jsx';
 import { shiftDay } from './format.js';
 import { LimitsEditor } from './LimitsEditor.jsx';
 import { MealCard } from './MealCard.jsx';
 import { ProposalPanel } from './ProposalPanel.jsx';
+import { SuggestionsPanel } from './SuggestionsPanel.jsx';
 
 /**
  * The meals of a day, with what each brings and the day against the user's
@@ -41,6 +43,9 @@ export function MealsApp({
   // A day proposed, not saved, and whether one is being looked for.
   const [proposal, setProposal] = useState(null);
   const [proposing, setProposing] = useState(false);
+  // Foods to get for the inventory, and whether they are being looked for.
+  const [suggestions, setSuggestions] = useState(null);
+  const [suggesting, setSuggesting] = useState(false);
   // The day asked for last: an answer for another is not shown.
   const current = useRef(day);
 
@@ -50,6 +55,7 @@ export function MealsApp({
     setReport(null);
     setError(null);
     setProposal(null);
+    setSuggestions(null);
     fetchDay(day)
       .then((data) => {
         if (!cancelled) setReport(data);
@@ -108,6 +114,21 @@ export function MealsApp({
       .finally(() => setProposing(false));
   };
 
+  const suggest = () => {
+    setError(null);
+    setSuggestions(null);
+    setSuggesting(true);
+    suggestFoods(day, csrfToken)
+      .then((data) => {
+        if (data.day.day === current.current) setSuggestions(data);
+      })
+      .catch((err) => {
+        console.error(err);
+        setError(labels.suggestError);
+      })
+      .finally(() => setSuggesting(false));
+  };
+
   const useProposal = () => {
     // What is in the day goes: the user is asked first.
     const filled = report.meals.some((meal) => meal.items.length > 0);
@@ -119,6 +140,7 @@ export function MealsApp({
   };
 
   const canPropose = report !== null && report.needs !== null && !proposing;
+  const canSuggest = report !== null && report.needs !== null && !suggesting;
 
   return (
     <div>
@@ -166,6 +188,18 @@ export function MealsApp({
           <i className="fa-solid fa-wand-magic-sparkles" />{' '}
           {proposing ? labels.proposing : labels.proposeDay}
         </button>
+        <button
+          type="button"
+          className="btn btn-outline-primary"
+          disabled={!canSuggest}
+          title={
+            report?.needs === null ? labels.proposeNeedsProfile : undefined
+          }
+          onClick={suggest}
+        >
+          <i className="fa-solid fa-basket-shopping" />{' '}
+          {suggesting ? labels.suggesting : labels.suggestFoods}
+        </button>
       </div>
 
       {error && (
@@ -183,6 +217,15 @@ export function MealsApp({
               {labels.emptyInventory}{' '}
               <a href={inventoryUrl}>{labels.goInventory}</a>
             </p>
+          )}
+          {suggestions && (
+            <SuggestionsPanel
+              suggestions={suggestions}
+              labels={labels}
+              languageCode={languageCode}
+              needsUrl={needsUrl}
+              onClose={() => setSuggestions(null)}
+            />
           )}
           {proposal && (
             <ProposalPanel

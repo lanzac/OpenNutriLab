@@ -72,3 +72,8 @@ export const setLimits = (barcode, limits, csrfToken) =>
     body: limits,
     csrfToken,
   });
+
+// What to get for the inventory to meet the needs: foods of the CIQUAL table, with
+// the day they make. Nothing is written.
+export const suggestFoods = (day, csrfToken) =>
+  request(`${MEALS_API_BASE}${day}/suggest`, { method: 'POST', csrfToken });

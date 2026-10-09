@@ -1165,6 +1165,51 @@ msgstr "Produit"
 msgid "Saved"
 msgstr "Enregistré"
 
+msgid "Suggest foods"
+msgstr "Suggérer des aliments"
+
+msgid "Looking for foods…"
+msgstr "Recherche d'aliments…"
+
+msgid "No food could be suggested."
+msgstr "Aucun aliment n'a pu être suggéré."
+
+msgid "Foods to get"
+msgstr "Aliments à se procurer"
+
+#, python-format
+msgid "With these foods, %(after)s of the %(total)s needs and ratios are not met, against %(before)s without them."
+msgstr "Avec ces aliments, %(after)s des %(total)s besoins et rapports ne sont pas couverts, contre %(before)s sans eux."
+
+#, python-format
+msgid "The time ran out: with the best foods found, %(after)s of the %(total)s needs and ratios are not met, against %(before)s without."
+msgstr "Le temps est écoulé : avec les meilleurs aliments trouvés, %(after)s des %(total)s besoins et rapports ne sont pas couverts, contre %(before)s sans."
+
+msgid "Your inventory misses nothing: there is nothing to suggest."
+msgstr "Votre inventaire ne manque de rien : il n'y a rien à suggérer."
+
+msgid "No food of the table would close what your inventory misses."
+msgstr "Aucun aliment de la table ne comblerait ce que votre inventaire ne couvre pas."
+
+msgid "No food is worth getting for what your inventory misses."
+msgstr "Aucun aliment ne vaut d'être acheté pour ce que votre inventaire ne couvre pas."
+
+msgid "A suggestion is worked out from composition alone. It takes no account of contaminants (mercury in some fish), of too much of one thing (vitamin A in liver), of cooking or of taste: check it before acting on it. It is a kind of food: the product that is that food is for you to find."
+msgstr "Une suggestion ne se fonde que sur la composition. Elle ne tient compte ni des contaminants (le mercure de certains poissons), ni de l'excès d'une chose (la vitamine A du foie), ni de la cuisson, ni du goût : contrôlez-la avant d'agir. C'est une sorte d'aliment : le produit qui en est un, c'est à vous de le trouver."
+
+msgid "See the day with these foods"
+msgstr "Voir la journée avec ces aliments"
+
+msgid "suggested"
+msgstr "suggéré"
+
+msgid "covers the need"
+msgstr "couvre le besoin"
+
+#, python-format
+msgid "%(percent)s of the need"
+msgstr "%(percent)s du besoin"
+
 #~ msgid "Fat"
 #~ msgstr "Matières grasses"
 

@@ -291,9 +291,10 @@ describe('proposing a day', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Jour suivant' }));
 
-    await waitFor(() =>
-      expect(screen.queryByRole('region', { name: 'Jour proposé' })).toBeNull(),
-    );
+    // Once the next day is shown: while it loads, nothing is shown anyway.
+    expect(await screen.findByLabelText('Jour')).toHaveValue('2026-10-10');
+    await screen.findByRole('region', { name: 'Déjeuner' });
+    expect(screen.queryByRole('region', { name: 'Jour proposé' })).toBeNull();
   });
 });
 

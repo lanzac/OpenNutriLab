@@ -98,7 +98,22 @@ function ReadOnlyRow({ item, labels, languageCode }) {
       : `${Number(item.quantity)} g`;
   return (
     <li className="list-group-item d-flex justify-content-between gap-2">
-      <span>{item.name}</span>
+      <span>
+        {item.name}
+        {item.generic && (
+          <>
+            {' '}
+            <a
+              className="badge text-bg-info text-decoration-none"
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {labels.suggestedFood}
+            </a>
+          </>
+        )}
+      </span>
       <span className="text-nowrap text-body-secondary">
         {serving}
         {item.unit === 'serving' && item.grams !== null && (

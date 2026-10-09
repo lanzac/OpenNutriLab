@@ -1,5 +1,4 @@
-import { DaySummary } from './DaySummary.jsx';
-import { MealCard } from './MealCard.jsx';
+import { DayPreview } from './DayPreview.jsx';
 
 /**
  * A day proposed from the inventory, as it would be: the meals, and the day against
@@ -41,22 +40,8 @@ export function ProposalPanel({
         )}
         {found && (
           <>
-            <div className="row g-3">
-              {day.meals.map((meal) => (
-                <div key={meal.kind} className="col-lg-6">
-                  <MealCard
-                    meal={meal}
-                    nutrients={day.nutrients}
-                    inventory={[]}
-                    labels={labels}
-                    languageCode={languageCode}
-                    readOnly
-                  />
-                </div>
-              ))}
-            </div>
-            <DaySummary
-              report={day}
+            <DayPreview
+              day={day}
               labels={labels}
               languageCode={languageCode}
               needsUrl={needsUrl}

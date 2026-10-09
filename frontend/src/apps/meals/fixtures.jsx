@@ -63,6 +63,24 @@ export const labels = {
   product: 'Produit',
   save: 'Enregistrer',
   saved: 'Enregistré',
+  suggestFoods: 'Suggérer des aliments',
+  suggesting: 'Recherche d’aliments…',
+  suggestError: 'Aucun aliment n’a pu être suggéré.',
+  suggestionsTitle: 'Aliments à se procurer',
+  suggestion_optimal:
+    'Avec ces aliments, %(after)s besoins sur %(total)s ne sont pas couverts, contre %(before)s sans.',
+  suggestion_time_limit:
+    'Le temps est écoulé : %(after)s sur %(total)s, contre %(before)s sans.',
+  suggestion_failed: 'Aucun jour n’a pu être calculé.',
+  suggestion_no_gaps: 'Votre inventaire ne manque de rien.',
+  suggestion_no_foods: 'Aucun aliment de la table ne comble ce qui manque.',
+  suggestion_no_suggestion: 'Aucun aliment ne vaut la peine de ce qui manque.',
+  suggestionCaution:
+    'Une suggestion ne compte que la composition : contrôlez-la avant d’agir.',
+  suggestedDay: 'Voir la journée avec ces aliments',
+  suggestedFood: 'suggéré',
+  coversNeed: 'couvre le besoin',
+  ofNeed: '%(percent)s du besoin',
 };
 
 export const BREAD = {
