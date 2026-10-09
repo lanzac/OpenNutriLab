@@ -1,19 +1,447 @@
 [
   {
-    "reference": "semoule de blé",
+    "reference": "ail",
     "foods": [
       {
         "source": "ciqual-2025",
-        "code": "9610"
+        "code": "11000"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "11306"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "11307"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "11000"
+    }
+  },
+  {
+    "reference": "alcool",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "1014"
       }
     ]
   },
   {
-    "reference": "quinoa blanc",
+    "reference": "arachides",
     "foods": [
       {
         "source": "ciqual-2025",
-        "code": "9340"
+        "code": "15001"
+      }
+    ]
+  },
+  {
+    "reference": "baie de goji",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "13183"
+      }
+    ]
+  },
+  {
+    "reference": "basilic",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11032"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "11033"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "11033"
+    }
+  },
+  {
+    "reference": "betterave",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "20003"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "20091"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "20091"
+    }
+  },
+  {
+    "reference": "cassis",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "13007"
+      }
+    ]
+  },
+  {
+    "reference": "concentré de tomate",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "20068"
+      }
+    ]
+  },
+  {
+    "reference": "coriandre",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11026"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "11094"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "11094"
+    }
+  },
+  {
+    "reference": "cumin",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11042"
+      }
+    ]
+  },
+  {
+    "reference": "datte",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "13011"
+      }
+    ]
+  },
+  {
+    "reference": "eau",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "18066"
+      }
+    ]
+  },
+  {
+    "reference": "extrait d'acérola",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "2040"
+      }
+    ]
+  },
+  {
+    "reference": "farine complète de seigle",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "9530"
+      }
+    ]
+  },
+  {
+    "reference": "farine de blé",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "9410"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "9415"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "9435"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "9436"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "9437"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "9440"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "9445"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "9435"
+    }
+  },
+  {
+    "reference": "farine de riz",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "9520"
+      }
+    ]
+  },
+  {
+    "reference": "flocons d'avoine",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "32140"
+      }
+    ]
+  },
+  {
+    "reference": "framboise",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "13015"
+      }
+    ]
+  },
+  {
+    "reference": "graines de lin doré",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "15034"
+      }
+    ]
+  },
+  {
+    "reference": "graines de sarrasin",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "9380"
+      }
+    ]
+  },
+  {
+    "reference": "graines de tournesol",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "15011"
+      }
+    ]
+  },
+  {
+    "reference": "grape",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "13045"
+      }
+    ]
+  },
+  {
+    "reference": "groseille",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "13019"
+      }
+    ]
+  },
+  {
+    "reference": "haricot rouge",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "20503"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "20524"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "20525"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "20525"
+    }
+  },
+  {
+    "reference": "huile d'olive vierge extra",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "17270"
+      }
+    ]
+  },
+  {
+    "reference": "huile de colza",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "17130"
+      }
+    ]
+  },
+  {
+    "reference": "huile de tournesol",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "17440"
+      }
+    ]
+  },
+  {
+    "reference": "jus de tomate",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "2053"
+      }
+    ]
+  },
+  {
+    "reference": "Lait",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "19010"
+      }
+    ]
+  },
+  {
+    "reference": "lait demi-écrémé",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "19041"
+      }
+    ]
+  },
+  {
+    "reference": "levure",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11010"
+      }
+    ]
+  },
+  {
+    "reference": "maïs",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "20049"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "20066"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "20233"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "20233"
+    }
+  },
+  {
+    "reference": "noisette",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "15004"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "15033"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "15004"
+    }
+  },
+  {
+    "reference": "oignon",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "20034"
+      }
+    ]
+  },
+  {
+    "reference": "oignon grillé",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "20035"
+      }
+    ]
+  },
+  {
+    "reference": "orge perlée",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "9321"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "9322"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "9321"
+    }
+  },
+  {
+    "reference": "origan",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11035"
+      }
+    ]
+  },
+  {
+    "reference": "paprika",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11049"
       }
     ]
   },
@@ -36,29 +464,11 @@
     ]
   },
   {
-    "reference": "quinoa rouge",
+    "reference": "piment de cayenne",
     "foods": [
       {
         "source": "ciqual-2025",
-        "code": "9340"
-      }
-    ]
-  },
-  {
-    "reference": "purée de tomate double concentrée",
-    "foods": [
-      {
-        "source": "ciqual-2025",
-        "code": "20268"
-      }
-    ]
-  },
-  {
-    "reference": "Sel fumé",
-    "foods": [
-      {
-        "source": "ciqual-2025",
-        "code": "11017"
+        "code": "11088"
       }
     ]
   },
@@ -81,21 +491,243 @@
     ]
   },
   {
-    "reference": "farine complète de seigle",
+    "reference": "pois chiche",
     "foods": [
       {
         "source": "ciqual-2025",
-        "code": "9530"
+        "code": "20507"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "20516"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "20532"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "20516"
+    }
+  },
+  {
+    "reference": "pois chiche déshydraté",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "20516"
       }
     ]
   },
   {
-    "reference": "graines de lin doré",
+    "reference": "poivre",
     "foods": [
       {
         "source": "ciqual-2025",
-        "code": "15034"
+        "code": "11015"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "11019"
       }
     ]
+  },
+  {
+    "reference": "poivron rouge",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "20087"
+      }
+    ]
+  },
+  {
+    "reference": "pomme de terre déshydratée",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "4022"
+      }
+    ]
+  },
+  {
+    "reference": "purée de tomate",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "20170"
+      }
+    ]
+  },
+  {
+    "reference": "purée de tomate double concentrée",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "20268"
+      }
+    ]
+  },
+  {
+    "reference": "quinoa blanc",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "9340"
+      }
+    ]
+  },
+  {
+    "reference": "quinoa rouge",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "9340"
+      }
+    ]
+  },
+  {
+    "reference": "raisin sec",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "13046"
+      }
+    ]
+  },
+  {
+    "reference": "sel",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11017"
+      }
+    ]
+  },
+  {
+    "reference": "Sel fumé",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11017"
+      }
+    ]
+  },
+  {
+    "reference": "semoule de blé",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "9610"
+      }
+    ]
+  },
+  {
+    "reference": "thym",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11038"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "11070"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "11070"
+    }
+  },
+  {
+    "reference": "tomate",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "20385"
+      }
+    ]
+  },
+  {
+    "reference": "tomate cerise",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "20172"
+      }
+    ]
+  },
+  {
+    "reference": "tomate cerise mi séchée",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "20172"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "20189"
+      }
+    ]
+  },
+  {
+    "reference": "vinaigre",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11018"
+      }
+    ]
+  },
+  {
+    "reference": "échalote",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "20097"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "20255"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "20335"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "20097"
+    }
+  },
+  {
+    "reference": "épinard",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "20027"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "20059"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "20060"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "20083"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "20336"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "20059"
+    }
   }
 ]

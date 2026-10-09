@@ -100,3 +100,54 @@ def test_what_the_file_gets_wrong_is_said_with_its_name(tmp_path: Path):
         run(broken)
     with pytest.raises(CommandError, match="Cannot read"):
         run(tmp_path / "missing.json")
+
+
+def test_the_default_of_a_reference_is_given_and_said(links: Path, tmp_path: Path):
+    entries = json.loads(links.read_text())
+    entries[0]["default"] = {"source": "ciqual-2025", "code": "9340"}
+    file = tmp_path / "default.json"
+    file.write_text(json.dumps(entries))
+
+    output = run(file)
+
+    reference = ReferenceIngredient.objects.get(name_fr="quinoa blanc")
+    assert reference.default_food is not None
+    assert reference.default_food.code == "9340"
+    assert "Default of" in output
+    assert "9340 Quinoa, cru" in output
+
+
+def test_what_is_exported_links_again_what_a_reset_lost(links: Path, tmp_path: Path):
+    reference = ReferenceIngredient.objects.get(name_fr="quinoa blanc")
+    food = SourceFood.objects.get(code="9340")
+    reference.source_foods.add(food)
+    reference.default_food = food
+    reference.save()
+    kept = tmp_path / "kept.json"
+
+    out = StringIO()
+    call_command("export_reference_links", str(kept), stdout=out)
+    reference.source_foods.clear()
+    reference.default_food = None
+    reference.save()
+    run(kept)
+
+    assert "1 reference(s) with 1 food(s) and 1 default(s) written" in out.getvalue()
+    reference.refresh_from_db()
+    assert reference.source_foods.get() == food
+    assert reference.default_food == food
+
+
+def test_a_reference_that_no_name_finds_alone_is_said_on_export(
+    links: Path, tmp_path: Path
+):
+    food = SourceFood.objects.get(code="9340")
+    for fr, en in (("pain", "bread"), ("bread", "pain")):
+        ReferenceIngredient.objects.create(name_fr=fr, name_en=en).source_foods.add(
+            food
+        )
+
+    out = StringIO()
+    call_command("export_reference_links", str(tmp_path / "kept.json"), stdout=out)
+
+    assert "Not written, no name finds it alone" in out.getvalue()

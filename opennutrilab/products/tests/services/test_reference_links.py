@@ -10,6 +10,8 @@ from opennutrilab.products.services.custom_foods import CustomFoodError
 from opennutrilab.products.services.reference_links import FoodKey
 from opennutrilab.products.services.reference_links import ReferenceLink
 from opennutrilab.products.services.reference_links import link_reference_foods
+from opennutrilab.products.services.reference_links import links_as_data
+from opennutrilab.products.services.reference_links import links_to_keep
 from opennutrilab.products.services.reference_links import parse_links
 
 LINKS_FILE = Path(__file__).parents[2] / "data" / "reference_links.json"
@@ -23,9 +25,13 @@ def table(db: None) -> Source:
     return source
 
 
-def link(reference: int | str = "quinoa blanc", *codes: str) -> ReferenceLink:
+def link(
+    reference: int | str = "quinoa blanc", *codes: str, default: str | None = None
+) -> ReferenceLink:
     return ReferenceLink(
-        reference, tuple(FoodKey("ciqual-2025", code) for code in codes or ("9340",))
+        reference,
+        tuple(FoodKey("ciqual-2025", code) for code in codes or ("9340",)),
+        FoodKey("ciqual-2025", default) if default else None,
     )
 
 
@@ -106,3 +112,110 @@ def test_the_file_that_is_kept_in_the_repo_is_valid():
 
     assert links
     assert all(isinstance(each.reference, str) for each in links)
+
+
+def test_a_default_is_read():
+    links = parse_links(
+        [
+            {
+                "reference": "quinoa",
+                "foods": [{"source": "ciqual-2025", "code": "9340"}],
+                "default": {"source": "ciqual-2025", "code": "9340"},
+            }
+        ]
+    )
+
+    assert links == [link("quinoa", default="9340")]
+
+
+def test_a_reference_without_a_default_gets_the_one_of_the_link(table: Source):
+    reference = ReferenceIngredient.objects.create(name_fr="quinoa blanc")
+
+    result = link_reference_foods(link("quinoa blanc", "9340", "9341", default="9341"))
+
+    reference.refresh_from_db()
+    assert reference.default_food is not None
+    assert reference.default_food.code == "9341"
+    assert result.default_set == reference.default_food
+    assert result.default_kept is None
+
+
+def test_the_default_a_reference_has_is_kept(table: Source):
+    reference = ReferenceIngredient.objects.create(
+        name_fr="quinoa blanc", default_food=SourceFood.objects.get(code="9341")
+    )
+
+    result = link_reference_foods(link("quinoa blanc", "9340", "9341", default="9340"))
+
+    reference.refresh_from_db()
+    assert reference.default_food is not None
+    assert reference.default_food.code == "9341"
+    assert result.default_set is None
+    assert result.default_kept == reference.default_food
+
+
+def test_a_default_that_is_not_one_of_the_foods_is_refused(table: Source):
+    reference = ReferenceIngredient.objects.create(name_fr="quinoa blanc")
+
+    with pytest.raises(CustomFoodError, match="not one of its foods"):
+        link_reference_foods(link("quinoa blanc", "9340", default="9341"))
+
+    assert not reference.source_foods.exists()
+    reference.refresh_from_db()
+    assert reference.default_food is None
+
+
+def test_the_links_to_keep_are_the_foods_of_a_table_with_the_defaults(table: Source):
+    both = ReferenceIngredient.objects.create(name_fr="quinoa blanc")
+    both.source_foods.add(*SourceFood.objects.filter(code__in=["9340", "9341"]))
+    both.default_food = SourceFood.objects.get(code="9341")
+    both.save()
+    ReferenceIngredient.objects.create(name_fr="sans aliment")
+
+    kept = links_to_keep()
+
+    assert kept.links == [link("quinoa blanc", "9340", "9341", default="9341")]
+    assert kept.unnamed == []
+    assert links_as_data(kept.links) == [
+        {
+            "reference": "quinoa blanc",
+            "foods": [
+                {"source": "ciqual-2025", "code": "9340"},
+                {"source": "ciqual-2025", "code": "9341"},
+            ],
+            "default": {"source": "ciqual-2025", "code": "9341"},
+        }
+    ]
+
+
+def test_a_food_made_by_hand_is_left_out_as_its_spec_links_it(table: Source):
+    manual = Source.objects.create(code="Manual", name="Manual")
+    made = SourceFood.objects.create(source=manual, code="soy-flakes", name_fr="x")
+    only_made = ReferenceIngredient.objects.create(name_fr="flocons de soja")
+    only_made.source_foods.add(made)
+    mixed = ReferenceIngredient.objects.create(name_fr="quinoa blanc")
+    mixed.source_foods.add(made, SourceFood.objects.get(code="9340"))
+    mixed.default_food = made
+    mixed.save()
+
+    kept = links_to_keep()
+
+    assert [each.reference for each in kept.links] == ["quinoa blanc"]
+    assert kept.links[0].foods == (FoodKey("ciqual-2025", "9340"),)
+    assert kept.links[0].default == FoodKey("Manual", "soy-flakes")
+
+
+def test_a_reference_that_no_name_finds_alone_is_not_kept(table: Source):
+    # Each one's name in a language is the other's in the other language.
+    food = SourceFood.objects.get(code="9340")
+    twins = [
+        ReferenceIngredient.objects.create(name_fr="pain", name_en="bread"),
+        ReferenceIngredient.objects.create(name_fr="bread", name_en="pain"),
+    ]
+    for twin in twins:
+        twin.source_foods.add(food)
+
+    kept = links_to_keep()
+
+    assert kept.links == []
+    assert {r.pk for r in kept.unnamed} == {t.pk for t in twins}

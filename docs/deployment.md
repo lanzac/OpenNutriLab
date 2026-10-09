@@ -161,14 +161,26 @@ just prod-manage create_custom_food opennutrilab/products/data/custom_foods --re
 ```
 
 The links of references to the foods of CIQUAL are rows of the database as well,
-and a reset loses them. The ones a person made are kept in
+and a reset loses them. They are kept in
 `opennutrilab/products/data/reference_links.json`, by the name of the reference and
-the code of the food, and are made again after the products are loaded (the
-command only adds the links that are missing, and touches nothing else):
+the code of the food, with the default food of the references that have forms
+(dried, cooked, canned). After the products are loaded, and the foods made by hand
+above, they are made again (the command only adds the links that are missing, and
+gives a default to a reference that has none; a reference keeps what it has):
 
 ```sh
 just prod-manage link_reference_foods --dry-run
 just prod-manage link_reference_foods
+```
+
+The file is written from the database, which is where a person links in the admin:
+run this again before a reset, or after linking, and commit the file. A reference
+that no name finds alone (its French name is another's English name) is said and
+left out. What is not kept is the curation itself (a reference's status, its
+English name), only its links.
+
+```sh
+just prod-manage export_reference_links
 ```
 
 Watch the first boot; Caddy logs the certificate it obtains:

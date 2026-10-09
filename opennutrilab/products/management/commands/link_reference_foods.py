@@ -10,11 +10,10 @@ from django.db import transaction
 
 from opennutrilab.products.models import SourceFood
 from opennutrilab.products.services.custom_foods import CustomFoodError
+from opennutrilab.products.services.reference_links import LINKS_FILE
 from opennutrilab.products.services.reference_links import ReferenceLink
 from opennutrilab.products.services.reference_links import link_reference_foods
 from opennutrilab.products.services.reference_links import parse_links
-
-LINKS_FILE = Path(__file__).parents[2] / "data" / "reference_links.json"
 
 
 class Command(BaseCommand):
@@ -24,8 +23,8 @@ class Command(BaseCommand):
         "default the file is products/data/reference_links.json, which keeps the "
         "links a person made so that a reset of the database does not lose them "
         "(run it once CIQUAL is imported and the products are loaded, so that the "
-        "references exist). It only adds the links that are missing. --dry-run "
-        "keeps nothing."
+        "references exist). It only adds the links that are missing, and gives a "
+        "default food to a reference that has none. --dry-run keeps nothing."
     )
 
     @override
@@ -63,6 +62,17 @@ class Command(BaseCommand):
                     self.stdout.write(f"Linked {name}: {food.code} {_name(food)}")
                 for food in result.already:
                     self.stdout.write(f"Already linked {name}: {food.code}")
+                if result.default_set:
+                    self.stdout.write(
+                        f"Default of {name}: {result.default_set.code} "
+                        f"{_name(result.default_set)}"
+                    )
+                if result.default_kept:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"{name} keeps its default {result.default_kept.code}"
+                        )
+                    )
                 added += len(result.added)
                 already += len(result.already)
             if dry_run:
