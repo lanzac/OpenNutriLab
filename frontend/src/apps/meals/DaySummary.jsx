@@ -1,5 +1,6 @@
 import { useId } from 'react';
 
+import { FoldHead } from '../../shared/FoldHead.jsx';
 import { fill, formatAmount, formatInterval, formatNumber } from './format.js';
 import { Gauge } from './Gauge.jsx';
 import { countStatuses } from './gauge.js';
@@ -71,57 +72,31 @@ function groupsOf(needs) {
 
 // The group of the ratios has none of the needs' own, so it has a key of its own.
 const RATIOS = 'ratios';
+const STATUSES = ['within', 'below', 'above', 'unknown'];
 
 /** The head of a group of the day: what it holds at a glance, and the button that folds it. */
-function GroupHead({
-  id,
-  label,
-  rows,
-  isFolded,
-  onToggle,
-  labels,
-  as: Heading = 'h3',
-}) {
+function GroupHead({ id, label, rows, isFolded, onToggle, labels, as }) {
   const counts = countStatuses(rows);
-  const order = ['within', 'below', 'above', 'unknown'];
   return (
-    <Heading className="h6 mb-0">
-      <button
-        type="button"
-        className="group-toggle"
-        aria-expanded={!isFolded}
-        aria-controls={id}
-        onClick={onToggle}
-      >
-        <i
-          className={`fa-solid ${isFolded ? 'fa-chevron-right' : 'fa-chevron-down'}`}
-          aria-hidden="true"
-        />
-        <span className="group-toggle-label">{label}</span>
-        <span className="group-toggle-summary">
-          {fill(labels.groupReached, {
-            reached: counts.within,
-            total: rows.length,
-          })}
-        </span>
-        <span className="status-bar status-bar--mini" aria-hidden="true">
-          {order
-            .filter((status) => counts[status] > 0)
-            .map((status) => (
-              <span
-                key={status}
-                className={`status-bar-part--${status}`}
-                style={{ width: `${(counts[status] / rows.length) * 100}%` }}
-              />
-            ))}
-        </span>
-      </button>
-    </Heading>
+    <FoldHead
+      id={id}
+      label={label}
+      summary={fill(labels.groupReached, {
+        reached: counts.within,
+        total: rows.length,
+      })}
+      parts={STATUSES.filter((status) => counts[status] > 0).map((status) => ({
+        className: `status-bar-part--${status}`,
+        share: counts[status] / rows.length,
+      }))}
+      isFolded={isFolded}
+      onToggle={onToggle}
+      as={as}
+    />
   );
 }
 
 function StatusBar({ counts, total, labels }) {
-  const order = ['within', 'below', 'above', 'unknown'];
   return (
     <div className="mb-3">
       <div
@@ -129,26 +104,22 @@ function StatusBar({ counts, total, labels }) {
         role="img"
         aria-label={`${counts.within} / ${total} ${labels.within}`}
       >
-        {order
-          .filter((status) => counts[status] > 0)
-          .map((status) => (
-            <div
-              key={status}
-              className={`status-bar-part--${status}`}
-              style={{ width: `${(counts[status] / total) * 100}%` }}
-              title={`${labels[status]} : ${counts[status]}`}
-            />
-          ))}
+        {STATUSES.filter((status) => counts[status] > 0).map((status) => (
+          <div
+            key={status}
+            className={`status-bar-part--${status}`}
+            style={{ width: `${(counts[status] / total) * 100}%` }}
+            title={`${labels[status]} : ${counts[status]}`}
+          />
+        ))}
       </div>
       <div className="small mt-1 d-flex flex-wrap gap-3">
-        {order
-          .filter((status) => counts[status] > 0)
-          .map((status) => (
-            <span key={status}>
-              <span className={`legend-swatch status-bar-part--${status}`} />
-              {labels[status]} {counts[status]}
-            </span>
-          ))}
+        {STATUSES.filter((status) => counts[status] > 0).map((status) => (
+          <span key={status}>
+            <span className={`legend-swatch status-bar-part--${status}`} />
+            {labels[status]} {counts[status]}
+          </span>
+        ))}
       </div>
     </div>
   );

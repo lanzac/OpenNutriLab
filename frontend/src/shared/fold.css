@@ -1,0 +1,44 @@
+/* The head of a group of figures: a button that folds it, with what it holds. */
+.group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.35rem 0;
+  border: 0;
+  background: none;
+  color: var(--bs-secondary-color);
+  font: inherit;
+  text-align: start;
+}
+
+.group-toggle:hover,
+.group-toggle:focus-visible {
+  color: var(--bs-body-color);
+}
+
+.group-toggle .fa-solid {
+  width: 0.8rem;
+  font-size: 0.75rem;
+}
+
+.group-toggle-label {
+  font-weight: 600;
+}
+
+.group-toggle-summary {
+  margin-inline-start: auto;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+/* The bar of what the group holds: its parts take their share of the width. */
+.group-toggle-bar {
+  display: inline-flex;
+  flex: none;
+  width: 5rem;
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: 0.25rem;
+  background: var(--bs-secondary-bg);
+}

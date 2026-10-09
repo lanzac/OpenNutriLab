@@ -9,6 +9,8 @@ from django import template
 from django.utils.formats import number_format
 
 from opennutrilab.products.api.schemas.outbound import IngredientEstimateOut
+from opennutrilab.products.services.estimate_panel import ingredient_name
+from opennutrilab.products.services.estimate_panel import walk_ingredients
 
 register = template.Library()
 
@@ -64,12 +66,10 @@ def walk(
     ingredients: Sequence[IngredientEstimateOut],
 ) -> Iterator[tuple[int, IngredientEstimateOut]]:
     """The ingredients tree as (depth, ingredient) in the order of the label."""
+    return walk_ingredients(ingredients)
 
-    def visit(
-        level: Sequence[IngredientEstimateOut], depth: int
-    ) -> Iterator[tuple[int, IngredientEstimateOut]]:
-        for ingredient in level:
-            yield depth, ingredient
-            yield from visit(ingredient.sub_ingredients, depth + 1)
 
-    return visit(ingredients, 0)
+@register.filter
+def name_of(ingredient: IngredientEstimateOut) -> str:
+    """What the ingredient is, whether a food, a preparation or an additive."""
+    return ingredient_name(ingredient)

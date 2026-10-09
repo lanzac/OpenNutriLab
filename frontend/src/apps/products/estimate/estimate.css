@@ -1,0 +1,167 @@
+/* The gauges of the estimate of a product (see EstimateGauge.jsx and layout.js).
+   Colours are Bootstrap's own variables, so that the dark theme follows. */
+
+.est-row {
+  display: grid;
+  grid-template-columns: minmax(9rem, 26%) minmax(0, 1fr) minmax(6.5rem, 14%);
+  gap: 0.25rem 1rem;
+  align-items: start;
+  padding: 0.45rem 0 0.4rem;
+  border-bottom: 1px solid var(--bs-border-color-translucent);
+}
+
+@media (max-width: 576px) {
+  .est-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .est-row .est-gauge {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+}
+
+.est-name {
+  /* A part of an ingredient is one level in. */
+  padding-inline-start: calc(var(--est-depth, 0) * 1rem);
+  line-height: 1.2;
+}
+
+.est-value {
+  text-align: end;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.est-gauge {
+  padding: 0.3rem 0;
+}
+
+.est-track {
+  position: relative;
+  height: 0.9rem;
+  border-radius: 0.45rem;
+  background: var(--bs-secondary-bg);
+}
+
+/* The range of the estimate; a verdict is its colour. */
+.est-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border: 1px solid var(--est-colour);
+  border-radius: 0.45rem;
+  background: color-mix(in srgb, var(--est-colour) 35%, transparent);
+}
+
+/* No upper end is known: the band is open, and fades out to the end. */
+.est-band--open {
+  border-style: dashed;
+  border-inline-end: 0;
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--est-colour) 35%, transparent),
+    transparent
+  );
+}
+
+.est-band--agrees,
+.est-point--agrees {
+  --est-colour: var(--bs-success);
+}
+
+.est-band--differs,
+.est-point--differs {
+  --est-colour: var(--bs-warning);
+}
+
+.est-band--used,
+.est-point--used {
+  --est-colour: var(--bs-secondary);
+}
+
+.est-band--none,
+.est-point--none {
+  --est-colour: var(--bs-primary);
+}
+
+/* The point of the estimate in its range. */
+.est-point {
+  position: absolute;
+  top: -0.1rem;
+  bottom: -0.1rem;
+  width: 0.2rem;
+  margin-inline-start: -0.1rem;
+  border-radius: 0.1rem;
+  background: var(--est-colour);
+}
+
+/* What the label's figure stands for, once rounded the way labels are. */
+.est-rounding {
+  position: absolute;
+  top: 50%;
+  height: 0.2rem;
+  margin-top: -0.1rem;
+  background: var(--bs-body-color);
+  opacity: 0.55;
+}
+
+/* The label's own figure: a tick that goes beyond the track, in the colour of the text. */
+.est-label-tick {
+  position: absolute;
+  top: -0.3rem;
+  bottom: -0.3rem;
+  width: 0.15rem;
+  margin-inline-start: -0.075rem;
+  border-radius: 0.1rem;
+  background: var(--bs-body-color);
+}
+
+/* How far to trust the estimate: a thin bar of its confidence between 0 and 1. */
+.est-confidence {
+  width: 100%;
+  height: 0.3rem;
+  margin-top: 0.15rem;
+  overflow: hidden;
+  border-radius: 0.15rem;
+  background: var(--bs-secondary-bg);
+}
+
+.est-confidence > span {
+  display: block;
+  height: 100%;
+  background: var(--bs-secondary-color);
+}
+
+/* The parts of the bar at the head of a group, by what the label says of the estimate. */
+.est-part--agrees {
+  background: var(--bs-success);
+}
+
+.est-part--differs {
+  background: var(--bs-warning);
+}
+
+.est-part--used {
+  background: var(--bs-secondary);
+}
+
+.est-part--none {
+  background: var(--bs-secondary-bg);
+}
+
+.est-swatch {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  margin-inline-end: 0.3rem;
+  vertical-align: -0.15rem;
+  border-radius: 0.2rem;
+}
+
+.est-swatch--band {
+  border: 1px solid var(--bs-primary);
+  background: color-mix(in srgb, var(--bs-primary) 35%, transparent);
+}

@@ -40,5 +40,7 @@
   {# Rows for the Tabulator tree, see ingredients-table.js. #}
   {{ ingredient_rows|json_script:"ingredients-data" }}
   {{ product_form_config|json_script:"product-form-config" }}
+  {# What the gauges of the estimate are drawn from, see estimate_panel.py. #}
+  {% if estimate_panel %}{{ estimate_panel|json_script:"estimate-panel" }}{% endif %}
   {% vite_asset 'src/apps/products/form-entry.js' %}
 {% endblock content %}

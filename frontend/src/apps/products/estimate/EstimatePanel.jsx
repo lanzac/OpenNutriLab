@@ -1,0 +1,226 @@
+import { useEffect, useId } from 'react';
+
+import { FoldHead } from '../../../shared/FoldHead.jsx';
+import { fill } from '../../../shared/format.js';
+import { useViewState } from '../../../shared/useViewState.js';
+import { EstimateGauge } from './EstimateGauge.jsx';
+import { countVerdicts, sharedScaleOf } from './layout.js';
+
+const MODES = ['gauges', 'table'];
+const KEYS = {
+  modeKey: 'products.estimateMode',
+  openKey: 'products.estimateOpenGroups',
+  modes: MODES,
+};
+
+function groupsOf(nutrients) {
+  const groups = new Map();
+  for (const nutrient of nutrients) {
+    if (!groups.has(nutrient.group)) {
+      groups.set(nutrient.group, {
+        key: nutrient.group,
+        label: nutrient.group_label,
+        nutrients: [],
+      });
+    }
+    groups.get(nutrient.group).nutrients.push(nutrient);
+  }
+  return [...groups.values()];
+}
+
+const KINDS = ['agrees', 'differs', 'used', 'none'];
+
+/** What the label says of the estimates of a group of nutrients, in words. */
+function summaryOf(counts, labels) {
+  const compared = counts.agrees + counts.differs;
+  return compared === 0
+    ? labels.notCompared
+    : fill(labels.groupAgree, { agree: counts.agrees, compared });
+}
+
+/** The legend of the drawing: said once, small, above the gauges. */
+function Legend({ labels }) {
+  return (
+    <p className="small text-body-secondary d-flex flex-wrap gap-3">
+      <span>
+        <span className="est-swatch est-swatch--band" />
+        {labels.legendEstimate}
+      </span>
+      <span>
+        <span
+          className="est-swatch"
+          style={{ width: '0.15rem', background: 'var(--bs-body-color)' }}
+        />
+        {labels.legendLabel}
+      </span>
+      <span>{labels.legendOpen}</span>
+    </p>
+  );
+}
+
+function Ingredients({ rows, labels, languageCode }) {
+  const gauges = rows.map((row) => ({
+    estimated: row.estimated,
+    declared:
+      row.declared === null
+        ? null
+        : { amount: row.declared, low: row.declared, high: row.declared },
+  }));
+  // The shares are compared with each other: one track for them all.
+  const max = sharedScaleOf(gauges);
+  return (
+    <>
+      <h3 className="h6 mt-3">{labels.ingredients}</h3>
+      {rows.map((row, index) => (
+        <EstimateGauge
+          key={`${index}-${row.name}`}
+          name={row.name}
+          unit="%"
+          unitInName={false}
+          depth={row.depth}
+          estimated={gauges[index].estimated}
+          declared={gauges[index].declared}
+          max={max}
+          labels={labels}
+          languageCode={languageCode}
+        />
+      ))}
+    </>
+  );
+}
+
+function NutrientGauge({ nutrient, labels, languageCode }) {
+  return (
+    <EstimateGauge
+      name={nutrient.name}
+      unit={nutrient.unit}
+      estimated={nutrient.estimated}
+      declared={nutrient.declared}
+      verdict={nutrient.verdict}
+      constrained={nutrient.constrained}
+      confidence={nutrient.confidence}
+      coverage={nutrient.coverage}
+      labels={labels}
+      languageCode={languageCode}
+    />
+  );
+}
+
+function Nutrients({ nutrients, labels, languageCode, view, prefix }) {
+  const groups = groupsOf(nutrients);
+  const all = countVerdicts(nutrients);
+  return (
+    <>
+      <h3 className="h6 mt-4">{labels.nutrients}</h3>
+      <p className="small text-body-secondary">{summaryOf(all, labels)}</p>
+      {groups.map((group) => {
+        const isFolded = !view.open.includes(group.key);
+        const region = `${prefix}-${group.key}`;
+        const counts = countVerdicts(group.nutrients);
+        return (
+          <div key={group.key} className="mb-3">
+            <FoldHead
+              id={region}
+              label={group.label}
+              summary={summaryOf(counts, labels)}
+              parts={KINDS.filter((kind) => counts[kind] > 0).map((kind) => ({
+                className: `est-part--${kind}`,
+                share: counts[kind] / group.nutrients.length,
+              }))}
+              isFolded={isFolded}
+              onToggle={() => view.toggleGroup(group.key)}
+            />
+            <div id={region}>
+              {!isFolded &&
+                group.nutrients.map((nutrient) => (
+                  <NutrientGauge
+                    key={nutrient.code}
+                    nutrient={nutrient}
+                    labels={labels}
+                    languageCode={languageCode}
+                  />
+                ))}
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+/**
+ * The estimate of a product as gauges, or as the tables the server wrote, which are
+ * `tables` and are shown or hidden here: they stay the page's own where this does not
+ * run. What is in `data` is the server's (see estimate_panel.py); this only draws it.
+ */
+export function EstimatePanel({ data, labels, languageCode, tables = [] }) {
+  const view = useViewState(KEYS);
+  const prefix = useId();
+  const gauges = view.mode === 'gauges';
+  const groups = groupsOf(data.nutrients).map((group) => group.key);
+  const allFolded = groups.every((group) => !view.open.includes(group));
+
+  useEffect(() => {
+    for (const table of tables) table.hidden = gauges;
+    return () => {
+      for (const table of tables) table.hidden = false;
+    };
+  }, [tables, gauges]);
+
+  return (
+    <div className="mb-3">
+      <div className="d-flex flex-wrap justify-content-end align-items-center gap-2 mb-2">
+        {gauges && groups.length > 0 && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary"
+            onClick={() => view.setOpen(allFolded ? groups : [])}
+          >
+            {allFolded ? labels.expandAll : labels.collapseAll}
+          </button>
+        )}
+        <div
+          className="btn-group btn-group-sm"
+          role="group"
+          aria-label={labels.view}
+        >
+          {[
+            ['gauges', labels.viewGauges],
+            ['table', labels.viewTable],
+          ].map(([value, text]) => (
+            <button
+              key={value}
+              type="button"
+              className={`btn ${view.mode === value ? 'btn-primary' : 'btn-outline-primary'}`}
+              aria-pressed={view.mode === value}
+              onClick={() => view.setMode(value)}
+            >
+              {text}
+            </button>
+          ))}
+        </div>
+      </div>
+      {gauges && (
+        <>
+          <Legend labels={labels} />
+          {data.ingredients.length > 0 && (
+            <Ingredients
+              rows={data.ingredients}
+              labels={labels}
+              languageCode={languageCode}
+            />
+          )}
+          {data.nutrients.length > 0 && (
+            <Nutrients
+              nutrients={data.nutrients}
+              labels={labels}
+              languageCode={languageCode}
+              view={view}
+              prefix={prefix}
+            />
+          )}
+        </>
+      )}
+    </div>
+  );
+}

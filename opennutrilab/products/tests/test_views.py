@@ -528,6 +528,39 @@ class TestProductCreateView:
         assert not Product.objects.filter(pk=NUTELLA).exists()
 
 
+def product_with_an_estimate() -> Product:
+    """A saved product whose one ingredient has a composition to estimate from."""
+    product = Product.objects.create(barcode=NUTELLA, name="Nutella")
+    source = Source.objects.create(
+        code="ciqual-2025", name="Ciqual", attribution="Anses. Table Ciqual 2025."
+    )
+    food = SourceFood.objects.create(source=source, code="1")
+    for code, amount in (("fat", "30"), ("carbohydrates", "55"), ("proteins", "6")):
+        SourceFoodNutrient.objects.create(
+            food=food,
+            nutrient=Nutrient.objects.get(code=code),
+            amount=Decimal(amount),
+            confidence="A",
+        )
+    reference = ReferenceIngredient.objects.create(name_en="sugar")
+    reference.source_foods.add(food)
+    Ingredient.objects.create(
+        product=product, reference=reference, percentage=Decimal("56.3")
+    )
+    return product
+
+
+def script_of(page: str, element_id: str) -> Any:
+    """What a |json_script blob of the page holds."""
+    found = re.search(
+        rf'<script id="{element_id}" type="application/json">(.*?)</script>',
+        page,
+        re.DOTALL,
+    )
+    assert found, f"no {element_id} in the page"
+    return json.loads(found.group(1))
+
+
 @pytest.mark.django_db
 class TestProductEditView:
     @patch("opennutrilab.products.views.fetch_from_off")
@@ -642,23 +675,7 @@ class TestProductEditView:
         assert any("could not be downloaded" in n for n in notices), notices
 
     def test_the_page_shows_the_estimate_of_the_saved_product(self, client: Client):
-        product = Product.objects.create(barcode=NUTELLA, name="Nutella")
-        source = Source.objects.create(
-            code="ciqual-2025", name="Ciqual", attribution="Anses. Table Ciqual 2025."
-        )
-        food = SourceFood.objects.create(source=source, code="1")
-        for code, amount in (("fat", "30"), ("carbohydrates", "55"), ("proteins", "6")):
-            SourceFoodNutrient.objects.create(
-                food=food,
-                nutrient=Nutrient.objects.get(code=code),
-                amount=Decimal(amount),
-                confidence="A",
-            )
-        reference = ReferenceIngredient.objects.create(name_en="sugar")
-        reference.source_foods.add(food)
-        Ingredient.objects.create(
-            product=product, reference=reference, percentage=Decimal("56.3")
-        )
+        product = product_with_an_estimate()
 
         with translation.override("en"):
             response: HttpResponse = client.get(
@@ -712,6 +729,65 @@ class TestProductEditView:
         assert response.status_code == HTTPStatus.OK
         assert response.context["estimate"] is None
         assert "The estimate could not be worked out." in response.content.decode()
+
+    def test_the_page_hands_the_estimate_to_the_gauges(self, client: Client):
+        product = product_with_an_estimate()
+
+        with translation.override("fr-fr"):
+            response: HttpResponse = client.get(
+                reverse("edit_product", args=[product.pk]),
+                headers={"accept-language": "fr"},
+            )
+
+        page = response.content.decode()
+        # Where the gauges go, and the tables they stand in for: the ingredients'
+        # and the nutrients'.
+        assert 'id="estimate-view"' in page
+        assert page.count("data-estimate-table") == len(["ingredients", "nutrients"])
+        panel = script_of(page, "estimate-panel")
+        assert panel == json.loads(json.dumps(response.context["estimate_panel"]))
+        assert [i["name"] for i in panel["ingredients"]] == ["sugar"]
+        assert {n["code"] for n in panel["nutrients"]} >= {"fat", "carbohydrates"}
+        # Its labels are the server's, in the language served.
+        config = script_of(page, "product-form-config")["estimatePanel"]
+        assert config["languageCode"].startswith("fr")
+        assert config["labels"]["viewGauges"] == "Jauges"
+        assert config["labels"]["agrees"] == "Concorde"
+        assert config["labels"]["legendLabel"] == "Étiquette (valeur et arrondi)"
+        assert "%(agree)s" in config["labels"]["groupAgree"]
+        assert "%(compared)s" in config["labels"]["groupAgree"]
+
+    def test_the_page_names_a_preparation_in_the_table_too(self, client: Client):
+        product = Product.objects.create(barcode=NUTELLA, name="Nutella")
+        Ingredient.objects.create(
+            product=product,
+            preparation=Preparation.objects.create(name_en="praline"),
+            percentage=Decimal("20"),
+        )
+
+        with translation.override("en"):
+            response: HttpResponse = client.get(
+                reverse("edit_product", args=[product.pk])
+            )
+
+        assert ">praline</td>" in response.content.decode()
+
+    def test_the_create_page_and_a_failed_estimate_have_nothing_for_the_gauges(
+        self, client: Client
+    ):
+        product = Product.objects.create(barcode=NUTELLA, name="Nutella")
+        created = client.get(reverse("create_product")).content.decode()
+        with patch(
+            "opennutrilab.products.views.build_estimate",
+            side_effect=RuntimeError("The linear program failed"),
+        ):
+            failed = client.get(
+                reverse("edit_product", args=[product.pk])
+            ).content.decode()
+
+        for page in (created, failed):
+            assert 'id="estimate-panel"' not in page
+            assert 'id="estimate-view"' not in page
 
     def test_a_tampered_barcode_is_ignored(self, client: Client):
         """The barcode is the primary key: editing must never move a product."""

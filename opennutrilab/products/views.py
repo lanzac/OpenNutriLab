@@ -38,6 +38,7 @@ from .models import Nutrient
 from .models import Preparation
 from .models import Product
 from .models import ReferenceIngredient
+from .services.estimate_panel import estimate_panel
 from .services.estimate_report import build_estimate
 from .services.inventory import add_to_inventory
 from .services.label_parser import LabelWarning
@@ -182,6 +183,8 @@ class ProductEditView(LoginRequiredMixin, ProductFormViewMixin, UpdateView):
             form = cast("ProductForm", context["form"])
             context["estimate"] = estimate_for_page(form.instance)
             context["estimate_failed"] = context["estimate"] is None
+            if context["estimate"] is not None:
+                context["estimate_panel"] = estimate_panel(context["estimate"])
         return context
 
     def get_form(
@@ -271,6 +274,49 @@ def product_form_config() -> dict[str, Any]:
         },
         "barcodeActions": {
             "enterBarcode": _("Please enter a barcode."),
+        },
+        "estimatePanel": {
+            # Intl formats the figures in the language served.
+            "languageCode": get_language(),
+            "labels": {
+                "view": _("Display"),
+                "viewGauges": _("Gauges"),
+                "viewTable": _("Table"),
+                "collapseAll": _("Fold all"),
+                "expandAll": _("Unfold all"),
+                "legendEstimate": _("Estimate and its range"),
+                "legendLabel": _("Label (value and rounding)"),
+                "legendOpen": _("Dashed: no upper end is known."),
+                "ingredients": _("Ingredients"),
+                "nutrients": _("Nutrients per 100 g"),
+                "label": _("Label"),
+                "estimate": _("Estimate"),
+                "coverage": _("Coverage"),
+                "coverageNote": _(
+                    "The share of the product whose ingredients give a value."
+                ),
+                "confidence": _("Confidence"),
+                "agrees": _("Agrees"),
+                "declaredBelow": _("Label below"),
+                "declaredAbove": _("Label above"),
+                "constrained": _("Used for the estimate"),
+                "notEstimated": _("Not estimated"),
+                "declaredBelowNote": _(
+                    "The label declares less than the ingredients bring at the least."
+                ),
+                "declaredAboveNote": _(
+                    "The label declares more than the ingredients can bring at "
+                    "the most."
+                ),
+                "constrainedNote": _(
+                    "The label's figure was one of the rules the percentages were "
+                    "worked out with, so it agrees by construction and confirms "
+                    "nothing."
+                ),
+                # %(agree)s and %(compared)s are put in client-side.
+                "groupAgree": _("%(agree)s of %(compared)s agree with the label"),
+                "notCompared": _("Not compared with the label"),
+            },
         },
     }
 

@@ -1251,6 +1251,22 @@ msgstr "Part de la limite"
 msgid "%(reached)s of %(total)s met"
 msgstr "%(reached)s sur %(total)s respectés"
 
+msgid "Estimate and its range"
+msgstr "Estimation et sa fourchette"
+
+msgid "Label (value and rounding)"
+msgstr "Étiquette (valeur et arrondi)"
+
+msgid "The share of the product whose ingredients give a value."
+msgstr "La part du produit dont les ingrédients donnent une valeur."
+
+#, python-format
+msgid "%(agree)s of %(compared)s agree with the label"
+msgstr "%(agree)s sur %(compared)s en accord avec l'étiquette"
+
+msgid "Not compared with the label"
+msgstr "Pas comparé à l'étiquette"
+
 msgid "Fold all"
 msgstr "Tout replier"
 
