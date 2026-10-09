@@ -1,0 +1,18 @@
+{
+  "code": "pepper-extract",
+  "name_fr": "Extrait de poivre",
+  "name_en": "Pepper extract",
+  "basis_fr": "bornes physiques: un extrait de poivre (pipérine, huile essentielle) sur un support (sel, dextrose, maltodextrine ou huile)",
+  "basis_en": "physical bounds: a pepper extract (piperine, volatile oil) on a carrier (salt, dextrose, maltodextrin or oil)",
+  "nutrients": {
+    "water": { "min": 0, "max": 100 },
+    "fat": { "min": 0, "max": 100 },
+    "carbohydrates": { "min": 0, "max": 100 },
+    "fiber": { "min": 0, "max": 100 },
+    "proteins": { "min": 0, "max": 100 },
+    "ash": { "min": 0, "max": 100 },
+    "energy": { "min": 0, "max": 3700 },
+    "salt": { "min": 0, "max": 100 }
+  },
+  "references": [128]
+}

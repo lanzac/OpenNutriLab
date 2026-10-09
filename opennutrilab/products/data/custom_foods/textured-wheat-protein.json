@@ -1,0 +1,17 @@
+{
+  "code": "textured-wheat-protein",
+  "name_fr": "Protéine de blé texturée",
+  "name_en": "Textured wheat protein",
+  "basis_fr": "fiches fournisseurs: 60 % de protéines au moins sur matière sèche (Roquette NUTRALYS T Wheat 600L), 65 % au moins (Torg W65); eau et lipides du gluten de blé",
+  "basis_en": "supplier sheets: at least 60 % protein on dry matter (Roquette NUTRALYS T Wheat 600L), at least 65 % (Torg W65); water and fat of wheat gluten",
+  "nutrients": {
+    "proteins": { "amount": 65, "min": 52.8, "max": 86.5 },
+    "water": { "min": 0, "max": 12 },
+    "fat": { "min": 0, "max": 5 },
+    "carbohydrates": { "min": 0, "max": 47.2 },
+    "fiber": { "min": 0, "max": 47.2 },
+    "ash": { "min": 0, "max": 47.2 },
+    "energy": { "min": 898, "max": 1800 }
+  },
+  "references": [50]
+}
