@@ -3,11 +3,12 @@
 // Kept dependency-free on purpose: nothing here needs caching/invalidation
 // yet, so plain fetch is simpler than pulling in a data-fetching library.
 //
-// No CSRF helper here: CSRF_COOKIE_HTTPONLY keeps the token out of
-// document.cookie, so it is handed down from Django instead (see
+// CSRF_COOKIE_HTTPONLY keeps the CSRF token out of document.cookie, so the
+// writes below take it from the caller, which Django handed it to (see
 // ProductListView).
 
 const PRODUCTS_API_BASE = '/api/v1/products/';
+const INVENTORY_API_BASE = '/api/v1/inventory/';
 
 export async function fetchProducts() {
   const response = await fetch(PRODUCTS_API_BASE, {
@@ -21,4 +22,17 @@ export async function fetchProducts() {
     );
   }
   return response.json();
+}
+
+// Puts a product in the user's inventory, or takes it out.
+export async function setInInventory(barcode, inInventory, csrfToken) {
+  const url = `${INVENTORY_API_BASE}${barcode}`;
+  const method = inInventory ? 'PUT' : 'DELETE';
+  const response = await fetch(url, {
+    method,
+    headers: { Accept: 'application/json', 'X-CSRFToken': csrfToken },
+  });
+  if (!response.ok) {
+    throw new Error(`${method} ${url} failed (HTTP ${response.status})`);
+  }
 }

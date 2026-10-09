@@ -26,6 +26,7 @@ from opennutrilab.products.forms import ProductForm
 from opennutrilab.products.models import Additive
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import IngredientTaxon
+from opennutrilab.products.models import InventoryItem
 from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
@@ -118,6 +119,8 @@ class TestProductListView:
         assert labels["loading"] == "Chargement…"
         # The name is interpolated client-side, so the placeholder must survive.
         assert "%(name)s" in labels["confirmDelete"]
+        assert labels["myInventory"] == "Mon inventaire"
+        assert labels["addToInventory"] == "Ajouter à mon inventaire"
 
         # Intl needs the negotiated language or it falls back to the browser's.
         assert props["languageCode"].startswith("fr")
@@ -331,6 +334,23 @@ class TestProductCreateView:
 
         assert response.context["form"]["serving_quantity"].value() is None
         assert list(response.context["messages"]) == []
+
+    def test_a_product_created_is_in_the_inventory_of_whoever_created_it(
+        self, client: Client, user: User
+    ):
+        other = UserFactory()
+
+        with patch("opennutrilab.products.views.fetch_from_off"):
+            client.post(
+                reverse("create_product"),
+                {"barcode": NUTELLA, "name": "Nutella", "serving_unit": "g"},
+            )
+
+        product = Product.objects.get(pk=NUTELLA)
+        assert list(InventoryItem.objects.filter(product=product)) == [
+            InventoryItem.objects.get(user=user, product=product)
+        ]
+        assert not InventoryItem.objects.filter(user=other).exists()
 
     @patch("opennutrilab.products.views.fetch_from_off")
     def test_a_badly_read_list_imports_no_ingredient_and_says_how_to_fix_it(

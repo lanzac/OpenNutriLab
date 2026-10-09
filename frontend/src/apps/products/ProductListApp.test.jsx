@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ProductListApp } from './ProductListApp.jsx';
@@ -16,12 +16,27 @@ const labels = {
   loading: 'Chargement…',
   loadError: 'Échec du chargement des produits.',
   confirmDelete: 'Supprimer « %(name)s » ?',
+  myInventory: 'Mon inventaire',
+  allProducts: 'Tous les produits',
+  addToInventory: 'Ajouter à mon inventaire',
+  removeFromInventory: 'Retirer de mon inventaire',
+  inventoryEmpty:
+    'Votre inventaire est vide. Affichez tous les produits pour en ajouter.',
+  inventoryError: "Votre inventaire n'a pas pu être modifié.",
 };
 
 const RICE = {
   barcode: '1234567890123',
   name: 'Rice',
   created_at: '2026-01-01T00:00:00Z',
+  in_inventory: true,
+};
+
+const OATS = {
+  barcode: '3229820794556',
+  name: 'Oats',
+  created_at: '2026-01-02T00:00:00Z',
+  in_inventory: false,
 };
 
 function stubFetchSuccess(products = [RICE]) {
@@ -125,7 +140,7 @@ describe('ProductListApp', () => {
     expect(screen.getByText('01/01/2026')).toBeInTheDocument();
   });
 
-  it('renders nothing when the inventory is empty', async () => {
+  it('renders nothing when there is no product at all', async () => {
     stubFetchSuccess([]);
     renderList();
 
@@ -149,5 +164,104 @@ describe('ProductListApp', () => {
     );
     // The HTTP status stays in the console, out of the user's face.
     expect(consoleError).toHaveBeenCalled();
+  });
+
+  it("shows the user's inventory first, and every product on request", async () => {
+    stubFetchSuccess([RICE, OATS]);
+    renderList();
+
+    await waitFor(() => expect(screen.getByText('Rice')).toBeInTheDocument());
+    expect(screen.queryByText('Oats')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Mon inventaire' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tous les produits' }));
+
+    expect(screen.getByText('Oats')).toBeInTheDocument();
+    expect(screen.getByText('Rice')).toBeInTheDocument();
+  });
+
+  it('says how to fill an empty inventory', async () => {
+    stubFetchSuccess([OATS]);
+    renderList();
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          'Votre inventaire est vide. Affichez tous les produits pour en ajouter.',
+        ),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole('table')).toBeNull();
+  });
+
+  it('puts a product in the inventory with the CSRF token', async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => [RICE, OATS] })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) });
+    vi.stubGlobal('fetch', fetch);
+    renderList();
+    await waitFor(() => expect(screen.getByText('Rice')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Tous les produits' }));
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /Ajouter à mon inventaire/ }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('button', { name: /Retirer de mon inventaire/ }),
+      ).toHaveLength(2),
+    );
+    expect(fetch).toHaveBeenLastCalledWith('/api/v1/inventory/3229820794556', {
+      method: 'PUT',
+      headers: { Accept: 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+    });
+  });
+
+  it('takes a product out of the inventory, and it leaves the list', async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => [RICE] })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) });
+    vi.stubGlobal('fetch', fetch);
+    renderList();
+    await waitFor(() => expect(screen.getByText('Rice')).toBeInTheDocument());
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /Retirer de mon inventaire/ }),
+    );
+
+    await waitFor(() => expect(screen.queryByText('Rice')).toBeNull());
+    expect(fetch).toHaveBeenLastCalledWith(
+      '/api/v1/inventory/1234567890123',
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+  });
+
+  it('says so when the inventory cannot be changed', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => [RICE] })
+        .mockResolvedValueOnce({ ok: false, status: 403 }),
+    );
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    renderList();
+    await waitFor(() => expect(screen.getByText('Rice')).toBeInTheDocument());
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /Retirer de mon inventaire/ }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        "Votre inventaire n'a pas pu être modifié.",
+      ),
+    );
+    expect(screen.getByText('Rice')).toBeInTheDocument();
   });
 });

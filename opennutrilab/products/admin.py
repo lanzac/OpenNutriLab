@@ -29,6 +29,7 @@ from .models import Additive
 from .models import AdditiveNutrient
 from .models import Ingredient
 from .models import IngredientTaxon
+from .models import InventoryItem
 from .models import Nutrient
 from .models import NutrientComponent
 from .models import Preparation
@@ -93,6 +94,15 @@ class ProductAdmin(admin.ModelAdmin[Product]):
     list_display = ("barcode", "name", "created_at")
     search_fields = ("barcode", "name")
     inlines = (ProductNutrientInline,)
+
+
+@admin.register(InventoryItem)
+class InventoryItemAdmin(admin.ModelAdmin[InventoryItem]):
+    list_display = ("user", "product", "added_at")
+    list_filter = ("user",)
+    search_fields = ("product__barcode", "product__name", "user__username")
+    list_select_related = ("user", "product")
+    autocomplete_fields = ("product",)
 
 
 @admin.register(Ingredient)

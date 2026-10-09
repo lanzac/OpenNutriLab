@@ -4,6 +4,7 @@ Products, their ingredients, and the nutrient data behind them.
 - Nutrient: the one catalogue every amount below refers to, each nutrient
   with its unit. All amounts are per 100 g, in that unit.
 - Product and ProductNutrient: what a product's nutrition label declares.
+- InventoryItem: a product a user has at hand. Each user has an inventory.
 - ProductEstimate and EstimatedNutrient: a product's estimate as last worked
   out, kept for what reads many products at once.
 - Ingredient: a product's ingredient tree, as its label lists it. Each one is
@@ -31,6 +32,7 @@ from typing import TYPE_CHECKING
 from typing import Any
 from typing import override
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator
 from django.core.validators import MinValueValidator
@@ -249,6 +251,36 @@ class ProductNutrient(models.Model):
     @override
     def __str__(self) -> str:
         return f"{self.product}: {self.amount} {self.nutrient}"
+
+
+class InventoryItem(models.Model):
+    """
+    A product a user has at hand, which their meals are made of. Each user has an
+    inventory of their own, while the products are a catalogue every user shares.
+    """
+
+    user_id: int
+    product_id: str
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="inventory"
+    )
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="inventory_items"
+    )
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["added_at", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "product"], name="unique_inventory_item"
+            ),
+        ]
+
+    @override
+    def __str__(self) -> str:
+        return f"{self.user}: {self.product}"
 
 
 class ProductEstimate(models.Model):

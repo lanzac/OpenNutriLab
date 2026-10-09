@@ -1,5 +1,6 @@
 import logging
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from typing import Any
 from typing import cast
 from urllib.parse import quote
@@ -38,6 +39,7 @@ from .models import Preparation
 from .models import Product
 from .models import ReferenceIngredient
 from .services.estimate_report import build_estimate
+from .services.inventory import add_to_inventory
 from .services.label_parser import LabelWarning
 from .services.product_services import plain_amount
 from .services.reference_services import CIQUAL_SOURCE_PREFIX
@@ -46,6 +48,9 @@ from .services.reference_services import existing_references
 from .services.reference_services import name_key
 from .services.reference_services import walk_ingredients
 from .services.servings import read_serving
+
+if TYPE_CHECKING:
+    from opennutrilab.users.models import User
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +98,14 @@ class ProductListView(LoginRequiredMixin, ListView):
                 "loadError": _("Failed to load products."),
                 # %(name)s is interpolated client-side with the product name.
                 "confirmDelete": _('Delete "%(name)s"?'),
+                "myInventory": _("My inventory"),
+                "allProducts": _("All products"),
+                "addToInventory": _("Add to my inventory"),
+                "removeFromInventory": _("Take out of my inventory"),
+                "inventoryEmpty": _(
+                    "Your inventory is empty. Show all products to add some."
+                ),
+                "inventoryError": _("Your inventory could not be changed."),
             },
         }
         return context
@@ -130,6 +143,12 @@ class ProductCreateView(LoginRequiredMixin, ProductFormViewMixin, CreateView):
     model = Product
     form_class = ProductForm
     success_url = reverse_lazy("list_products")
+
+    def form_valid(self, form: ProductForm) -> HttpResponseRedirect:
+        response = super().form_valid(form)
+        # Whoever adds a product has it at hand.
+        add_to_inventory(cast("User", self.request.user), form.instance)
+        return response
 
     def get_form(
         self,

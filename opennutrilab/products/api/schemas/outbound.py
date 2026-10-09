@@ -8,6 +8,7 @@ from ninja import Schema
 
 from opennutrilab.products.models import Additive
 from opennutrilab.products.models import Ingredient
+from opennutrilab.products.models import InventoryItem
 from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductNutrient
@@ -229,6 +230,9 @@ class EstimateOut(Schema):
 class ProductListItemOut(ModelSchema):
     """A product as a list shows it."""
 
+    # Whether it is in the inventory of the user asking (see the route).
+    in_inventory: bool = False
+
     class Meta:
         model = Product
         fields: list[str] = ["barcode", "name", "created_at"]
@@ -240,6 +244,16 @@ class ServingOut(Schema):
     quantity: Decimal
     unit: str
     name: str
+
+
+def serving_of(product: Product) -> ServingOut | None:
+    if product.serving_quantity is None:
+        return None
+    return ServingOut(
+        quantity=product.serving_quantity,
+        unit=product.serving_unit,
+        name=product.serving_name,
+    )
 
 
 class ProductOut(ModelSchema):
@@ -279,13 +293,7 @@ class ProductOut(ModelSchema):
 
     @staticmethod
     def resolve_serving(obj: Product) -> ServingOut | None:
-        if obj.serving_quantity is None:
-            return None
-        return ServingOut(
-            quantity=obj.serving_quantity,
-            unit=obj.serving_unit,
-            name=obj.serving_name,
-        )
+        return serving_of(obj)
 
     @staticmethod
     def resolve_ingredients(obj: Product) -> QuerySet[Ingredient]:
@@ -315,3 +323,24 @@ class ProductOut(ModelSchema):
     @staticmethod
     def resolve_nutrients(obj: Product) -> QuerySet[ProductNutrient]:
         return obj.declared_nutrients.select_related("nutrient")
+
+
+class InventoryItemOut(Schema):
+    """A product in a user's inventory."""
+
+    barcode: str
+    name: str
+    serving: ServingOut | None = None
+    added_at: datetime
+
+    @staticmethod
+    def resolve_barcode(obj: InventoryItem) -> str:
+        return obj.product.barcode
+
+    @staticmethod
+    def resolve_name(obj: InventoryItem) -> str:
+        return obj.product.name
+
+    @staticmethod
+    def resolve_serving(obj: InventoryItem) -> ServingOut | None:
+        return serving_of(obj.product)

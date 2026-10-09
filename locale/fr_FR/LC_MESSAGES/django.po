@@ -868,6 +868,25 @@ msgstr ""
 "%(text)s », qui n'a pas pu être lue. Saisissez-la à la main pour compter ce "
 "produit en portions."
 
+msgid "My inventory"
+msgstr "Mon inventaire"
+
+msgid "All products"
+msgstr "Tous les produits"
+
+msgid "Add to my inventory"
+msgstr "Ajouter à mon inventaire"
+
+msgid "Take out of my inventory"
+msgstr "Retirer de mon inventaire"
+
+msgid "Your inventory is empty. Show all products to add some."
+msgstr ""
+"Votre inventaire est vide. Affichez tous les produits pour en ajouter."
+
+msgid "Your inventory could not be changed."
+msgstr "Votre inventaire n'a pas pu être modifié."
+
 #~ msgid "Fat"
 #~ msgstr "Matières grasses"
 

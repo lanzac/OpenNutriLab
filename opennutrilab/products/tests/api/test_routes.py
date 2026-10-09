@@ -9,6 +9,7 @@ from opennutrilab.products.api.schemas.inbound import ProductCreate
 from opennutrilab.products.api.schemas.outbound import ProductOut
 from opennutrilab.products.models import Additive
 from opennutrilab.products.models import Ingredient
+from opennutrilab.products.models import InventoryItem
 from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ReferenceIngredient
@@ -142,7 +143,7 @@ def test_list_products(api_client: Client, products_two: tuple[Product, Product]
     p1, p2 = products_two
     # Only what a list shows: no nested nutritional values or ingredients.
     assert [set(item) for item in response.json()] == [
-        {"barcode", "name", "created_at"}
+        {"barcode", "name", "created_at", "in_inventory"}
     ] * 2
     assert {item["barcode"] for item in response.json()} == {p1.barcode, p2.barcode}
 
@@ -505,3 +506,68 @@ def test_an_ingredient_that_is_an_additive_is_served_as_one(
         "function": "acid",
         "status": "curated",
     }
+
+
+# -----------------------
+# The inventory of the user asking
+# -----------------------
+@pytest.mark.django_db
+def test_the_inventory_is_each_users_own(
+    api_client: Client, user: User, products_two: tuple[Product, Product]
+):
+    p1, p2 = products_two
+    other = UserFactory()
+    InventoryItem.objects.create(user=other, product=p2)
+
+    assert api_client.get("/api/v1/inventory/").json() == []
+
+    response = api_client.put(f"/api/v1/inventory/{p1.barcode}")
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json()["barcode"] == p1.barcode
+    assert [i["barcode"] for i in api_client.get("/api/v1/inventory/").json()] == [
+        p1.barcode
+    ]
+    # The list of products says which are in it, for the user asking only.
+    listed = {p["barcode"]: p["in_inventory"] for p in api_client.get(API).json()}
+    assert listed == {p1.barcode: True, p2.barcode: False}
+
+
+@pytest.mark.django_db
+def test_putting_a_product_in_twice_or_taking_one_out_twice_changes_nothing(
+    api_client: Client, user: User, products_two: tuple[Product, Product]
+):
+    p1, _ = products_two
+
+    api_client.put(f"/api/v1/inventory/{p1.barcode}")
+    api_client.put(f"/api/v1/inventory/{p1.barcode}")
+    assert InventoryItem.objects.filter(user=user).count() == 1
+
+    for _ in range(2):
+        response = api_client.delete(f"/api/v1/inventory/{p1.barcode}")
+        assert response.status_code == HTTPStatus.OK
+        assert response.json() == {"in_inventory": False}
+    assert not InventoryItem.objects.filter(user=user).exists()
+
+
+@pytest.mark.django_db
+def test_an_unknown_product_cannot_be_put_in_the_inventory(api_client: Client):
+    assert api_client.put("/api/v1/inventory/3017620422003").status_code == 404  # noqa: PLR2004
+
+
+@pytest.mark.django_db
+def test_the_inventory_needs_a_signed_in_user(client: Client):
+    assert client.get("/api/v1/inventory/").status_code == HTTPStatus.UNAUTHORIZED
+
+
+@pytest.mark.django_db
+def test_a_product_created_through_the_api_is_in_the_inventory_of_its_creator(
+    api_client: Client, user: User
+):
+    payload = _minimal_payload("3297760097969", "Created Via API")
+
+    api_client.post(API, payload, content_type="application/json")
+
+    assert InventoryItem.objects.filter(
+        user=user, product_id=payload["barcode"]
+    ).exists()

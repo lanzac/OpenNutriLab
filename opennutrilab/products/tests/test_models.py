@@ -10,6 +10,7 @@ from django.utils import translation
 from opennutrilab.products.models import Additive
 from opennutrilab.products.models import AdditiveNutrient
 from opennutrilab.products.models import Ingredient
+from opennutrilab.products.models import InventoryItem
 from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
@@ -18,6 +19,7 @@ from opennutrilab.products.models import ReferenceIngredient
 from opennutrilab.products.models import Source
 from opennutrilab.products.models import SourceFood
 from opennutrilab.products.models import SourceFoodNutrient
+from opennutrilab.users.tests.factories import UserFactory
 
 BARCODE = "3229820794556"
 
@@ -103,6 +105,21 @@ def test_a_serving_has_a_quantity_and_a_unit_or_nothing(serving: dict[str, objec
         serving_unit="g",
         serving_name="1 bol",
     )
+
+
+@pytest.mark.django_db
+def test_a_product_is_in_a_users_inventory_once(product: Product):
+    user = UserFactory()
+    InventoryItem.objects.create(user=user, product=product)
+
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        InventoryItem.objects.create(user=user, product=product)
+
+    # Another user's inventory is their own.
+    InventoryItem.objects.create(user=UserFactory(), product=product)
+    # And goes with the product.
+    product.delete()
+    assert not InventoryItem.objects.exists()
 
 
 @pytest.mark.django_db
