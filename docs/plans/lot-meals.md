@@ -129,9 +129,32 @@ the others are recommendations they did not object to. Work goes on the branch
 
 ## Steps (one commit or more each, tests with each)
 
-1. **A product's serving**: read and parse `serving_size` (decision 2), the fields
-   on `Product` (migration), the product form, the product's page. Done when the
-   bread reads 35.7 g "1 tranche" and the muesli has none, with the notice.
+1. **A product's serving** (done): read and parse `serving_size` (decision 2), the
+   fields on `Product` (migration), the product form, the product's page. Done when
+   the bread reads 35.7 g "1 tranche" and the muesli has none.
+   - `Product.serving_quantity` (2 decimals), `serving_unit` (g or ml) and
+     `serving_name`, migration 0016, with a check that a serving has a quantity
+     and a unit or nothing at all. `services/servings.py`, `read_serving`, reads
+     the three forms of decision 2, in g (also written gr, gram, gramme...), ml, cl
+     and l (the last two as ml).
+   - On the form, three fields under the description, filled by a lookup (a new
+     product, "Reset data"), as the declared values are, outside the model's
+     fields. A text that is not read is said in a notice and leaves the field as it
+     was. **No notice when OpenFoodFacts has no serving**, unlike what this step
+     first said: the empty field says it, and on a reset the serving entered by
+     hand is kept, which a notice to enter it would contradict.
+   - The API serves `serving` (null when there is none) and takes it on create and
+     update; on update, left out it is not touched and null removes it, the one
+     field where null means that.
+   - Measured on 400 French products from OpenFoodFacts (2026-10-09): 343 have a
+     `serving_size`, 305 of them are read (89 %), and none differs from
+     OpenFoodFacts' own `serving_quantity`. The 38 not read give two quantities
+     (powder and milk), a parenthesis within the parenthesis, a number without a
+     unit, or no quantity at all.
+   - In the development database (migrated to 0016), the servings of the four
+     products that OpenFoodFacts gives one for were filled in through the service:
+     bread 35.7 g "1 tranche", gnocchi 300 g, bars 45 g, vegetarian balls 400 g.
+     The muesli has none.
 2. **The omega-3 and omega-6 totals**, as derived nutrients.
 3. **The stored composition of a product**, per 100 g (amount, low, high, coverage
    per nutrient), from its estimate; worked out again when the product, its
