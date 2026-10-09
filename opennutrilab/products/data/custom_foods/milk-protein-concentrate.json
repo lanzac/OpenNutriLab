@@ -1,0 +1,37 @@
+{
+  "code": "milk-protein-concentrate",
+  "name_fr": "Concentré de protéines de lait",
+  "name_en": "Milk protein concentrate",
+  "basis_fr": "norme ADPI des protéines de lait concentrées, MPC 80: protéines 79,5 % au moins; lactose 9 %, lipides 2,5 %, eau 6 %, cendres 8 % au plus; fibres comme le lait écrémé en poudre CIQUAL 19054",
+  "basis_en": "ADPI concentrated milk proteins standard, MPC 80: protein at least 79.5 %; lactose 9 %, fat 2.5 %, water 6 %, ash 8 % at most; fibre as skimmed milk powder CIQUAL 19054",
+  "nutrients": {
+    "proteins": {
+      "min": 79.5,
+      "max": 100
+    },
+    "carbohydrates": {
+      "min": 0,
+      "max": 9
+    },
+    "fat": {
+      "min": 0,
+      "max": 2.5
+    },
+    "water": {
+      "min": 0,
+      "max": 6
+    },
+    "ash": {
+      "min": 0,
+      "max": 8
+    },
+    "fiber": 0,
+    "energy": {
+      "min": 1352,
+      "max": 1700
+    }
+  },
+  "references": [
+    82
+  ]
+}

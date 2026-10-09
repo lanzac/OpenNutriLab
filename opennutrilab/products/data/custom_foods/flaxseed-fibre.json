@@ -1,0 +1,36 @@
+{
+  "code": "flaxseed-fibre",
+  "name_fr": "Fibre de lin",
+  "name_en": "Flaxseed fibre",
+  "basis_fr": "coproduit de la graine de lin après extraction de l'huile (fiches Midlands et Shape Foods, article de recherche sur l'enveloppe de la graine): bornes entre ces sources",
+  "basis_en": "co-product of flaxseed after the oil is pressed out (Midlands and Shape Foods data sheets, research paper on the seed hull): bounds between these sources",
+  "nutrients": {
+    "water": {
+      "min": 3.9,
+      "max": 12
+    },
+    "fat": {
+      "min": 8,
+      "max": 28
+    },
+    "proteins": {
+      "min": 18.9,
+      "max": 39
+    },
+    "fiber": {
+      "min": 25,
+      "max": 45
+    },
+    "carbohydrates": {
+      "min": 0,
+      "max": 44
+    },
+    "energy": {
+      "min": 817,
+      "max": 2810
+    }
+  },
+  "references": [
+    87
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "code": "flavouring-generic",
+  "name_fr": "Arôme",
+  "name_en": "Flavouring",
+  "basis_fr": "bornes physiques: un support et des composés aromatiques",
+  "basis_en": "physical bounds: a carrier and aroma compounds",
+  "nutrients": {
+    "water": {
+      "min": 0,
+      "max": 100
+    },
+    "fat": {
+      "min": 0,
+      "max": 100
+    },
+    "carbohydrates": {
+      "min": 0,
+      "max": 100
+    },
+    "fiber": {
+      "min": 0,
+      "max": 100
+    },
+    "proteins": {
+      "min": 0,
+      "max": 100
+    },
+    "ash": {
+      "min": 0,
+      "max": 100
+    },
+    "energy": {
+      "min": 0,
+      "max": 3700
+    }
+  },
+  "references": [
+    97,
+    106
+  ]
+}

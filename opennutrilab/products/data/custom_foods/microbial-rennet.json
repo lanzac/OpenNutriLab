@@ -1,0 +1,44 @@
+{
+  "code": "microbial-rennet",
+  "name_fr": "Présure microbienne",
+  "name_en": "Microbial rennet",
+  "basis_fr": "bornes physiques: une enzyme (chymosine) dans un support (eau, chlorure de sodium, glycérol)",
+  "basis_en": "physical bounds: an enzyme (chymosin) in a carrier (water, sodium chloride, glycerol)",
+  "nutrients": {
+    "water": {
+      "min": 0,
+      "max": 100
+    },
+    "fat": {
+      "min": 0,
+      "max": 100
+    },
+    "carbohydrates": {
+      "min": 0,
+      "max": 100
+    },
+    "fiber": {
+      "min": 0,
+      "max": 100
+    },
+    "proteins": {
+      "min": 0,
+      "max": 100
+    },
+    "ash": {
+      "min": 0,
+      "max": 100
+    },
+    "energy": {
+      "min": 0,
+      "max": 3700
+    },
+    "salt": {
+      "min": 0,
+      "max": 100
+    }
+  },
+  "references": [
+    31
+  ]
+}
