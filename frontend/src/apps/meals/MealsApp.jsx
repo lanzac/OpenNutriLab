@@ -16,6 +16,7 @@ import { LimitsEditor } from './LimitsEditor.jsx';
 import { MealCard } from './MealCard.jsx';
 import { ProposalPanel } from './ProposalPanel.jsx';
 import { SuggestionsPanel } from './SuggestionsPanel.jsx';
+import { SummaryModeProvider } from './summaryMode.jsx';
 
 /**
  * The meals of a day, with what each brings and the day against the user's
@@ -143,7 +144,7 @@ export function MealsApp({
   const canSuggest = report !== null && report.needs !== null && !suggesting;
 
   return (
-    <div>
+    <SummaryModeProvider>
       <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
         <button
           type="button"
@@ -268,9 +269,10 @@ export function MealsApp({
             inventory={inventory}
             labels={labels}
             csrfToken={csrfToken}
+            languageCode={languageCode}
           />
         </>
       )}
-    </div>
+    </SummaryModeProvider>
   );
 }

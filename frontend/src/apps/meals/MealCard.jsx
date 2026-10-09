@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { formatAmount, formatInterval } from './format.js';
+import { fill, formatAmount, formatInterval, formatPercent } from './format.js';
 
 // What a meal shows of what it brings: the rest is in the day's table.
 const SHOWN = [
@@ -12,6 +12,27 @@ const SHOWN = [
   'omega_3',
   'omega_6',
 ];
+
+/** What a product's package holds, "500 g". */
+const packageText = (pack, languageCode) =>
+  formatAmount(pack.quantity, pack.unit, languageCode);
+
+/**
+ * How much of a package an item is, "14 % of a package of 500 g", for the products
+ * that have a quantity. A volume counts as the same number of grams.
+ */
+function PackageShare({ item, labels, languageCode }) {
+  if (!item.package || item.grams === null) return null;
+  const share = Number(item.grams) / Number(item.package.quantity);
+  return (
+    <small className="d-block text-body-secondary">
+      {fill(labels.packageShare, {
+        percent: formatPercent(share, languageCode),
+        package: packageText(item.package, languageCode),
+      })}
+    </small>
+  );
+}
 
 /** What a unit of a product is called: its serving, with the mass it stands for. */
 function unitOptions(serving, labels, languageCode) {
@@ -86,6 +107,7 @@ function ItemRow({ item, labels, languageCode, onChange, onRemove }) {
             : formatAmount(item.grams, 'g', languageCode)}
         </small>
       </div>
+      <PackageShare item={item} labels={labels} languageCode={languageCode} />
     </li>
   );
 }
@@ -113,6 +135,7 @@ function ReadOnlyRow({ item, labels, languageCode }) {
             </a>
           </>
         )}
+        <PackageShare item={item} labels={labels} languageCode={languageCode} />
       </span>
       <span className="text-nowrap text-body-secondary">
         {serving}
@@ -155,7 +178,9 @@ function AddRow({ meal, inventory, labels, languageCode, onAdd }) {
         <option value="">{labels.chooseProduct}</option>
         {available.map((product) => (
           <option key={product.barcode} value={product.barcode}>
-            {product.name}
+            {product.package
+              ? `${product.name} (${packageText(product.package, languageCode)})`
+              : product.name}
           </option>
         ))}
       </select>

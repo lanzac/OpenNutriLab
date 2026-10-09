@@ -81,18 +81,31 @@ export const labels = {
   suggestedFood: 'suggéré',
   coversNeed: 'couvre le besoin',
   ofNeed: '%(percent)s du besoin',
+  view: 'Affichage',
+  viewGauges: 'Jauges',
+  viewTable: 'Tableau',
+  legendZone: 'Attendu',
+  legendRange: 'Fourchette de la valeur',
+  legendUncertain: 'Pas certain',
+  legendOpen: 'Pointillé : aucun maximum n’est connu.',
+  shareOfMinimum: 'Part du minimum',
+  shareOfLimit: 'Part de la limite',
+  totalQuantity: 'Quantité totale',
+  packageShare: '%(percent)s d’un paquet de %(package)s',
 };
 
 export const BREAD = {
   barcode: '3228857002245',
   name: 'Pain de mie',
   serving: { quantity: '35.70', unit: 'g', name: '1 tranche' },
+  package: { quantity: '500.00', unit: 'g' },
   added_at: '2026-10-09T10:00:00Z',
 };
 export const MUESLI = {
   barcode: '3229820794556',
   name: 'Muesli',
   serving: null,
+  package: { quantity: '375.00', unit: 'g' },
   added_at: '2026-10-09T10:00:00Z',
 };
 
@@ -138,6 +151,7 @@ export const breadItem = {
   unit: 'serving',
   grams: '71.40',
   serving: BREAD.serving,
+  package: BREAD.package,
 };
 
 export const withBread = (extra = {}) =>

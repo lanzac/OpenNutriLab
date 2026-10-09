@@ -46,3 +46,24 @@ export function shiftDay(day, step) {
   date.setUTCDate(date.getUTCDate() + step);
   return date.toISOString().slice(0, 10);
 }
+
+/** A share of something as the language writes a percent: 0.456 is "46 %". */
+export function formatPercent(fraction, languageCode) {
+  const number = Number(fraction);
+  if (!Number.isFinite(number)) return '';
+  return new Intl.NumberFormat(languageCode, {
+    style: 'percent',
+    // Under a tenth, a whole percent is too coarse to tell 0.4 % from nothing.
+    maximumFractionDigits: Math.abs(number) < 0.1 ? 1 : 0,
+  }).format(number);
+}
+
+/**
+ * "%(name)s" and the like put in: the server translated the text and left the
+ * figures, which it cannot know where they stand in another language.
+ */
+export const fill = (text, values) =>
+  Object.entries(values).reduce(
+    (found, [name, value]) => found.replace(`%(${name})s`, value),
+    text,
+  );

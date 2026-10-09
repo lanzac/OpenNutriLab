@@ -99,6 +99,7 @@ class ProductListView(LoginRequiredMixin, ListView):
                 "loadError": _("Failed to load products."),
                 # %(name)s is interpolated client-side with the product name.
                 "confirmDelete": _('Delete "%(name)s"?'),
+                "totalQuantity": _("Total quantity"),
                 "myInventory": _("My inventory"),
                 "allProducts": _("All products"),
                 "addToInventory": _("Add to my inventory"),

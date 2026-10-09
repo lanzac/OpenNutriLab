@@ -151,14 +151,15 @@ describe('MealsApp', () => {
       within(within(card).getByLabelText(name))
         .getAllByRole('option')
         .map((o) => o.textContent);
+    // Each with what its package holds.
     expect(offered(breakfast, 'Ajouter un produit – Petit-déjeuner')).toEqual([
       'Choisir un produit…',
-      'Muesli',
+      'Muesli (375 g)',
     ]);
     expect(offered(lunch, 'Ajouter un produit – Déjeuner')).toEqual([
       'Choisir un produit…',
-      'Pain de mie',
-      'Muesli',
+      'Pain de mie (500 g)',
+      'Muesli (375 g)',
     ]);
   });
 
@@ -400,6 +401,7 @@ describe('the day against the needs', () => {
     const summary = await screen.findByRole('region', {
       name: 'La journée face à vos besoins',
     });
+    fireEvent.click(within(summary).getByRole('button', { name: 'Tableau' }));
     const fibre = within(summary).getByRole('row', { name: /Fibres/ });
     expect(within(fibre).getByText('12 g')).toBeInTheDocument();
     expect(within(fibre).getByText('10 – 14')).toBeInTheDocument();
@@ -424,6 +426,7 @@ describe('the day against the needs', () => {
     const summary = await screen.findByRole('region', {
       name: 'La journée face à vos besoins',
     });
+    fireEvent.click(within(summary).getByRole('button', { name: 'Tableau' }));
     const sodium = within(summary).getByRole('row', { name: /Sodium 1/ });
     const badge = within(sodium).getByText('Atteint ?');
     expect(badge).toHaveAttribute('title', 'Pas certain');
@@ -451,6 +454,7 @@ describe('the day against the needs', () => {
     const summary = await screen.findByRole('region', {
       name: 'La journée face à vos besoins',
     });
+    fireEvent.click(within(summary).getByRole('button', { name: 'Tableau' }));
     const omega = within(summary).getByRole('row', { name: /Oméga-3/ });
     expect(within(omega).getByText('0,23')).toBeInTheDocument();
     expect(within(omega).getByText('≥ 0,9')).toBeInTheDocument();

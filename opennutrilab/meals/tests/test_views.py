@@ -166,6 +166,12 @@ def test_the_labels_of_the_meals_page_are_translated_by_the_server(
     assert "%(after)s" in labels["suggestion_optimal"]
     assert "%(percent)s" in labels["ofNeed"]
     assert labels["coversNeed"] == "couvre le besoin"
+    # The day as gauges, and the total quantity of a package.
+    assert labels["viewGauges"] == "Jauges"
+    assert labels["viewTable"] == "Tableau"
+    assert labels["totalQuantity"] == "Quantité totale"
+    assert "%(percent)s" in labels["packageShare"]
+    assert "%(package)s" in labels["packageShare"]
 
 
 @pytest.mark.django_db

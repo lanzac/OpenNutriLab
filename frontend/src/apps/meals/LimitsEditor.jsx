@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 
 import { fetchLimits, setLimits } from './api/client.js';
+import { formatAmount } from './format.js';
 
 /** What is allowed of one product: the meals it may be in, and the most a day. */
-function LimitsRow({ product, meals, found, labels, csrfToken }) {
+function LimitsRow({ product, meals, found, labels, csrfToken, languageCode }) {
   const kinds = meals.map((meal) => meal.kind);
   // No limits is every meal ticked and no most.
   const [chosen, setChosen] = useState(
@@ -47,7 +48,19 @@ function LimitsRow({ product, meals, found, labels, csrfToken }) {
 
   return (
     <tr>
-      <td>{product.name}</td>
+      <td>
+        {product.name}
+        {product.package && (
+          <small className="d-block text-body-secondary">
+            {labels.totalQuantity} :{' '}
+            {formatAmount(
+              product.package.quantity,
+              product.package.unit,
+              languageCode,
+            )}
+          </small>
+        )}
+      </td>
       <td>
         {meals.map((meal) => (
           <label key={meal.kind} className="form-check form-check-inline">
@@ -120,7 +133,13 @@ function LimitsRow({ product, meals, found, labels, csrfToken }) {
  * the meals it may be in, and the most of it a day. With nothing set a product may
  * be in any meal, up to a default most.
  */
-export function LimitsEditor({ meals, inventory, labels, csrfToken }) {
+export function LimitsEditor({
+  meals,
+  inventory,
+  labels,
+  csrfToken,
+  languageCode,
+}) {
   const [limits, setFound] = useState(null);
 
   useEffect(() => {
@@ -167,6 +186,7 @@ export function LimitsEditor({ meals, inventory, labels, csrfToken }) {
                   found={limits[product.barcode]}
                   labels={labels}
                   csrfToken={csrfToken}
+                  languageCode={languageCode}
                 />
               ))}
             </tbody>

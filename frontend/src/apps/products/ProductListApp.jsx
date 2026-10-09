@@ -110,6 +110,7 @@ export function ProductListApp({ labels, csrfToken, languageCode, canDelete }) {
           <thead>
             <tr>
               <th>{labels.productName}</th>
+              <th>{labels.totalQuantity}</th>
               <th>{labels.createdAt}</th>
               <th>{labels.actions}</th>
             </tr>
@@ -118,6 +119,13 @@ export function ProductListApp({ labels, csrfToken, languageCode, canDelete }) {
             {shown.map((product) => (
               <tr key={product.barcode}>
                 <td>{product.name}</td>
+                <td className="text-nowrap">
+                  {product.package
+                    ? `${new Intl.NumberFormat(languageCode).format(
+                        Number(product.package.quantity),
+                      )} ${product.package.unit}`
+                    : ''}
+                </td>
                 <td>
                   {new Date(product.created_at).toLocaleDateString(
                     languageCode,

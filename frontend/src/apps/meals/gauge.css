@@ -1,0 +1,191 @@
+/* The gauges of the day against the needs (see Gauge.jsx and gauge.js). Colours are
+   Bootstrap's own variables, so that the dark theme follows. */
+
+.gauge-row {
+  display: grid;
+  grid-template-columns: minmax(9rem, 24%) minmax(0, 1fr) minmax(6.5rem, 14%);
+  gap: 0.25rem 1rem;
+  align-items: start;
+  padding: 0.45rem 0 0.2rem;
+  border-bottom: 1px solid var(--bs-border-color-translucent);
+}
+
+@media (max-width: 576px) {
+  .gauge-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .gauge-row .gauge {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+}
+
+.gauge-name {
+  line-height: 1.2;
+}
+
+.gauge-value {
+  text-align: end;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.gauge {
+  position: relative;
+  /* Room below the track for the ticks' labels. */
+  padding-bottom: 1.15rem;
+}
+
+.gauge-track {
+  position: relative;
+  height: 1.1rem;
+  overflow: hidden;
+  border-radius: 0.55rem;
+  background: var(--bs-secondary-bg);
+}
+
+/* What is wanted: from the lowest to the highest, or open at one end. */
+.gauge-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(var(--bs-success-rgb), 0.2);
+  border-inline: 2px solid rgba(var(--bs-success-rgb), 0.65);
+}
+
+/* The amount. */
+.gauge-fill {
+  position: absolute;
+  top: 0.22rem;
+  bottom: 0.22rem;
+  left: 0;
+  min-width: 0.2rem;
+  border-radius: 0.3rem;
+}
+
+.gauge-fill--within {
+  background: var(--bs-success);
+}
+
+.gauge-fill--below {
+  background: var(--bs-warning);
+}
+
+.gauge-fill--above {
+  background: var(--bs-danger);
+}
+
+.gauge-fill--unknown {
+  background: var(--bs-secondary);
+}
+
+/* A verdict that the whole range of the amount does not bear out is hatched. */
+.gauge-fill--uncertain {
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.45) 0 0.35rem,
+    transparent 0.35rem 0.7rem
+  );
+  background-blend-mode: normal;
+}
+
+/* The range the amount can be in: a line with a cap at each end, dashed and open at
+   the far end when no upper end is known. */
+.gauge-interval {
+  position: absolute;
+  top: 50%;
+  height: 0;
+  min-width: 2px;
+  border-top: 2px solid var(--bs-body-color);
+  opacity: 0.8;
+}
+
+.gauge-interval::before,
+.gauge-interval::after {
+  content: '';
+  position: absolute;
+  top: -0.4rem;
+  height: 0.8rem;
+  border-inline-start: 2px solid var(--bs-body-color);
+}
+
+.gauge-interval::before {
+  left: 0;
+}
+
+.gauge-interval::after {
+  right: 0;
+}
+
+.gauge-interval--open {
+  border-top-style: dashed;
+}
+
+.gauge-interval--open::after {
+  display: none;
+}
+
+.gauge-overflow {
+  position: absolute;
+  right: 0.15rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: bold;
+  line-height: 1;
+  color: var(--bs-white);
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+}
+
+.gauge-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-inline-start: 1px solid var(--bs-body-color);
+  opacity: 0.45;
+}
+
+.gauge-tick-label {
+  position: absolute;
+  top: 1.2rem;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--bs-secondary-color);
+}
+
+/* The day in one bar: how many of the needs and ratios are met, short, over. */
+.status-bar {
+  display: flex;
+  height: 0.8rem;
+  overflow: hidden;
+  border-radius: 0.4rem;
+  background: var(--bs-secondary-bg);
+}
+
+.status-bar-part--within {
+  background: var(--bs-success);
+}
+
+.status-bar-part--below {
+  background: var(--bs-warning);
+}
+
+.status-bar-part--above {
+  background: var(--bs-danger);
+}
+
+.status-bar-part--unknown {
+  background: var(--bs-secondary);
+}
+
+.legend-swatch {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  margin-inline-end: 0.3rem;
+  vertical-align: -0.15rem;
+  border-radius: 0.2rem;
+}

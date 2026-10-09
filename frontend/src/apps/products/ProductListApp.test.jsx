@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ProductListApp } from './ProductListApp.jsx';
@@ -8,6 +14,7 @@ import { ProductListApp } from './ProductListApp.jsx';
 // in the JSX fails these tests.
 const labels = {
   productName: 'Nom du produit',
+  totalQuantity: 'Quantité totale',
   createdAt: 'Créé le',
   actions: 'Actions',
   edit: 'Éditer',
@@ -28,6 +35,7 @@ const labels = {
 const RICE = {
   barcode: '1234567890123',
   name: 'Rice',
+  package: { quantity: '1000.00', unit: 'g' },
   created_at: '2026-01-01T00:00:00Z',
   in_inventory: true,
 };
@@ -35,6 +43,7 @@ const RICE = {
 const OATS = {
   barcode: '3229820794556',
   name: 'Oats',
+  package: null,
   created_at: '2026-01-02T00:00:00Z',
   in_inventory: false,
 };
@@ -92,6 +101,23 @@ describe('ProductListApp', () => {
     expect(
       screen.getByRole('toolbar', { name: 'Éditer et Supprimer un produit' }),
     ).toBeInTheDocument();
+  });
+
+  it('shows the total quantity of a product, and nothing where it has none', async () => {
+    stubFetchSuccess([RICE, { ...OATS, in_inventory: true }]);
+    renderList();
+
+    await waitFor(() => expect(screen.getByText('Rice')).toBeInTheDocument());
+
+    expect(
+      screen.getByRole('columnheader', { name: 'Quantité totale' }),
+    ).toBeInTheDocument();
+    const rows = screen.getAllByRole('row');
+    expect(
+      within(rows[1]).getByRole('cell', { name: /1\s000 g/ }),
+    ).toBeInTheDocument();
+    // The cell is there for the columns to line up, and empty.
+    expect(within(rows[2]).getAllByRole('cell')[1]).toBeEmptyDOMElement();
   });
 
   it('interpolates the product name into the delete confirmation', async () => {

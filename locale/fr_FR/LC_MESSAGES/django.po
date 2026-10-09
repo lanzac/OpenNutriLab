@@ -1220,6 +1220,37 @@ msgstr "Ce que contient le paquet, en tout."
 msgid "OpenFoodFacts gives the quantity of barcode %(barcode)s as \"%(text)s\", which could not be read. Enter what the package holds by hand."
 msgstr "OpenFoodFacts donne la quantité du code-barres %(barcode)s sous la forme « %(text)s », qui n'a pas pu être lue. Saisissez à la main ce que contient le paquet."
 
+msgid "Display"
+msgstr "Affichage"
+
+msgid "Gauges"
+msgstr "Jauges"
+
+msgid "Table"
+msgstr "Tableau"
+
+msgid "Expected"
+msgstr "Attendu"
+
+msgid "Range the value can be in"
+msgstr "Fourchette de la valeur"
+
+msgid "Not certain"
+msgstr "Pas certain"
+
+msgid "Dashed: no upper end is known."
+msgstr "Pointillé : aucun maximum n'est connu."
+
+msgid "Share of the minimum"
+msgstr "Part du minimum"
+
+msgid "Share of the limit"
+msgstr "Part de la limite"
+
+#, python-format
+msgid "%(percent)s of a package of %(package)s"
+msgstr "%(percent)s d'un paquet de %(package)s"
+
 #~ msgid "Fat"
 #~ msgstr "Matières grasses"
 

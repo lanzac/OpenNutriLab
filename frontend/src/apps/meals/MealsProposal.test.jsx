@@ -302,8 +302,13 @@ describe('the limits of the products', () => {
   const open = async () => {
     renderApp();
     const summary = await screen.findByText('Limites pour le jour proposé');
-    summary.closest('details').open = true;
-    return summary.closest('details');
+    const limits = summary.closest('details');
+    limits.open = true;
+    // The limits are fetched once the section is there: read them when they are.
+    await waitFor(() =>
+      expect(within(limits).queryByText('Chargement…')).toBeNull(),
+    );
+    return limits;
   };
 
   it('starts with every meal for every product, as no limit looks like', async () => {

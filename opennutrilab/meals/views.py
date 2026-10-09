@@ -280,6 +280,18 @@ def meals_labels() -> dict[str, str]:
         ),
         "suggestedDay": _("See the day with these foods"),
         "suggestedFood": _("suggested"),
+        "view": _("Display"),
+        "viewGauges": _("Gauges"),
+        "viewTable": _("Table"),
+        "legendZone": _("Expected"),
+        "legendRange": _("Range the value can be in"),
+        "legendUncertain": _("Not certain"),
+        "legendOpen": _("Dashed: no upper end is known."),
+        "shareOfMinimum": _("Share of the minimum"),
+        "shareOfLimit": _("Share of the limit"),
+        "totalQuantity": _("Total quantity"),
+        # %(percent)s and %(package)s are put in client-side.
+        "packageShare": _("%(percent)s of a package of %(package)s"),
         "coversNeed": _("covers the need"),
         # %(percent)s is put in client-side, with its percent sign.
         "ofNeed": _("%(percent)s of the need"),

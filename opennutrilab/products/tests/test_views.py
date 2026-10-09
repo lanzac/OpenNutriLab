@@ -114,6 +114,7 @@ class TestProductListView:
         labels: dict[str, str] = props["labels"]
         assert labels["productName"] == "Nom du produit"
         assert labels["createdAt"] == "Créé le"
+        assert labels["totalQuantity"] == "Quantité totale"
         assert labels["edit"] == "Éditer"
         assert labels["delete"] == "Supprimer"
         assert labels["loading"] == "Chargement…"

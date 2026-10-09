@@ -1,23 +1,10 @@
 import { DayPreview } from './DayPreview.jsx';
-import { formatNumber } from './format.js';
-
-// "%(name)s" and the like are interpolated here: the server translated the text and
-// left the figures, which it cannot know where they stand in another language.
-const fill = (text, values) =>
-  Object.entries(values).reduce(
-    (found, [name, value]) => found.replace(`%(${name})s`, value),
-    text,
-  );
+import { fill, formatNumber, formatPercent } from './format.js';
 
 /** How much of what is missed a food closes, in words. */
 function share(value, labels, languageCode) {
   if (Number(value) >= 1) return labels.coversNeed;
-  // The browser writes the percent as the language does, with its own spaces.
-  const percent = new Intl.NumberFormat(languageCode, {
-    style: 'percent',
-    maximumFractionDigits: 0,
-  }).format(Number(value));
-  return fill(labels.ofNeed, { percent });
+  return fill(labels.ofNeed, { percent: formatPercent(value, languageCode) });
 }
 
 function Food({ food, labels, languageCode }) {
