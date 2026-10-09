@@ -467,6 +467,36 @@ what is expected, with the ranges the values can be in.
   gauges, the table after the choice and after a reload, no console error; the
   product's form, list, cards and limits show the quantity.
 
+### Addendum 2 (2026-10-09, asked next): folding the groups of the day, and a product used whole
+
+- **The groups of the day fold.** Each group (energy, macronutrients, vitamins,
+  minerals, and the ratios) has a head that is a button (`aria-expanded`): the chevron,
+  the group's name, "3 sur 12 respectés" and a small bar of its verdicts, so that a
+  folded group still says how it stands. "Fold all" / "Unfold all" is one button, which
+  offers what is not yet done. It works in the gauges and in the table, and what is
+  folded is kept in the browser with the choice of view (`meals.foldedGroups`, which
+  may be refused or garbage: then everything is open). Two days on the page (the day,
+  and one proposed) follow the same choice and have ids of their own (`useId`).
+- **A product can be asked for whole** in the limits of each product: "Utiliser tout le
+  paquet" (`ItemLimits.use_all`, migration 0004; a CHECK says it has no most beside
+  it). The proposal then puts all of the package in the day, **a hard quantity, not a
+  target**: shared between the meals the product may be in as the optimiser sees fit,
+  and counted in grams whatever the product's serving (a package in ml counts as the
+  same grams, as a serving in ml does). The step is the coarsest of 10, 5, 1, 0.5, 0.1
+  and 0.01 g that makes the package a whole number of them (375 g in 5 g, 900 g in
+  10 g), so that the total is exact. A product with no total quantity cannot be asked
+  for whole (422 from the API, the box is disabled on the page); the request is
+  ignored, not kept, if the quantity is taken away later.
+- **What it costs the day**: the other needs are then the closest that is left, which
+  may be far (300 g of a cake of 20,000 kJ/100 g is seven days' energy): the report of
+  the day says it, as for any day. The suggestions keep the product whole too, in both
+  of their goes. On the development inventory: the muesli asked for whole came out as
+  60 g and 315 g in two meals, 375 g in all.
+- Tests: 8 in the limits, 7 in the optimiser (shared between meals, steps of 5 g,
+  kept though the day has no need of it, in the quick look at the foods), 15 in the
+  proposals (the step of 9 packages, ml, no package, the day and the API) and 1 in the
+  suggestions; 11 on the folding and 4 on the box in the page, with mutations.
+
 ## After the batch
 
 What the eight steps leave open, for the user to say:
