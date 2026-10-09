@@ -203,8 +203,23 @@ the others are recommendations they did not object to. Work goes on the branch
      3.8 s, and the five compositions read back in 0.02 s. The vegetarian balls
      have no estimate (their label's declared percentages and the order of their
      ingredients contradict each other), so meals count them by their label only.
-4. **Each user's inventory** (decision 1): `InventoryItem`, adding a product to it
-   and taking it out from the product list, and a view of one's own inventory.
+4. **Each user's inventory** (done) (decision 1): `InventoryItem`, adding a product
+   to it and taking it out from the product list, and a view of one's own inventory.
+   - `InventoryItem` (user, product, when it was added; once per user and product),
+     migration 0018, in the products app so that the list of products can say what
+     is in it. `services/inventory.py`. **The meals an item may appear in and its
+     most per day are left to the optimiser (step 7)**, which is what reads them,
+     unlike what decision 1 put on it.
+   - API: `GET /api/v1/inventory/`, `PUT` and `DELETE /api/v1/inventory/{barcode}`
+     (both change nothing when there is nothing to change), and `in_inventory` for
+     the user asking on each product of `GET /api/v1/products/`.
+   - **A product created, by the page or the API, goes into the inventory of whoever
+     created it**: adding a product is what one does with one at hand.
+   - The page "Inventaire" shows the user's inventory first, and every product on
+     request ("Mon inventaire" / "Tous les produits"), each with a button to put it
+     in or take it out; an empty inventory says how to fill it.
+   - Development database (migrated to 0018): the five products are in the
+     inventory of its one user, `admin`, who added them.
 5. **The profile and the needs** (decision 3): the profile and its form, the ANSES
    dataset and its migration, `daily_needs(profile)` giving a minimum, a target and
    a maximum per nutrient. Tested against the documents' own tables.
