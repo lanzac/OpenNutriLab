@@ -305,6 +305,27 @@ written.
      matter. They have the 8 nutrients of the label, grade D, and a range that is
      the source's own widened to at least 15 %. They live in the database, as
      the curated references do, and are not seeded by code.
+     Since 2026-10-08 such a food is made by `manage.py create_custom_food SPEC`
+     (`services/custom_foods.py`): a JSON spec names the proxies (source foods),
+     their shares, the water they are brought to and the nutrients given by hand;
+     it keeps every nutrient the proxies all measure, as an interval of at least
+     15 %, graded D, checks that the main components add up to about 100 g, makes
+     the `Manual` source when it is missing, and links the references the spec
+     names. The specs are kept in `products/data/custom_foods/` (a folder given to
+     the command makes them all, which is how a reset is replayed), and the three
+     foods above were rewritten from theirs: the 8 nutrients of the label are
+     unchanged, the others now come from the same CIQUAL foods, except vitamin C,
+     B1 and the folates, left out because drying, flaking and roasting destroy them
+     and nothing models that. The berries add up to 113 g: the three raw fruits
+     add up to 101.7-103.5 g in CIQUAL and the concentration multiplies the
+     difference by 5. Ingredients that are no food (a flavouring, a rennet, a
+     culture) have no food to start from: a nutrient is given as a range with no
+     amount (`{"min": 0, "max": 100}`), kept as that range, and its amount is the
+     lower end, what is surely there, as the estimate of a product counts a
+     nutrient no ingredient gives. A middle-of-the-range amount was tried and
+     dropped: a flavouring at 2 % added about 1 g of fat, protein and carbohydrates
+     to a bread. The `custom-food` skill (`.claude/skills/`, ignored by git) drives
+     the command.
    - Done as planned (decision 3 as recommended), with these details. Every
      figure is an interval. A measured amount is the range the source's own
      data gives (CIQUAL's minimum and maximum), or else its rounding read from
@@ -713,11 +734,12 @@ What the batch leaves open, to take up with the user.
 
 **Questions**
 
-- **The three Manual foods only have the 8 nutrients of the label**, so the
-  vitamins and minerals of the muesli are covered for 36-38 % of the product.
-  Completing them from the CIQUAL foods they were worked out from (grade D,
-  at least 15 %, the same method) would bring that near 100 %. Proposed, not
-  done: the user asked for the macronutrients only.
+- **The three Manual foods only had the 8 nutrients of the label** (done
+  2026-10-08, see step 4: they now have the CIQUAL foods' minerals and vitamins,
+  except vitamin C, B1 and the folates). Coverage of the muesli's minerals and of
+  vitamins B2, B6 and A went from 37 % to nearly 100 %; C and B1 stay at 37 %. To
+  count them, take them out of `exclude` in the specs and run the command with
+  `--replace`.
 - **The confidence formula** (decision 7) and the choice to work the estimate out
   on each request (decision 6) were never confirmed. They are coded as
   recommended, and the grade scale and the product of the four parts are one
@@ -752,6 +774,7 @@ What the batch leaves open, to take up with the user.
 **What lives in the development database and not in the code**
 
 - The `Manual` source with its three foods, and the references linked to them.
-  A reset loses them, and nothing recreates them.
+  A reset loses them; `create_custom_food products/data/custom_foods --replace`
+  makes them again once the references exist.
 - `vitamin_a_sixth`: `import_ciqual` creates it, a reset loses it until it is run
   again.

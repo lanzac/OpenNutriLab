@@ -78,7 +78,7 @@ class Estimate(NamedTuple):
     foods: tuple[SourceFood, ...]
 
 
-class _Measure(NamedTuple):
+class Measure(NamedTuple):
     amount: Decimal | None
     low: Decimal | None
     high: Decimal | None
@@ -128,9 +128,7 @@ def reference_composition(
         by_food = defaultdict(list, in_those_forms or by_food)
     derivations = list(derived_nutrients() if derived is None else derived)
 
-    per_nutrient: defaultdict[str, list[tuple[SourceFood, _Measure]]] = defaultdict(
-        list
-    )
+    per_nutrient: defaultdict[str, list[tuple[SourceFood, Measure]]] = defaultdict(list)
     for food_rows in by_food.values():
         food = food_rows[0].food
         for code, measure in _food_measures(food_rows, derivations).items():
@@ -208,10 +206,10 @@ def _hull(estimates: Sequence[Estimate]) -> Estimate:
 
 def _food_measures(
     rows: Sequence[SourceFoodNutrient], derived: Iterable[Nutrient]
-) -> dict[str, _Measure]:
-    measures: dict[str, _Measure] = {}
+) -> dict[str, Measure]:
+    measures: dict[str, Measure] = {}
     for row in rows:
-        if (measure := _measure(row)) is not None:
+        if (measure := measure_of(row)) is not None:
             measures[row.nutrient_id] = measure
     for nutrient in derived:
         if nutrient.code not in measures and (measure := _derive(nutrient, measures)):
@@ -219,15 +217,15 @@ def _food_measures(
     return measures
 
 
-def _measure(row: SourceFoodNutrient) -> _Measure | None:
+def measure_of(row: SourceFoodNutrient) -> Measure | None:
     """What one value of a food says, or None when it was not measured."""
     if row.qualifier == Qualifier.TRACES.value:
-        return _Measure(None, Decimal(0), None, Qualifier.TRACES, row.confidence)
+        return Measure(None, Decimal(0), None, Qualifier.TRACES, row.confidence)
     amount = row.amount
     if amount is None:
         return None
     if row.qualifier == Qualifier.LESS_THAN.value:
-        return _Measure(
+        return Measure(
             _round(amount / 2), Decimal(0), amount, Qualifier.LESS_THAN, row.confidence
         )
     margin = rounding_margin(amount)
@@ -235,7 +233,7 @@ def _measure(row: SourceFoodNutrient) -> _Measure | None:
     high = row.maximum if row.maximum is not None else amount + margin
     if row.nutrient.unit == Nutrient.Unit.GRAM.value:
         high = min(high, MOST_GRAMS_PER_100_G)
-    return _Measure(
+    return Measure(
         amount, min(low, amount), max(high, amount), Qualifier.EXACT, row.confidence
     )
 
@@ -257,7 +255,7 @@ def rounding_margin(amount: Decimal) -> Decimal:
     )
 
 
-def _derive(nutrient: Nutrient, measures: dict[str, _Measure]) -> _Measure | None:
+def _derive(nutrient: Nutrient, measures: dict[str, Measure]) -> Measure | None:
     """A nutrient worked out from the amounts of a food, with its interval."""
     terms = {c.component_id for c in nutrient.components.all()}
     if not terms:
@@ -269,7 +267,7 @@ def _derive(nutrient: Nutrient, measures: dict[str, _Measure]) -> _Measure | Non
     high = derived_amount(nutrient, {c: _field(measures, c, "high") for c in terms})
     if low is None or high is None:
         return None
-    return _Measure(
+    return Measure(
         _round(amount),
         _round(low),
         _round(high),
@@ -278,7 +276,7 @@ def _derive(nutrient: Nutrient, measures: dict[str, _Measure]) -> _Measure | Non
     )
 
 
-def _field(measures: dict[str, _Measure], code: str, field: str) -> Decimal | None:
+def _field(measures: dict[str, Measure], code: str, field: str) -> Decimal | None:
     measure = measures.get(code)
     value: Decimal | None = getattr(measure, field, None)
     return value
@@ -293,7 +291,7 @@ def _worst_grade(grades: Iterable[str]) -> str:
 
 
 def _combine(
-    found: Sequence[tuple[SourceFood, _Measure]], default_pk: int | None = None
+    found: Sequence[tuple[SourceFood, Measure]], default_pk: int | None = None
 ) -> Estimate:
     # The value comes from the default food when it measured the nutrient, and
     # else from all of them, as it would without one. A default the reference no

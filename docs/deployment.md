@@ -148,6 +148,18 @@ To avoid the download, give it a directory that holds the four XML files of a
 release (`alim`, `alim_grp`, `compo` and `const`, each named with its date,
 from https://doi.org/10.57745/RDMHWY) with `--path`.
 
+CIQUAL has nothing for some ingredients ("flocons de soja"). The foods made by
+hand for them (source `Manual`, worked out from CIQUAL foods, every figure an
+interval graded D) are kept as specs in `opennutrilab/products/data/custom_foods/`,
+and a reset loses them from the database. Once the products are loaded again, so
+that the references the specs name exist, they are made again by giving the folder
+(`--replace` writes again the ones that are there, `--dry-run` keeps nothing):
+
+```sh
+just prod-manage create_custom_food opennutrilab/products/data/custom_foods --dry-run
+just prod-manage create_custom_food opennutrilab/products/data/custom_foods --replace
+```
+
 Watch the first boot; Caddy logs the certificate it obtains:
 
 ```sh
