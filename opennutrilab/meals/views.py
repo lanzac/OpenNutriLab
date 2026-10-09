@@ -8,8 +8,12 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpRequest
 from django.http import HttpResponse
+from django.middleware.csrf import get_token
 from django.shortcuts import redirect
 from django.shortcuts import render
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.translation import get_language
 from django.utils.translation import gettext as _
 from django.views import View
 
@@ -149,3 +153,74 @@ def ratio_rows(needs: Needs) -> list[dict[str, Any]]:
 
 def _labels(choices: Sequence[tuple[Any, Any]]) -> dict[str, str]:
     return {str(value): str(label) for value, label in choices}
+
+
+class MealsView(LoginRequiredMixin, View):
+    """The meals of a day. Rendered by React (frontend/src/apps/meals)."""
+
+    template_name = "meals/meals.html"
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        # Everything the React page needs from the server, handed over as one
+        # |json_script blob. csrfToken cannot be read from the cookie:
+        # CSRF_COOKIE_HTTPONLY is on. The labels are translated here, so that the
+        # .po catalogue stays the single source of truth.
+        props = {
+            "csrfToken": get_token(request),
+            "languageCode": get_language(),
+            "today": timezone.localdate().isoformat(),
+            "needsUrl": reverse("nutrition_needs"),
+            "inventoryUrl": reverse("list_products"),
+            "labels": meals_labels(),
+        }
+        return render(request, self.template_name, {"meals_props": props})
+
+
+def meals_labels() -> dict[str, str]:
+    return {
+        "loading": _("Loading…"),
+        "loadError": _("The meals could not be loaded."),
+        "saveError": _("The change could not be saved."),
+        "previousDay": _("Previous day"),
+        "nextDay": _("Next day"),
+        "day": _("Day"),
+        "today": _("Today"),
+        "emptyInventory": _(
+            "Your inventory has no product to put in a meal: add some to it first."
+        ),
+        "goInventory": _("Go to the inventory"),
+        "serving": _("serving"),
+        "quantity": _("Quantity"),
+        "unit": _("Unit"),
+        "noMass": _("no serving"),
+        "remove": _("Take out of the meal"),
+        "addProduct": _("Add a product"),
+        "chooseProduct": _("Choose a product…"),
+        "add": _("Add"),
+        "emptyMeal": _("Nothing in this meal yet."),
+        "noProfile": _("Fill in your profile to set the day against your needs."),
+        "myNeeds": _("My needs"),
+        "emptyDay": _("Put products in a meal to see what the day brings."),
+        "dayTitle": _("The day against your needs"),
+        "coverageNote": _(
+            "Coverage: the share of the food whose composition gives a value. "
+            "What is not covered counts as nothing, so a total is what is at "
+            "least there, and the range after it is what it can be."
+        ),
+        "nutrient": _("Nutrient"),
+        "total": _("Total"),
+        "need": _("Need"),
+        "status": _("Status"),
+        "coverage": _("Coverage"),
+        "ratios": _("Ratios"),
+        "ratio": _("Ratio"),
+        "inMoles": _("in moles"),
+        "below": _("Below"),
+        "within": _("Met"),
+        "above": _("Above"),
+        "unknown": _("Unknown"),
+        "uncertain": _(
+            "Not certain: the range of the total, or what the food does not "
+            "cover, could change it."
+        ),
+    }

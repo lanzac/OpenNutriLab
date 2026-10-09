@@ -99,3 +99,69 @@ def test_a_person_under_eighteen_is_refused(client: Client, user: User):
     assert response.status_code == 200  # noqa: PLR2004
     assert "birth_year" in response.context["form"].errors
     assert not Profile.objects.exists()
+
+
+# ----------------------------------------------------------------------------
+# The meals page
+# ----------------------------------------------------------------------------
+MEALS_URL = "/meals/"
+
+
+@pytest.mark.django_db
+def test_the_meals_page_needs_a_signed_in_user(client: Client):
+    response = client.get(MEALS_URL)
+
+    assert response.status_code == 302  # noqa: PLR2004
+    assert "/accounts/login/" in response["Location"]
+
+
+@pytest.mark.django_db
+def test_the_meals_page_is_the_react_mount_point_with_what_it_needs(
+    client: Client, user: User
+):
+    client.force_login(user)
+
+    response = client.get(MEALS_URL)
+
+    assert response.status_code == 200  # noqa: PLR2004
+    html = response.content.decode()
+    assert 'id="meals-root"' in html
+    assert 'id="meals-props"' in html
+    props = response.context["meals_props"]
+    assert props["today"] == timezone.localdate().isoformat()
+    assert props["needsUrl"] == "/needs/"
+    assert props["inventoryUrl"] == reverse("list_products")
+    # CSRF_COOKIE_HTTPONLY hides the token from the page's own scripts.
+    assert props["csrfToken"]
+    assert props["csrfToken"] in html
+
+
+@pytest.mark.django_db
+def test_the_labels_of_the_meals_page_are_translated_by_the_server(
+    client: Client, user: User
+):
+    client.force_login(user)
+
+    with translation.override("fr-fr"):
+        response = client.get(MEALS_URL, headers={"accept-language": "fr"})
+
+    props = response.context["meals_props"]
+    labels = props["labels"]
+    assert props["languageCode"].startswith("fr")
+    assert labels["loadError"] == "Les repas n'ont pas pu être chargés."
+    assert labels["add"] == "Ajouter"
+    assert labels["within"] == "Respecté"
+    assert labels["serving"] == "portion"
+    assert labels["myNeeds"] == "Mes besoins"
+    # Nothing is left in English.
+    assert all(isinstance(value, str) and value for value in labels.values())
+    assert labels["coverage"] == "Couverture"
+
+
+@pytest.mark.django_db
+def test_the_meals_are_in_the_menu(client: Client, user: User):
+    client.force_login(user)
+
+    html = client.get(MEALS_URL).content.decode()
+
+    assert 'href="/meals/"' in html

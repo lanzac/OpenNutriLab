@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+{% load django_vite %}
+
+{% block title %}
+  {% translate "Meals" %}
+{% endblock title %}
+{% block content %}
+  <div class="container-lg my-5">
+    <h1 class="mb-4">{% translate "Meals" %}</h1>
+    {# Rendered by React (frontend/src/apps/meals/MealsApp.jsx), fetching live #}
+    {# from /api/v1/meals/. Labels, the CSRF token and the active language all #}
+    {# come from MealsView: the .po catalogue stays the single source of truth, #}
+    {# and CSRF_COOKIE_HTTPONLY means the token cannot be read client-side. #}
+    {{ meals_props|json_script:"meals-props" }}
+    <div id="meals-root"></div>
+  </div>
+  {% vite_asset 'src/apps/meals/meals-entry.jsx' %}
+{% endblock content %}

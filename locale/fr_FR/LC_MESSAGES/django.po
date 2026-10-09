@@ -1009,6 +1009,108 @@ msgstr "Les références retenues sont celles des adultes, à partir de %(age)s 
 msgid "Energy: %(kcal)s kcal (%(kj)s kJ), and from %(low)s to %(high)s kcal for a day."
 msgstr "Énergie : %(kcal)s kcal (%(kj)s kJ), et de %(low)s à %(high)s kcal pour une journée."
 
+msgid "Breakfast"
+msgstr "Petit-déjeuner"
+
+msgid "Lunch"
+msgstr "Déjeuner"
+
+msgid "Snack"
+msgstr "Collation"
+
+msgid "Dinner"
+msgstr "Dîner"
+
+msgid "Date"
+msgstr "Date"
+
+msgid "Meal"
+msgstr "Repas"
+
+msgid "serving"
+msgstr "portion"
+
+msgid "Quantity"
+msgstr "Quantité"
+
+msgid "The meals could not be loaded."
+msgstr "Les repas n'ont pas pu être chargés."
+
+msgid "The change could not be saved."
+msgstr "Le changement n'a pas pu être enregistré."
+
+msgid "Previous day"
+msgstr "Jour précédent"
+
+msgid "Next day"
+msgstr "Jour suivant"
+
+msgid "Day"
+msgstr "Jour"
+
+msgid "Today"
+msgstr "Aujourd'hui"
+
+msgid "Your inventory has no product to put in a meal: add some to it first."
+msgstr "Votre inventaire n'a aucun produit à mettre dans un repas : ajoutez-en d'abord."
+
+msgid "Go to the inventory"
+msgstr "Aller à l'inventaire"
+
+msgid "no serving"
+msgstr "pas de portion"
+
+msgid "Take out of the meal"
+msgstr "Retirer du repas"
+
+msgid "Add a product"
+msgstr "Ajouter un produit"
+
+msgid "Choose a product…"
+msgstr "Choisir un produit…"
+
+msgid "Add"
+msgstr "Ajouter"
+
+msgid "Nothing in this meal yet."
+msgstr "Rien dans ce repas pour l'instant."
+
+msgid "Fill in your profile to set the day against your needs."
+msgstr "Renseignez votre profil pour comparer la journée à vos besoins."
+
+msgid "Put products in a meal to see what the day brings."
+msgstr "Mettez des produits dans un repas pour voir ce qu'apporte la journée."
+
+msgid "The day against your needs"
+msgstr "La journée face à vos besoins"
+
+msgid "Coverage: the share of the food whose composition gives a value. What is not covered counts as nothing, so a total is what is at least there, and the range after it is what it can be."
+msgstr "Couverture : la part des aliments dont la composition donne une valeur. Ce qui n'est pas couvert compte pour rien : un total est donc ce qu'il y a au moins, et la fourchette en dessous est ce qu'il peut être."
+
+msgid "Total"
+msgstr "Total"
+
+msgid "Need"
+msgstr "Besoin"
+
+msgid "Status"
+msgstr "Statut"
+
+msgid "Below"
+msgstr "Sous le besoin"
+
+msgid "Met"
+msgstr "Respecté"
+
+msgid "Above"
+msgstr "Au-dessus"
+
+msgid "Unknown"
+msgstr "Inconnu"
+
+msgid "Not certain: the range of the total, or what the food does not cover, could change it."
+msgstr "Pas certain : la fourchette du total, ou ce que les aliments ne couvrent pas, pourrait le changer."
+
 #~ msgid "Fat"
 #~ msgstr "Matières grasses"
 

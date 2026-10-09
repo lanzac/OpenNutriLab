@@ -34,6 +34,7 @@ export default defineConfig({
           import.meta.dirname,
           'src/apps/products/form-entry.js',
         ),
+        meals: resolve(import.meta.dirname, 'src/apps/meals/meals-entry.jsx'),
       },
     },
   },
