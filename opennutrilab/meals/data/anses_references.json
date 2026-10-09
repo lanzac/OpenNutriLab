@@ -1,0 +1,445 @@
+{
+  "sources": {
+    "anses-2021": {
+      "title": "Avis de l'Anses relatif à l'actualisation des références nutritionnelles françaises en vitamines et minéraux (saisine 2018-SA-0238), mars 2021",
+      "url": "https://www.anses.fr/system/files/NUT2018SA0238Ra.pdf",
+      "where": "Tableaux 2 et 3, pages 12 à 19 de l'avis"
+    },
+    "anses-2016": {
+      "title": "Actualisation des repères du PNNS : élaboration des références nutritionnelles, rapport d'expertise collective (saisine 2012-SA-0103), novembre 2016",
+      "url": "https://www.anses.fr/fr/system/files/NUT2012SA0103Ra-1.pdf",
+      "where": "Tableau 28, contraintes de l'outil d'optimisation, page 94 ; besoin énergétique, pages 88 à 90"
+    },
+    "anses-2011": {
+      "title": "Actualisation des apports nutritionnels conseillés pour les acides gras, rapport d'expertise collective (saisine 2006-SA-0359), mai 2011",
+      "url": "https://www.anses.fr/fr/system/files/NUT2006sa0359Ra.pdf",
+      "where": "Tableau 19, ANC pour un adulte, page 252"
+    }
+  },
+  "notes": [
+    "Adults from 18, men and women, neither pregnant nor breastfeeding. Amounts per day, in the unit of the nutrient in the catalogue (EPA and DHA in g).",
+    "Vitamins and minerals are the 2021 opinion's, newer than the 2016 table, whose own values for them differ (magnesium 420 mg, vitamin D up to 50 µg).",
+    "An upper limit that the opinion gives for an added form only is not a limit on food: magnesium (salts and supplements), nicotinic acid. The one for folic acid applies to folic acid, and the one for vitamin A to retinol.",
+    "Zinc: the 2016 report takes the reference for 900 mg/day of phytates, which no table gives the content of.",
+    "Sugars: the 2016 limit is on total sugars less lactose; it is compared here with total sugars, lactose included."
+  ],
+  "references": [
+    {
+      "nutrients": ["proteins"],
+      "basis": "energy_percent",
+      "kcal_per_g": "4",
+      "low": "10",
+      "low_kind": "constraint",
+      "high": "20",
+      "high_kind": "constraint",
+      "source": "anses-2016"
+    },
+    {
+      "nutrients": ["fat"],
+      "basis": "energy_percent",
+      "kcal_per_g": "9",
+      "low": "35",
+      "low_kind": "constraint",
+      "high": "40",
+      "high_kind": "constraint",
+      "source": "anses-2016"
+    },
+    {
+      "nutrients": ["carbohydrates"],
+      "basis": "energy_percent",
+      "kcal_per_g": "4",
+      "low": "40",
+      "low_kind": "constraint",
+      "high": "55",
+      "high_kind": "constraint",
+      "source": "anses-2016"
+    },
+    {
+      "nutrients": ["sugars"],
+      "basis": "day",
+      "high": "100",
+      "high_kind": "constraint",
+      "source": "anses-2016"
+    },
+    {
+      "nutrients": ["fiber"],
+      "basis": "day",
+      "low": "30",
+      "low_kind": "constraint",
+      "source": "anses-2016"
+    },
+    {
+      "nutrients": ["saturated_fat"],
+      "basis": "energy_percent",
+      "kcal_per_g": "9",
+      "high": "12",
+      "high_kind": "constraint",
+      "source": "anses-2016"
+    },
+    {
+      "nutrients": ["lauric_acid", "myristic_acid", "palmitic_acid"],
+      "basis": "energy_percent",
+      "kcal_per_g": "9",
+      "high": "8",
+      "high_kind": "constraint",
+      "source": "anses-2016"
+    },
+    {
+      "nutrients": ["linoleic_acid"],
+      "basis": "energy_percent",
+      "kcal_per_g": "9",
+      "low": "4",
+      "low_kind": "constraint",
+      "source": "anses-2016"
+    },
+    {
+      "nutrients": ["alpha_linolenic_acid"],
+      "basis": "energy_percent",
+      "kcal_per_g": "9",
+      "low": "1",
+      "low_kind": "constraint",
+      "source": "anses-2016"
+    },
+    {
+      "nutrients": ["epa", "dha"],
+      "basis": "day",
+      "low": "0.5",
+      "low_kind": "constraint",
+      "source": "anses-2016"
+    },
+    {
+      "nutrients": ["epa"],
+      "basis": "day",
+      "low": "0.25",
+      "low_kind": "anc",
+      "source": "anses-2011"
+    },
+    {
+      "nutrients": ["dha"],
+      "basis": "day",
+      "low": "0.25",
+      "low_kind": "anc",
+      "source": "anses-2011"
+    },
+
+    {
+      "nutrients": ["vitamin_a"],
+      "sex": "male",
+      "basis": "day",
+      "low": "750",
+      "low_kind": "rnp",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["vitamin_a"],
+      "sex": "female",
+      "basis": "day",
+      "low": "650",
+      "low_kind": "rnp",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["retinol"],
+      "basis": "day",
+      "high": "3000",
+      "high_kind": "lss",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["vitamin_b1"],
+      "basis": "per_mj",
+      "low": "0.1",
+      "low_kind": "rnp",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["vitamin_b2"],
+      "basis": "day",
+      "low": "1.6",
+      "low_kind": "rnp",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["vitamin_b3"],
+      "basis": "per_mj",
+      "low": "1.6",
+      "low_kind": "rnp",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["vitamin_b3"],
+      "basis": "day",
+      "high": "900",
+      "high_kind": "lss",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["vitamin_b5"],
+      "sex": "male",
+      "basis": "day",
+      "low": "6",
+      "low_kind": "as",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["vitamin_b5"],
+      "sex": "female",
+      "basis": "day",
+      "low": "5",
+      "low_kind": "as",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["vitamin_b6"],
+      "sex": "male",
+      "basis": "day",
+      "low": "1.7",
+      "low_kind": "rnp",
+      "high": "25",
+      "high_kind": "lss",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["vitamin_b6"],
+      "sex": "female",
+      "basis": "day",
+      "low": "1.6",
+      "low_kind": "rnp",
+      "high": "25",
+      "high_kind": "lss",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["vitamin_b9_dfe"],
+      "basis": "day",
+      "low": "330",
+      "low_kind": "rnp",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["folic_acid"],
+      "basis": "day",
+      "high": "1000",
+      "high_kind": "lss",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["vitamin_b12"],
+      "basis": "day",
+      "low": "4",
+      "low_kind": "as",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["vitamin_c"],
+      "basis": "day",
+      "low": "110",
+      "low_kind": "rnp",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["vitamin_d"],
+      "basis": "day",
+      "low": "15",
+      "low_kind": "as",
+      "high": "100",
+      "high_kind": "lss",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["vitamin_e"],
+      "sex": "male",
+      "basis": "day",
+      "low": "10",
+      "low_kind": "as",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["vitamin_e"],
+      "sex": "female",
+      "basis": "day",
+      "low": "9",
+      "low_kind": "as",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["vitamin_e"],
+      "basis": "day",
+      "high": "300",
+      "high_kind": "constraint",
+      "source": "anses-2016"
+    },
+    {
+      "nutrients": ["vitamin_k1"],
+      "basis": "day",
+      "low": "79",
+      "low_kind": "as",
+      "source": "anses-2021"
+    },
+
+    {
+      "nutrients": ["calcium"],
+      "max_age": 24,
+      "basis": "day",
+      "low": "1000",
+      "low_kind": "rnp",
+      "high": "2500",
+      "high_kind": "lss",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["calcium"],
+      "min_age": 25,
+      "basis": "day",
+      "low": "950",
+      "low_kind": "rnp",
+      "high": "2500",
+      "high_kind": "lss",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["copper"],
+      "sex": "male",
+      "basis": "day",
+      "low": "1.9",
+      "low_kind": "as",
+      "high": "5",
+      "high_kind": "lss",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["copper"],
+      "sex": "female",
+      "basis": "day",
+      "low": "1.5",
+      "low_kind": "as",
+      "high": "5",
+      "high_kind": "lss",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["iron"],
+      "sex": "male",
+      "basis": "day",
+      "low": "11",
+      "low_kind": "rnp",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["iron"],
+      "sex": "female",
+      "high_iron_losses": false,
+      "basis": "day",
+      "low": "11",
+      "low_kind": "rnp",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["iron"],
+      "sex": "female",
+      "high_iron_losses": true,
+      "basis": "day",
+      "low": "16",
+      "low_kind": "rnp",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["iodine"],
+      "basis": "day",
+      "low": "150",
+      "low_kind": "as",
+      "high": "600",
+      "high_kind": "lss",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["magnesium"],
+      "sex": "male",
+      "basis": "day",
+      "low": "380",
+      "low_kind": "as",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["magnesium"],
+      "sex": "female",
+      "basis": "day",
+      "low": "300",
+      "low_kind": "as",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["phosphorus"],
+      "basis": "day",
+      "low": "550",
+      "low_kind": "as",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["potassium"],
+      "basis": "day",
+      "low": "3500",
+      "low_kind": "as",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["selenium"],
+      "basis": "day",
+      "low": "70",
+      "low_kind": "as",
+      "high": "300",
+      "high_kind": "lss",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["sodium"],
+      "basis": "day",
+      "low": "1500",
+      "low_kind": "as",
+      "high": "2300",
+      "high_kind": "lss",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["chloride"],
+      "basis": "day",
+      "low": "2300",
+      "low_kind": "as",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["zinc"],
+      "sex": "male",
+      "basis": "day",
+      "low": "14",
+      "low_kind": "rnp",
+      "high": "25",
+      "high_kind": "lss",
+      "source": "anses-2021"
+    },
+    {
+      "nutrients": ["zinc"],
+      "sex": "female",
+      "basis": "day",
+      "low": "11",
+      "low_kind": "rnp",
+      "high": "25",
+      "high_kind": "lss",
+      "source": "anses-2021"
+    }
+  ],
+  "ratios": [
+    {
+      "numerator": { "linoleic_acid": "1" },
+      "denominator": { "alpha_linolenic_acid": "1" },
+      "high": "5",
+      "source": "anses-2016"
+    },
+    {
+      "numerator": { "sodium": "0.043498" },
+      "denominator": { "potassium": "0.025577" },
+      "high": "1",
+      "source": "anses-2016"
+    }
+  ]
+}

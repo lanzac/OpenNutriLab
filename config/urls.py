@@ -25,6 +25,7 @@ urlpatterns = [
     # Your stuff: custom urls includes go here
     # ...
     path("", include("opennutrilab.products.urls")),
+    path("", include("opennutrilab.meals.urls")),
     # Media files
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
 ]

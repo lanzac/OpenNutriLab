@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% load crispy_forms_tags %}
+{% load i18n %}
+{% load estimate_tags %}
+
+{% block title %}
+  {% translate "My needs" %}
+{% endblock title %}
+{% block content %}
+  <div class="container-md my-5">
+    <h1 class="mb-4">{% translate "My needs" %}</h1>
+    <div class="card mb-4">
+      <div class="card-header">{% translate "Profile" %}</div>
+      <div class="card-body">{% crispy form %}</div>
+    </div>
+    {% if needs %}
+      <div class="card mb-4" id="needs">
+        <div class="card-header">{% translate "Needs for a day" %}</div>
+        <div class="card-body">
+          <p>
+            {% blocktranslate with kcal=needs.energy|figure kj=energy_kj|figure low=needs.energy_low|figure high=needs.energy_high|figure trimmed %}
+              Energy: {{ kcal }} kcal ({{ kj }} kJ), and from {{ low }} to {{ high }} kcal for a day.
+            {% endblocktranslate %}
+            {% translate "It is the mean basal metabolism of five equations, times the activity level:" %}
+            {% for equation, kcal in metabolisms %}
+              {{ equation }} ({{ kcal|figure }})
+              {% if not forloop.last %},{% endif %}
+            {% endfor %}
+            kcal.
+          </p>
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>{% translate "Nutrient" %}</th>
+                <th class="text-end">{% translate "At least" %}</th>
+                <th class="text-end">{% translate "At most" %}</th>
+                <th>{% translate "Unit" %}</th>
+                <th>{% translate "What it is" %}</th>
+              </tr>
+            </thead>
+            {% for group in groups %}
+              <tbody>
+                <tr class="table-light">
+                  <th colspan="5">{{ group.label }}</th>
+                </tr>
+                {% for row in group.rows %}
+                  <tr>
+                    <td>{{ row.name }}</td>
+                    <td class="text-end text-nowrap">
+                      {{ row.low|figure }}
+                      {% if row.share_low is not None %}
+                        <small class="text-body-secondary">({{ row.share_low|figure }} %)</small>
+                      {% endif %}
+                    </td>
+                    <td class="text-end text-nowrap">
+                      {{ row.high|figure }}
+                      {% if row.share_high is not None %}
+                        <small class="text-body-secondary">({{ row.share_high|figure }} %)</small>
+                      {% endif %}
+                    </td>
+                    <td>{{ row.unit }}</td>
+                    <td>
+                      <small>{{ row.ends|join:" / " }}</small>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            {% endfor %}
+          </table>
+          <p class="small text-body-secondary">
+            {% translate "In brackets after an amount, the share of the energy it is given as." %}
+          </p>
+          <h2 class="h5 mt-4">{% translate "Ratios" %}</h2>
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>{% translate "Ratio" %}</th>
+                <th class="text-end">{% translate "At least" %}</th>
+                <th class="text-end">{% translate "At most" %}</th>
+                <th>{% translate "What it is" %}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ratio in ratios %}
+                <tr>
+                  <td>
+                    {{ ratio.numerator }} / {{ ratio.denominator }}
+                    {% if ratio.molar %}
+                      <small class="text-body-secondary">({% translate "in moles" %})</small>
+                    {% endif %}
+                  </td>
+                  <td class="text-end">{{ ratio.low|figure }}</td>
+                  <td class="text-end">{{ ratio.high|figure }}</td>
+                  <td>
+                    <small>{{ ratio.kind }} ({{ ratio.source }})</small>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <h2 class="h6 mt-4">{% translate "Sources" %}</h2>
+          <ul class="small">
+            {% for code, source in sources.items %}
+              <li>
+                {{ code }}: <a href="{{ source.url }}">{{ source.title }}</a>, {{ source.where }}.
+              </li>
+            {% endfor %}
+            <li>{% translate "user: the targets of your profile." %}</li>
+          </ul>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+{% endblock content %}

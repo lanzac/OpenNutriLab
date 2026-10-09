@@ -887,6 +887,128 @@ msgstr ""
 msgid "Your inventory could not be changed."
 msgstr "Votre inventaire n'a pas pu être modifié."
 
+msgid "Meals"
+msgstr "Repas"
+
+msgid "Man"
+msgstr "Homme"
+
+msgid "Woman"
+msgstr "Femme"
+
+msgid "Sex"
+msgstr "Sexe"
+
+msgid "Year of birth"
+msgstr "Année de naissance"
+
+msgid "Height (cm)"
+msgstr "Taille (cm)"
+
+msgid "Weight (kg)"
+msgstr "Poids (kg)"
+
+msgid "Physical activity level"
+msgstr "Niveau d'activité physique"
+
+msgid "What a day spends, over the basal metabolism. EFSA's levels: 1.4 sedentary, 1.6 moderately active, 1.8 active, 2.0 very active."
+msgstr "Ce que dépense une journée, rapporté au métabolisme de base. Niveaux de l'EFSA : 1,4 sédentaire, 1,6 modérément actif, 1,8 actif, 2,0 très actif."
+
+msgid "High menstrual losses"
+msgstr "Pertes menstruelles élevées"
+
+msgid "For a woman: the iron reference is then 16 mg instead of 11."
+msgstr "Pour une femme : la référence en fer est alors de 16 mg au lieu de 11."
+
+msgid "DHA:EPA target"
+msgstr "Objectif DHA:EPA"
+
+msgid "Omega-3:omega-6 target"
+msgstr "Objectif oméga-3:oméga-6"
+
+msgid "Tolerance on the ratios"
+msgstr "Tolérance sur les rapports"
+
+msgid "0.10: within a tenth of the target."
+msgstr "0,10 : à un dixième près de l'objectif."
+
+msgid "Population reference intake"
+msgstr "Référence nutritionnelle pour la population (RNP)"
+
+msgid "Adequate intake"
+msgstr "Apport satisfaisant (AS)"
+
+msgid "Tolerable upper intake level"
+msgstr "Limite supérieure de sécurité (LSS)"
+
+msgid "Recommended intake (2011)"
+msgstr "Apport nutritionnel conseillé (2011)"
+
+msgid "Bound of ANSES' diet optimisation"
+msgstr "Borne de l'optimisation de l'Anses"
+
+msgid "Energy need"
+msgstr "Besoin énergétique"
+
+msgid "Your target"
+msgstr "Votre objectif"
+
+msgid "Who the meals are for"
+msgstr "Pour qui sont les repas"
+
+msgid "Your targets"
+msgstr "Vos objectifs"
+
+msgid "Your profile was saved."
+msgstr "Votre profil a été enregistré."
+
+msgid "My needs"
+msgstr "Mes besoins"
+
+msgid "Profile"
+msgstr "Profil"
+
+msgid "Needs for a day"
+msgstr "Besoins pour une journée"
+
+msgid "It is the mean basal metabolism of five equations, times the activity level:"
+msgstr "C'est le métabolisme de base moyen de cinq équations, multiplié par le niveau d'activité :"
+
+msgid "At least"
+msgstr "Au moins"
+
+msgid "At most"
+msgstr "Au plus"
+
+msgid "What it is"
+msgstr "Ce que c'est"
+
+msgid "In brackets after an amount, the share of the energy it is given as."
+msgstr "Entre parenthèses après une quantité, la part de l'énergie sous laquelle elle est donnée."
+
+msgid "Ratios"
+msgstr "Rapports"
+
+msgid "Ratio"
+msgstr "Rapport"
+
+msgid "in moles"
+msgstr "en moles"
+
+msgid "Sources"
+msgstr "Sources"
+
+msgid "user: the targets of your profile."
+msgstr "user : les objectifs de votre profil."
+
+#, python-format
+msgid "The references kept are for adults, from %(age)s."
+msgstr "Les références retenues sont celles des adultes, à partir de %(age)s ans."
+
+#, python-format
+msgid "Energy: %(kcal)s kcal (%(kj)s kJ), and from %(low)s to %(high)s kcal for a day."
+msgstr "Énergie : %(kcal)s kcal (%(kj)s kJ), et de %(low)s à %(high)s kcal pour une journée."
+
 #~ msgid "Fat"
 #~ msgstr "Matières grasses"
 
