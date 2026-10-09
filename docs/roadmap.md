@@ -35,7 +35,9 @@ it works, what it does not do and the questions it leaves open are in
 - **Other sources of composition.** Each with its own importer and the
   attribution its licence requires. The model is ready and aggregates them.
 - **The real panel**, in lot 3 (`docs/plans/lot-3-react-form.md`): the page's
-  table is deliberately plain.
+  table is deliberately plain, and the gauges beside it (React, default view) are
+  drawn from a blob the server hands over; lot 3 would read the API instead and drop
+  the table.
 - **A cache, or work in the background**, if working the estimate out on each
   request (about a second for a product with a dozen ingredients) gets too slow.
   That is where Django 6 tasks would come in (see below).

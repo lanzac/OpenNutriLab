@@ -748,8 +748,8 @@ What the batch leaves open, to take up with the user.
   confidence is at most 0.25 whatever the macronutrients it comes from. Could it
   take their quality instead?
 - **The page lists all 69 nutrients**, most covered for 37 % only. Long but
-  honest: restrict or group them in lot 3's panel? A chart of the ranges with the
-  declared figure marked on it was proposed too, and not decided.
+  honest: grouped and closed at first, and drawn as gauges, since 2026-10-09 (see
+  "The estimate as gauges" below); whether to restrict them is still open.
 - **No product can declare a vitamin** but through the admin: the form and the
   OpenFoodFacts import only know the 8 nutrients of the label. So the vitamin A
   convention check is tested on built cases and not seen on a real product.
@@ -778,3 +778,39 @@ What the batch leaves open, to take up with the user.
   makes them again once the references exist.
 - `vitamin_a_sixth`: `import_ciqual` creates it, a reset loses it until it is run
   again.
+
+## The estimate as gauges (2026-10-09, asked with the meals lot)
+
+The estimate's card on the product's edit page has a choice between **gauges** (the
+default) and the **tables** the server writes, kept in the browser
+(`products.estimateMode`). Both stay: the tables are the page's own and work without
+JavaScript, the gauges are a React panel (`frontend/src/apps/products/estimate/`)
+that hides them while it shows.
+
+- **What a gauge draws.** On a track from zero: the range the estimate can be in as a
+  band (open, dashed and fading when no upper end is known), its point as a tick, the
+  label's value as a taller dark tick and the rounding it is written with as a thin
+  line. The band's colour is the verdict of the label against the estimate: green
+  agrees, orange the label is below or above, grey the label's figure was one of the
+  rules (confirms nothing), blue there is no label to set it against. Beside it: the
+  estimate, the label, the confidence (text and a thin bar), and the coverage under
+  100 %. Each is a `role="img"` that says all of it in words.
+- **The ingredients** are on one track for all of them (a share of 0.5 % beside one of
+  30 % is seen to be small), indented by depth; a nutrient has a track of its own.
+- **The nutrients are grouped** as the day's are (energy, macronutrients, vitamins,
+  minerals, other), **closed at first**, each head saying "x of y agree with the label"
+  with a bar of its verdicts (agree / differ / used / not compared). A figure the
+  estimate was worked out with counts as agreeing by construction, so it is left out
+  of the "compared".
+- **The data** is `services/estimate_panel.py`: the estimate as the page needs it (the
+  ingredients as one list with their depth, each nutrient with its group and the
+  verdict flattened), handed over as a `|json_script` blob beside the form's
+  config, whose labels reuse the table's own translations. Nothing is worked out in
+  JavaScript.
+- Shared with the day's gauges: `shared/useViewState.js` (view and open groups kept in
+  the browser), `shared/FoldHead.jsx` (the head of a group) and `shared/format.js`.
+- The table named only the references of the ingredients, so a preparation or an
+  additive had a blank name: it is now named whatever it is.
+- **Not done**: the declared nutrition in the form's own fields is not drawn as
+  gauges (they are inputs to type in, with the sunburst chart); a gauge against the
+  share of a daily need would want the user's profile on this page.
