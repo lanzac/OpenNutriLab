@@ -1,0 +1,27 @@
+{
+  "code": "roasted-malted-barley-flour",
+  "name_fr": "Farine d'orge maltée torréfiée",
+  "name_en": "Roasted malted barley flour",
+  "basis_fr": "fiche technique Interquell, farine d'orge maltée foncée (réf. 3222xx, 2012)",
+  "basis_en": "Interquell data sheet, dark malted barley flour (ref. 3222xx, 2012)",
+  "nutrients": {
+    "water": {
+      "amount": 3.6,
+      "min": 2,
+      "max": 4
+    },
+    "proteins": 10.4,
+    "fiber": 28.9,
+    "ash": 2.1,
+    "fat": 2.8,
+    "carbohydrates": 52.2,
+    "sugars": 0.3,
+    "saturated_fat": 0.7,
+    "monounsaturated_fat": 0.5,
+    "polyunsaturated_fat": 1.6,
+    "energy": 1390
+  },
+  "references": [
+    94
+  ]
+}

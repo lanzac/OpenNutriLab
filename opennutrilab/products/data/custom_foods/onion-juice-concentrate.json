@@ -1,0 +1,24 @@
+{
+  "code": "onion-juice-concentrate",
+  "name_fr": "Jus d'oignon concentré",
+  "name_en": "Concentrated onion juice",
+  "basis_fr": "Oignon CIQUAL 20034, ramené à 28 % d'eau (extrait soluble de 68 à 76 % Brix, fiche Gourmet Ingredients)",
+  "basis_en": "Onion CIQUAL 20034, brought to 28 % water (68 to 76 % Brix, Gourmet Ingredients data sheet)",
+  "proxies": [
+    {
+      "source": "ciqual-2025",
+      "code": "20034"
+    }
+  ],
+  "water": 28,
+  "exclude": [
+    "vitamin_c",
+    "vitamin_b1",
+    "vitamin_b9",
+    "intrinsic_folates",
+    "vitamin_b9_dfe"
+  ],
+  "references": [
+    41
+  ]
+}

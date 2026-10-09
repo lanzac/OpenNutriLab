@@ -1,0 +1,21 @@
+{
+  "code": "freeze-dried-mixed-berries",
+  "name_fr": "Fruits rouges lyophilisés",
+  "name_en": "Freeze-dried mixed berries",
+  "basis_fr": "groseille, cassis et framboise crus, à 4 % d'eau",
+  "basis_en": "raw redcurrant, blackcurrant and raspberry, at 4 % water",
+  "proxies": [
+    { "source": "ciqual-2025", "code": "13019" },
+    { "source": "ciqual-2025", "code": "13007" },
+    { "source": "ciqual-2025", "code": "13015" }
+  ],
+  "water": 4,
+  "exclude": [
+    "vitamin_c",
+    "vitamin_b1",
+    "vitamin_b9",
+    "intrinsic_folates",
+    "vitamin_b9_dfe"
+  ],
+  "references": ["fruits rouges lyophilisés"]
+}

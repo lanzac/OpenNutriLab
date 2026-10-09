@@ -1,0 +1,16 @@
+{
+  "code": "wheat-flakes",
+  "name_fr": "Flocons de blé",
+  "name_en": "Wheat flakes",
+  "basis_fr": "Blé dur complet, cru, CIQUAL 9060",
+  "basis_en": "Durum wheat, whole, raw, CIQUAL 9060",
+  "proxies": [{ "source": "ciqual-2025", "code": "9060" }],
+  "exclude": [
+    "vitamin_c",
+    "vitamin_b1",
+    "vitamin_b9",
+    "intrinsic_folates",
+    "vitamin_b9_dfe"
+  ],
+  "references": ["flocons de blé"]
+}

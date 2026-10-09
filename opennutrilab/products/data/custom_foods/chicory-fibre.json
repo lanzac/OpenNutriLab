@@ -1,0 +1,44 @@
+{
+  "code": "chicory-fibre",
+  "name_fr": "Fibre de chicorée",
+  "name_en": "Chicory fibre",
+  "basis_fr": "inuline de chicorée: au moins 90 % d'inuline et au plus 10 % de sucres, 0,2 % de cendres au plus, 1 à 5 % d'eau (fiches SOC Chef 2022 et 2025, Orku)",
+  "basis_en": "chicory inulin: at least 90 % inulin and at most 10 % sugars, at most 0.2 % ash, 1 to 5 % water (SOC Chef 2022 and 2025 data sheets, Orku)",
+  "nutrients": {
+    "water": {
+      "min": 1,
+      "max": 5
+    },
+    "fiber": {
+      "min": 85.5,
+      "max": 99
+    },
+    "carbohydrates": {
+      "min": 0,
+      "max": 9.9
+    },
+    "sugars": {
+      "min": 0,
+      "max": 9.9
+    },
+    "fat": {
+      "min": 0,
+      "max": 9.9
+    },
+    "proteins": {
+      "min": 0,
+      "max": 9.9
+    },
+    "ash": {
+      "min": 0,
+      "max": 0.2
+    },
+    "energy": {
+      "min": 684,
+      "max": 1079
+    }
+  },
+  "references": [
+    96
+  ]
+}

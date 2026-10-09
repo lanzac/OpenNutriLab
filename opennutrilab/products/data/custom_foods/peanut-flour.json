@@ -1,0 +1,89 @@
+{
+  "code": "peanut-flour",
+  "name_fr": "Farine d'arachide",
+  "name_en": "Peanut flour",
+  "basis_fr": "farine d'arachide dégraissée: USDA FDC 174267 (0,55 % de lipides) à la qualité à 12 % de lipides (Golden Peanut 521261), jusqu'à 28 % de lipides",
+  "basis_en": "defatted peanut flour: USDA FDC 174267 (0.55 % fat) to the 12 % fat grade (Golden Peanut 521261), up to 28 % fat",
+  "nutrients": {
+    "fat": {
+      "amount": 12,
+      "min": 0.55,
+      "max": 28
+    },
+    "proteins": {
+      "amount": 50,
+      "min": 40,
+      "max": 52.2
+    },
+    "carbohydrates": 17,
+    "fiber": 16,
+    "water": {
+      "amount": 2.5,
+      "min": 0,
+      "max": 7.8
+    },
+    "ash": {
+      "amount": 4,
+      "min": 2,
+      "max": 6
+    },
+    "energy": {
+      "amount": 1710,
+      "min": 1368,
+      "max": 2130
+    },
+    "calcium": {
+      "amount": 124,
+      "min": 101,
+      "max": 140
+    },
+    "iron": {
+      "amount": 1.86,
+      "min": 1.52,
+      "max": 2.1
+    },
+    "magnesium": {
+      "amount": 327,
+      "min": 268,
+      "max": 370
+    },
+    "phosphorus": {
+      "amount": 672,
+      "min": 550,
+      "max": 760
+    },
+    "potassium": {
+      "amount": 1140,
+      "min": 934,
+      "max": 1290
+    },
+    "sodium": {
+      "amount": 159,
+      "min": 130,
+      "max": 180
+    },
+    "zinc": {
+      "amount": 4.51,
+      "min": 3.69,
+      "max": 5.1
+    },
+    "copper": {
+      "amount": 1.59,
+      "min": 1.3,
+      "max": 1.8
+    },
+    "manganese": {
+      "amount": 4.34,
+      "min": 3.55,
+      "max": 4.9
+    },
+    "selenium": {
+      "amount": 6.28,
+      "min": 5.14,
+      "max": 7.1
+    }
+  },
+  "references": [
+    103
+  ]
+}

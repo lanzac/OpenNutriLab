@@ -1,0 +1,97 @@
+{
+  "code": "fat-reduced-cocoa-powder",
+  "name_fr": "Cacao en poudre maigre",
+  "name_en": "Fat-reduced cocoa powder",
+  "basis_fr": "Cacao CIQUAL 18100 ramené à 11 % de lipides (cacao maigre du commerce: 10 à 12 %), de 0 à 19,2 % (limite de la directive 2000/36/CE)",
+  "basis_en": "Cocoa CIQUAL 18100 brought to 11 % fat (commercial low-fat cocoa: 10 to 12 %), from 0 to 19.2 % (limit of Directive 2000/36/EC)",
+  "nutrients": {
+    "water": {
+      "amount": 3.92,
+      "min": 3.56,
+      "max": 4.41
+    },
+    "proteins": {
+      "amount": 25.1,
+      "min": 22.8,
+      "max": 28.2
+    },
+    "carbohydrates": {
+      "amount": 13,
+      "min": 11.8,
+      "max": 14.6
+    },
+    "fiber": {
+      "amount": 33.1,
+      "min": 30,
+      "max": 37.2
+    },
+    "ash": {
+      "amount": 11.2,
+      "min": 10.2,
+      "max": 12.6
+    },
+    "calcium": {
+      "amount": 157,
+      "min": 142,
+      "max": 176
+    },
+    "magnesium": {
+      "amount": 560,
+      "min": 509,
+      "max": 630
+    },
+    "phosphorus": {
+      "amount": 773,
+      "min": 702,
+      "max": 869
+    },
+    "potassium": {
+      "amount": 4370,
+      "min": 3970,
+      "max": 4910
+    },
+    "iron": {
+      "amount": 54.4,
+      "min": 49.4,
+      "max": 61.1
+    },
+    "copper": {
+      "amount": 4.37,
+      "min": 3.97,
+      "max": 4.91
+    },
+    "manganese": {
+      "amount": 4.6,
+      "min": 4.17,
+      "max": 5.16
+    },
+    "zinc": {
+      "amount": 7.17,
+      "min": 6.51,
+      "max": 8.06
+    },
+    "selenium": {
+      "amount": 22.4,
+      "min": 20.4,
+      "max": 25.2
+    },
+    "sodium": {
+      "amount": 50.4,
+      "min": 45.8,
+      "max": 56.7
+    },
+    "fat": {
+      "amount": 11,
+      "min": 0,
+      "max": 19.2
+    },
+    "energy": {
+      "amount": 1320,
+      "min": 1030,
+      "max": 1540
+    }
+  },
+  "references": [
+    105
+  ]
+}

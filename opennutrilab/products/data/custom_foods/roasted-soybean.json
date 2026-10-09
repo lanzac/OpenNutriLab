@@ -1,0 +1,24 @@
+{
+  "code": "roasted-soybean",
+  "name_fr": "Graine de soja torréfiée",
+  "name_en": "Roasted soybean seed",
+  "basis_fr": "Soja, graine entière, CIQUAL 20901, ramené à 0,8 % d'eau (USDA FDC 172441)",
+  "basis_en": "Soybean, whole seed, CIQUAL 20901, brought to 0.8 % water (USDA FDC 172441)",
+  "proxies": [
+    {
+      "source": "ciqual-2025",
+      "code": "20901"
+    }
+  ],
+  "water": 0.8,
+  "exclude": [
+    "vitamin_c",
+    "vitamin_b1",
+    "vitamin_b9",
+    "intrinsic_folates",
+    "vitamin_b9_dfe"
+  ],
+  "references": [
+    78
+  ]
+}

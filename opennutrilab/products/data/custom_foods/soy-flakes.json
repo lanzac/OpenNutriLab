@@ -1,0 +1,16 @@
+{
+  "code": "soy-flakes",
+  "name_fr": "Flocons de soja",
+  "name_en": "Soy flakes",
+  "basis_fr": "Soja, graine entière, CIQUAL 20901",
+  "basis_en": "Soybean, whole, CIQUAL 20901",
+  "proxies": [{ "source": "ciqual-2025", "code": "20901" }],
+  "exclude": [
+    "vitamin_c",
+    "vitamin_b1",
+    "vitamin_b9",
+    "intrinsic_folates",
+    "vitamin_b9_dfe"
+  ],
+  "references": ["flocons de soja"]
+}

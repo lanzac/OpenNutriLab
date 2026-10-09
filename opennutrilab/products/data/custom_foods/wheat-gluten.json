@@ -1,0 +1,41 @@
+{
+  "code": "wheat-gluten",
+  "name_fr": "Gluten de blé",
+  "name_en": "Wheat gluten",
+  "basis_fr": "Gluten de blé vital, USDA FDC 168147 (SR Legacy), avec les limites des fiches fournisseurs (Manildra, Agridient, Do It Organic)",
+  "basis_en": "Vital wheat gluten, USDA FDC 168147 (SR Legacy), with the limits of supplier data sheets (Manildra, Agridient, Do It Organic)",
+  "nutrients": {
+    "water": {
+      "amount": 8.2,
+      "max": 12
+    },
+    "proteins": {
+      "amount": 75.2,
+      "min": 71
+    },
+    "fat": {
+      "amount": 1.85,
+      "max": 5
+    },
+    "carbohydrates": 13.2,
+    "fiber": 0.6,
+    "ash": {
+      "amount": 1.0,
+      "max": 1.5
+    },
+    "energy": 1548,
+    "calcium": 142,
+    "iron": 5.2,
+    "magnesium": 25,
+    "phosphorus": 260,
+    "potassium": 100,
+    "sodium": 29,
+    "zinc": 0.85,
+    "copper": 0.18,
+    "selenium": 39.7
+  },
+  "references": [
+    95,
+    51
+  ]
+}
