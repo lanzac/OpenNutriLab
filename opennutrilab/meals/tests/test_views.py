@@ -1,5 +1,4 @@
 from decimal import Decimal
-from pathlib import Path
 
 import pytest
 from django.test import Client
@@ -8,22 +7,10 @@ from django.utils import timezone
 from django.utils import translation
 
 from opennutrilab.meals.models import Profile
-from opennutrilab.products.services.ciqual_import import ensure_nutrients
-from opennutrilab.products.services.ciqual_import import read_constituents
-from opennutrilab.products.services.derived_nutrients import ensure_derivations
 from opennutrilab.users.models import User
 from opennutrilab.users.tests.factories import UserFactory
 
-CONSTITUENTS_FILE = (
-    Path(__file__).parents[2] / "products" / "tests" / "data" / "ciqual_const_2025.xml"
-)
 URL = "/needs/"
-
-
-@pytest.fixture
-def catalogue(db: None) -> None:
-    ensure_nutrients(read_constituents(CONSTITUENTS_FILE))
-    ensure_derivations()
 
 
 def profile_data(**changes: str) -> dict[str, str]:

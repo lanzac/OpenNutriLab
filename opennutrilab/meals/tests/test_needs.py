@@ -1,5 +1,4 @@
 from decimal import Decimal
-from pathlib import Path
 
 import pytest
 
@@ -16,14 +15,8 @@ from opennutrilab.meals.services.needs import (
 from opennutrilab.meals.services.needs import needs_for
 from opennutrilab.meals.services.needs import references
 from opennutrilab.products.models import Nutrient
-from opennutrilab.products.services.ciqual_import import ensure_nutrients
-from opennutrilab.products.services.ciqual_import import read_constituents
-from opennutrilab.products.services.derived_nutrients import ensure_derivations
 
 D = Decimal
-CONSTITUENTS_FILE = (
-    Path(__file__).parents[2] / "products" / "tests" / "data" / "ciqual_const_2025.xml"
-)
 MAN = Person("male", 31, D(61), D(180))
 WOMAN = Person("female", 40, D(58), D(165))
 
@@ -33,10 +26,7 @@ def need(needs: Needs, *codes: str) -> Need:
     return found
 
 
-@pytest.mark.django_db
-def test_every_nutrient_the_references_name_is_in_the_catalogue():
-    ensure_nutrients(read_constituents(CONSTITUENTS_FILE))
-    ensure_derivations()
+def test_every_nutrient_the_references_name_is_in_the_catalogue(catalogue: None):
     data = references()
     named = {code for entry in data["references"] for code in entry["nutrients"]}
     named |= {

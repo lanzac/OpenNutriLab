@@ -14,6 +14,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from ninja import NinjaAPI
 from ninja.security import django_auth
 
+from opennutrilab.meals.api.routes import router as meals_router
 from opennutrilab.products.api.routes import inventory_router
 from opennutrilab.products.api.routes import router as products_router
 
@@ -27,3 +28,4 @@ api = NinjaAPI(
 )
 api.add_router("/products/", products_router)
 api.add_router("/inventory/", inventory_router)
+api.add_router("/meals/", meals_router)
