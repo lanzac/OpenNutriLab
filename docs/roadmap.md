@@ -3,15 +3,23 @@
 Planned changes that are decided but not started, and why. Remove an entry
 once it is done.
 
-## Meals, and the best day from one's inventory
+## Meals: what is left
 
-Each product gets a serving (a slice of bread, a bar), each user an inventory and a
-profile, and a new page makes up the meals of a day with what each meal and the day
-bring against the person's needs (the ANSES references). In the end, a tool works
-out the best day from the inventory, with two targets of the user's own, DHA:EPA 1:1
-and omega-3:omega-6 1:1, and suggests foods when the inventory cannot reach them.
-Decided with the user on 2026-10-09; the plan and its steps are in
-`docs/plans/lot-meals.md`.
+The meals are built: servings, each user's inventory and profile, the page of the
+meals with their totals against the ANSES needs, the best day from the inventory
+with the user's own ratios, and the suggestion of foods to get (`docs/plans/lot-meals.md`,
+whose "After the batch" has the questions it leaves to the user). What is left, and
+decided to come later:
+
+- **Stock**: how much of a product is left, not only that it is at hand.
+- **Generic foods in the inventory**, a loose apple with no barcode, and their
+  portions, for which no open source was found.
+- **Other diets** than omnivore (pescetarian, vegetarian, vegan), by CIQUAL's groups,
+  for the suggestions.
+- **A background task** for the proposal and the suggestions (about 10 s, in the
+  request now).
+- **Default meals for a product** from its category, so that the balls do not come out
+  at breakfast.
 
 ## Estimate a product's nutrients: what is left
 

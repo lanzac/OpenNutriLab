@@ -1,9 +1,10 @@
 # Plan: servings, meals and the best day
 
-Status: planned, nothing built. Written 2026-10-09 from the user's request of that
-day; the user answered decisions 1, 3, 6 and 7 the same day (marked "decided"), and
-the others are recommendations they did not object to. Work goes on the branch
-`feat/meals`, from `main` once `feat/ingredient-forms` was merged into it.
+Status: **the eight steps are done** (2026-10-09). Written that day from the user's
+request; the user answered decisions 1, 3, 6 and 7 the same day (marked "decided"),
+and the others are recommendations they did not object to. The work is on the branch
+`feat/meals`, from `main` once `feat/ingredient-forms` was merged into it. What is
+left, and what was found on the way, is in "After the batch" at the end.
 
 ## Why (the user's request, 2026-10-09)
 
@@ -385,7 +386,77 @@ the others are recommendations they did not object to. Work goes on the branch
      limit, a cap, the meals a product may be in, steps in servings, the ratios both
      ways, determinism, what the solver may answer), 17 on the proposals and the API,
      13 on the limits; 16 on the page, 3 mutations of its behaviour checked to fail.
-8. **Suggestions** (decision 6).
+8. **Suggestions** (done) (decision 6).
+   - `services/suggestions.py`, `POST /api/v1/meals/{day}/suggest`: the best day from
+     the inventory is worked out, the needs and ratios it misses are the **gaps**
+     (lower ends it does not reach; a ratio it is under, which raises the numerator,
+     or over, which raises the denominator; no gap for energy, sodium or chloride,
+     which salt would meet), and **foods of the CIQUAL table** that would close them
+     are looked for, at most a few: the day is worked out again with them among the
+     candidates as **new** foods, which cost 0.15 more than the inventory's, at most
+     4 of them. Each suggestion says how much, in which meal (one, to be got and
+     eaten), and what it closes (the amount, and the share of what the day should
+     bring, "covers the need" above 1), with the link to its CIQUAL sheet. A
+     suggestion is a _kind of food_, not a product: the product is for the user to
+     find. **Nothing is written.**
+   - **Not suggested**: infant foods, alcoholic drinks, waters, salts and the
+     "special diet" foods; a food with no energy. Every other food of the table may
+     be (omnivore, as decided). The most of a food in a day goes by its group and
+     sub-group: 30 g for fats, 20 g for fish oils, 50 g for nuts and seeds, 200 g for
+     meat and fish, 100 g for sweets, 250 g otherwise; a food that is at most 50 g a
+     day is counted in 5 g, the others in 10 g.
+   - **Two goes**, found by trying (the day with 72 foods in it did not finish in
+     30 s, and fewer foods gave worse days: 2.3 against 0.9): first the foods are
+     chosen, with the inventory in any quantity and no meal for the new foods, in 8 s
+     and within 2 %; then the day is worked out for those alone, in whole steps and
+     each food in one meal, in about a second. Relaxing every whole number to choose
+     the foods was tried and dropped: it named bad foods (2.0 against 0.9). The new
+     foods' quantities are numbers, rounded to a step for the page.
+   - The first look is on the foods' exact values for the nutrients that are missed
+     (0.16 s for the whole table), and only the few that are kept have their
+     composition read in full, with its intervals (`food_composition`).
+   - The day with them is reported as the others are, the suggested foods being items
+     that are not saved (`GenericItem`, a key `ciqual:<code>`), with their sheet.
+   - The page: a "Suggérer des aliments" button, the foods with what they close, a
+     caution (composition only: no contaminants, no excess of one thing, no cooking,
+     no taste), and the day with them, folded. 4 foods in 9.9 s on the page.
+   - **On the development inventory** (5 products): 18 of the 42 needs and ratios
+     missed, 4 with **cod liver 60 g, swordfish 120 g, red pepper 250 g and skimmed
+     milk powder 50 g**, and the user's two ratios met: **DHA:EPA 1.08 and
+     omega-3:omega-6 0.93**. Still missed: retinol 3,114 µg (the liver; the limit is
+     3,000), folates (312 of 330), vitamin E (9.3 of 10) and sodium (2,374 of 2,300).
+   - 23 tests of the foods, the gaps, the choice and the API, 5 of the new foods in the
+     optimiser, 10 on the page (two mutations of the "dropped when the day changes"
+     were found _not_ to fail with the first tests, which were then made to wait for
+     the new day).
+
+## After the batch
+
+What the eight steps leave open, for the user to say:
+
+- **The activity level** of the user's profile is 1.7, chosen between EFSA's 1.6 and
+  1.8: to confirm.
+- **Reaching omega-3:omega-6 of 1:1 is a lot of omega-3.** With ANSES asking for at
+  least 4 % of the energy as linoleic acid (11.8 g), 1:1 means some 12 g of omega-3 a
+  day, which the suggestions meet with 60 g of cod liver and 120 g of swordfish. That
+  is the target's price, not a bug: the page says so by showing the retinol it brings.
+  Whether to loosen the ratio, or to take the linoleic acid at ANSES' lower bound, is
+  the user's.
+- **The estimate's point can lie far from the label** for a nutrient the label
+  declares (the gnocchi's salt: 7.1 g against 0.6 g). The meals use the label where it
+  declares, and the sodium follows its salt, but chloride, which no label declares,
+  still takes the estimate and is shown as not certain. A better point for the
+  estimate would fix it at its source.
+- **The vegetarian balls have no estimate** (their declared percentages and the order
+  of their ingredients contradict each other), so a meal counts them by their eight
+  label values.
+- **The optimiser has no idea of a meal**: it put the balls at breakfast. The limits
+  per product are for that, and could start from the product's category.
+- The proposal and the suggestions run in the request (20 s at most, 10 s in practice):
+  a background task (Django 6, see the roadmap) would be better once the inventory is
+  large.
+- Not done, as said: stock, generic foods in the inventory, other diets, losses in
+  cooking.
 
 ## Out of scope
 
