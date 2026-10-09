@@ -284,6 +284,55 @@ class TestProductCreateView:
         assert rows[1]["ingredients"][0]["name"] == "lait écrémé"
 
     @patch("opennutrilab.products.views.fetch_from_off")
+    def test_lookup_fills_the_serving_read_from_its_text(
+        self, mock_fetch_from_off: MagicMock, client: Client
+    ):
+        mock_fetch_from_off.return_value = off_product(
+            serving_size="35,7 g (1 tranche)"
+        )
+
+        response: HttpResponse = client.get(
+            reverse("create_product"), {"barcode": NUTELLA}
+        )
+
+        form: ProductForm = response.context["form"]
+        assert form["serving_quantity"].value() == "35.7"
+        assert form["serving_unit"].value() == "g"
+        assert form["serving_name"].value() == "1 tranche"
+        assert list(response.context["messages"]) == []
+
+    @patch("opennutrilab.products.views.fetch_from_off")
+    def test_a_serving_that_is_not_read_is_said_and_left_empty(
+        self, mock_fetch_from_off: MagicMock, client: Client
+    ):
+        mock_fetch_from_off.return_value = off_product(
+            serving_size="40 g (40 g + 125 ml de lait)"
+        )
+
+        response: HttpResponse = client.get(
+            reverse("create_product"), {"barcode": NUTELLA}
+        )
+
+        form: ProductForm = response.context["form"]
+        assert form["serving_quantity"].value() is None
+        [notice] = [str(m) for m in response.context["messages"]]
+        assert '"40 g (40 g + 125 ml de lait)"' in notice
+        assert "could not be read" in notice
+
+    @patch("opennutrilab.products.views.fetch_from_off")
+    def test_a_product_openfoodfacts_has_no_serving_for_has_none(
+        self, mock_fetch_from_off: MagicMock, client: Client
+    ):
+        mock_fetch_from_off.return_value = off_product(serving_size=None)
+
+        response: HttpResponse = client.get(
+            reverse("create_product"), {"barcode": NUTELLA}
+        )
+
+        assert response.context["form"]["serving_quantity"].value() is None
+        assert list(response.context["messages"]) == []
+
+    @patch("opennutrilab.products.views.fetch_from_off")
     def test_a_badly_read_list_imports_no_ingredient_and_says_how_to_fix_it(
         self, mock_fetch_from_off: MagicMock, client: Client
     ):
@@ -438,6 +487,40 @@ class TestProductEditView:
         assert response.context["form"].instance.name == "Stored Product"
         notices = [str(m) for m in response.context["messages"]]
         assert any("was not found in OpenFoodFacts" in n for n in notices), notices
+
+    @patch("opennutrilab.products.views.fetch_from_off")
+    def test_a_reset_keeps_a_serving_entered_by_hand_when_openfoodfacts_has_none(
+        self, mock_fetch_from_off: MagicMock, client: Client
+    ):
+        product = Product.objects.create(
+            barcode=NUTELLA,
+            name="Nutella",
+            serving_quantity=Decimal(15),
+            serving_unit="g",
+            serving_name="1 cuillère",
+        )
+        mock_fetch_from_off.return_value = off_product(serving_size=None)
+        url = reverse("edit_product", args=[product.pk])
+
+        form: ProductForm = client.get(url, {"reset": "1"}).context["form"]
+        assert form["serving_quantity"].value() == "15"
+
+        with patch("opennutrilab.products.views.fetch_from_off"):
+            client.post(url, submitted(form))
+
+        product.refresh_from_db()
+        assert product.serving_quantity == Decimal(15)
+        assert product.serving_name == "1 cuillère"
+
+        # One OpenFoodFacts gives replaces it.
+        mock_fetch_from_off.return_value = off_product(serving_size="30 g")
+        form = client.get(url, {"reset": "1"}).context["form"]
+        with patch("opennutrilab.products.views.fetch_from_off"):
+            client.post(url, submitted(form))
+
+        product.refresh_from_db()
+        assert product.serving_quantity == Decimal(30)
+        assert product.serving_name == ""
 
     def test_plain_edit_leaves_the_ingredients_alone(self, client: Client):
         """Saving used to delete and recreate every ingredient, every time."""

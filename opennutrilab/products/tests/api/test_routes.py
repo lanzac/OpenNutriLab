@@ -270,6 +270,28 @@ def test_a_products_tree_is_read_in_a_fixed_number_of_queries(
 
 
 @pytest.mark.django_db
+def test_the_serving_is_written_served_kept_and_cleared(api_client: Client):
+    payload = _minimal_payload("3297760097969", "Created Via API")
+    url = f"{API}{payload['barcode']}"
+    api_client.post(API, payload, content_type="application/json")
+    assert api_client.get(url).json()["serving"] is None
+
+    api_client.patch(
+        url,
+        {"serving": {"quantity": "35.7", "name": "1 tranche"}},
+        content_type="application/json",
+    )
+    served = {"quantity": "35.70", "unit": "g", "name": "1 tranche"}
+    assert api_client.get(url).json()["serving"] == served
+
+    api_client.patch(url, {"name": "Renamed"}, content_type="application/json")
+    assert api_client.get(url).json()["serving"] == served
+
+    api_client.patch(url, {"serving": None}, content_type="application/json")
+    assert api_client.get(url).json()["serving"] is None
+
+
+@pytest.mark.django_db
 def test_update_product(api_client: Client, products_two: tuple[Product, Product]):
     p1, _ = products_two
 

@@ -584,6 +584,45 @@ def test_update_product_leaves_the_text_alone_unless_given():
 
 
 @pytest.mark.django_db
+def test_create_product_writes_the_serving_when_given(product: Product):
+    assert product.serving_quantity is None
+    assert (product.serving_unit, product.serving_name) == ("", "")
+
+    other = create_product(
+        create_payload(
+            barcode="3229820794556",
+            serving={"quantity": "35.7", "unit": "g", "name": "1 tranche"},
+        )
+    ).product
+
+    other.refresh_from_db()
+    assert other.serving_quantity == Decimal("35.7")
+    assert (other.serving_unit, other.serving_name) == ("g", "1 tranche")
+
+
+@pytest.mark.django_db
+def test_update_product_sets_keeps_and_clears_the_serving(product: Product):
+    update_product(
+        product, ProductUpdate.model_validate({"serving": {"quantity": "45"}})
+    )
+    product.refresh_from_db()
+    assert product.serving_quantity == Decimal(45)
+    # Grams unless said.
+    assert (product.serving_unit, product.serving_name) == ("g", "")
+
+    # Left out, it is not touched.
+    update_product(product, ProductUpdate(name="Renamed"))
+    product.refresh_from_db()
+    assert product.serving_quantity == Decimal(45)
+
+    # Given as null, it is removed.
+    update_product(product, ProductUpdate.model_validate({"serving": None}))
+    product.refresh_from_db()
+    assert product.serving_quantity is None
+    assert product.serving_unit == ""
+
+
+@pytest.mark.django_db
 def test_update_product_sets_and_clears_declared_values_by_code(product: Product):
     data = ProductUpdate.model_validate(
         {"nutrients": {"sugars": "0", "fat": None, "salt": "0.1"}}

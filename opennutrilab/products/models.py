@@ -24,6 +24,7 @@ Products, their ingredients, and the nutrient data behind them.
 """
 
 from collections.abc import Iterable
+from decimal import Decimal
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import override
@@ -145,6 +146,10 @@ class NutrientComponent(models.Model):
 
 
 class Product(models.Model):
+    class ServingUnit(models.TextChoices):
+        GRAM = "g", "g"
+        MILLILITRE = "ml", "ml"
+
     barcode = EAN13Field(primary_key=True)
     name = models.CharField(max_length=100)
     image = models.ImageField(upload_to="images/products/", null=True, blank=True)
@@ -161,10 +166,48 @@ class Product(models.Model):
         default="",
         help_text=_("The ingredient list as the label prints it."),
     )
+    # A serving as the label gives it ("35.7 g (1 tranche)"), which meals are
+    # counted in: its quantity, its unit and what the label calls it. Read from
+    # OpenFoodFacts' text (see services.servings) or entered by hand. A serving in
+    # millilitres counts as the same number of grams, the amounts being per 100 g.
+    serving_quantity = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    serving_unit = models.CharField(
+        max_length=2, choices=ServingUnit.choices, blank=True, default=""
+    )
+    serving_name = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text=_('What the label calls a serving, such as "1 tranche".'),
+    )
 
     if TYPE_CHECKING:
         declared_nutrients: RelatedManager["ProductNutrient"]
         ingredients: RelatedManager["Ingredient"]
+
+    class Meta:
+        constraints = [
+            # A serving has a quantity and a unit, or it is not there at all.
+            # django-stubs still types `check`, which Django 5.1 renamed.
+            models.CheckConstraint(  # pyright: ignore[reportCallIssue]
+                condition=models.Q(  # pyright: ignore[reportCallIssue]
+                    serving_quantity__isnull=True, serving_unit="", serving_name=""
+                )
+                # Not null as well: `NULL > 0` is NULL, which a check lets through.
+                | models.Q(
+                    serving_quantity__isnull=False,
+                    serving_quantity__gt=0,
+                    serving_unit__in=["g", "ml"],
+                ),
+                name="product_serving_is_whole",
+            ),
+        ]
 
     @override
     def __str__(self) -> str:

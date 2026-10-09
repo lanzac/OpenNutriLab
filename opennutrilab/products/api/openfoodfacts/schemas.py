@@ -31,6 +31,9 @@ class OFFProductSchema(Schema):
         default=None, validation_alias="ingredients_text"
     )
     ingredients_lc: str | None = Field(default=None, validation_alias="ingredients_lc")
+    # The serving as its contributors typed it ("35.7 g (1 tranche)"), read by
+    # services.servings. OFF's own reading of it, `serving_quantity`, is not read.
+    serving_size: str | None = Field(default=None, validation_alias="serving_size")
     group_level_1: str | None = Field(default=None, validation_alias="pnns_groups_1")
     group_level_2: str | None = Field(default=None, validation_alias="pnns_groups_2")
 

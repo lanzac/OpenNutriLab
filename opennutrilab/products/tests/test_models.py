@@ -83,6 +83,29 @@ def test_product_str(product: Product):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    "serving",
+    [
+        {"serving_quantity": Decimal(30)},
+        {"serving_unit": "g"},
+        {"serving_name": "1 bol"},
+        {"serving_quantity": Decimal(0), "serving_unit": "g"},
+    ],
+)
+def test_a_serving_has_a_quantity_and_a_unit_or_nothing(serving: dict[str, object]):
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        Product.objects.create(barcode=BARCODE, name="Muesli", **serving)  # pyright: ignore[reportArgumentType]
+
+    Product.objects.create(
+        barcode=BARCODE,
+        name="Muesli",
+        serving_quantity=Decimal(45),
+        serving_unit="g",
+        serving_name="1 bol",
+    )
+
+
+@pytest.mark.django_db
 def test_a_nutrient_is_declared_once_per_product(product: Product):
     salt = Nutrient.objects.get(code="salt")
     ProductNutrient.objects.create(

@@ -45,6 +45,7 @@ from .services.reference_services import Item
 from .services.reference_services import existing_references
 from .services.reference_services import name_key
 from .services.reference_services import walk_ingredients
+from .services.servings import read_serving
 
 logger = logging.getLogger(__name__)
 
@@ -305,6 +306,19 @@ def report_label_warnings(
             messages.warning(request, warning.message())
 
 
+def report_unread_serving(request: HttpRequest, barcode: str, text: str) -> None:
+    """Tell the user the serving OpenFoodFacts gives could not be read."""
+    messages.warning(
+        request,
+        _(
+            'OpenFoodFacts gives the serving of barcode %(barcode)s as "%(text)s", '
+            "which could not be read. Enter it by hand to count this product in "
+            "servings."
+        )
+        % {"barcode": barcode, "text": text.strip()},
+    )
+
+
 def report_image_fetch_failure(request: HttpRequest, barcode: str) -> None:
     """
     Tell the user the product was saved but its OpenFoodFacts image was not.
@@ -356,6 +370,15 @@ def initial_from_off(request: HttpRequest, barcode: str) -> dict[str, Any] | Non
     report_label_warnings(request, fetched.barcode, warnings)
     initial["off_ingredients"] = INGREDIENTS_JSON.dump_json(ingredients).decode()
     initial["off_ingredients_text"] = fetched.ingredients_text or ""
+    # From its text too. With none, or one that is not read, the form keeps what
+    # it had: nothing on a new product, the stored serving on a reset.
+    serving = read_serving(fetched.serving_size)
+    if serving is not None:
+        initial["serving_quantity"] = plain_amount(serving.quantity)
+        initial["serving_unit"] = serving.unit
+        initial["serving_name"] = serving.name
+    elif (fetched.serving_size or "").strip():
+        report_unread_serving(request, fetched.barcode, fetched.serving_size or "")
     return initial
 
 

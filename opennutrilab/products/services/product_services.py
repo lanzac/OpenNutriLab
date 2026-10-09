@@ -11,6 +11,7 @@ import logging
 from collections.abc import Mapping
 from decimal import Decimal
 from pathlib import PurePath
+from typing import Any
 from typing import NamedTuple
 from typing import cast
 from urllib.parse import urlparse
@@ -32,6 +33,7 @@ from opennutrilab.products.api.schemas.inbound import OFF_IMAGE_HOSTS
 from opennutrilab.products.api.schemas.inbound import IngredientInput
 from opennutrilab.products.api.schemas.inbound import ProductCreate
 from opennutrilab.products.api.schemas.inbound import ProductUpdate
+from opennutrilab.products.api.schemas.inbound import ServingInput
 from opennutrilab.products.models import Additive
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import Nutrient
@@ -100,6 +102,7 @@ def create_product(
                 group_level_1=data.group_level_1,
                 group_level_2=data.group_level_2,
                 ingredients_text=data.ingredients_text,
+                **_serving_fields(data.serving),
             )
         except IntegrityError as e:
             raise ProductAlreadyExistsError(data.barcode) from e
@@ -179,8 +182,24 @@ def _apply_fields(product: Product, data: ProductUpdate) -> None:
             setattr(product, field, value)
             update_fields.append(field)
 
+    if data.serving is not None or data.clears_serving:
+        for field, value in _serving_fields(data.serving).items():
+            setattr(product, field, value)
+            update_fields.append(field)
+
     if update_fields:
         product.save(update_fields=update_fields)
+
+
+def _serving_fields(serving: ServingInput | None) -> dict[str, Any]:
+    """The product's serving fields for `serving`, all empty for None."""
+    if serving is None:
+        return {"serving_quantity": None, "serving_unit": "", "serving_name": ""}
+    return {
+        "serving_quantity": serving.quantity,
+        "serving_unit": serving.unit,
+        "serving_name": serving.name,
+    }
 
 
 def _set_declared_nutrients(

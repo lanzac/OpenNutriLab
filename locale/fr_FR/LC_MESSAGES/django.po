@@ -837,6 +837,37 @@ msgstr "Ressemble à l'additif %(name)s %(code)s : fusionnée avec lui si coché
 msgid "A new additive, to review."
 msgstr "Un nouvel additif, à relire."
 
+msgid "Unit"
+msgstr "Unité"
+
+msgid "Serving"
+msgstr "Portion"
+
+msgid "Serving name"
+msgstr "Nom de la portion"
+
+msgid ""
+"Meals are counted in servings. A serving in ml counts as the same number of "
+"grams."
+msgstr ""
+"Les repas se comptent en portions. Une portion en ml compte pour le même "
+"nombre de grammes."
+
+msgid "What the label calls a serving, such as \"1 tranche\"."
+msgstr "Ce que l'étiquette appelle une portion, par exemple « 1 tranche »."
+
+msgid "Give the serving's quantity, or leave its name empty."
+msgstr "Indiquez la quantité de la portion, ou laissez son nom vide."
+
+#, python-format
+msgid ""
+"OpenFoodFacts gives the serving of barcode %(barcode)s as \"%(text)s\", which "
+"could not be read. Enter it by hand to count this product in servings."
+msgstr ""
+"OpenFoodFacts donne la portion du code-barres %(barcode)s sous la forme « "
+"%(text)s », qui n'a pas pu être lue. Saisissez-la à la main pour compter ce "
+"produit en portions."
+
 #~ msgid "Fat"
 #~ msgstr "Matières grasses"
 

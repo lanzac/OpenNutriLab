@@ -113,6 +113,57 @@ def test_emptying_a_field_clears_the_stored_value():
 
 
 @pytest.mark.django_db
+def test_save_stores_the_serving_given():
+    data = form_data() | {
+        "serving_quantity": "35.7",
+        "serving_unit": "g",
+        "serving_name": "1 tranche",
+    }
+    form = ProductForm(data=data)
+    assert form.is_valid(), form.errors
+
+    product = form.save()
+
+    product.refresh_from_db()
+    assert product.serving_quantity == Decimal("35.7")
+    assert (product.serving_unit, product.serving_name) == ("g", "1 tranche")
+
+
+@pytest.mark.django_db
+def test_a_serving_is_in_grams_unless_said():
+    assert ProductForm()["serving_unit"].value() == "g"
+
+    form = ProductForm(data=form_data() | {"serving_quantity": "45"})
+    assert form.is_valid(), form.errors
+
+    assert form.save().serving_unit == "g"
+
+
+@pytest.mark.django_db
+def test_emptying_the_quantity_clears_the_stored_serving():
+    product = Product.objects.create(
+        barcode=BARCODE, name="Muesli", serving_quantity=Decimal(45), serving_unit="g"
+    )
+    assert ProductForm(instance=product)["serving_quantity"].value() == "45"
+
+    form = ProductForm(data=form_data() | {"serving_quantity": ""}, instance=product)
+    assert form.is_valid(), form.errors
+    form.save()
+
+    product.refresh_from_db()
+    assert product.serving_quantity is None
+    assert product.serving_unit == ""
+
+
+@pytest.mark.django_db
+def test_a_serving_name_needs_its_quantity():
+    form = ProductForm(data=form_data() | {"serving_name": "1 bol"})
+
+    assert not form.is_valid()
+    assert "serving_quantity" in form.errors
+
+
+@pytest.mark.django_db
 def test_editing_leaves_declared_values_off_the_form_alone():
     """Values outside the label declaration (a vitamin) have no field here."""
     vitamin_c = Nutrient.objects.create(

@@ -9,6 +9,7 @@ ORM does not enforce on its own.
 
 from decimal import Decimal
 from typing import Annotated
+from typing import Literal
 from urllib.parse import urlparse
 
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -62,6 +63,14 @@ class IngredientInput(Schema):
 IngredientInput.model_rebuild()
 
 
+class ServingInput(Schema):
+    """A product's serving (see Product.serving_quantity)."""
+
+    quantity: Decimal = Field(gt=0, max_digits=8, decimal_places=2)
+    unit: Literal["g", "ml"] = "g"
+    name: str = Field(default="", max_length=100)
+
+
 class ProductCreate(Schema):
     barcode: str
     name: str = Field(min_length=1, max_length=100)
@@ -74,6 +83,7 @@ class ProductCreate(Schema):
     ingredients: list[IngredientInput] = []
     # The label's list those ingredients were read from, when there is one.
     ingredients_text: str = ""
+    serving: ServingInput | None = None
 
     @field_validator("barcode")
     @classmethod
@@ -96,7 +106,8 @@ class ProductCreate(Schema):
 # UPDATE SCHEMA (PATCH) - every field is optional, for partial updates.
 # A field left out (None) is not touched. In `nutrients`, a code left out is
 # not touched either, and a code set to null clears that value. A list of
-# ingredients that is given replaces the stored tree.
+# ingredients that is given replaces the stored tree. The serving is the one
+# field a null clears: left out it is not touched, given as null it is removed.
 # -------------------------------------------------------------
 
 
@@ -110,6 +121,12 @@ class ProductUpdate(Schema):
     nutrients: dict[str, NutrientAmount | None] | None = None
     ingredients: list[IngredientInput] | None = None
     ingredients_text: str | None = None
+    serving: ServingInput | None = None
+
+    @property
+    def clears_serving(self) -> bool:
+        """Whether the serving was given as null, which removes it."""
+        return "serving" in self.model_fields_set and self.serving is None
 
     @field_validator("image_url")
     @classmethod

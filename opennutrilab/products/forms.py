@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import TYPE_CHECKING
 from typing import Any
 
@@ -35,8 +36,6 @@ from .models import Product
 from .models import ProductNutrient
 
 if TYPE_CHECKING:
-    from decimal import Decimal
-
     from django.utils.safestring import SafeText
 
 # How the ingredient tree travels in the off_ingredients hidden field.
@@ -76,6 +75,32 @@ class ProductForm(forms.ModelForm):
         label=_("Photo"),
         widget=forms.FileInput(attrs={"accept": "image/*"}),
     )
+    # The serving, as the declared values are, outside the model's fields: the
+    # services write it, whole or not at all (see _add_serving_initial).
+    serving_quantity = forms.DecimalField(
+        required=False,
+        min_value=Decimal("0.01"),
+        max_digits=8,
+        decimal_places=2,
+        label=_("Serving"),
+        help_text=_(
+            "Meals are counted in servings. "
+            "A serving in ml counts as the same number of grams."
+        ),
+    )
+    # Without an empty choice: a serving is in grams unless said.
+    serving_unit = forms.ChoiceField(
+        choices=Product.ServingUnit.choices,
+        initial=Product.ServingUnit.GRAM,
+        required=False,
+        label=_("Unit"),
+    )
+    serving_name = forms.CharField(
+        required=False,
+        max_length=100,
+        label=_("Serving name"),
+        help_text=_('What the label calls a serving, such as "1 tranche".'),
+    )
 
     class Meta:
         model = Product
@@ -113,6 +138,7 @@ class ProductForm(forms.ModelForm):
         self.image_fetch_failed = False
         self.declared_value_warnings: list[str] = []
         self.label_nutrients = list(Nutrient.objects.filter(on_label=True))
+        self._add_serving_initial()
 
         # Configure Graph container template
         macronutrients_graph_container_template: SafeText = render_to_string(
@@ -180,6 +206,11 @@ class ProductForm(forms.ModelForm):
                         "description",
                         style="height: 100px",
                         css_class="col-md-8",
+                    ),
+                    Row(
+                        Column(Field("serving_quantity"), css_class="col-md-4"),
+                        Column(Field("serving_unit"), css_class="col-md-3"),
+                        Column(Field("serving_name"), css_class="col-md-5"),
                     ),
                     css_class="col-md-8",
                 ),
@@ -309,6 +340,18 @@ class ProductForm(forms.ModelForm):
                 initial=None if amount is None else plain_amount(amount),
             )
 
+    def _add_serving_initial(self) -> None:
+        """
+        The stored serving, which a lookup on OpenFoodFacts can replace: a field's
+        own initial gives way to the form's.
+        """
+        product: Product = self.instance
+        if not self.is_edit or product.serving_quantity is None:
+            return
+        self.fields["serving_quantity"].initial = plain_amount(product.serving_quantity)
+        self.fields["serving_unit"].initial = product.serving_unit
+        self.fields["serving_name"].initial = product.serving_name
+
     def _get_nutritional_values_layout(self) -> list[Field]:
         """Return crispy-forms layout for the declared nutrients, with units."""
         return [
@@ -318,6 +361,11 @@ class ProductForm(forms.ModelForm):
 
     def clean(self) -> dict[str, Any]:
         cleaned: dict[str, Any] = super().clean()
+        if cleaned.get("serving_name") and cleaned.get("serving_quantity") is None:
+            self.add_error(
+                "serving_quantity",
+                _("Give the serving's quantity, or leave its name empty."),
+            )
         if self.errors:
             return cleaned
         try:
@@ -348,6 +396,14 @@ class ProductForm(forms.ModelForm):
             "group_level_1": cleaned.get("group_level_1") or "",
             "group_level_2": cleaned.get("group_level_2") or "",
             "image_url": (cleaned.get("off_image_url") or None) if from_off else None,
+            # An empty quantity is no serving, and clears a stored one.
+            "serving": None
+            if cleaned.get("serving_quantity") is None
+            else {
+                "quantity": cleaned["serving_quantity"],
+                "unit": cleaned.get("serving_unit") or Product.ServingUnit.GRAM,
+                "name": cleaned.get("serving_name") or "",
+            },
         }
         if from_off:
             # Goes with the ingredients it was read from: replaced when they are,

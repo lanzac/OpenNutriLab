@@ -234,6 +234,14 @@ class ProductListItemOut(ModelSchema):
         fields: list[str] = ["barcode", "name", "created_at"]
 
 
+class ServingOut(Schema):
+    """A product's serving: a quantity in g or ml, and what the label calls it."""
+
+    quantity: Decimal
+    unit: str
+    name: str
+
+
 class ProductOut(ModelSchema):
     # Issue field ordering : https://github.com/vitalik/django-ninja/issues/1504
     # So we manually define the fields in the desired order, instead of relying on
@@ -247,6 +255,7 @@ class ProductOut(ModelSchema):
     group_level_2: str
     # The label's list of ingredients, as it was when the ingredients were loaded.
     ingredients_text: str
+    serving: ServingOut | None = None
 
     # Values declared on the label, in catalogue order.
     nutrients: list[DeclaredNutrientOut] = []
@@ -267,6 +276,16 @@ class ProductOut(ModelSchema):
             "group_level_2",
             "ingredients_text",
         ]
+
+    @staticmethod
+    def resolve_serving(obj: Product) -> ServingOut | None:
+        if obj.serving_quantity is None:
+            return None
+        return ServingOut(
+            quantity=obj.serving_quantity,
+            unit=obj.serving_unit,
+            name=obj.serving_name,
+        )
 
     @staticmethod
     def resolve_ingredients(obj: Product) -> QuerySet[Ingredient]:
