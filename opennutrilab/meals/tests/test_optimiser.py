@@ -7,7 +7,11 @@ worked out by hand: `brought` adds up the picks the same way the optimiser does.
 
 from collections.abc import Mapping
 from decimal import Decimal
+from types import SimpleNamespace
 
+import pytest
+
+from opennutrilab.meals.services import optimiser
 from opennutrilab.meals.services.energy import KJ_PER_KCAL
 from opennutrilab.meals.services.needs import Kind
 from opennutrilab.meals.services.needs import Need
@@ -328,3 +332,35 @@ def test_there_is_nothing_to_plan_without_a_product():
     # Every need missed whole, and no product in the day.
     assert plan.picks == []
     assert plan.status in {"optimal", "failed"}
+
+
+# ----------------------------------------------------------------------------
+# What the solver may answer
+# ----------------------------------------------------------------------------
+def test_the_best_day_found_when_the_time_is_up_is_kept(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    real = optimiser.milp
+
+    def out_of_time(**kwargs: object) -> SimpleNamespace:
+        found = real(**kwargs)  # pyright: ignore[reportArgumentType]
+        # HiGHS' status 1: a limit was reached, with the best solution so far.
+        return SimpleNamespace(status=1, x=found.x, fun=found.fun)
+
+    monkeypatch.setattr(optimiser, "milp", out_of_time)
+
+    plan = optimise([OATS], needs_of())
+
+    assert plan.status == "time_limit"
+    assert plan.picks
+    assert plan.objective is not None
+
+
+def test_no_day_is_given_when_the_solver_finds_none(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        optimiser, "milp", lambda **_kwargs: SimpleNamespace(status=2, x=None, fun=None)
+    )
+
+    plan = optimise([OATS], needs_of())
+
+    assert plan == Plan("failed", None, [])

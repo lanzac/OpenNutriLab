@@ -57,7 +57,7 @@ msgid "Ingredients"
 msgstr "Ingrédients"
 
 msgid "Save"
-msgstr "Sauvergarder"
+msgstr "Sauvegarder"
 
 msgid "Cancel"
 msgstr "Annuler"
@@ -1110,6 +1110,60 @@ msgstr "Inconnu"
 
 msgid "Not certain: the range of the total, or what the food does not cover, could change it."
 msgstr "Pas certain : la fourchette du total, ou ce que les aliments ne couvrent pas, pourrait le changer."
+
+msgid "Propose a day"
+msgstr "Proposer un jour"
+
+msgid "Looking for the best day…"
+msgstr "Recherche du meilleur jour…"
+
+msgid "No day could be proposed."
+msgstr "Aucun jour n'a pu être proposé."
+
+msgid "Fill in your profile to propose a day."
+msgstr "Renseignez votre profil pour proposer un jour."
+
+msgid "Proposed day"
+msgstr "Jour proposé"
+
+msgid "Close"
+msgstr "Fermer"
+
+msgid "The best day your inventory allows."
+msgstr "Le meilleur jour que permet votre inventaire."
+
+msgid "The time ran out: this is the best day found."
+msgstr "Le temps est écoulé : voici le meilleur jour trouvé."
+
+msgid "No day could be worked out."
+msgstr "Aucun jour n'a pu être calculé."
+
+msgid "No product of your inventory has a composition to count."
+msgstr "Aucun produit de votre inventaire n'a de composition à compter."
+
+msgid "Left aside, with no energy value:"
+msgstr "Laissés de côté, sans valeur d'énergie :"
+
+msgid "Use this day"
+msgstr "Utiliser ce jour"
+
+msgid "Replace what is in this day?"
+msgstr "Remplacer ce qui est dans ce jour ?"
+
+msgid "Limits for the proposed day"
+msgstr "Limites pour le jour proposé"
+
+msgid "Choose the meals a product may be in, and the most of it a day. With every meal ticked and no most, a product has no limit."
+msgstr "Choisissez les repas où un produit peut être, et la quantité maximale par jour. Avec tous les repas cochés et sans maximum, un produit n'a pas de limite."
+
+msgid "Most a day"
+msgstr "Au plus par jour"
+
+msgid "Product"
+msgstr "Produit"
+
+msgid "Saved"
+msgstr "Enregistré"
 
 #~ msgid "Fat"
 #~ msgstr "Matières grasses"

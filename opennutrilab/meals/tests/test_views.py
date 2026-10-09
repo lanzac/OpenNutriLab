@@ -156,6 +156,10 @@ def test_the_labels_of_the_meals_page_are_translated_by_the_server(
     # Nothing is left in English.
     assert all(isinstance(value, str) and value for value in labels.values())
     assert labels["coverage"] == "Couverture"
+    assert labels["proposeDay"] == "Proposer un jour"
+    assert labels["useDay"] == "Utiliser ce jour"
+    assert labels["proposal_time_limit"].startswith("Le temps est écoulé")
+    assert labels["save"] == "Sauvegarder"
 
 
 @pytest.mark.django_db

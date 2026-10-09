@@ -223,4 +223,29 @@ def meals_labels() -> dict[str, str]:
             "Not certain: the range of the total, or what the food does not "
             "cover, could change it."
         ),
+        "proposeDay": _("Propose a day"),
+        "proposing": _("Looking for the best day…"),
+        "proposeError": _("No day could be proposed."),
+        "proposeNeedsProfile": _("Fill in your profile to propose a day."),
+        "proposalTitle": _("Proposed day"),
+        "closeProposal": _("Close"),
+        "proposal_optimal": _("The best day your inventory allows."),
+        "proposal_time_limit": _("The time ran out: this is the best day found."),
+        "proposal_failed": _("No day could be worked out."),
+        "proposal_no_candidates": _(
+            "No product of your inventory has a composition to count."
+        ),
+        "skipped": _("Left aside, with no energy value:"),
+        "useDay": _("Use this day"),
+        "confirmReplace": _("Replace what is in this day?"),
+        "limitsTitle": _("Limits for the proposed day"),
+        "limitsHelp": _(
+            "Choose the meals a product may be in, and the most of it a day. "
+            "With every meal ticked and no most, a product has no limit."
+        ),
+        "limitsMeals": _("Meals"),
+        "limitsMost": _("Most a day"),
+        "product": _("Product"),
+        "save": _("Save"),
+        "saved": _("Saved"),
     }

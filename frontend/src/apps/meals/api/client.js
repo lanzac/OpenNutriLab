@@ -50,3 +50,25 @@ export const changeItem = (id, change, csrfToken) =>
 
 export const removeItem = (id, csrfToken) =>
   request(`${MEALS_API_BASE}items/${id}`, { method: 'DELETE', csrfToken });
+
+// A day proposed from the inventory: nothing is written until it is taken.
+export const proposeDay = (day, csrfToken) =>
+  request(`${MEALS_API_BASE}${day}/propose`, { method: 'POST', csrfToken });
+
+// Puts the proposed items in place of the day's meals.
+export const replaceDay = (day, items, csrfToken) =>
+  request(`${MEALS_API_BASE}${day}`, {
+    method: 'PUT',
+    body: { items },
+    csrfToken,
+  });
+
+// What the user allows of each product when a day is proposed.
+export const fetchLimits = () => request(`${MEALS_API_BASE}limits/`);
+
+export const setLimits = (barcode, limits, csrfToken) =>
+  request(`${MEALS_API_BASE}limits/${barcode}`, {
+    method: 'PUT',
+    body: limits,
+    csrfToken,
+  });

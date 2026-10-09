@@ -5,11 +5,15 @@ import {
   changeItem,
   fetchDay,
   fetchInventory,
+  proposeDay,
   removeItem,
+  replaceDay,
 } from './api/client.js';
 import { DaySummary } from './DaySummary.jsx';
 import { shiftDay } from './format.js';
+import { LimitsEditor } from './LimitsEditor.jsx';
 import { MealCard } from './MealCard.jsx';
+import { ProposalPanel } from './ProposalPanel.jsx';
 
 /**
  * The meals of a day, with what each brings and the day against the user's
@@ -34,6 +38,9 @@ export function MealsApp({
   const [report, setReport] = useState(null);
   const [inventory, setInventory] = useState(null);
   const [error, setError] = useState(null);
+  // A day proposed, not saved, and whether one is being looked for.
+  const [proposal, setProposal] = useState(null);
+  const [proposing, setProposing] = useState(false);
   // The day asked for last: an answer for another is not shown.
   const current = useRef(day);
 
@@ -42,6 +49,7 @@ export function MealsApp({
     let cancelled = false;
     setReport(null);
     setError(null);
+    setProposal(null);
     fetchDay(day)
       .then((data) => {
         if (!cancelled) setReport(data);
@@ -70,17 +78,47 @@ export function MealsApp({
     };
   }, [labels.loadError]);
 
-  const save = (write) => {
+  const save = (write, done) => {
     setError(null);
     write()
       .then((data) => {
-        if (data.day === current.current) setReport(data);
+        if (data.day === current.current) {
+          setReport(data);
+          done?.();
+        }
       })
       .catch((err) => {
         console.error(err);
         setError(labels.saveError);
       });
   };
+
+  const propose = () => {
+    setError(null);
+    setProposal(null);
+    setProposing(true);
+    proposeDay(day, csrfToken)
+      .then((data) => {
+        if (data.day.day === current.current) setProposal(data);
+      })
+      .catch((err) => {
+        console.error(err);
+        setError(labels.proposeError);
+      })
+      .finally(() => setProposing(false));
+  };
+
+  const useProposal = () => {
+    // What is in the day goes: the user is asked first.
+    const filled = report.meals.some((meal) => meal.items.length > 0);
+    if (filled && !window.confirm(labels.confirmReplace)) return;
+    save(
+      () => replaceDay(day, proposal.items, csrfToken),
+      () => setProposal(null),
+    );
+  };
+
+  const canPropose = report !== null && report.needs !== null && !proposing;
 
   return (
     <div>
@@ -116,6 +154,18 @@ export function MealsApp({
         >
           {labels.today}
         </button>
+        <button
+          type="button"
+          className="btn btn-primary ms-lg-auto"
+          disabled={!canPropose}
+          title={
+            report?.needs === null ? labels.proposeNeedsProfile : undefined
+          }
+          onClick={propose}
+        >
+          <i className="fa-solid fa-wand-magic-sparkles" />{' '}
+          {proposing ? labels.proposing : labels.proposeDay}
+        </button>
       </div>
 
       {error && (
@@ -133,6 +183,16 @@ export function MealsApp({
               {labels.emptyInventory}{' '}
               <a href={inventoryUrl}>{labels.goInventory}</a>
             </p>
+          )}
+          {proposal && (
+            <ProposalPanel
+              proposal={proposal}
+              labels={labels}
+              languageCode={languageCode}
+              needsUrl={needsUrl}
+              onUse={useProposal}
+              onClose={() => setProposal(null)}
+            />
           )}
           <div className="row g-3">
             {report.meals.map((meal) => (
@@ -159,6 +219,12 @@ export function MealsApp({
             labels={labels}
             languageCode={languageCode}
             needsUrl={needsUrl}
+          />
+          <LimitsEditor
+            meals={report.meals}
+            inventory={inventory}
+            labels={labels}
+            csrfToken={csrfToken}
           />
         </>
       )}

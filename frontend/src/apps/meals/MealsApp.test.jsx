@@ -7,151 +7,22 @@ import {
 } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { MealsApp } from './MealsApp.jsx';
-
-// Stands in for the |json_script blob rendered by MealsView: the real French
-// catalogue entries, so a regression back to hardcoded English fails these.
-const labels = {
-  loading: 'Chargement…',
-  loadError: 'Les repas n’ont pas pu être chargés.',
-  saveError: 'Le changement n’a pas pu être enregistré.',
-  previousDay: 'Jour précédent',
-  nextDay: 'Jour suivant',
-  day: 'Jour',
-  today: 'Aujourd’hui',
-  emptyInventory: 'Votre inventaire est vide.',
-  goInventory: 'Aller à l’inventaire',
-  serving: 'portion',
-  quantity: 'Quantité',
-  unit: 'Unité',
-  noMass: 'pas de portion',
-  remove: 'Retirer du repas',
-  addProduct: 'Ajouter un produit',
-  chooseProduct: 'Choisir un produit…',
-  add: 'Ajouter',
-  emptyMeal: 'Rien dans ce repas.',
-  noProfile: 'Renseignez votre profil.',
-  myNeeds: 'Mes besoins',
-  emptyDay: 'Mettez des produits dans un repas.',
-  dayTitle: 'La journée face à vos besoins',
-  coverageNote:
-    'Couverture : la part des aliments dont la composition donne une valeur.',
-  nutrient: 'Nutriment',
-  total: 'Total',
-  need: 'Besoin',
-  status: 'Statut',
-  coverage: 'Couverture',
-  ratios: 'Rapports',
-  ratio: 'Rapport',
-  inMoles: 'en moles',
-  below: 'Sous',
-  within: 'Atteint',
-  above: 'Au-dessus',
-  unknown: 'Inconnu',
-  uncertain: 'Pas certain',
-};
-
-const BREAD = {
-  barcode: '3228857002245',
-  name: 'Pain de mie',
-  serving: { quantity: '35.70', unit: 'g', name: '1 tranche' },
-  added_at: '2026-10-09T10:00:00Z',
-};
-const MUESLI = {
-  barcode: '3229820794556',
-  name: 'Muesli',
-  serving: null,
-  added_at: '2026-10-09T10:00:00Z',
-};
-
-const total = (amount, low = amount, high = amount, coverage = '100') => ({
-  amount,
-  low,
-  high,
-  coverage,
-});
-
-function meal(kind, label, items = [], totals = {}) {
-  return { kind, label, items, mass: '0', totals };
-}
-
-function day(overrides = {}) {
-  return {
-    day: '2026-10-09',
-    meals: [
-      meal('breakfast', 'Petit-déjeuner'),
-      meal('lunch', 'Déjeuner'),
-      meal('snack', 'Collation'),
-      meal('dinner', 'Dîner'),
-    ],
-    mass: '0',
-    totals: {},
-    nutrients: {},
-    needs: null,
-    ratios: null,
-    ...overrides,
-  };
-}
-
-const breadItem = {
-  id: 7,
-  barcode: BREAD.barcode,
-  name: BREAD.name,
-  quantity: '2.00',
-  unit: 'serving',
-  grams: '71.40',
-  serving: BREAD.serving,
-};
-
-const withBread = (extra = {}) =>
-  day({
-    mass: '71.4',
-    meals: [
-      meal('breakfast', 'Petit-déjeuner', [breadItem], {
-        energy: total('3766.68', '3700', '3800'),
-        proteins: total('7.854', '7.5', '8.2'),
-      }),
-      meal('lunch', 'Déjeuner'),
-      meal('snack', 'Collation'),
-      meal('dinner', 'Dîner'),
-    ],
-    totals: { energy: total('3766.68', '3700', '3800') },
-    nutrients: {
-      energy: { name: 'Énergie', unit: 'kJ' },
-      proteins: { name: 'Protéines', unit: 'g' },
-    },
-    ...extra,
-  });
-
-const ok = (body) => ({ ok: true, json: async () => body });
-
-/** fetch, answering by method and URL; records what was asked. */
-function stubFetch(routes) {
-  const fetch = vi.fn(async (url, options = {}) => {
-    const key = `${options.method ?? 'GET'} ${url}`;
-    const answer = routes[key];
-    if (!answer) throw new Error(`unexpected request: ${key}`);
-    return typeof answer === 'function' ? answer(options) : answer;
-  });
-  vi.stubGlobal('fetch', fetch);
-  return fetch;
-}
-
-const TODAY = '2026-10-09';
-const DAY_URL = `/api/v1/meals/${TODAY}`;
-
-function renderApp() {
-  return render(
-    <MealsApp
-      labels={labels}
-      csrfToken="test-csrf-token"
-      languageCode="fr-fr"
-      today={TODAY}
-      needsUrl="/needs/"
-      inventoryUrl="/products/"
-    />,
-  );
-}
+import {
+  BREAD,
+  DAY_URL,
+  MUESLI,
+  TODAY,
+  day,
+  labels,
+  meal,
+  need,
+  ok,
+  ratio,
+  renderApp,
+  stubFetch,
+  total,
+  withBread,
+} from './fixtures.jsx';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -482,37 +353,6 @@ describe('MealsApp', () => {
 });
 
 describe('the day against the needs', () => {
-  const need = (overrides) => ({
-    name: 'Fibres',
-    unit: 'g',
-    group: 'macronutrient',
-    group_label: 'Macronutriment',
-    low: '30',
-    high: null,
-    ends: ['Borne de l’optimisation (anses-2016)'],
-    share_low: null,
-    share_high: null,
-    total: total('12', '10', '14', '100'),
-    status: 'below',
-    certain: true,
-    ...overrides,
-  });
-
-  const ratio = (overrides) => ({
-    numerator: 'Oméga-3',
-    denominator: 'Oméga-6',
-    molar: false,
-    low: '0.9',
-    high: '1.1',
-    end: 'Votre objectif (user)',
-    value: '0.23',
-    value_low: '0.2',
-    value_high: null,
-    status: 'below',
-    certain: false,
-    ...overrides,
-  });
-
   const withNeeds = () =>
     withBread({
       needs: [

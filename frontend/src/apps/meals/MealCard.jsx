@@ -90,6 +90,25 @@ function ItemRow({ item, labels, languageCode, onChange, onRemove }) {
   );
 }
 
+/** An item as a proposed day shows it: what and how much, with nothing to change. */
+function ReadOnlyRow({ item, labels, languageCode }) {
+  const serving =
+    item.unit === 'serving'
+      ? `${Number(item.quantity)} ${labels.serving}`
+      : `${Number(item.quantity)} g`;
+  return (
+    <li className="list-group-item d-flex justify-content-between gap-2">
+      <span>{item.name}</span>
+      <span className="text-nowrap text-body-secondary">
+        {serving}
+        {item.unit === 'serving' && item.grams !== null && (
+          <> ({formatAmount(item.grams, 'g', languageCode)})</>
+        )}
+      </span>
+    </li>
+  );
+}
+
 function AddRow({ meal, inventory, labels, languageCode, onAdd }) {
   const [barcode, setBarcode] = useState('');
   const [quantity, setQuantity] = useState('1');
@@ -176,6 +195,7 @@ export function MealCard({
   onAdd,
   onChange,
   onRemove,
+  readOnly = false,
 }) {
   const shown = SHOWN.filter((code) => meal.totals[code]);
 
@@ -188,23 +208,34 @@ export function MealCard({
             {labels.emptyMeal}
           </li>
         )}
-        {meal.items.map((item) => (
-          <ItemRow
-            key={`${item.id}-${item.quantity}-${item.unit}`}
-            item={item}
+        {meal.items.map((item) =>
+          readOnly ? (
+            <ReadOnlyRow
+              key={item.barcode}
+              item={item}
+              labels={labels}
+              languageCode={languageCode}
+            />
+          ) : (
+            <ItemRow
+              key={`${item.id}-${item.quantity}-${item.unit}`}
+              item={item}
+              labels={labels}
+              languageCode={languageCode}
+              onChange={onChange}
+              onRemove={onRemove}
+            />
+          ),
+        )}
+        {!readOnly && (
+          <AddRow
+            meal={meal}
+            inventory={inventory}
             labels={labels}
             languageCode={languageCode}
-            onChange={onChange}
-            onRemove={onRemove}
+            onAdd={onAdd}
           />
-        ))}
-        <AddRow
-          meal={meal}
-          inventory={inventory}
-          labels={labels}
-          languageCode={languageCode}
-          onAdd={onAdd}
-        />
+        )}
       </ul>
       {shown.length > 0 && (
         <div className="card-footer small">
