@@ -13,6 +13,9 @@ import { ProductListApp } from './ProductListApp.jsx';
 // the real French catalogue entries, so a regression back to hardcoded English
 // in the JSX fails these tests.
 const labels = {
+  image: 'Photo',
+  barcode: 'Code barre',
+  uncategorised: 'Non classé',
   productName: 'Nom du produit',
   totalQuantity: 'Quantité totale',
   createdAt: 'Créé le',
@@ -33,8 +36,11 @@ const labels = {
 };
 
 const RICE = {
-  barcode: '1234567890123',
+  barcode: '4006381333931',
   name: 'Rice',
+  image: '/media/images/products/4006381333931.jpg',
+  group_level_1: 'Cereals and potatoes',
+  group_level_2: 'Cereals',
   package: { quantity: '1000.00', unit: 'g' },
   created_at: '2026-01-01T00:00:00Z',
   in_inventory: true,
@@ -43,6 +49,9 @@ const RICE = {
 const OATS = {
   barcode: '3229820794556',
   name: 'Oats',
+  image: null,
+  group_level_1: 'Cereals and potatoes',
+  group_level_2: 'Breakfast cereals',
   package: null,
   created_at: '2026-01-02T00:00:00Z',
   in_inventory: false,
@@ -56,14 +65,25 @@ function stubFetchSuccess(products = [RICE]) {
 }
 
 const CSRF_TOKEN = 'test-csrf-token';
+const PLACEHOLDER = '/static/images/milk-carton.png';
+
+// What ProductListView gives: the words the groups are stored with, in French.
+const groupNames = {
+  'Cereals and potatoes': 'Céréales et pommes de terre',
+  Cereals: 'Céréales',
+  'Breakfast cereals': 'Céréales du petit-déjeuner',
+  'Fish Meat Eggs': 'Viandes, poissons et œufs',
+};
 
 function renderList({ canDelete = true } = {}) {
   return render(
     <ProductListApp
       labels={labels}
+      groupNames={groupNames}
       csrfToken={CSRF_TOKEN}
       languageCode="fr-fr"
       canDelete={canDelete}
+      placeholderImage={PLACEHOLDER}
     />,
   );
 }
@@ -81,7 +101,7 @@ describe('ProductListApp', () => {
     await waitFor(() => expect(screen.getByText('Rice')).toBeInTheDocument());
     expect(screen.getByRole('link', { name: /Éditer/ })).toHaveAttribute(
       'href',
-      '/products/1234567890123/edit/',
+      '/products/4006381333931/edit/',
     );
   });
 
@@ -112,12 +132,13 @@ describe('ProductListApp', () => {
     expect(
       screen.getByRole('columnheader', { name: 'Quantité totale' }),
     ).toBeInTheDocument();
-    const rows = screen.getAllByRole('row');
+    const rice = screen.getByText('Rice').closest('tr');
+    const oats = screen.getByText('Oats').closest('tr');
     expect(
-      within(rows[1]).getByRole('cell', { name: /1\s000 g/ }),
+      within(rice).getByRole('cell', { name: /1\s000 g/ }),
     ).toBeInTheDocument();
     // The cell is there for the columns to line up, and empty.
-    expect(within(rows[2]).getAllByRole('cell')[1]).toBeEmptyDOMElement();
+    expect(within(oats).getAllByRole('cell')[3]).toBeEmptyDOMElement();
   });
 
   it('interpolates the product name into the delete confirmation', async () => {
@@ -262,7 +283,7 @@ describe('ProductListApp', () => {
 
     await waitFor(() => expect(screen.queryByText('Rice')).toBeNull());
     expect(fetch).toHaveBeenLastCalledWith(
-      '/api/v1/inventory/1234567890123',
+      '/api/v1/inventory/4006381333931',
       expect.objectContaining({ method: 'DELETE' }),
     );
   });
@@ -289,5 +310,139 @@ describe('ProductListApp', () => {
       ),
     );
     expect(screen.getByText('Rice')).toBeInTheDocument();
+  });
+
+  it("shows each product's photo, or the placeholder where it has none", async () => {
+    stubFetchSuccess([RICE, { ...OATS, in_inventory: true }]);
+    renderList();
+    await waitFor(() => expect(screen.getByText('Rice')).toBeInTheDocument());
+
+    const rice = screen.getByText('Rice').closest('tr');
+    const oats = screen.getByText('Oats').closest('tr');
+    expect(rice.querySelector('img')).toHaveAttribute(
+      'src',
+      '/media/images/products/4006381333931.jpg',
+    );
+    expect(oats.querySelector('img')).toHaveAttribute('src', PLACEHOLDER);
+  });
+
+  it('draws the barcode of each product, and writes a code that cannot scan', async () => {
+    stubFetchSuccess([
+      RICE,
+      { ...OATS, in_inventory: true, barcode: '1234567890123' },
+    ]);
+    renderList();
+    await waitFor(() => expect(screen.getByText('Rice')).toBeInTheDocument());
+
+    expect(
+      screen.getByRole('img', { name: 'Code barre 4006381333931' }),
+    ).toBeInTheDocument();
+    // Not an EAN-13 (its check digit is wrong): text, not bars.
+    expect(screen.queryByRole('img', { name: /1234567890123/ })).toBeNull();
+    expect(screen.getByText('1234567890123')).toBeInTheDocument();
+  });
+
+  it('cuts the products into groups named in the language served', async () => {
+    stubFetchSuccess([
+      { ...RICE, group_level_1: 'Fish Meat Eggs', group_level_2: 'unknown' },
+      { ...OATS, in_inventory: true },
+      {
+        ...OATS,
+        barcode: '3263670115819',
+        name: 'Mystery',
+        in_inventory: true,
+        group_level_1: '',
+        group_level_2: '',
+      },
+    ]);
+    renderList();
+    await waitFor(() => expect(screen.getByText('Rice')).toBeInTheDocument());
+
+    const heads = screen
+      .getAllByRole('button', { expanded: true })
+      .map((button) => button.textContent);
+    // By name, the unclassified last, each with how many products it holds.
+    expect(heads).toEqual([
+      'Céréales et pommes de terre1',
+      'Viandes, poissons et œufs1',
+      'Non classé1',
+    ]);
+    // A subgroup is titled where its group has known ones, and not elsewhere.
+    expect(
+      screen.getByRole('columnheader', { name: 'Céréales du petit-déjeuner' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('columnheader', { name: 'Non classé' }),
+    ).toBeNull();
+  });
+
+  it('titles the subgroups of a group, and puts the unclassified ones last', async () => {
+    stubFetchSuccess([
+      { ...RICE, group_level_2: 'unknown' },
+      { ...OATS, in_inventory: true },
+      {
+        ...OATS,
+        barcode: '3263670115819',
+        name: 'Barley',
+        in_inventory: true,
+        group_level_2: 'Cereals',
+      },
+    ]);
+    renderList();
+    await waitFor(() => expect(screen.getByText('Rice')).toBeInTheDocument());
+
+    const titles = screen
+      .getAllByRole('columnheader')
+      .filter((header) => header.getAttribute('colspan'))
+      .map((header) => header.textContent);
+    expect(titles).toEqual([
+      'Céréales et pommes de terre3',
+      'Céréales',
+      'Céréales du petit-déjeuner',
+      'Non classé',
+    ]);
+    // Inside a subgroup the products are by name.
+    const names = screen
+      .getAllByRole('row')
+      .map((row) => row.querySelector('td.fw-semibold')?.textContent)
+      .filter(Boolean);
+    expect(names).toEqual(['Barley', 'Oats', 'Rice']);
+  });
+
+  it('folds a group away and brings it back', async () => {
+    stubFetchSuccess([RICE, { ...OATS, in_inventory: true }]);
+    renderList();
+    await waitFor(() => expect(screen.getByText('Rice')).toBeInTheDocument());
+
+    const head = screen.getByRole('button', {
+      name: /Céréales et pommes de terre/,
+    });
+    fireEvent.click(head);
+
+    expect(head).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('Rice')).toBeNull();
+    expect(screen.queryByText('Oats')).toBeNull();
+
+    fireEvent.click(head);
+
+    expect(head).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Rice')).toBeInTheDocument();
+  });
+
+  it('keeps the actions as icon buttons that say what they do', async () => {
+    stubFetchSuccess();
+    renderList();
+    await waitFor(() => expect(screen.getByText('Rice')).toBeInTheDocument());
+
+    const toolbar = screen.getByRole('toolbar');
+    for (const name of ['Retirer de mon inventaire', 'Éditer', 'Supprimer']) {
+      const control = within(toolbar).getByRole(
+        name === 'Éditer' ? 'link' : 'button',
+        { name },
+      );
+      // Pointed at, the icon says what it does; it has no text of its own.
+      expect(control).toHaveAttribute('title', name);
+      expect(control).toHaveTextContent('');
+    }
   });
 });

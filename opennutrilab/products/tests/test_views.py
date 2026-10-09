@@ -122,6 +122,15 @@ class TestProductListView:
         assert "%(name)s" in labels["confirmDelete"]
         assert labels["myInventory"] == "Mon inventaire"
         assert labels["addToInventory"] == "Ajouter à mon inventaire"
+        assert labels["image"] == "Photo"
+        assert labels["barcode"] == "Code barre"
+        assert labels["uncategorised"] == "Non classé"
+        # The groups are stored as OpenFoodFacts words them, and shown in French.
+        group_names: dict[str, str] = props["groupNames"]
+        assert group_names["Cereals and potatoes"] == "Céréales et pommes de terre"
+        assert group_names["Fish Meat Eggs"] == "Viandes, poissons et œufs"
+        assert group_names["Bread"] == "Pain"
+        assert props["placeholderImage"].endswith("milk-carton-svgrepo-com.png")
 
         # Intl needs the negotiated language or it falls back to the browser's.
         assert props["languageCode"].startswith("fr")

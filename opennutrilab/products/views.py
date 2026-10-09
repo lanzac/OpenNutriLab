@@ -12,6 +12,7 @@ from django.db.models import prefetch_related_objects
 from django.http import HttpRequest
 from django.http import HttpResponseRedirect
 from django.middleware.csrf import get_token
+from django.templatetags.static import static
 from django.urls import reverse_lazy
 from django.utils.translation import get_language
 from django.utils.translation import gettext as _
@@ -38,6 +39,7 @@ from .models import Nutrient
 from .models import Preparation
 from .models import Product
 from .models import ReferenceIngredient
+from .pnns import pnns_group_names
 from .services.estimate_panel import estimate_panel
 from .services.estimate_report import build_estimate
 from .services.inventory import add_to_inventory
@@ -89,7 +91,15 @@ class ProductListView(LoginRequiredMixin, ListView):
             # Only staff may delete (see ProductDeleteView); the list hides
             # the button from everyone else.
             "canDelete": self.request.user.is_staff,
+            # The picture of a product that has no photo, the one the product
+            # page shows too (see products/components/image_preview.html).
+            "placeholderImage": static("images/milk-carton-svgrepo-com.png"),
+            # The words OpenFoodFacts files the products under, in this language.
+            "groupNames": pnns_group_names(),
             "labels": {
+                "image": _("Photo"),
+                "barcode": _("Barcode"),
+                "uncategorised": _("Uncategorised"),
                 "productName": _("Product name"),
                 "createdAt": _("Created at"),
                 "actions": _("Actions"),

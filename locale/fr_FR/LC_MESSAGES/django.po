@@ -1286,6 +1286,150 @@ msgstr "Indiquez d'abord la quantité totale du produit."
 msgid "%(percent)s of a package of %(package)s"
 msgstr "%(percent)s d'un paquet de %(package)s"
 
+msgid "Uncategorised"
+msgstr "Non classé"
+
+msgid "Beverages"
+msgstr "Boissons"
+
+msgid "Cereals and potatoes"
+msgstr "Céréales et pommes de terre"
+
+msgid "Composite foods"
+msgstr "Plats composés"
+
+msgid "Fat and sauces"
+msgstr "Matières grasses et sauces"
+
+msgid "Fish, meat and eggs"
+msgstr "Viandes, poissons et œufs"
+
+msgid "Fruits and vegetables"
+msgstr "Fruits et légumes"
+
+msgid "Milk and dairy products"
+msgstr "Lait et produits laitiers"
+
+msgid "Salty snacks"
+msgstr "Snacks salés"
+
+msgid "Sugary snacks"
+msgstr "Snacks sucrés"
+
+msgid "Alcoholic beverages"
+msgstr "Boissons alcoolisées"
+
+msgid "Appetizers"
+msgstr "Apéritifs"
+
+msgid "Artificially sweetened beverages"
+msgstr "Boissons édulcorées artificiellement"
+
+msgid "Biscuits and cakes"
+msgstr "Biscuits et gâteaux"
+
+msgid "Bread"
+msgstr "Pain"
+
+msgid "Breakfast cereals"
+msgstr "Céréales du petit-déjeuner"
+
+msgid "Cereals"
+msgstr "Céréales"
+
+msgid "Cheese"
+msgstr "Fromages"
+
+msgid "Chocolate products"
+msgstr "Produits chocolatés"
+
+msgid "Dairy desserts"
+msgstr "Desserts lactés"
+
+msgid "Dressings and sauces"
+msgstr "Assaisonnements et sauces"
+
+msgid "Dried fruits"
+msgstr "Fruits séchés"
+
+msgid "Eggs"
+msgstr "Œufs"
+
+msgid "Fats"
+msgstr "Matières grasses"
+
+msgid "Fish and seafood"
+msgstr "Poissons et fruits de mer"
+
+msgid "Fruit juices"
+msgstr "Jus de fruits"
+
+msgid "Fruit nectars"
+msgstr "Nectars de fruits"
+
+msgid "Fruits"
+msgstr "Fruits"
+
+msgid "Ice cream"
+msgstr "Glaces"
+
+msgid "Legumes"
+msgstr "Légumineuses"
+
+msgid "Meat"
+msgstr "Viandes"
+
+msgid "Milk and yogurt"
+msgstr "Lait et yaourts"
+
+msgid "Non-sugared beverages"
+msgstr "Boissons non sucrées"
+
+msgid "Nuts"
+msgstr "Fruits à coque"
+
+msgid "Offals"
+msgstr "Abats"
+
+msgid "One-dish meals"
+msgstr "Plats complets"
+
+msgid "Pastries"
+msgstr "Pâtisseries"
+
+msgid "Pizza pies and quiche"
+msgstr "Pizzas, tartes et quiches"
+
+msgid "Potatoes"
+msgstr "Pommes de terre"
+
+msgid "Processed meat"
+msgstr "Charcuterie"
+
+msgid "Salty and fatty products"
+msgstr "Produits salés et gras"
+
+msgid "Sandwiches"
+msgstr "Sandwichs"
+
+msgid "Soups"
+msgstr "Soupes"
+
+msgid "Sweetened beverages"
+msgstr "Boissons sucrées"
+
+msgid "Sweets"
+msgstr "Confiseries"
+
+msgid "Tripe dishes"
+msgstr "Tripes"
+
+msgid "Vegetables"
+msgstr "Légumes"
+
+msgid "Waters and flavored waters"
+msgstr "Eaux et eaux aromatisées"
+
 #~ msgid "Fat"
 #~ msgstr "Matières grasses"
 

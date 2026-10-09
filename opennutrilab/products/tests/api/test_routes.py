@@ -144,9 +144,45 @@ def test_list_products(api_client: Client, products_two: tuple[Product, Product]
     p1, p2 = products_two
     # Only what a list shows: no nested nutritional values or ingredients.
     assert [set(item) for item in response.json()] == [
-        {"barcode", "name", "created_at", "in_inventory", "package"}
+        {
+            "barcode",
+            "name",
+            "image",
+            "created_at",
+            "group_level_1",
+            "group_level_2",
+            "in_inventory",
+            "package",
+        }
     ] * 2
     assert {item["barcode"] for item in response.json()} == {p1.barcode, p2.barcode}
+
+
+@pytest.mark.django_db
+def test_list_products_serves_the_photo_and_the_groups(
+    api_client: Client, products_two: tuple[Product, Product]
+):
+    p1, p2 = products_two
+    # Only the name of the file is set: nothing is written to the media folder.
+    Product.objects.filter(pk=p1.pk).update(
+        image="images/products/3229820794556.jpg",
+        group_level_1="Cereals and potatoes",
+        group_level_2="Breakfast cereals",
+    )
+
+    listed = {p["barcode"]: p for p in api_client.get(API).json()}
+
+    # The URL the media folder is served from, whatever the settings make it.
+    photo = Product.objects.get(pk=p1.pk).image
+    assert listed[p1.barcode]["image"] == photo.url
+    assert photo.url.endswith("/images/products/3229820794556.jpg")
+    assert (
+        listed[p1.barcode]["group_level_1"],
+        listed[p1.barcode]["group_level_2"],
+    ) == ("Cereals and potatoes", "Breakfast cereals")
+    # A product with no photo says so, and one with no group has empty ones.
+    assert listed[p2.barcode]["image"] is None
+    assert listed[p2.barcode]["group_level_1"] == ""
 
 
 @pytest.mark.django_db

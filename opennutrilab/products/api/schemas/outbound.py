@@ -253,7 +253,14 @@ class ProductListItemOut(ModelSchema):
 
     class Meta:
         model = Product
-        fields: list[str] = ["barcode", "name", "created_at"]
+        fields: list[str] = [
+            "barcode",
+            "name",
+            "image",
+            "created_at",
+            "group_level_1",
+            "group_level_2",
+        ]
 
 
 class ServingOut(Schema):

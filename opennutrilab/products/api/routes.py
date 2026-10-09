@@ -39,7 +39,14 @@ def list_products(request: HttpRequest) -> QuerySet[Product]:
     mine = InventoryItem.objects.filter(user=_user(request), product=OuterRef("pk"))
     return (
         Product.objects.only(
-            "barcode", "name", "created_at", "package_quantity", "package_unit"
+            "barcode",
+            "name",
+            "image",
+            "created_at",
+            "group_level_1",
+            "group_level_2",
+            "package_quantity",
+            "package_unit",
         )
         .annotate(in_inventory=Exists(mine))
         .order_by("created_at")
