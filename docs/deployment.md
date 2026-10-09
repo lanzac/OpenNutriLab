@@ -160,6 +160,17 @@ just prod-manage create_custom_food opennutrilab/products/data/custom_foods --dr
 just prod-manage create_custom_food opennutrilab/products/data/custom_foods --replace
 ```
 
+The links of references to the foods of CIQUAL are rows of the database as well,
+and a reset loses them. The ones a person made are kept in
+`opennutrilab/products/data/reference_links.json`, by the name of the reference and
+the code of the food, and are made again after the products are loaded (the
+command only adds the links that are missing, and touches nothing else):
+
+```sh
+just prod-manage link_reference_foods --dry-run
+just prod-manage link_reference_foods
+```
+
 Watch the first boot; Caddy logs the certificate it obtains:
 
 ```sh

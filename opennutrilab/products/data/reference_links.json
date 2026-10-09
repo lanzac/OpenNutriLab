@@ -1,0 +1,101 @@
+[
+  {
+    "reference": "semoule de blé",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "9610"
+      }
+    ]
+  },
+  {
+    "reference": "quinoa blanc",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "9340"
+      }
+    ]
+  },
+  {
+    "reference": "paprika fumé",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11049"
+      }
+    ]
+  },
+  {
+    "reference": "petit épeautre",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "9001"
+      }
+    ]
+  },
+  {
+    "reference": "quinoa rouge",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "9340"
+      }
+    ]
+  },
+  {
+    "reference": "purée de tomate double concentrée",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "20268"
+      }
+    ]
+  },
+  {
+    "reference": "Sel fumé",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11017"
+      }
+    ]
+  },
+  {
+    "reference": "piment doux fumé",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11049"
+      }
+    ]
+  },
+  {
+    "reference": "piment rouge jalapeño",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "20151"
+      }
+    ]
+  },
+  {
+    "reference": "farine complète de seigle",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "9530"
+      }
+    ]
+  },
+  {
+    "reference": "graines de lin doré",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "15034"
+      }
+    ]
+  }
+]

@@ -257,7 +257,7 @@ def parse_spec(data: object) -> CustomFoodSpec:  # noqa: C901
         margin=margin,
         basis_fr=basis_fr,
         basis_en=basis_en,
-        references=tuple(_reference_id(r) for r in _list(spec, "references")),
+        references=tuple(reference_id(r) for r in _list(spec, "references")),
     )
 
 
@@ -346,7 +346,7 @@ def _given(raw: object) -> dict[str, Given]:
     return given
 
 
-def _reference_id(item: object) -> int | str:
+def reference_id(item: object) -> int | str:
     if isinstance(item, bool) or not isinstance(item, int | str):
         msg = f"A reference is an id or a name, got {item!r}."
         raise CustomFoodError(msg)
@@ -568,8 +568,10 @@ def create_custom_food(spec: CustomFoodSpec, *, replace: bool = False) -> Custom
     curating it is for a person.
     """
     with transaction.atomic():
-        proxies = [(proxy, _proxy_food(proxy)) for proxy in spec.proxies]
-        references = [_reference(identifier) for identifier in spec.references]
+        proxies = [
+            (proxy, find_food(proxy.source, proxy.code)) for proxy in spec.proxies
+        ]
+        references = [find_reference(identifier) for identifier in spec.references]
         worked = work_out(spec, proxies)
         name_fr, name_en = _names(spec, [food for _, food in proxies])
 
@@ -621,19 +623,20 @@ def create_custom_food(spec: CustomFoodSpec, *, replace: bool = False) -> Custom
     return CustomFood(food=food, created=created, worked_out=worked, linked=linked)
 
 
-def _proxy_food(proxy: Proxy) -> SourceFood:
+def find_food(source: str, code: str) -> SourceFood:
+    """A food by the code of its source and its own code; CustomFoodError if none."""
     food = (
         SourceFood.objects.select_related("source")
-        .filter(source__code=proxy.source, code=proxy.code)
+        .filter(source__code=source, code=code)
         .first()
     )
     if food is None:
-        msg = f"No food {proxy.code!r} in the source {proxy.source!r}."
+        msg = f"No food {code!r} in the source {source!r}."
         raise CustomFoodError(msg)
     return food
 
 
-def _reference(identifier: int | str) -> ReferenceIngredient:
+def find_reference(identifier: int | str) -> ReferenceIngredient:
     """A reference by id, or by its English or French name (case apart)."""
     if isinstance(identifier, int):
         found = list(ReferenceIngredient.objects.filter(pk=identifier))
