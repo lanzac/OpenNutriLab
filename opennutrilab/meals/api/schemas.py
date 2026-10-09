@@ -30,6 +30,22 @@ class ItemChange(Schema):
     unit: Literal["serving", "g"]
 
 
+class LimitsIn(Schema):
+    # Empty, any meal.
+    meals: list[Literal["breakfast", "lunch", "snack", "dinner"]] = []
+    max_quantity: Decimal | None = Field(
+        default=None, gt=0, max_digits=7, decimal_places=2
+    )
+    max_unit: Literal["serving", "g"] | None = None
+
+
+class LimitsOut(Schema):
+    barcode: str
+    meals: list[str]
+    max_quantity: Decimal | None
+    max_unit: str
+
+
 class TotalOut(Schema):
     """An amount in the nutrient's unit, with its interval and coverage."""
 
@@ -47,7 +63,8 @@ class NutrientOut(Schema):
 
 
 class MealItemOut(Schema):
-    id: int
+    # None for an item of a day that is only proposed.
+    id: int | None
     barcode: str
     name: str
     quantity: Decimal

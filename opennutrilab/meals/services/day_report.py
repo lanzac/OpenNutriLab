@@ -263,40 +263,43 @@ def ratios_status(
 
 def day_report(user: User, day: date) -> DayReport:
     """The meals of a user on a day, with their totals and the day's against needs."""
-    meals = {
-        meal.kind: meal
-        for meal in Meal.objects.filter(user=user, date=day).prefetch_related(
-            "items__product"
-        )
-    }
+    meals = Meal.objects.filter(user=user, date=day).prefetch_related("items__product")
+    return report_of(user, day, {meal.kind: list(meal.items.all()) for meal in meals})
+
+
+def report_of(
+    user: User, day: date, items: Mapping[str, Sequence[MealItem]]
+) -> DayReport:
+    """
+    The report of a day made of `items`, by kind of meal. They need not be saved:
+    a day that is only proposed (services.proposals) is reported the same way.
+    """
     products = {
-        item.product_id: item.product
-        for meal in meals.values()
-        for item in meal.items.all()
+        item.product_id: item.product for found in items.values() for item in found
     }
     composition = compositions(products.values())
 
-    def portions(items: Sequence[MealItem]) -> list[Portion]:
+    def portions(found: Sequence[MealItem]) -> list[Portion]:
         return [
             Portion(item.grams, composition[item.product_id])
-            for item in items
+            for item in found
             if item.grams is not None
         ]
 
     reports: list[MealReport] = []
     for kind, label in Meal.Kind.choices:
-        items = list(meals[kind].items.all()) if kind in meals else []
-        found = portions(items)
+        found = list(items.get(kind, []))
+        found_portions = portions(found)
         reports.append(
             MealReport(
                 kind=kind,
                 label=str(label),
-                items=items,
-                mass=sum((p.grams for p in found), Decimal(0)),
-                totals=add_up(found),
+                items=found,
+                mass=sum((p.grams for p in found_portions), Decimal(0)),
+                totals=add_up(found_portions),
             )
         )
-    every = [p for meal in meals.values() for p in portions(list(meal.items.all()))]
+    every = [p for found in items.values() for p in portions(list(found))]
     totals = add_up(every)
 
     profile = Profile.objects.filter(user=user).first()

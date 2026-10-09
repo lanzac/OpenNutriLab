@@ -6,6 +6,8 @@ What a user's meals are worked out for.
   ratios of fatty acids.
 - Meal and MealItem: what a user eats, or means to, at a meal of a day: products
   of their inventory, in servings or in grams. A day is the date; it has no row.
+- ItemLimits: what a user allows of a product of their inventory when a day is
+  proposed (services.optimiser): the meals it may be in, and the most of it a day.
 """
 
 from decimal import Decimal
@@ -19,6 +21,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from opennutrilab.products.models import InventoryItem
 from opennutrilab.products.models import Product
 
 if TYPE_CHECKING:
@@ -194,3 +197,51 @@ class MealItem(models.Model):
             return self.quantity
         serving = self.product.serving_quantity
         return None if serving is None else self.quantity * serving
+
+
+class ItemLimits(models.Model):
+    """
+    What a user allows of a product of their inventory when a day is proposed. A
+    product with no row has none: it may be in any meal, up to the default most.
+    """
+
+    inventory_item_id: int
+
+    inventory_item = models.OneToOneField(
+        InventoryItem,
+        primary_key=True,
+        on_delete=models.CASCADE,
+        related_name="limits",
+    )
+    # The kinds of meal it may be in (Meal.Kind); empty, any.
+    meals = models.JSONField(default=list, blank=True)
+    # The most of it in a day, in servings of the product or in grams.
+    max_quantity = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    max_unit = models.CharField(
+        max_length=7, choices=MealItem.Unit.choices, blank=True, default=""
+    )
+
+    class Meta:
+        constraints = [
+            # A most has a quantity and a unit, or it is not there at all.
+            # django-stubs still types `check`, which Django 5.1 renamed.
+            models.CheckConstraint(  # pyright: ignore[reportCallIssue]
+                condition=models.Q(max_quantity__isnull=True, max_unit="")  # pyright: ignore[reportCallIssue]
+                | models.Q(
+                    max_quantity__isnull=False,
+                    max_quantity__gt=0,
+                    max_unit__in=["serving", "g"],
+                ),
+                name="item_limits_most_is_whole",
+            ),
+        ]
+
+    @override
+    def __str__(self) -> str:
+        return f"limits of {self.inventory_item}"

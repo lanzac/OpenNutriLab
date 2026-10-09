@@ -10,8 +10,11 @@ from ninja.errors import HttpError
 from opennutrilab.meals.api.schemas import DayOut
 from opennutrilab.meals.api.schemas import ItemChange
 from opennutrilab.meals.api.schemas import ItemIn
+from opennutrilab.meals.api.schemas import LimitsIn
+from opennutrilab.meals.api.schemas import LimitsOut
 from opennutrilab.meals.api.schemas import day_out
 from opennutrilab.meals.models import MealItem
+from opennutrilab.meals.services import limits as limits_services
 from opennutrilab.meals.services import meal_services
 from opennutrilab.meals.services.day_report import day_report
 from opennutrilab.products.models import Product
@@ -33,6 +36,43 @@ def _own_item(request: HttpRequest, item_id: int) -> MealItem:
         MealItem.objects.select_related("meal", "product"),
         id=item_id,
         meal__user=_user(request),
+    )
+
+
+@router.get(path="/limits/", response=list[LimitsOut])
+def list_limits(request: HttpRequest) -> list[LimitsOut]:
+    """What the user allows of the products of their inventory (see limits)."""
+    return [
+        LimitsOut(
+            barcode=barcode,
+            meals=list(found.meals),
+            max_quantity=found.max_quantity,
+            max_unit=found.max_unit,
+        )
+        for barcode, found in limits_services.limits_of(_user(request)).items()
+    ]
+
+
+@router.put(path="/limits/{barcode}", response=LimitsOut)
+def set_limits(request: HttpRequest, barcode: str, data: LimitsIn) -> LimitsOut:
+    """
+    Set the meals a product of the inventory may be in when a day is proposed, and
+    the most of it a day. Allowing every meal with no most clears them.
+    """
+    product = get_object_or_404(Product, barcode=barcode)
+    try:
+        found = limits_services.set_limits(
+            _user(request), product, list(data.meals), data.max_quantity, data.max_unit
+        )
+    except meal_services.NotInInventoryError as e:
+        raise HttpError(422, "The product is not in your inventory.") from e
+    except meal_services.NoServingError as e:
+        raise HttpError(422, "The product has no serving: give grams.") from e
+    return LimitsOut(
+        barcode=barcode,
+        meals=list(found.meals),
+        max_quantity=found.max_quantity,
+        max_unit=found.max_unit,
     )
 
 
