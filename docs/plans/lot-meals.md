@@ -176,9 +176,33 @@ the others are recommendations they did not object to. Work goes on the branch
      1.19 g; muesli 3.89 and 0.45, with its omega-6 covered for 35 % only (AA is
      missing for most of its ingredients); gnocchi 0.48 and 0.044; bars 4.79 and
      0.023.
-3. **The stored composition of a product**, per 100 g (amount, low, high, coverage
-   per nutrient), from its estimate; worked out again when the product, its
+3. **The stored composition of a product** (done), per 100 g (amount, low, high,
+   coverage per nutrient), from its estimate; worked out again when the product, its
    ingredients or a reference it uses changes, and by a command.
+   - `ProductEstimate` (one per product: when it was worked out, and whether it is
+     stale) and `EstimatedNutrient` (amount, low, high, coverage, confidence score),
+     migration 0017. `services/stored_estimates.py`: `kept_estimates(products)`
+     reads them back and works out again those stale or missing; `work_out` keeps a
+     product's; a product the solver fails on is kept with no nutrient, and logged.
+   - **Stale, by signals**: a change to a product's ingredients or declared values
+     marks its own; a change to anything a composition is made of (references,
+     preparations, additives, source foods and their values, the catalogue,
+     derivations, and the links between them) marks them all, since finding the
+     products it touches would take as long as working them out again. The CIQUAL
+     import, which writes in bulk and so tells no signal, marks them itself.
+     `refresh_estimates` works out the stale and the missing (`--all`: every one).
+   - Measured before choosing: reading a product from the database is 30 to 50 %
+     of working its estimate out (0.04 to 0.35 s of 0.26 to 0.46 s), so checking
+     a fingerprint of what it is made of would cost almost as much as working it
+     out again.
+   - **A product's composition** for what follows, `compositions(products)`: the
+     label's figure where it declares one, within its rounding and covering the
+     whole product, and the estimate for the rest. The label is the reference for
+     the product.
+   - Development database (migrated to 0017): the five estimates worked out in
+     3.8 s, and the five compositions read back in 0.02 s. The vegetarian balls
+     have no estimate (their label's declared percentages and the order of their
+     ingredients contradict each other), so meals count them by their label only.
 4. **Each user's inventory** (decision 1): `InventoryItem`, adding a product to it
    and taking it out from the product list, and a view of one's own inventory.
 5. **The profile and the needs** (decision 3): the profile and its form, the ANSES
