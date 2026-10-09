@@ -155,7 +155,27 @@ the others are recommendations they did not object to. Work goes on the branch
      products that OpenFoodFacts gives one for were filled in through the service:
      bread 35.7 g "1 tranche", gnocchi 300 g, bars 45 g, vegetarian balls 400 g.
      The muesli has none.
-2. **The omega-3 and omega-6 totals**, as derived nutrients.
+2. **The omega-3 and omega-6 totals** (done).
+   - **Not derived food by food as vitamin K is**, unlike what this step first said.
+     A derivation gives no total when a part is missing, and in CIQUAL 2025 that is
+     most foods: of 2,983, 1,584 give ALA, EPA and DHA, and 1,423 give LA and AA.
+     Among the others are camelina oil (no EPA, DHA or AA) and chia seed (no AA),
+     the richest in ALA after linseed, and 122 meats, eggs and fish that give one of
+     EPA and DHA only. Derived food by food, camelina oil would bring no omega-3.
+   - So they are **sums of a product's own amounts** (`derived_nutrients.SUMS`,
+     worked out in `nutrient_estimation.nutrients_of`): each part counts where it is
+     known; the range is the sum of the parts' ranges, with an upper end only when
+     every part has one; the coverage is the share whose ingredients give every
+     part; the quality in the confidence is the worst part's.
+   - `omega_6` "Oméga-6 (LA + AA)" and `omega_3` "Oméga-3 (ALA + EPA + DHA)", in g,
+     under the polyunsaturated fatty acids and listed before their parts, are
+     created by `ensure_derivations`, which the CIQUAL import runs. They were
+     created in the development database by running it by hand. CIQUAL has no DPA,
+     GLA or SDA, so both are somewhat under the truth.
+   - On the development products, per 100 g: bread omega-6 2.41 g and omega-3
+     1.19 g; muesli 3.89 and 0.45, with its omega-6 covered for 35 % only (AA is
+     missing for most of its ingredients); gnocchi 0.48 and 0.044; bars 4.79 and
+     0.023.
 3. **The stored composition of a product**, per 100 g (amount, low, high, coverage
    per nutrient), from its estimate; worked out again when the product, its
    ingredients or a reference it uses changes, and by a command.
