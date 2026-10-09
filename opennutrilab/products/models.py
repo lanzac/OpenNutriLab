@@ -4,6 +4,8 @@ Products, their ingredients, and the nutrient data behind them.
 - Nutrient: the one catalogue every amount below refers to, each nutrient
   with its unit. All amounts are per 100 g, in that unit.
 - Product and ProductNutrient: what a product's nutrition label declares.
+- ProductEstimate and EstimatedNutrient: a product's estimate as last worked
+  out, kept for what reads many products at once.
 - Ingredient: a product's ingredient tree, as its label lists it. Each one is
   a reference ingredient, a preparation or an additive, and has no name of its
   own.
@@ -222,6 +224,9 @@ class ProductNutrient(models.Model):
     computed from its ingredients are checked against.
     """
 
+    product_id: str
+    nutrient_id: str
+
     product = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="declared_nutrients"
     )
@@ -246,6 +251,70 @@ class ProductNutrient(models.Model):
         return f"{self.product}: {self.amount} {self.nutrient}"
 
 
+class ProductEstimate(models.Model):
+    """
+    A product's estimate (services.estimate_validation) as it was last worked out,
+    kept so that what reads many products, meals, need not work each one out again:
+    that takes about a second. See services.stored_estimates.
+    """
+
+    product_id: str
+
+    product = models.OneToOneField(
+        Product,
+        primary_key=True,
+        on_delete=models.CASCADE,
+        related_name="kept_estimate",
+    )
+    worked_out_at = models.DateTimeField()
+    # Something it was worked out from has changed since (see signals): the next
+    # reading works it out again.
+    stale = models.BooleanField(default=False)
+
+    if TYPE_CHECKING:
+        nutrients: RelatedManager["EstimatedNutrient"]
+
+    @override
+    def __str__(self) -> str:
+        return f"{self.product} ({self.worked_out_at:%Y-%m-%d %H:%M})"
+
+
+class EstimatedNutrient(models.Model):
+    """One nutrient of a kept estimate, per 100 g, in the nutrient's unit."""
+
+    estimate_id: str
+    nutrient_id: str
+
+    estimate = models.ForeignKey(
+        ProductEstimate, on_delete=models.CASCADE, related_name="nutrients"
+    )
+    # A kept estimate is a copy, and never keeps a nutrient from being deleted.
+    nutrient = models.ForeignKey(Nutrient, on_delete=models.CASCADE, related_name="+")
+    amount = models.DecimalField(max_digits=18, decimal_places=6)
+    low = models.DecimalField(max_digits=18, decimal_places=6)
+    # None when no upper end is known.
+    high = models.DecimalField(max_digits=18, decimal_places=6, null=True, blank=True)
+    # The share of the product, in percent, whose ingredients give a value.
+    coverage_low = models.DecimalField(max_digits=10, decimal_places=6)
+    coverage_point = models.DecimalField(max_digits=10, decimal_places=6)
+    coverage_high = models.DecimalField(max_digits=10, decimal_places=6)
+    # The score of its confidence, from 0 to 1.
+    confidence = models.DecimalField(
+        max_digits=3, decimal_places=2, null=True, blank=True
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["estimate", "nutrient"], name="unique_estimated_nutrient"
+            ),
+        ]
+
+    @override
+    def __str__(self) -> str:
+        return f"{self.estimate.product}: {self.amount} {self.nutrient}"
+
+
 class Ingredient(models.Model):
     """
     An ingredient of a product, which is a reference ingredient, a preparation or
@@ -259,6 +328,7 @@ class Ingredient(models.Model):
     """
 
     id: int
+    product_id: str
     parent_id: int | None
     reference_id: int | None
     preparation_id: int | None

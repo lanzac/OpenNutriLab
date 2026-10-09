@@ -41,6 +41,7 @@ from opennutrilab.products.models import SourceFoodNutrient
 from opennutrilab.products.services.ciqual_constituents import CONSTITUENTS
 from opennutrilab.products.services.ciqual_constituents import SKIPPED
 from opennutrilab.products.services.derived_nutrients import ensure_derivations
+from opennutrilab.products.services.stored_estimates import mark_stale
 
 # The table is published on recherche.data.gouv.fr; this DOI always leads to the
 # latest release.
@@ -405,6 +406,8 @@ def import_ciqual(
         values = _upsert_values(
             files.composition, food_ids, excluded, nutrients, progress
         )
+        # The values are written in bulk, which tells no one (see signals).
+        mark_stale()
     return ImportReport(source, len(foods), len(excluded), created, values, derived)
 
 
