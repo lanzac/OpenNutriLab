@@ -1064,7 +1064,7 @@ def test_rows_from_db_rebuild_the_tree(
 
 
 @pytest.fixture
-def taxonomy(db) -> None:
+def taxonomy(db: None) -> None:
     IngredientTaxon.objects.bulk_create(
         [
             IngredientTaxon(
@@ -1078,7 +1078,7 @@ def taxonomy(db) -> None:
 
 
 def test_rows_from_inputs_show_the_french_name_while_french_is_served(
-    taxonomy, django_assert_num_queries: Any
+    taxonomy: None, django_assert_num_queries: Any
 ):
     """For ingredients no reference has the name of yet."""
     items = [
@@ -1110,7 +1110,7 @@ def test_rows_from_inputs_show_the_french_name_while_french_is_served(
 
 
 def test_rows_from_inputs_keep_the_english_name_in_other_languages(
-    taxonomy, django_assert_num_queries: Any
+    taxonomy: None, django_assert_num_queries: Any
 ):
     items = [IngredientInput(name="oat flakes", off_id="en:oat-flakes")]
 
@@ -1121,7 +1121,7 @@ def test_rows_from_inputs_keep_the_english_name_in_other_languages(
 
 
 def test_rows_from_db_show_the_name_in_the_language_served(
-    taxonomy, django_assert_max_num_queries: Any
+    taxonomy: None, django_assert_max_num_queries: Any
 ):
     """The French name was taken from the taxonomy when the reference was created."""
     product = create_product(

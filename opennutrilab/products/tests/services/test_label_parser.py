@@ -449,29 +449,29 @@ def test_a_percentage_in_parentheses_after_the_name_is_the_ingredients():
     assert reading.warnings == []
 
 
-@pytest.mark.parametrize(
-    ("text", "expected"),
-    [
-        ("Dattes (7 %), sel", ("dattes", "7", [])),
-        ("Farine (min. 12 %), sel", ("farine", "12", [])),
-        ("Sucre (56,3%), sel", ("sucre", "56.3", [])),
-        ("Dattes (bio) (7 %), sel", ("dattes", "7", [])),
-        # What follows names the parts, as it does after a percentage written beside.
-        (
-            "Dattes (7 %) (dattes, farine de riz), sel",
-            ("dattes", "7", [("dattes", None, []), ("farine de riz", None, [])]),
-        ),
-        (
-            "Chocolat (12 %) [cacao, sucre], sel",
-            ("chocolat", "12", [("cacao", None, []), ("sucre", None, [])]),
-        ),
-        # Inside the parts.
-        (
-            "Chocolat (cacao (70 %), sucre), sel",
-            ("chocolat", None, [("cacao", "70", []), ("sucre", None, [])]),
-        ),
-    ],
-)
+PERCENT_IN_PARENTHESES: list[tuple[str, Any]] = [
+    ("Dattes (7 %), sel", ("dattes", "7", [])),
+    ("Farine (min. 12 %), sel", ("farine", "12", [])),
+    ("Sucre (56,3%), sel", ("sucre", "56.3", [])),
+    ("Dattes (bio) (7 %), sel", ("dattes", "7", [])),
+    # What follows names the parts, as it does after a percentage written beside.
+    (
+        "Dattes (7 %) (dattes, farine de riz), sel",
+        ("dattes", "7", [("dattes", None, []), ("farine de riz", None, [])]),
+    ),
+    (
+        "Chocolat (12 %) [cacao, sucre], sel",
+        ("chocolat", "12", [("cacao", None, []), ("sucre", None, [])]),
+    ),
+    # Inside the parts.
+    (
+        "Chocolat (cacao (70 %), sucre), sel",
+        ("chocolat", None, [("cacao", "70", []), ("sucre", None, [])]),
+    ),
+]
+
+
+@pytest.mark.parametrize(("text", "expected"), PERCENT_IN_PARENTHESES)
 def test_a_percentage_in_parentheses_is_read_as_one_written_beside(
     text: str, expected: Any
 ):
