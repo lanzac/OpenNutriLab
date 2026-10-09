@@ -430,6 +430,43 @@ left, and what was found on the way, is in "After the batch" at the end.
      were found _not_ to fail with the first tests, which were then made to wait for
      the new day).
 
+### Addendum (2026-10-09, asked once the eight steps were done): the total quantity of a product, and the day as gauges
+
+The user missed two things: how much a product holds in all, in the product's sheet
+and in the tools that make up the meals, and a very visual view of the day against
+what is expected, with the ranges the values can be in.
+
+- **The total quantity of a package** (`Product.package_quantity`, `package_unit`:
+  `g` or `ml`, both or neither, migration 0019). Read from the text OpenFoodFacts has
+  for it (`quantity`, not `product_quantity`: the label's text only, as for the
+  serving), by `products/services/packages.py`: "375 g", "1,5 kg", "4 x 125 g" (a
+  count of units is multiplied out), "500 g e" (the estimate sign), "750 ml (3 x 250 ml)"
+  (the parenthesis is the same quantity again), "50 cl" and "1 l" as in the servings;
+  no unit, or an amount over 9,999,999.99, is not read and is reported as the serving is.
+  In the API of the products (create, update, read, list, inventory), in the product's
+  form (a field "Total quantity" and its unit, filled by the OpenFoodFacts lookup), in
+  the list of the products (a column) and on the meals page: in the choice of a product
+  ("Muesli (375 g)"), under each item ("14 % of a package of 500 g") and in the limits
+  of each product.
+- **The day as gauges by default**, with a choice of "Gauges" or "Table" kept in the
+  browser (`localStorage`, which may be refused: then the gauges, and the choice lasts
+  until the page is left). One gauge per need and per ratio: a bar from zero to a scale
+  chosen for the need (up to 1.35 times the highest end wanted, 1.6 times the lowest
+  when there is no highest, never over three times the reference), what is wanted as a
+  shaded zone with a tick and a figure for each end, the amount as the bar, coloured by
+  the verdict (reached, under, over, not known), **hatched when the verdict does not
+  hold for the whole range** (the "?" of the table), and the range the amount can be in
+  as a line, **dashed and open when no upper end is known**. Beside it, the amount and
+  its share of the minimum (or of the limit), and under the name the coverage when it is
+  under 100 %. A bar over the gauges sums the day up: how many are reached, under, over
+  or not known. The table stays, with every figure, for who wants them.
+- The geometry is `gauge.js` (11 unit tests: scales, ticks, open ranges, overflow);
+  the drawing is `Gauge.jsx`; each gauge is a `role="meter"` with its value and its
+  verdict in words, so it reads without the colours.
+- **Checked in Chromium** on the development stack, the day of four products: 42
+  gauges, the table after the choice and after a reload, no console error; the
+  product's form, list, cards and limits show the quantity.
+
 ## After the batch
 
 What the eight steps leave open, for the user to say:
@@ -455,6 +492,9 @@ What the eight steps leave open, for the user to say:
 - The proposal and the suggestions run in the request (20 s at most, 10 s in practice):
   a background task (Django 6, see the roadmap) would be better once the inventory is
   large.
+- **The package could cap a product** in a day once stock exists (a day cannot use
+  more of a muesli than the 375 g that are left): the quantity is kept for that, and
+  nothing uses it yet.
 - Not done, as said: stock, generic foods in the inventory, other diets, losses in
   cooking.
 

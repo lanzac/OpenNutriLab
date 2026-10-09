@@ -11,7 +11,8 @@ with the user's own ratios, and the suggestion of foods to get (`docs/plans/lot-
 whose "After the batch" has the questions it leaves to the user). What is left, and
 decided to come later:
 
-- **Stock**: how much of a product is left, not only that it is at hand.
+- **Stock**: how much of a product is left, not only that it is at hand (its total
+  quantity is kept now, and could cap what a day uses).
 - **Generic foods in the inventory**, a loose apple with no barcode, and their
   portions, for which no open source was found.
 - **Other diets** than omnivore (pescetarian, vegetarian, vegan), by CIQUAL's groups,
