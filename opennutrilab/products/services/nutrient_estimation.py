@@ -25,6 +25,13 @@ rest as nothing, which makes them what is at least there, and the highest figure
 is not known: there is none. There is one when an ingredient that lacks the
 nutrient gives the one it is part of (no sugars, but carbohydrates: at most
 those). A value of "traces" has no upper end either.
+
+A sum (derived_nutrients.SUMS: omega-3, omega-6) is the sum of its parts as worked
+out here, each counted where it is known, and not a sum made food by food, which
+a food lacking one part would leave out whole. Its range is the sum of its parts'
+ranges, which holds, if wider than one worked out for the sum itself, and it has
+an upper end only when each part has one. Its coverage is the share whose
+ingredients give every part.
 """
 
 from collections.abc import Mapping
@@ -38,6 +45,7 @@ from typing import NamedTuple
 import numpy as np
 
 from opennutrilab.products.models import Product
+from opennutrilab.products.services.derived_nutrients import sums_in
 from opennutrilab.products.services.percentage_estimation import Interval
 from opennutrilab.products.services.percentage_estimation import Matrix
 from opennutrilab.products.services.percentage_estimation import PercentageEstimate
@@ -76,7 +84,9 @@ def estimate_nutrients(product: Product) -> NutrientsEstimate:
     loaded = load(product)
     solution = solve_shares(loaded.nodes, loaded.label, loaded.nutrient_names)
     return NutrientsEstimate(
-        nutrients_of(solution, loaded.compositions, loaded.parents),
+        nutrients_of(
+            solution, loaded.compositions, loaded.parents, sums_in(loaded.units)
+        ),
         percentages_of(solution),
     )
 
@@ -85,11 +95,12 @@ def nutrients_of(
     solution: Solution,
     compositions: Sequence[Mapping[str, Estimate]],
     parents: Mapping[str, str | None] | None = None,
+    sums: Mapping[str, Sequence[str]] | None = None,
 ) -> dict[str, NutrientAmount]:
     """
     The nutrients the shares of a solution give, from the whole composition of
     each node (parallel to the solution's nodes). `parents` gives, by code, the
-    nutrient each is part of.
+    nutrient each is part of, and `sums` the parts of each sum to work out.
     """
     if solution.rules is None or solution.ranges is None or not solution.units:
         return {}
@@ -117,6 +128,24 @@ def nutrients_of(
             coverages[covered],
             closed=not solution.without
             and all(i in covered or i in lacking for i in units),
+        )
+    for code, parts in (sums or {}).items():
+        given = [nutrients[part] for part in parts if part in nutrients]
+        if not given:
+            continue
+        every_part = frozenset(
+            i for i in units if all(part in compositions[i] for part in parts)
+        )
+        if every_part not in coverages:
+            coverages[every_part] = _coverage(solution, every_part)
+        highs = [a.high for a in given]
+        nutrients[code] = NutrientAmount(
+            amount=sum((a.amount for a in given), Decimal(0)),
+            low=sum((a.low for a in given), Decimal(0)),
+            high=sum((h for h in highs if h is not None), Decimal(0))
+            if len(given) == len(parts) and None not in highs
+            else None,
+            coverage=coverages[every_part],
         )
     return nutrients
 

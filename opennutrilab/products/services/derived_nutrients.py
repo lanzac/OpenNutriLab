@@ -31,6 +31,15 @@ and those that did not hold are not here:
   (6 agree of 14 foods with a non-zero value); folates in total, which CIQUAL
   gives for none of the foods that give their parts; niacin equivalents, which
   need tryptophan; energy, which CIQUAL gives.
+
+The omega-3 and omega-6 fatty acids are sums of another kind (SUMS): totals of a
+product's own amounts, not of each food's, so that a food lacking one of the parts
+still counts for the others (see nutrient_estimation). Derived food by food, a
+missing part gives no total, and in CIQUAL 2025 that is most foods: of 2,983, only
+1,584 give ALA, EPA and DHA, and 1,423 give LA and AA (counted 2026-10-09). Among
+the others are camelina oil (no EPA, DHA or AA) and chia seed (no AA), the richest
+in ALA after linseed, which would bring no omega-3 at all. CIQUAL has no DPA, GLA
+or SDA, so both totals are somewhat under the truth.
 """
 
 from collections.abc import Iterable
@@ -58,6 +67,8 @@ class NewNutrient(NamedTuple):
     parts: tuple[str, ...] = ()
     # Where it is listed when it has no parts to go before.
     display_order: int | None = None
+    # The nutrient it is part of, if the catalogue has it.
+    parent: str | None = None
 
 
 # Factors keep six decimals, which is how NutrientComponent stores them: 1/12 is
@@ -99,6 +110,30 @@ CREATED: dict[str, NewNutrient] = {
         Nutrient.Group.VITAMIN,
         parts=("vitamin_k1", "vitamin_k2"),
     ),
+    # Listed after the monounsaturated fatty acids, before their parts (550 on).
+    "omega_6": NewNutrient(
+        "Omega-6 (LA + AA)",
+        "Oméga-6 (LA + AA)",
+        Nutrient.Unit.GRAM,
+        Nutrient.Group.MACRONUTRIENT,
+        display_order=545,
+        parent="polyunsaturated_fat",
+    ),
+    "omega_3": NewNutrient(
+        "Omega-3 (ALA + EPA + DHA)",
+        "Oméga-3 (ALA + EPA + DHA)",
+        Nutrient.Unit.GRAM,
+        Nutrient.Group.MACRONUTRIENT,
+        display_order=546,
+        parent="polyunsaturated_fat",
+    ),
+}
+
+# Totals of a product's amounts (see the module): the parts are added up where the
+# product's are, not food by food.
+SUMS: dict[str, tuple[str, ...]] = {
+    "omega_6": ("linoleic_acid", "arachidonic_acid"),
+    "omega_3": ("alpha_linolenic_acid", "epa", "dha"),
 }
 
 
@@ -108,7 +143,8 @@ class DerivationError(Exception):
 
 def ensure_derivations() -> int:
     """
-    Make the catalogue hold DERIVATIONS, and return how many nutrients they derive.
+    Make the catalogue hold DERIVATIONS and SUMS, and return how many nutrients
+    they make.
 
     Creates the derived nutrients no source gives, and sets the terms of each
     derivation to what is here, so the code is the one place they are written
@@ -129,7 +165,14 @@ def ensure_derivations() -> int:
                 component=component,
                 defaults={"factor": term.factor},
             )
-    return len(DERIVATIONS)
+    for code, parts in SUMS.items():
+        known = Nutrient.objects.filter(code__in=parts).values_list("code", flat=True)
+        missing = sorted(set(parts) - set(known))
+        if missing:
+            msg = f"{code} adds up {', '.join(missing)}, which are not nutrients."
+            raise DerivationError(msg)
+        _derived_nutrient(code)
+    return len(DERIVATIONS) + len(SUMS)
 
 
 def _derived_nutrient(code: str) -> Nutrient:
@@ -153,9 +196,18 @@ def _derived_nutrient(code: str) -> Nutrient:
             if new.display_order is not None
             else min((p.display_order for p in parts), default=100) - 1
         ),
+        parent=None
+        if new.parent is None
+        else Nutrient.objects.filter(code=new.parent).first(),
     )
     Nutrient.objects.filter(code__in=new.parts, parent=None).update(parent=nutrient)
     return nutrient
+
+
+def sums_in(catalogue: Iterable[str]) -> dict[str, tuple[str, ...]]:
+    """The SUMS whose nutrient is in `catalogue`, a collection of nutrient codes."""
+    codes = set(catalogue)
+    return {code: parts for code, parts in SUMS.items() if code in codes}
 
 
 def derived_nutrients() -> list[Nutrient]:

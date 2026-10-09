@@ -11,11 +11,13 @@ from opennutrilab.products.models import NutrientComponent
 from opennutrilab.products.services.ciqual_import import ensure_nutrients
 from opennutrilab.products.services.ciqual_import import read_constituents
 from opennutrilab.products.services.derived_nutrients import DERIVATIONS
+from opennutrilab.products.services.derived_nutrients import SUMS
 from opennutrilab.products.services.derived_nutrients import DerivationError
 from opennutrilab.products.services.derived_nutrients import complete_with_derived
 from opennutrilab.products.services.derived_nutrients import derived_amount
 from opennutrilab.products.services.derived_nutrients import derived_nutrients
 from opennutrilab.products.services.derived_nutrients import ensure_derivations
+from opennutrilab.products.services.derived_nutrients import sums_in
 
 CONSTITUENTS_FILE = Path(__file__).parents[1] / "data" / "ciqual_const_2025.xml"
 D = Decimal
@@ -221,7 +223,7 @@ def test_vitamin_a_with_a_sixth_is_created_and_listed_after_vitamin_a(catalogue:
 def test_setting_them_up_again_changes_nothing(catalogue: None):
     before = (Nutrient.objects.count(), NutrientComponent.objects.count())
 
-    assert ensure_derivations() == len(DERIVATIONS)
+    assert ensure_derivations() == len(DERIVATIONS) + len(SUMS)
 
     assert (Nutrient.objects.count(), NutrientComponent.objects.count()) == before
 
@@ -242,6 +244,39 @@ def test_a_factor_changed_by_hand_is_put_back_and_a_term_added_is_kept(
         )
     )
     assert terms == {"sodium": D("0.0025"), "chloride": D(1)}
+
+
+def test_the_omega_totals_are_created_under_the_polyunsaturated_fatty_acids(
+    catalogue: None,
+):
+    omega_3 = Nutrient.objects.get(code="omega_3")
+    omega_6 = Nutrient.objects.get(code="omega_6")
+    oleic = Nutrient.objects.get(code="oleic_acid")
+    linoleic = Nutrient.objects.get(code="linoleic_acid")
+
+    assert (omega_3.unit, omega_3.group) == ("g", "macronutrient")
+    assert omega_3.name_fr == "Oméga-3 (ALA + EPA + DHA)"
+    assert omega_6.name_en == "Omega-6 (LA + AA)"
+    assert omega_3.parent_id == omega_6.parent_id == "polyunsaturated_fat"
+    assert oleic.display_order < omega_6.display_order < omega_3.display_order
+    assert omega_3.display_order < linoleic.display_order
+    # Totals of a product's amounts: no food derives them, and their parts keep
+    # the polyunsaturated fatty acids as their parent.
+    assert {"omega_3", "omega_6"}.isdisjoint(n.code for n in derived_nutrients())
+    assert linoleic.parent_id == "polyunsaturated_fat"
+
+
+def test_a_part_of_a_total_that_does_not_exist_is_refused(catalogue: None):
+    Nutrient.objects.filter(code="omega_3").delete()
+    Nutrient.objects.filter(code="epa").delete()
+
+    with pytest.raises(DerivationError, match="omega_3 adds up epa"):
+        ensure_derivations()
+
+
+def test_the_totals_worked_out_are_those_the_catalogue_has():
+    assert sums_in(["omega_3", "fat"]) == {"omega_3": SUMS["omega_3"]}
+    assert sums_in([]) == {}
 
 
 def test_a_derived_nutrient_that_does_not_exist_is_refused(db: None):

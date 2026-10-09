@@ -257,6 +257,48 @@ def test_an_ingredient_with_no_composition_is_a_part_of_the_product_not_covered(
     assert result.coverage == (D(50), D(75), D(100))
 
 
+OMEGA_3 = {"omega_3": ("alpha_linolenic_acid", "epa")}
+
+
+def test_a_total_adds_up_its_parts_each_where_it_is_known():
+    compositions = [
+        {"alpha_linolenic_acid": content("2", "2", "2"), "epa": content("1", "1", "1")},
+        # No EPA: its ALA counts all the same.
+        {"alpha_linolenic_acid": content("4", "4", "4")},
+    ]
+
+    result = nutrients_of(solve_shares(ORDER_ONLY, {}), compositions, None, OMEGA_3)
+
+    # ALA 0.75 x 2 + 0.25 x 4, from 2 to 3; EPA 0.75 x 1, at least 0.5.
+    assert figures(result["omega_3"]) == (D("3.25"), D("2.5"), None)
+    # Only the first gives every part.
+    assert result["omega_3"].coverage == (D(50), D(75), D(100))
+
+
+def test_a_total_whose_parts_all_have_an_upper_end_has_one():
+    compositions = [
+        {"alpha_linolenic_acid": content("2", "2", "2"), "epa": content("1", "1", "1")},
+        {"alpha_linolenic_acid": content("4", "4", "4"), "epa": content("0", "0", "0")},
+    ]
+
+    result = nutrients_of(solve_shares(ORDER_ONLY, {}), compositions, None, OMEGA_3)
+
+    # The ends of the parts, added: ALA 2 to 3, EPA 0.5 to 1.
+    assert figures(result["omega_3"]) == (D("3.25"), D("2.5"), D(4))
+    assert result["omega_3"].coverage == (D(100), D(100), D(100))
+
+
+def test_a_total_none_of_whose_parts_is_given_is_not_there():
+    compositions: list[dict[str, Estimate]] = [{"fat": content("1", "1", "1")}, {}]
+    shares = solve_shares(ORDER_ONLY, {})
+
+    assert "omega_3" not in nutrients_of(shares, compositions, None, OMEGA_3)
+    # Nor one that is not asked for.
+    assert "omega_3" not in nutrients_of(
+        shares, [{"alpha_linolenic_acid": content("1", "1", "1")}, {}]
+    )
+
+
 def test_traces_count_as_nothing_and_leave_the_highest_end_open():
     compositions = [
         {"iodine": content("10", "9", "11")},
@@ -343,6 +385,31 @@ def test_the_nutrients_of_a_product_are_worked_out_from_its_ingredients(
     assert result.percentages.used_nutrition
     # What the foods give of the label's nutrients comes out as well.
     assert {"proteins", "fat", "carbohydrates"} <= result.nutrients.keys()
+
+
+def test_the_omega_totals_of_a_product_are_worked_out_with_its_nutrients(
+    source: Source,
+):
+    first = reference(
+        source, "1", linoleic_acid="10", arachidonic_acid="0", alpha_linolenic_acid="5"
+    )
+    # Camelina oil, say: no AA, EPA or DHA.
+    second = reference(source, "2", linoleic_acid="15", alpha_linolenic_acid="36")
+    product = product_of(first, second)
+
+    nutrients = estimate_nutrients(product).nutrients
+
+    parts = ("alpha_linolenic_acid", "epa", "dha")
+    assert nutrients["omega_3"].amount == sum(
+        (nutrients[p].amount for p in parts if p in nutrients), D(0)
+    )
+    assert nutrients["omega_3"].amount >= nutrients["alpha_linolenic_acid"].amount
+    assert nutrients["omega_6"].amount == (
+        nutrients["linoleic_acid"].amount + nutrients["arachidonic_acid"].amount
+    )
+    # No ingredient gives EPA, so none gives every part.
+    assert nutrients["omega_3"].coverage.high == 0
+    assert nutrients["omega_3"].high is None
 
 
 def test_the_warnings_of_the_shares_come_with_the_nutrients(source: Source):

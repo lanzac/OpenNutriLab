@@ -344,6 +344,23 @@ def test_quality_is_the_grade_of_what_is_given_weighted_by_the_share_of_each():
     assert parts.quality == D("0.81")
 
 
+def test_the_quality_of_a_total_is_its_worst_parts():
+    compositions = [
+        {"linoleic_acid": content("10", ("A",)), "arachidonic_acid": content("0")},
+        {"linoleic_acid": content("20", ("A",)), "arachidonic_acid": content("0")},
+    ]
+    compositions[1]["arachidonic_acid"] = content("0", ("D",))
+    sums = {"omega_6": ("linoleic_acid", "arachidonic_acid")}
+    solution = solve_shares(ORDER_ONLY, {})
+    nutrients = nutrients_of(solution, compositions, None, sums)
+
+    parts = confidence_of(solution, compositions, nutrients, {}, sums)
+
+    # AA: 75 % of an A and 25 % of a D, against LA's two A.
+    assert parts["omega_6"].quality == D("0.81")
+    assert parts["linoleic_acid"].quality == D("1.00")
+
+
 def test_the_grades_of_several_foods_are_averaged_and_no_grade_is_the_lowest():
     mixed = confidence_for(
         [{"zinc": content("1", ("A", "C"))}, {"zinc": content("1", ("A", "C"))}]

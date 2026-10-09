@@ -62,6 +62,7 @@ from django.db.models import TextChoices
 from django.utils.formats import number_format
 
 from opennutrilab.products.models import Product
+from opennutrilab.products.services.derived_nutrients import sums_in
 from opennutrilab.products.services.nutrient_estimation import NutrientAmount
 from opennutrilab.products.services.nutrient_estimation import nutrients_of
 from opennutrilab.products.services.percentage_estimation import NUTRIENTS
@@ -153,7 +154,8 @@ def validate_estimate(product: Product) -> ValidatedEstimate:
     """The nutrients of a product, checked against its label, with their confidence."""
     loaded = load(product)
     solution = solve_shares(loaded.nodes, loaded.label, loaded.nutrient_names)
-    nutrients = nutrients_of(solution, loaded.compositions, loaded.parents)
+    sums = sums_in(loaded.units)
+    nutrients = nutrients_of(solution, loaded.compositions, loaded.parents, sums)
     declared = dict(product.declared_nutrients.values_list("nutrient_id", "amount"))
 
     checks = compare(
@@ -166,7 +168,7 @@ def validate_estimate(product: Product) -> ValidatedEstimate:
         nutrients,
         percentages_of(solution),
         checks,
-        confidence_of(solution, loaded.compositions, nutrients, checks),
+        confidence_of(solution, loaded.compositions, nutrients, checks, sums),
         [*solution.warnings, *mismatches(checks, loaded.nutrient_names, loaded.units)],
     )
 
@@ -271,8 +273,12 @@ def confidence_of(
     compositions: Sequence[Mapping[str, Estimate]],
     nutrients: Mapping[str, NutrientAmount],
     checks: Mapping[str, Check],
+    sums: Mapping[str, Sequence[str]] | None = None,
 ) -> dict[str, Confidence]:
-    """How far to trust each nutrient of an estimate. See the module's description."""
+    """
+    How far to trust each nutrient of an estimate. See the module's description.
+    The quality of a sum (`sums` gives the parts of each) is its worst part's.
+    """
     if solution.ranges is None or not nutrients:
         return {}
     uncertainty = _uncertainty(solution)
@@ -286,7 +292,12 @@ def confidence_of(
     confidence: dict[str, Confidence] = {}
     for code, nutrient in nutrients.items():
         coverage = _ratio(nutrient.coverage.point / 100)
-        quality = _quality(solution, compositions, code)
+        parts = (sums or {}).get(code)
+        quality = (
+            min(_quality(solution, compositions, part) for part in parts)
+            if parts
+            else _quality(solution, compositions, code)
+        )
         # Worked out from the parts as they are shown, so they give the score.
         score = (
             coverage
