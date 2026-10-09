@@ -220,9 +220,58 @@ the others are recommendations they did not object to. Work goes on the branch
      in or take it out; an empty inventory says how to fill it.
    - Development database (migrated to 0018): the five products are in the
      inventory of its one user, `admin`, who added them.
-5. **The profile and the needs** (decision 3): the profile and its form, the ANSES
-   dataset and its migration, `daily_needs(profile)` giving a minimum, a target and
-   a maximum per nutrient. Tested against the documents' own tables.
+5. **The profile and the needs** (done) (decision 3): the profile and its form, the
+   ANSES dataset and its migration, `daily_needs(profile)` giving a minimum, a target
+   and a maximum per nutrient. Tested against the documents' own tables.
+   - A new app, `opennutrilab.meals`. `Profile` (migration meals 0001): sex, **year**
+     of birth (enough for the age bands, and it says less than a date), height,
+     weight, physical activity level (a number, with EFSA's levels as help: 1.4
+     sedentary, 1.6 moderately active, 1.8 active, 2.0 very active), high menstrual
+     losses for a woman, and the two ratio targets with their tolerance (1, 1 and
+     0.10 by default). Adults only, neither pregnant nor breastfeeding.
+   - **The references are a file, `meals/data/anses_references.json`, read as it is,
+     and not loaded by a migration** as this decision first said: they are published
+     figures that nothing points to, so a table would only be a copy to keep in step.
+     Each figure names its opinion and page:
+     - vitamins and minerals from the **2021 opinion** (tables 2 and 3), newer than
+       the 2016 table, whose own figures differ (magnesium 420 mg, vitamin D up to
+       50 µg);
+     - energy shares, sugars, fibre, the LA/ALA ratio below 5 and sodium over
+       potassium in moles at most 1 from **ANSES' own diet optimisation of 2016**
+       (table 28, page 94): proteins 10-20 %, fat 35-40 %, carbohydrates 40-55 %,
+       saturated fat under 12 %, lauric + myristic + palmitic under 8 %, LA at least
+       4 %, ALA at least 1 %, EPA + DHA at least 500 mg, sugars under 100 g, fibre
+       at least 30 g;
+     - EPA and DHA at least 250 mg each, from the **2011 lipid opinion** (table 19).
+   - Choices made where the opinions leave one: no upper limit on magnesium (the
+     opinion's is on supplements and added salts only); vitamin A's limit is on
+     retinol, folic acid's on folic acid alone; niacin's 900 mg (nicotinamide) is
+     kept, as the 2016 optimisation did; zinc is the figure for 900 mg/day of
+     phytates, as there; sodium is the 2021 opinion's 1500 to 2300 mg, not the 2016
+     observed medians; calcium is 1000 mg until 24 and 950 from 25.
+   - Not covered: biotin, choline, molybdenum, fluoride and manganese (no table, or
+     no CIQUAL value), and water (the meals hold no drinks).
+   - **Energy** (`meals/services/energy.py`): the mean of the five equations ANSES
+     uses (Schofield, Mifflin, Harris & Benedict, Müller, Henry) times the activity
+     level, a day being within 5 % of it, as ANSES' optimisation allows. Checked
+     against the report's table 26: within 0.35 % for every equation and band, but
+     for Henry's in men of 60 to 69 (1.5 %).
+   - The page "Mes besoins" (`/needs/`, in the menu): the profile's form, and the
+     needs it gives by group of the catalogue, with each end's kind (RNP, AS, LSS,
+     bound of the optimisation) and source, then the ratios and the sources.
+   - **The user's profile in the development database**: a man born in 1995, 180 cm,
+     61 kg, with **an activity level of 1.7, which was chosen here and is to confirm**:
+     office work with walking and 4 hours of sport a week falls between EFSA's 1.6
+     and 1.8. It gives 2651 kcal a day (2518 to 2783).
+   - Known limits: the niacin reference is in niacin equivalents (tryptophan
+     included), which CIQUAL's niacin is not, so niacin looks lower than it is; the
+     sugar limit is on sugars less lactose, compared with all sugars; an age from a
+     year can be a year off; ANSES worked its energy figures out for a BMI of 22, and
+     the profile's own weight is used here (61 kg is a BMI of 18.8).
+   - With the user's omega-3:omega-6 of 1 and LA at least 4 % of the energy (11.8 g
+     for this profile), a day needs some 12 g of omega-3 or more.
+   - To read the opinions' tables the container got `poppler-utils` (apt), which the
+     project does not need.
 6. **The meals page** (decisions 4 and 8): days, meals, the API, the React page;
    totals per meal and per day against the needs, the two ratios, intervals and
    coverage.
