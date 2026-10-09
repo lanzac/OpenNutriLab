@@ -272,9 +272,62 @@ the others are recommendations they did not object to. Work goes on the branch
      for this profile), a day needs some 12 g of omega-3 or more.
    - To read the opinions' tables the container got `poppler-utils` (apt), which the
      project does not need.
-6. **The meals page** (decisions 4 and 8): days, meals, the API, the React page;
-   totals per meal and per day against the needs, the two ratios, intervals and
+6. **The meals page** (done) (decisions 4 and 8): days, meals, the API, the React
+   page; totals per meal and per day against the needs, the two ratios, intervals and
    coverage.
+   - `Meal` (user, date, one of breakfast, lunch, snack, dinner; once per user, date
+     and kind) and `MealItem` (a product, a quantity, and a unit: servings of the
+     product or grams; a product once per meal), migration meals 0002. **A day has no
+     row of its own**: it is the date, and its four meals are made when something is
+     first put in them.
+   - Only a product of **the user's inventory** can be put in a meal; servings need
+     a product that has a serving (grams do not). A product deleted leaves the meals
+     it was in.
+   - `services/day_report.py`: a portion is some grams of a product, which brings
+     its composition (step 3) times grams over 100, and a meal or the day is the sum.
+     Every total keeps the amount, its interval (sums of the portions' own) and its
+     **coverage**, the share of the mass whose product gives a value. A nutrient a
+     product does not give counts as nothing, so a total is what is at least there,
+     and its upper end is unknown (None) unless every product gives it.
+   - Each need is set against the day's total with a verdict: below, within or above,
+     **and whether the whole interval says the same** (`certain`). A day is below
+     for certain only when even its upper end is, and within for certain only when
+     the whole interval is. A need on a sum (EPA + DHA, lauric + myristic + palmitic)
+     adds the totals; the ratios (LA over ALA, sodium over potassium in moles, and
+     the user's DHA:EPA and omega-3:omega-6) are worked out from the totals with an
+     interval of their own, and a ratio over nothing is "unknown".
+   - API: `GET /api/v1/meals/{day}` (the four meals, their items and totals, the day's
+     totals, the needs with their verdicts, the ratios; needs and ratios are null
+     without a profile), `POST /api/v1/meals/{day}/{kind}/items`, `PATCH` and
+     `DELETE /api/v1/meals/items/{id}`. **A write answers with the whole day it
+     changed**, which the page shows as it is: no figure is worked out in the browser.
+     Another user's item is not found (404); a product not in the inventory or
+     servings of a product with none are 422; a product already in the meal is 409.
+   - The page "Repas" (`/meals/`, in the menu, a React page in its own Vite entry,
+     `meals`): the date with the day before and after, four cards (the products with
+     quantity and unit, what the meal brings: energy in kcal, proteins, fat,
+     carbohydrates, fibre, omega-3, omega-6, each with its interval and coverage on
+     hover), and under them the day's table by group with total, interval, need,
+     status and coverage, then the ratios. The labels come from the server, as on the
+     inventory page.
+   - **The sodium of a composition follows the salt the label declares** (a fix
+     found with this page, in `stored_estimates`, commit 1626a5f): the gnocchi
+     declare 0.6 g of salt per 100 g but their estimate said 7.1 g, so the day showed
+     8,774 mg of sodium. Salt is sodium times 0.0025, so what the label declares of
+     the salt is what it declares of the sodium (400 mg for each gram, with its
+     rounding), unless it declares the sodium itself.
+   - **Known limits, found on the development products**:
+     - the estimate's _point_ can lie far from the label for a nutrient that is
+       declared: for the gnocchi, the "sel" ingredient's share is poorly bounded.
+       Where the label declares the nutrient, the meals use the label; chloride, which
+       no label declares, still takes the estimate (13.5 g in a day of 431 g of food),
+       and is shown as not certain (coverage 39 %, no upper end);
+     - the vegetarian balls have no estimate, so a meal counts them by their eight
+       label values only;
+     - the energy shares are in grams at the person's energy need, not at the day's
+       own energy (within 5 %, they differ by as much).
+   - 74 tests in the app and 25 on the page (Vitest); checked in Chromium on the
+     development products, in French, with no console error.
 7. **The optimiser** (decision 5): the service, its endpoint, a "propose a day"
    button. Tested on small made-up cases whose optimum is known, then on the
    development inventory.
