@@ -30,6 +30,23 @@
     ]
   },
   {
+    "reference": "amidon transformé de riz ou de maïs",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "9510"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "96781"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "9510"
+    }
+  },
+  {
     "reference": "arachides",
     "foods": [
       {
@@ -226,6 +243,15 @@
     ]
   },
   {
+    "reference": "fromage de vache",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "12999"
+      }
+    ]
+  },
+  {
     "reference": "graines de lin doré",
     "foods": [
       {
@@ -376,6 +402,32 @@
     }
   },
   {
+    "reference": "moût de raisin",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "2016"
+      }
+    ]
+  },
+  {
+    "reference": "mélange d'épices et d'aromates",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11060"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "11081"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "11081"
+    }
+  },
+  {
     "reference": "noisette",
     "foods": [
       {
@@ -491,6 +543,40 @@
     ]
   },
   {
+    "reference": "plantes aromatiques",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11060"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "11080"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "11080"
+    }
+  },
+  {
+    "reference": "pointe d'asperge verte",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "20279"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "20299"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "20279"
+    }
+  },
+  {
     "reference": "pois chiche",
     "foods": [
       {
@@ -597,6 +683,27 @@
     ]
   },
   {
+    "reference": "sardine",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "26034"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "26065"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "26136"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "26065"
+    }
+  },
+  {
     "reference": "sel",
     "foods": [
       {
@@ -616,6 +723,15 @@
   },
   {
     "reference": "semoule de blé",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "9610"
+      }
+    ]
+  },
+  {
+    "reference": "semoule de blé dur",
     "foods": [
       {
         "source": "ciqual-2025",
@@ -672,11 +788,71 @@
     ]
   },
   {
+    "reference": "tomate déshydratée",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "20189"
+      }
+    ]
+  },
+  {
+    "reference": "viande de porc",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "28102"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "28205"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "28460"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "28473"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "28473"
+    }
+  },
+  {
+    "reference": "vin",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "1006"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "5217"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "1006"
+    }
+  },
+  {
     "reference": "vinaigre",
     "foods": [
       {
         "source": "ciqual-2025",
         "code": "11018"
+      }
+    ]
+  },
+  {
+    "reference": "vinaigre de vin",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11220"
       }
     ]
   },
@@ -700,6 +876,15 @@
       "source": "ciqual-2025",
       "code": "20097"
     }
+  },
+  {
+    "reference": "épice",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11081"
+      }
+    ]
   },
   {
     "reference": "épinard",
