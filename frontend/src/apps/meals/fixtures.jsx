@@ -200,7 +200,18 @@ export function stubFetch(routes) {
 export const TODAY = '2026-10-09';
 export const DAY_URL = `/api/v1/meals/${TODAY}`;
 
-export function renderApp() {
+// The groups of the day are closed at first: the tests of what is in them open them,
+// as a user would, unless they are about the groups themselves.
+const GROUPS = ['energy', 'macronutrient', 'vitamin', 'mineral', 'ratios'];
+
+export function renderApp({ openGroups = true } = {}) {
+  if (openGroups) {
+    try {
+      window.localStorage.setItem('meals.openGroups', JSON.stringify(GROUPS));
+    } catch {
+      // Storage may be what a test refuses.
+    }
+  }
   return render(
     <MealsApp
       labels={labels}

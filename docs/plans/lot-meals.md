@@ -469,14 +469,15 @@ what is expected, with the ranges the values can be in.
 
 ### Addendum 2 (2026-10-09, asked next): folding the groups of the day, and a product used whole
 
-- **The groups of the day fold.** Each group (energy, macronutrients, vitamins,
-  minerals, and the ratios) has a head that is a button (`aria-expanded`): the chevron,
-  the group's name, "3 sur 12 respectés" and a small bar of its verdicts, so that a
-  folded group still says how it stands. "Fold all" / "Unfold all" is one button, which
-  offers what is not yet done. It works in the gauges and in the table, and what is
-  folded is kept in the browser with the choice of view (`meals.foldedGroups`, which
-  may be refused or garbage: then everything is open). Two days on the page (the day,
-  and one proposed) follow the same choice and have ids of their own (`useId`).
+- **The groups of the day fold, and are closed at first** (asked next), so that the day
+  is seen at a glance: each group (energy, macronutrients, vitamins, minerals, and the
+  ratios) has a head that is a button (`aria-expanded`): the chevron, the group's name,
+  "3 sur 12 respectés" and a small bar of its verdicts, so that a closed group still says
+  how it stands. "Unfold all" / "Fold all" is one button, which offers what is not yet
+  done. It works in the gauges and in the table, and what is **open** is kept in the
+  browser with the choice of view (`meals.openGroups`, which may be refused or garbage:
+  then everything is closed). Two days on the page (the day, and one proposed) follow the
+  same choice and have ids of their own (`useId`).
 - **A product can be asked for whole** in the limits of each product: "Utiliser tout le
   paquet" (`ItemLimits.use_all`, migration 0004; a CHECK says it has no most beside
   it). The proposal then puts all of the package in the day, **a hard quantity, not a

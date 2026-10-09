@@ -193,7 +193,7 @@ function Legend({ labels }) {
 
 /** A group of the day under its head, which folds it. */
 function Group({ folding, id, label, rows, labels, children }) {
-  const isFolded = folding.folded.includes(id);
+  const isFolded = !folding.open.includes(id);
   const region = `${folding.prefix}-${id}`;
   return (
     <div className="mb-3">
@@ -297,7 +297,7 @@ function Gauges({ report, labels, languageCode, folding }) {
 
 /** The same figures as a table, every one of them. */
 function Table({ report, labels, languageCode, folding }) {
-  const ratiosFolded = folding.folded.includes(RATIOS);
+  const ratiosFolded = !folding.open.includes(RATIOS);
   const ratiosRegion = `${folding.prefix}-${RATIOS}`;
   return (
     <>
@@ -313,7 +313,7 @@ function Table({ report, labels, languageCode, folding }) {
             </tr>
           </thead>
           {groupsOf(report.needs).map((group) => {
-            const isFolded = folding.folded.includes(group.key);
+            const isFolded = !folding.open.includes(group.key);
             const region = `${folding.prefix}-${group.key}`;
             return (
               <tbody key={group.key} id={region}>
@@ -475,7 +475,7 @@ function ViewChoice({ labels }) {
 }
 
 export function DaySummary({ report, labels, languageCode, needsUrl }) {
-  const { mode, folded, toggleGroup, setFolded } = useSummaryMode();
+  const { mode, open, toggleGroup, setOpen } = useSummaryMode();
   // Two days may be on the page (the day, and a day proposed): ids of each its own.
   const prefix = useId();
   if (report.needs === null) {
@@ -491,9 +491,9 @@ export function DaySummary({ report, labels, languageCode, needsUrl }) {
 
   const counts = countStatuses([...report.needs, ...report.ratios]);
   const total = report.needs.length + report.ratios.length;
-  const folding = { prefix, folded, toggle: toggleGroup };
+  const folding = { prefix, open, toggle: toggleGroup };
   const groups = [...groupsOf(report.needs).map((g) => g.key), RATIOS];
-  const allFolded = groups.every((group) => folded.includes(group));
+  const allFolded = groups.every((group) => !open.includes(group));
 
   return (
     <section className="mt-4" aria-label={labels.dayTitle}>
@@ -503,7 +503,7 @@ export function DaySummary({ report, labels, languageCode, needsUrl }) {
           <button
             type="button"
             className="btn btn-sm btn-outline-secondary"
-            onClick={() => setFolded(allFolded ? [] : groups)}
+            onClick={() => setOpen(allFolded ? groups : [])}
           >
             {allFolded ? labels.expandAll : labels.collapseAll}
           </button>

@@ -68,12 +68,12 @@ const withNeeds = () =>
     ],
   });
 
-async function summary() {
+async function summary({ openGroups = true } = {}) {
   stubFetch({
     [`GET ${DAY_URL}`]: ok(withNeeds()),
     'GET /api/v1/inventory/': ok([BREAD, MUESLI]),
   });
-  renderApp();
+  renderApp({ openGroups });
   return screen.findByRole('region', { name: 'La journée face à vos besoins' });
 }
 
@@ -252,6 +252,10 @@ describe('the choice between the gauges and the table', () => {
       throw new Error('blocked');
     });
     const region = await summary();
+    // The groups are closed, as nothing says otherwise.
+    fireEvent.click(
+      within(region).getByRole('button', { name: 'Tout déplier' }),
+    );
     expect(within(region).getAllByRole('meter').length).toBeGreaterThan(0);
 
     fireEvent.click(within(region).getByRole('button', { name: 'Tableau' }));
@@ -324,42 +328,33 @@ describe('the total quantity of a product', () => {
   });
 });
 
-describe('folding the groups of the day', () => {
+describe('the groups of the day, closed at first', () => {
   const group = (region, name) =>
     within(region).getByRole('button', { name: new RegExp(name) });
+  const closed = () => summary({ openGroups: false });
+  const names = ['Énergie', 'Macronutriment', 'Minéral', 'Rapports'];
 
-  it('shows every group open, each with how many of its needs are met', async () => {
-    const region = await summary();
+  it('shows every group closed, each with how many of its needs are met', async () => {
+    const region = await closed();
 
-    for (const name of ['Énergie', 'Macronutriment', 'Minéral', 'Rapports']) {
-      expect(group(region, name)).toHaveAttribute('aria-expanded', 'true');
+    for (const name of names) {
+      expect(group(region, name)).toHaveAttribute('aria-expanded', 'false');
     }
+    expect(within(region).queryByRole('meter')).toBeNull();
     // Sodium and iron are both met; the omega ratio is short, the other unknown.
     expect(group(region, 'Minéral')).toHaveTextContent('2 sur 2 respectés');
     expect(group(region, 'Rapports')).toHaveTextContent('0 sur 2 respectés');
     expect(group(region, 'Macronutriment')).toHaveTextContent(
       '0 sur 1 respectés',
     );
-  });
-
-  it('hides the gauges of a group that is folded, and only those', async () => {
-    const region = await summary();
-
-    fireEvent.click(group(region, 'Minéral'));
-
-    expect(group(region, 'Minéral')).toHaveAttribute('aria-expanded', 'false');
-    expect(within(region).queryByRole('meter', { name: 'Sodium' })).toBeNull();
-    expect(within(region).queryByRole('meter', { name: 'Fer' })).toBeNull();
+    // And the whole day is still said in one bar.
     expect(
-      within(region).getByRole('meter', { name: 'Fibres' }),
+      within(region).getByRole('img', { name: '2 / 6 Atteint' }),
     ).toBeInTheDocument();
-    // What a folded group holds is still said, at its head.
-    expect(group(region, 'Minéral')).toHaveTextContent('2 sur 2 respectés');
   });
 
-  it('opens a group again', async () => {
-    const region = await summary();
-    fireEvent.click(group(region, 'Minéral'));
+  it('shows the gauges of a group that is opened, and only those', async () => {
+    const region = await closed();
 
     fireEvent.click(group(region, 'Minéral'));
 
@@ -367,48 +362,59 @@ describe('folding the groups of the day', () => {
     expect(
       within(region).getByRole('meter', { name: 'Sodium' }),
     ).toBeInTheDocument();
+    expect(
+      within(region).getByRole('meter', { name: 'Fer' }),
+    ).toBeInTheDocument();
+    expect(within(region).queryByRole('meter', { name: 'Fibres' })).toBeNull();
+    // What an open group holds is still said, at its head.
+    expect(group(region, 'Minéral')).toHaveTextContent('2 sur 2 respectés');
   });
 
-  it('folds the ratios as a group of their own', async () => {
-    const region = await summary();
+  it('closes a group again', async () => {
+    const region = await closed();
+    fireEvent.click(group(region, 'Minéral'));
+
+    fireEvent.click(group(region, 'Minéral'));
+
+    expect(group(region, 'Minéral')).toHaveAttribute('aria-expanded', 'false');
+    expect(within(region).queryByRole('meter', { name: 'Sodium' })).toBeNull();
+  });
+
+  it('opens the ratios as a group of their own', async () => {
+    const region = await closed();
 
     fireEvent.click(group(region, 'Rapports'));
 
     expect(
-      within(region).queryByRole('meter', { name: 'Oméga-3 / Oméga-6' }),
-    ).toBeNull();
-    expect(
-      within(region).getByRole('meter', { name: 'Sodium' }),
+      within(region).getByRole('meter', { name: 'Oméga-3 / Oméga-6' }),
     ).toBeInTheDocument();
+    expect(within(region).queryByRole('meter', { name: 'Sodium' })).toBeNull();
   });
 
-  it('folds and unfolds all of them at once', async () => {
-    const region = await summary();
-
-    fireEvent.click(
-      within(region).getByRole('button', { name: 'Tout replier' }),
-    );
-
-    expect(within(region).queryByRole('meter')).toBeNull();
-    for (const name of ['Énergie', 'Macronutriment', 'Minéral', 'Rapports']) {
-      expect(group(region, name)).toHaveAttribute('aria-expanded', 'false');
-    }
-    expect(
-      within(region).queryByRole('button', { name: 'Tout replier' }),
-    ).toBeNull();
+  it('unfolds and folds all of them at once', async () => {
+    const region = await closed();
 
     fireEvent.click(
       within(region).getByRole('button', { name: 'Tout déplier' }),
     );
 
     expect(within(region).getAllByRole('meter')).toHaveLength(6);
-  });
+    for (const name of names) {
+      expect(group(region, name)).toHaveAttribute('aria-expanded', 'true');
+    }
+    expect(
+      within(region).queryByRole('button', { name: 'Tout déplier' }),
+    ).toBeNull();
 
-  it('offers to fold all again once a group is open after all were folded', async () => {
-    const region = await summary();
     fireEvent.click(
       within(region).getByRole('button', { name: 'Tout replier' }),
     );
+
+    expect(within(region).queryByRole('meter')).toBeNull();
+  });
+
+  it('offers to fold all once a group is open', async () => {
+    const region = await closed();
 
     fireEvent.click(group(region, 'Minéral'));
 
@@ -418,29 +424,27 @@ describe('folding the groups of the day', () => {
     expect(within(region).getAllByRole('meter')).toHaveLength(2);
   });
 
-  it('keeps what is folded for the next visit', async () => {
-    const first = await summary();
+  it('keeps what is open for the next visit', async () => {
+    const first = await closed();
     fireEvent.click(group(first, 'Minéral'));
-    expect(window.localStorage.getItem('meals.foldedGroups')).toBe(
-      '["mineral"]',
-    );
+    expect(window.localStorage.getItem('meals.openGroups')).toBe('["mineral"]');
     document.body.innerHTML = '';
 
-    const second = await summary();
+    const second = await closed();
 
-    expect(group(second, 'Minéral')).toHaveAttribute('aria-expanded', 'false');
-    expect(within(second).queryByRole('meter', { name: 'Sodium' })).toBeNull();
+    expect(group(second, 'Minéral')).toHaveAttribute('aria-expanded', 'true');
     expect(
-      within(second).getByRole('meter', { name: 'Fibres' }),
+      within(second).getByRole('meter', { name: 'Sodium' }),
     ).toBeInTheDocument();
+    expect(within(second).queryByRole('meter', { name: 'Fibres' })).toBeNull();
   });
 
-  it('opens everything when what was kept is not a list of groups', async () => {
-    window.localStorage.setItem('meals.foldedGroups', '{"mineral": true}');
+  it('keeps everything closed when what was kept is not a list of groups', async () => {
+    window.localStorage.setItem('meals.openGroups', '{"mineral": true}');
 
-    const region = await summary();
+    const region = await closed();
 
-    expect(within(region).getAllByRole('meter')).toHaveLength(6);
+    expect(within(region).queryByRole('meter')).toBeNull();
   });
 
   it('works without storage', async () => {
@@ -450,38 +454,40 @@ describe('folding the groups of the day', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('blocked');
     });
-    const region = await summary();
+    const region = await closed();
+    expect(within(region).queryByRole('meter')).toBeNull();
 
     fireEvent.click(group(region, 'Minéral'));
 
-    expect(within(region).queryByRole('meter', { name: 'Sodium' })).toBeNull();
+    expect(
+      within(region).getByRole('meter', { name: 'Sodium' }),
+    ).toBeInTheDocument();
   });
 
-  it('folds the same groups in the table', async () => {
-    const region = await summary();
+  it('opens the same groups in the table', async () => {
+    const region = await closed();
     fireEvent.click(within(region).getByRole('button', { name: 'Tableau' }));
-    expect(
-      within(region).getByRole('row', { name: /^Sodium\s\d/ }),
-    ).toBeInTheDocument();
-
-    fireEvent.click(group(region, 'Minéral'));
-
     expect(
       within(region).queryByRole('row', { name: /^Sodium\s\d/ }),
     ).toBeNull();
+
+    fireEvent.click(group(region, 'Minéral'));
+
     expect(
-      within(region).getByRole('row', { name: /Fibres/ }),
+      within(region).getByRole('row', { name: /^Sodium\s\d/ }),
     ).toBeInTheDocument();
-    expect(group(region, 'Minéral')).toHaveAttribute('aria-expanded', 'false');
+    expect(within(region).queryByRole('row', { name: /Fibres/ })).toBeNull();
+    expect(group(region, 'Minéral')).toHaveAttribute('aria-expanded', 'true');
   });
 
-  it('folds the table of the ratios', async () => {
-    const region = await summary();
+  it('opens the table of the ratios', async () => {
+    const region = await closed();
     fireEvent.click(within(region).getByRole('button', { name: 'Tableau' }));
-    expect(within(region).getAllByRole('table')).toHaveLength(2);
+    // The needs' table, whose groups are closed, and no table of the ratios.
+    expect(within(region).getAllByRole('table')).toHaveLength(1);
 
     fireEvent.click(group(region, 'Rapports'));
 
-    expect(within(region).getAllByRole('table')).toHaveLength(1);
+    expect(within(region).getAllByRole('table')).toHaveLength(2);
   });
 });
