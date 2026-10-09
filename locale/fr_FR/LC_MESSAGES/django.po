@@ -1248,6 +1248,25 @@ msgid "Share of the limit"
 msgstr "Part de la limite"
 
 #, python-format
+msgid "%(reached)s of %(total)s met"
+msgstr "%(reached)s sur %(total)s respectés"
+
+msgid "Fold all"
+msgstr "Tout replier"
+
+msgid "Unfold all"
+msgstr "Tout déplier"
+
+msgid "Use the whole package"
+msgstr "Utiliser tout le paquet"
+
+msgid "The day proposed uses all of the package, even if that goes over a need."
+msgstr "Le jour proposé utilise tout le paquet, même si cela dépasse un besoin."
+
+msgid "Give the product's total quantity first."
+msgstr "Indiquez d'abord la quantité totale du produit."
+
+#, python-format
 msgid "%(percent)s of a package of %(package)s"
 msgstr "%(percent)s d'un paquet de %(package)s"
 

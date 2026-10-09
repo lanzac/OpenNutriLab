@@ -172,6 +172,12 @@ def test_the_labels_of_the_meals_page_are_translated_by_the_server(
     assert labels["totalQuantity"] == "Quantité totale"
     assert "%(percent)s" in labels["packageShare"]
     assert "%(package)s" in labels["packageShare"]
+    # The groups of the day that fold, and the whole package of a product.
+    assert labels["collapseAll"] == "Tout replier"
+    assert labels["expandAll"] == "Tout déplier"
+    assert "%(reached)s" in labels["groupReached"]
+    assert "%(total)s" in labels["groupReached"]
+    assert labels["limitsWhole"] == "Utiliser tout le paquet"
 
 
 @pytest.mark.django_db

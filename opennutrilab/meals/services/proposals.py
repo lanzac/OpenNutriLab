@@ -4,10 +4,10 @@ A day proposed from the user's inventory.
 The candidates are the products of the inventory that have a composition to count:
 each is counted in steps of half a serving where it has a serving and of 10 g where
 it has not, may be in the meals its limits say (any by default), and in a day up to
-the most they say (by default 6 servings, and never more than 500 g). The needs are
-those of the user's profile. The day is then the optimiser's (services.optimiser),
-and is only proposed: nothing is written until the user takes it (see
-meal_services.replace_day).
+the most they say (by default 6 servings, and never more than 500 g), or all of the
+package where they ask for it. The needs are those of the user's profile. The day is
+then the optimiser's (services.optimiser), and is only proposed: nothing is written
+until the user takes it (see meal_services.replace_day).
 """
 
 from collections.abc import Mapping
@@ -37,6 +37,16 @@ DEFAULT_MAX_GRAMS = 500.0
 # What a step is: half a serving, or this many grams.
 SERVING_STEP = 0.5
 GRAM_STEP = 10.0
+# What a step of a whole package is, in grams: the coarsest that makes the package a
+# whole number of them, so that there are as few as may be to choose between.
+PACKAGE_STEPS = (
+    Decimal(10),
+    Decimal(5),
+    Decimal(1),
+    Decimal("0.5"),
+    Decimal("0.1"),
+    Decimal("0.01"),
+)
 
 
 class NoProfileError(Exception):
@@ -86,6 +96,23 @@ def candidate_of(
         if product.serving_quantity is not None
         else None
     )
+    meals = frozenset(limits.meals or KINDS)
+    # All of the package, in grams whatever the product's serving, for it to add up.
+    # A package in ml counts as the same grams, as a serving in ml does.
+    if limits.use_all and product.package_quantity is not None:
+        whole = product.package_quantity
+        step = next(found for found in PACKAGE_STEPS if whole % found == 0)
+        return Candidate(
+            barcode=product.pk,
+            name=product.name,
+            per_100g={code: float(found.amount) for code, found in composition.items()},
+            step_grams=float(step),
+            step_quantity=float(step),
+            unit=str(MealItem.Unit.GRAM),
+            max_grams=float(whole),
+            meals=meals,
+            required_grams=float(whole),
+        )
     if serving is None:
         step_grams, step_quantity, unit = GRAM_STEP, GRAM_STEP, MealItem.Unit.GRAM
         most = DEFAULT_MAX_GRAMS
@@ -104,7 +131,7 @@ def candidate_of(
         step_quantity=step_quantity,
         unit=str(unit),
         max_grams=most,
-        meals=frozenset(limits.meals or KINDS),
+        meals=meals,
     )
 
 

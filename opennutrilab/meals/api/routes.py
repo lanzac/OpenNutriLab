@@ -56,6 +56,7 @@ def list_limits(request: HttpRequest) -> list[LimitsOut]:
             meals=list(found.meals),
             max_quantity=found.max_quantity,
             max_unit=found.max_unit,
+            use_all=found.use_all,
         )
         for barcode, found in limits_services.limits_of(_user(request)).items()
     ]
@@ -65,22 +66,33 @@ def list_limits(request: HttpRequest) -> list[LimitsOut]:
 def set_limits(request: HttpRequest, barcode: str, data: LimitsIn) -> LimitsOut:
     """
     Set the meals a product of the inventory may be in when a day is proposed, and
-    the most of it a day. Allowing every meal with no most clears them.
+    the most of it a day, or that all of its package is to be used. Allowing every
+    meal with no most clears them.
     """
     product = get_object_or_404(Product, barcode=barcode)
     try:
         found = limits_services.set_limits(
-            _user(request), product, list(data.meals), data.max_quantity, data.max_unit
+            _user(request),
+            product,
+            list(data.meals),
+            data.max_quantity,
+            data.max_unit,
+            use_all=data.use_all,
         )
     except meal_services.NotInInventoryError as e:
         raise HttpError(422, "The product is not in your inventory.") from e
     except meal_services.NoServingError as e:
         raise HttpError(422, "The product has no serving: give grams.") from e
+    except limits_services.NoPackageError as e:
+        raise HttpError(
+            422, "The product has no total quantity: give it to use it whole."
+        ) from e
     return LimitsOut(
         barcode=barcode,
         meals=list(found.meals),
         max_quantity=found.max_quantity,
         max_unit=found.max_unit,
+        use_all=found.use_all,
     )
 
 

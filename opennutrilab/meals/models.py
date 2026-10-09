@@ -202,7 +202,8 @@ class MealItem(models.Model):
 class ItemLimits(models.Model):
     """
     What a user allows of a product of their inventory when a day is proposed. A
-    product with no row has none: it may be in any meal, up to the default most.
+    product with no row has none: it may be in any meal, up to the default most. A
+    product may also be asked for whole: all of its package, in the day.
     """
 
     inventory_item_id: int
@@ -226,6 +227,9 @@ class ItemLimits(models.Model):
     max_unit = models.CharField(
         max_length=7, choices=MealItem.Unit.choices, blank=True, default=""
     )
+    # The whole package in the day, which is then the most of it as well as the least:
+    # for a product to be used up (see the product's package_quantity).
+    use_all = models.BooleanField(default=False)
 
     class Meta:
         constraints = [
@@ -239,6 +243,13 @@ class ItemLimits(models.Model):
                     max_unit__in=["serving", "g"],
                 ),
                 name="item_limits_most_is_whole",
+            ),
+            # The whole package is the quantity: there is no other most.
+            # django-stubs still types `check`, which Django 5.1 renamed.
+            models.CheckConstraint(  # pyright: ignore[reportCallIssue]
+                condition=models.Q(use_all=False)  # pyright: ignore[reportCallIssue]
+                | models.Q(max_quantity__isnull=True, max_unit=""),
+                name="item_limits_whole_has_no_most",
             ),
         ]
 

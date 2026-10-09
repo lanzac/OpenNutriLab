@@ -3,7 +3,11 @@ import { useEffect, useState } from 'react';
 import { fetchLimits, setLimits } from './api/client.js';
 import { formatAmount } from './format.js';
 
-/** What is allowed of one product: the meals it may be in, and the most a day. */
+/**
+ * What is allowed of one product: the meals it may be in, and the most a day, or that
+ * all of its package is used in the day, which only a product with a total quantity
+ * can be asked.
+ */
 function LimitsRow({ product, meals, found, labels, csrfToken, languageCode }) {
   const kinds = meals.map((meal) => meal.kind);
   // No limits is every meal ticked and no most.
@@ -16,6 +20,8 @@ function LimitsRow({ product, meals, found, labels, csrfToken, languageCode }) {
   const [unit, setUnit] = useState(
     found?.max_unit || (product.serving ? 'serving' : 'g'),
   );
+  const hasPackage = Boolean(product.package);
+  const [useAll, setUseAll] = useState(hasPackage && Boolean(found?.use_all));
   const [status, setStatus] = useState(null);
 
   const toggle = (kind) => {
@@ -28,7 +34,8 @@ function LimitsRow({ product, meals, found, labels, csrfToken, languageCode }) {
   };
 
   const save = () => {
-    const most = Number(quantity) > 0 ? Number(quantity) : null;
+    // The whole package is the quantity: there is no other most.
+    const most = !useAll && Number(quantity) > 0 ? Number(quantity) : null;
     setLimits(
       product.barcode,
       {
@@ -36,6 +43,7 @@ function LimitsRow({ product, meals, found, labels, csrfToken, languageCode }) {
         meals: chosen.length === kinds.length ? [] : chosen,
         max_quantity: most,
         max_unit: most === null ? null : unit,
+        use_all: useAll,
       },
       csrfToken,
     )
@@ -84,6 +92,7 @@ function LimitsRow({ product, meals, found, labels, csrfToken, languageCode }) {
           style={{ width: '5.5rem' }}
           aria-label={`${labels.limitsMost} – ${product.name}`}
           value={quantity}
+          disabled={useAll}
           onChange={(event) => {
             setStatus(null);
             setQuantity(event.target.value);
@@ -94,6 +103,7 @@ function LimitsRow({ product, meals, found, labels, csrfToken, languageCode }) {
           style={{ width: 'auto' }}
           aria-label={`${labels.unit} – ${product.name}`}
           value={unit}
+          disabled={useAll}
           onChange={(event) => {
             setStatus(null);
             setUnit(event.target.value);
@@ -102,6 +112,25 @@ function LimitsRow({ product, meals, found, labels, csrfToken, languageCode }) {
           {product.serving && <option value="serving">{labels.serving}</option>}
           <option value="g">g</option>
         </select>
+        <label
+          className="form-check d-block mt-1 mb-0"
+          title={
+            hasPackage ? labels.limitsWholeHelp : labels.limitsWholeNeedsPackage
+          }
+        >
+          <input
+            type="checkbox"
+            className="form-check-input"
+            checked={useAll}
+            disabled={!hasPackage}
+            onChange={() => {
+              setStatus(null);
+              setUseAll((current) => !current);
+            }}
+            aria-label={`${labels.limitsWhole} – ${product.name}`}
+          />
+          <span className="form-check-label small">{labels.limitsWhole}</span>
+        </label>
       </td>
       <td className="text-nowrap">
         <button

@@ -392,6 +392,7 @@ describe('the limits of the products', () => {
       meals: ['breakfast', 'snack'],
       max_quantity: 3,
       max_unit: 'serving',
+      use_all: false,
     });
     expect(options.headers['X-CSRFToken']).toBe('test-csrf-token');
   });
@@ -416,6 +417,7 @@ describe('the limits of the products', () => {
       meals: [],
       max_quantity: null,
       max_unit: null,
+      use_all: false,
     });
   });
 
@@ -438,6 +440,123 @@ describe('the limits of the products', () => {
     expect(
       within(limits).getByRole('button', { name: 'Enregistrer – Muesli' }),
     ).toBeDisabled();
+  });
+
+  it('asks for the whole package in place of a most', async () => {
+    const fetch = stubFetch({
+      [`GET ${DAY_URL}`]: ok(day()),
+      'GET /api/v1/inventory/': ok([BREAD]),
+      [`PUT /api/v1/meals/limits/${BREAD.barcode}`]: ok({}),
+    });
+    const limits = await open();
+    fireEvent.change(
+      await within(limits).findByLabelText('Au plus par jour – Pain de mie'),
+      { target: { value: '3' } },
+    );
+
+    fireEvent.click(
+      within(limits).getByLabelText('Utiliser tout le paquet – Pain de mie'),
+    );
+
+    // The package is the quantity: no other most can be given.
+    expect(
+      within(limits).getByLabelText('Au plus par jour – Pain de mie'),
+    ).toBeDisabled();
+    expect(within(limits).getByLabelText('Unité – Pain de mie')).toBeDisabled();
+    fireEvent.click(
+      within(limits).getByRole('button', { name: 'Enregistrer – Pain de mie' }),
+    );
+    expect(await within(limits).findByText('Enregistré')).toBeInTheDocument();
+    const [, options] = fetch.mock.calls.find(([, o]) => o?.method === 'PUT');
+    expect(JSON.parse(options.body)).toEqual({
+      meals: [],
+      max_quantity: null,
+      max_unit: null,
+      use_all: true,
+    });
+  });
+
+  it('gives the most back when the whole package is not asked for any more', async () => {
+    stubFetch({
+      [`GET ${DAY_URL}`]: ok(day()),
+      'GET /api/v1/inventory/': ok([BREAD]),
+    });
+    const limits = await open();
+    const whole = await within(limits).findByLabelText(
+      'Utiliser tout le paquet – Pain de mie',
+    );
+    fireEvent.click(whole);
+
+    fireEvent.click(whole);
+
+    expect(whole).not.toBeChecked();
+    expect(
+      within(limits).getByLabelText('Au plus par jour – Pain de mie'),
+    ).toBeEnabled();
+  });
+
+  it('shows the whole package already asked for', async () => {
+    stubFetch({
+      [`GET ${DAY_URL}`]: ok(day()),
+      'GET /api/v1/inventory/': ok([BREAD]),
+      'GET /api/v1/meals/limits/': ok([
+        {
+          barcode: BREAD.barcode,
+          meals: ['lunch'],
+          max_quantity: null,
+          max_unit: '',
+          use_all: true,
+        },
+      ]),
+    });
+    const limits = await open();
+
+    expect(
+      await within(limits).findByLabelText(
+        'Utiliser tout le paquet – Pain de mie',
+      ),
+    ).toBeChecked();
+    expect(
+      within(limits).getByLabelText('Au plus par jour – Pain de mie'),
+    ).toBeDisabled();
+    expect(
+      within(limits).getByLabelText('Déjeuner – Pain de mie'),
+    ).toBeChecked();
+    expect(
+      within(limits).getByLabelText('Dîner – Pain de mie'),
+    ).not.toBeChecked();
+  });
+
+  it('cannot ask for the whole package of a product with no total quantity', async () => {
+    stubFetch({
+      [`GET ${DAY_URL}`]: ok(day()),
+      'GET /api/v1/inventory/': ok([{ ...MUESLI, package: null }]),
+      // Nothing is kept of a request that cannot be made now.
+      'GET /api/v1/meals/limits/': ok([
+        {
+          barcode: MUESLI.barcode,
+          meals: [],
+          max_quantity: null,
+          max_unit: '',
+          use_all: true,
+        },
+      ]),
+    });
+    const limits = await open();
+
+    const whole = await within(limits).findByLabelText(
+      'Utiliser tout le paquet – Muesli',
+    );
+
+    expect(whole).toBeDisabled();
+    expect(whole).not.toBeChecked();
+    expect(whole.closest('label')).toHaveAttribute(
+      'title',
+      'Indiquez d’abord la quantité totale du produit.',
+    );
+    expect(
+      within(limits).getByLabelText('Au plus par jour – Muesli'),
+    ).toBeEnabled();
   });
 
   it('says so when the limits cannot be saved', async () => {

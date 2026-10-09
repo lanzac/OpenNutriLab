@@ -1,7 +1,8 @@
 """
 What a user allows of the products of their inventory when a day is proposed: the
-meals a product may be in, and the most of it a day. The optimiser reads them
-(services.optimiser); a product with none is in any meal, up to the default most.
+meals a product may be in, and the most of it a day, or that all of its package is to
+be used. The optimiser reads them (services.optimiser); a product with none is in any
+meal, up to the default most.
 """
 
 from decimal import Decimal
@@ -21,12 +22,18 @@ class InvalidMealError(ValueError):
     """A kind of meal that is none of Meal.Kind."""
 
 
+class NoPackageError(ValueError):
+    """The whole package was asked for of a product that has no total quantity."""
+
+
 class Limits(NamedTuple):
     # Empty, any meal.
     meals: tuple[str, ...]
     max_quantity: Decimal | None
     # "serving" or "g", "" with no most.
     max_unit: str
+    # All of the package in the day, which is then the quantity: there is no most.
+    use_all: bool = False
 
 
 NO_LIMITS = Limits((), None, "")
@@ -36,7 +43,7 @@ def limits_of(user: User) -> dict[str, Limits]:
     """The limits a user has set, by barcode, for the products that have some."""
     return {
         found.inventory_item.product_id: Limits(
-            tuple(found.meals), found.max_quantity, found.max_unit
+            tuple(found.meals), found.max_quantity, found.max_unit, found.use_all
         )
         for found in ItemLimits.objects.filter(
             inventory_item__user=user
@@ -44,16 +51,19 @@ def limits_of(user: User) -> dict[str, Limits]:
     }
 
 
-def set_limits(
+def set_limits(  # noqa: PLR0913
     user: User,
     product: Product,
     meals: list[str],
     max_quantity: Decimal | None,
     max_unit: str | None,
+    *,
+    use_all: bool = False,
 ) -> Limits:
     """
     Set what a user allows of a product of their inventory. Allowing every meal
-    and no most is having no limits, which clears them.
+    and no most is having no limits, which clears them. Asking for all of the package
+    takes the place of a most, and needs the product to have a total quantity.
     """
     item = InventoryItem.objects.filter(user=user, product=product).first()
     if item is None:
@@ -67,6 +77,10 @@ def set_limits(
     # Every meal is any meal.
     if len(chosen) == len(kinds):
         chosen = ()
+    if use_all:
+        if product.package_quantity is None:
+            raise NoPackageError(product.pk)
+        max_quantity = None
     if max_quantity is None:
         max_unit = ""
     else:
@@ -74,7 +88,7 @@ def set_limits(
         max_quantity = max_quantity.quantize(Decimal("0.01"))
         if max_unit == MealItem.Unit.SERVING and product.serving_quantity is None:
             raise NoServingError(product.pk)
-    if not chosen and max_quantity is None:
+    if not chosen and max_quantity is None and not use_all:
         ItemLimits.objects.filter(inventory_item=item).delete()
         return NO_LIMITS
     ItemLimits.objects.update_or_create(
@@ -83,6 +97,7 @@ def set_limits(
             "meals": list(chosen),
             "max_quantity": max_quantity,
             "max_unit": max_unit or "",
+            "use_all": use_all,
         },
     )
-    return Limits(chosen, max_quantity, max_unit or "")
+    return Limits(chosen, max_quantity, max_unit or "", use_all)

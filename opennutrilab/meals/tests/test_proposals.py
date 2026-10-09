@@ -93,6 +93,101 @@ def test_the_limits_set_the_meals_and_the_most_in_servings_or_grams(db: None):
     assert in_grams.max_grams == 100.0  # noqa: PLR2004
 
 
+def packaged(grams: str, unit: str = "g", **fields: object) -> Product:
+    return Product(
+        barcode=BREAD,
+        name="Bread",
+        serving_quantity=D("35.7"),
+        serving_unit="g",
+        package_quantity=D(grams),
+        package_unit=unit,
+        **fields,
+    )
+
+
+def test_the_whole_package_is_counted_in_grams_and_is_required(db: None):
+    bread = packaged("500")
+
+    found = proposals.candidate_of(
+        bread, {"energy": amount("1233")}, Limits((), None, "", use_all=True)
+    )
+
+    assert found is not None
+    # In grams though the product has a serving, and not capped by the default most.
+    assert found.unit == "g"
+    assert found.max_grams == 500.0  # noqa: PLR2004
+    assert found.required_grams == 500.0  # noqa: PLR2004
+    assert found.step_grams == found.step_quantity == 10.0  # noqa: PLR2004
+    assert found.meals == frozenset(KINDS)
+
+
+@pytest.mark.parametrize(
+    ("grams", "step"),
+    [
+        ("500", 10.0),
+        ("900", 10.0),
+        ("375", 5.0),
+        ("135", 5.0),
+        ("1000", 10.0),
+        ("12.5", 0.5),
+        ("33", 1.0),
+        ("33.3", 0.1),
+        ("12.34", 0.01),
+    ],
+)
+def test_the_step_of_a_whole_package_is_the_coarsest_that_makes_it_whole(
+    db: None, grams: str, step: float
+):
+    found = proposals.candidate_of(
+        packaged(grams),
+        {"energy": amount("1233")},
+        Limits((), None, "", use_all=True),
+    )
+
+    assert found is not None
+    assert found.step_grams == step
+    assert found.required_grams is not None
+    assert found.required_grams / found.step_grams == pytest.approx(
+        round(found.required_grams / found.step_grams)
+    )
+
+
+def test_a_package_in_ml_is_counted_in_as_many_grams(db: None):
+    milk = packaged("1000", unit="ml")
+
+    found = proposals.candidate_of(
+        milk, {"energy": amount("200")}, Limits((), None, "", use_all=True)
+    )
+
+    assert found is not None
+    assert found.required_grams == 1000.0  # noqa: PLR2004
+
+
+def test_the_whole_package_is_in_the_meals_the_limits_say(db: None):
+    found = proposals.candidate_of(
+        packaged("500"),
+        {"energy": amount("1233")},
+        Limits(("lunch", "dinner"), None, "", use_all=True),
+    )
+
+    assert found is not None
+    assert found.meals == frozenset({"lunch", "dinner"})
+
+
+def test_the_whole_package_of_a_product_with_none_is_not_required(db: None):
+    bread = Product(
+        barcode=BREAD, name="Bread", serving_quantity=D("35.7"), serving_unit="g"
+    )
+
+    found = proposals.candidate_of(
+        bread, {"energy": amount("1233")}, Limits((), None, "", use_all=True)
+    )
+
+    assert found is not None
+    assert found.required_grams is None
+    assert found.unit == "serving"
+
+
 def test_a_product_with_no_energy_to_count_is_left_out(db: None):
     water = Product(barcode="1111111111116", name="Water")
 
@@ -192,6 +287,24 @@ def test_the_limits_of_a_product_are_kept_in_the_proposal(
     assert sum(item.quantity for item in found) <= 1
 
 
+def test_a_product_asked_for_whole_is_all_in_the_proposed_day(
+    user: User, inventory: list[Product]
+):
+    make_profile(user)
+    bars = inventory[2]
+    Product.objects.filter(pk=bars.pk).update(package_quantity=D(135), package_unit="g")
+    bars.refresh_from_db()
+    limits.set_limits(user, bars, ["lunch", "snack"], None, None, use_all=True)
+
+    proposal = proposals.propose_day(user)
+
+    found = [item for item in proposal.items if item.product == bars]
+    assert found
+    assert {item.kind for item in found} <= {"lunch", "snack"}
+    assert {item.unit for item in found} == {"g"}
+    assert sum(item.quantity for item in found) == D(135)
+
+
 def test_the_inventory_of_others_is_not_used(user: User, inventory: list[Product]):
     make_profile(user)
     other = UserFactory()
@@ -255,6 +368,32 @@ def test_a_proposal_comes_with_the_report_of_the_day_it_makes_and_saves_nothing(
     assert all(item["id"] is None for item in items)
     assert body["day"]["needs"] is not None
     assert not Meal.objects.exists()
+
+
+def test_a_product_asked_for_whole_is_all_in_the_proposal_of_the_page(
+    api_client: Client, user: User, inventory: list[Product]
+):
+    make_profile(user)
+    bars = inventory[2]
+    Product.objects.filter(pk=bars.pk).update(package_quantity=D(135), package_unit="g")
+    bars.refresh_from_db()
+    limits.set_limits(user, bars, [], None, None, use_all=True)
+
+    response = api_client.post(f"{API}/propose")
+
+    body = response.json()
+    assert response.status_code == HTTPStatus.OK
+    whole = [item for item in body["items"] if item["barcode"] == bars.pk]
+    assert {item["unit"] for item in whole} == {"g"}
+    assert sum(D(item["quantity"]) for item in whole) == D(135)
+    # And the day it makes is reported with the same quantity.
+    reported = [
+        item
+        for meal in body["day"]["meals"]
+        for item in meal["items"]
+        if item["barcode"] == bars.pk
+    ]
+    assert sum(D(item["quantity"]) for item in reported) == D(135)
 
 
 def test_a_proposal_needs_a_profile(api_client: Client, inventory: list[Product]):

@@ -442,3 +442,87 @@ def test_the_foods_of_the_inventory_are_not_counted_in_the_most_new():
     plan = optimise([OATS, LENTILS, *foods], wanted, options=Options(max_new=1))
 
     assert {"oats", "flax"} <= {pick.barcode for pick in plan.picks}
+
+
+# ----------------------------------------------------------------------------
+# A product required whole
+# ----------------------------------------------------------------------------
+def whole(
+    barcode: str,
+    per_100g: Mapping[str, float],
+    grams: float,
+    *,
+    step: float = 10.0,
+    meals: frozenset[str] = ALL,
+) -> Candidate:
+    """A product the day must have all of, which is this many grams."""
+    return product(barcode, per_100g, max_grams=grams, meals=meals)._replace(
+        step_grams=step, step_quantity=step, required_grams=grams
+    )
+
+
+def grams_of(plan: Plan, barcode: str) -> float:
+    return sum(pick.grams for pick in plan.picks if pick.barcode == barcode)
+
+
+def test_a_product_required_whole_is_all_in_the_day():
+    jam = whole("jam", {"energy": 1000}, 200)
+
+    plan = optimise([OATS, jam], needs_of())
+
+    assert plan.status == "optimal"
+    assert grams_of(plan, "jam") == pytest.approx(200)
+
+
+def test_the_whole_is_shared_between_the_meals_it_may_be_in():
+    jam = whole("jam", {"energy": 1000}, 200, meals=frozenset({"snack", "dinner"}))
+
+    plan = optimise([OATS, jam], needs_of())
+
+    assert {p.kind for p in plan.picks if p.barcode == "jam"} <= {"snack", "dinner"}
+    assert grams_of(plan, "jam") == pytest.approx(200)
+
+
+def test_a_whole_of_steps_that_are_not_ten_grams_is_all_there():
+    muesli = whole("muesli", {"energy": 1500}, 375, step=5.0)
+
+    plan = optimise([OATS, muesli], needs_of())
+
+    assert grams_of(plan, "muesli") == pytest.approx(375)
+
+
+def test_a_product_required_whole_is_in_the_day_though_the_day_has_no_need_of_it():
+    # 300 g of this is 60,000 kJ, seven times the day's energy: the day is then the
+    # closest it can be, and the oats that would have made the energy are not there.
+    cake = whole("cake", {"energy": 20000}, 300)
+    candidates = [OATS, cake]
+
+    plan = optimise(candidates, needs_of())
+
+    assert plan.status == "optimal"
+    assert grams_of(plan, "cake") == pytest.approx(300)
+    assert grams_of(plan, "oats") == 0
+
+
+def test_a_product_required_whole_is_in_the_day_when_it_brings_nothing():
+    plain = whole("plain", {}, 100)
+
+    plan = optimise([OATS, plain], needs_of())
+
+    assert grams_of(plan, "plain") == pytest.approx(100)
+
+
+def test_a_product_required_whole_is_in_a_quick_look_at_the_foods_too():
+    jam = whole("jam", {"energy": 1000}, 200)
+
+    plan = optimise([OATS, jam], needs_of(), options=Options(whole_steps=False))
+
+    assert "jam" in {pick.barcode for pick in plan.picks}
+
+
+def test_a_product_that_is_not_required_whole_is_not():
+    jam = product("jam", {"energy": 1000}, max_grams=200)
+
+    plan = optimise([OATS, jam], needs_of())
+
+    assert grams_of(plan, "jam") < jam.max_grams

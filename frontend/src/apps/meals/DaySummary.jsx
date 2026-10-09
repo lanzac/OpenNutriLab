@@ -1,4 +1,6 @@
-import { formatAmount, formatInterval, formatNumber } from './format.js';
+import { useId } from 'react';
+
+import { fill, formatAmount, formatInterval, formatNumber } from './format.js';
 import { Gauge } from './Gauge.jsx';
 import { countStatuses } from './gauge.js';
 import { useSummaryMode } from './summaryMode.jsx';
@@ -56,11 +58,66 @@ function groupsOf(needs) {
   const groups = new Map();
   for (const need of needs) {
     if (!groups.has(need.group)) {
-      groups.set(need.group, { label: need.group_label, needs: [] });
+      groups.set(need.group, {
+        key: need.group,
+        label: need.group_label,
+        needs: [],
+      });
     }
     groups.get(need.group).needs.push(need);
   }
   return [...groups.values()];
+}
+
+// The group of the ratios has none of the needs' own, so it has a key of its own.
+const RATIOS = 'ratios';
+
+/** The head of a group of the day: what it holds at a glance, and the button that folds it. */
+function GroupHead({
+  id,
+  label,
+  rows,
+  isFolded,
+  onToggle,
+  labels,
+  as: Heading = 'h3',
+}) {
+  const counts = countStatuses(rows);
+  const order = ['within', 'below', 'above', 'unknown'];
+  return (
+    <Heading className="h6 mb-0">
+      <button
+        type="button"
+        className="group-toggle"
+        aria-expanded={!isFolded}
+        aria-controls={id}
+        onClick={onToggle}
+      >
+        <i
+          className={`fa-solid ${isFolded ? 'fa-chevron-right' : 'fa-chevron-down'}`}
+          aria-hidden="true"
+        />
+        <span className="group-toggle-label">{label}</span>
+        <span className="group-toggle-summary">
+          {fill(labels.groupReached, {
+            reached: counts.within,
+            total: rows.length,
+          })}
+        </span>
+        <span className="status-bar status-bar--mini" aria-hidden="true">
+          {order
+            .filter((status) => counts[status] > 0)
+            .map((status) => (
+              <span
+                key={status}
+                className={`status-bar-part--${status}`}
+                style={{ width: `${(counts[status] / rows.length) * 100}%` }}
+              />
+            ))}
+        </span>
+      </button>
+    </Heading>
+  );
 }
 
 function StatusBar({ counts, total, labels }) {
@@ -134,60 +191,114 @@ function Legend({ labels }) {
   );
 }
 
+/** A group of the day under its head, which folds it. */
+function Group({ folding, id, label, rows, labels, children }) {
+  const isFolded = folding.folded.includes(id);
+  const region = `${folding.prefix}-${id}`;
+  return (
+    <div className="mb-3">
+      <GroupHead
+        id={region}
+        label={label}
+        rows={rows}
+        isFolded={isFolded}
+        onToggle={() => folding.toggle(id)}
+        labels={labels}
+      />
+      <div id={region}>{!isFolded && children}</div>
+    </div>
+  );
+}
+
+function NeedGauge({ need, labels, languageCode }) {
+  return (
+    <Gauge
+      name={need.name}
+      unit={need.unit}
+      amount={need.total.amount}
+      low={need.total.low}
+      high={need.total.high}
+      needLow={need.low}
+      needHigh={need.high}
+      status={need.status}
+      certain={need.certain}
+      coverage={need.total.coverage}
+      ends={need.ends}
+      labels={labels}
+      languageCode={languageCode}
+    />
+  );
+}
+
+function RatioGauge({ ratio, labels, languageCode }) {
+  return (
+    <Gauge
+      ratio
+      name={`${ratio.numerator} / ${ratio.denominator}${
+        ratio.molar ? ` (${labels.inMoles})` : ''
+      }`}
+      amount={ratio.value}
+      low={ratio.value_low}
+      high={ratio.value_high}
+      needLow={ratio.low}
+      needHigh={ratio.high}
+      status={ratio.status}
+      certain={ratio.certain}
+      ends={[ratio.end]}
+      labels={labels}
+      languageCode={languageCode}
+    />
+  );
+}
+
 /** Each need and each ratio of the day on a gauge, by group. */
-function Gauges({ report, labels, languageCode }) {
+function Gauges({ report, labels, languageCode, folding }) {
   return (
     <>
       <Legend labels={labels} />
       {groupsOf(report.needs).map((group) => (
-        <div key={group.label} className="mb-3">
-          <h3 className="h6 text-body-secondary mb-0">{group.label}</h3>
+        <Group
+          key={group.key}
+          folding={folding}
+          id={group.key}
+          label={group.label}
+          rows={group.needs}
+          labels={labels}
+        >
           {group.needs.map((need) => (
-            <Gauge
+            <NeedGauge
               key={need.name + need.unit + String(need.low)}
-              name={need.name}
-              unit={need.unit}
-              amount={need.total.amount}
-              low={need.total.low}
-              high={need.total.high}
-              needLow={need.low}
-              needHigh={need.high}
-              status={need.status}
-              certain={need.certain}
-              coverage={need.total.coverage}
-              ends={need.ends}
+              need={need}
               labels={labels}
               languageCode={languageCode}
             />
           ))}
-        </div>
+        </Group>
       ))}
-      <h3 className="h6 text-body-secondary mb-0">{labels.ratios}</h3>
-      {report.ratios.map((ratio) => (
-        <Gauge
-          key={ratio.numerator + ratio.denominator}
-          ratio
-          name={`${ratio.numerator} / ${ratio.denominator}${
-            ratio.molar ? ` (${labels.inMoles})` : ''
-          }`}
-          amount={ratio.value}
-          low={ratio.value_low}
-          high={ratio.value_high}
-          needLow={ratio.low}
-          needHigh={ratio.high}
-          status={ratio.status}
-          certain={ratio.certain}
-          ends={[ratio.end]}
-          labels={labels}
-          languageCode={languageCode}
-        />
-      ))}
+      <Group
+        folding={folding}
+        id={RATIOS}
+        label={labels.ratios}
+        rows={report.ratios}
+        labels={labels}
+      >
+        {report.ratios.map((ratio) => (
+          <RatioGauge
+            key={ratio.numerator + ratio.denominator}
+            ratio={ratio}
+            labels={labels}
+            languageCode={languageCode}
+          />
+        ))}
+      </Group>
     </>
   );
 }
 
 /** The same figures as a table, every one of them. */
-function Table({ report, labels, languageCode }) {
+function Table({ report, labels, languageCode, folding }) {
+  const ratiosFolded = folding.folded.includes(RATIOS);
+  const ratiosRegion = `${folding.prefix}-${RATIOS}`;
   return (
     <>
       <div className="table-responsive">
@@ -201,106 +312,136 @@ function Table({ report, labels, languageCode }) {
               <th className="text-end">{labels.coverage}</th>
             </tr>
           </thead>
-          {groupsOf(report.needs).map((group) => (
-            <tbody key={group.label}>
-              <tr className="table-light">
-                <th colSpan={5}>{group.label}</th>
+          {groupsOf(report.needs).map((group) => {
+            const isFolded = folding.folded.includes(group.key);
+            const region = `${folding.prefix}-${group.key}`;
+            return (
+              <tbody key={group.key} id={region}>
+                <tr className="table-light">
+                  <th colSpan={5}>
+                    <GroupHead
+                      as="div"
+                      id={region}
+                      label={group.label}
+                      rows={group.needs}
+                      isFolded={isFolded}
+                      onToggle={() => folding.toggle(group.key)}
+                      labels={labels}
+                    />
+                  </th>
+                </tr>
+                {!isFolded &&
+                  group.needs.map((need) => (
+                    <tr key={need.name + need.unit + String(need.low)}>
+                      <td>{need.name}</td>
+                      <td className="text-end">
+                        {formatAmount(
+                          need.total.amount,
+                          need.unit,
+                          languageCode,
+                        )}
+                        <small className="d-block text-body-secondary text-nowrap">
+                          {formatInterval(
+                            need.total.low,
+                            need.total.high,
+                            need.unit,
+                            languageCode,
+                          )}
+                        </small>
+                      </td>
+                      <td className="text-end" title={need.ends.join(' / ')}>
+                        <NeedRange need={need} languageCode={languageCode} />
+                      </td>
+                      <td>
+                        <Status
+                          status={need.status}
+                          certain={need.certain}
+                          labels={labels}
+                        />
+                      </td>
+                      <td className="text-end">
+                        <Coverage value={need.total.coverage} labels={labels} />
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            );
+          })}
+        </table>
+      </div>
+
+      <div className="mt-4">
+        <GroupHead
+          id={ratiosRegion}
+          label={labels.ratios}
+          rows={report.ratios}
+          isFolded={ratiosFolded}
+          onToggle={() => folding.toggle(RATIOS)}
+          labels={labels}
+        />
+      </div>
+      <div id={ratiosRegion} className="table-responsive">
+        {!ratiosFolded && (
+          <table className="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>{labels.ratio}</th>
+                <th className="text-end">{labels.total}</th>
+                <th className="text-end">{labels.need}</th>
+                <th>{labels.status}</th>
               </tr>
-              {group.needs.map((need) => (
-                <tr key={need.name + need.unit + String(need.low)}>
-                  <td>{need.name}</td>
-                  <td className="text-end">
-                    {formatAmount(need.total.amount, need.unit, languageCode)}
-                    <small className="d-block text-body-secondary text-nowrap">
-                      {formatInterval(
-                        need.total.low,
-                        need.total.high,
-                        need.unit,
-                        languageCode,
-                      )}
-                    </small>
+            </thead>
+            <tbody>
+              {report.ratios.map((ratio) => (
+                <tr key={ratio.numerator + ratio.denominator}>
+                  <td title={ratio.end}>
+                    {ratio.numerator} / {ratio.denominator}
+                    {ratio.molar && (
+                      <small className="text-body-secondary">
+                        {' '}
+                        ({labels.inMoles})
+                      </small>
+                    )}
                   </td>
-                  <td className="text-end" title={need.ends.join(' / ')}>
-                    <NeedRange need={need} languageCode={languageCode} />
+                  <td className="text-end">
+                    {ratio.value === null
+                      ? '–'
+                      : formatNumber(ratio.value, languageCode)}
+                    {ratio.value !== null && (
+                      <small className="d-block text-body-secondary text-nowrap">
+                        {formatInterval(
+                          ratio.value_low,
+                          ratio.value_high,
+                          '',
+                          languageCode,
+                        )}
+                      </small>
+                    )}
+                  </td>
+                  <td className="text-end">
+                    {ratio.low !== null && (
+                      <span className="d-block text-nowrap">
+                        ≥ {formatNumber(ratio.low, languageCode)}
+                      </span>
+                    )}
+                    {ratio.high !== null && (
+                      <span className="d-block text-nowrap">
+                        ≤ {formatNumber(ratio.high, languageCode)}
+                      </span>
+                    )}
                   </td>
                   <td>
                     <Status
-                      status={need.status}
-                      certain={need.certain}
+                      status={ratio.status}
+                      certain={ratio.certain}
                       labels={labels}
                     />
-                  </td>
-                  <td className="text-end">
-                    <Coverage value={need.total.coverage} labels={labels} />
                   </td>
                 </tr>
               ))}
             </tbody>
-          ))}
-        </table>
-      </div>
-
-      <h2 className="h5 mt-4">{labels.ratios}</h2>
-      <div className="table-responsive">
-        <table className="table table-sm align-middle">
-          <thead>
-            <tr>
-              <th>{labels.ratio}</th>
-              <th className="text-end">{labels.total}</th>
-              <th className="text-end">{labels.need}</th>
-              <th>{labels.status}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {report.ratios.map((ratio) => (
-              <tr key={ratio.numerator + ratio.denominator}>
-                <td title={ratio.end}>
-                  {ratio.numerator} / {ratio.denominator}
-                  {ratio.molar && (
-                    <small className="text-body-secondary">
-                      {' '}
-                      ({labels.inMoles})
-                    </small>
-                  )}
-                </td>
-                <td className="text-end">
-                  {ratio.value === null
-                    ? '–'
-                    : formatNumber(ratio.value, languageCode)}
-                  {ratio.value !== null && (
-                    <small className="d-block text-body-secondary text-nowrap">
-                      {formatInterval(
-                        ratio.value_low,
-                        ratio.value_high,
-                        '',
-                        languageCode,
-                      )}
-                    </small>
-                  )}
-                </td>
-                <td className="text-end">
-                  {ratio.low !== null && (
-                    <span className="d-block text-nowrap">
-                      ≥ {formatNumber(ratio.low, languageCode)}
-                    </span>
-                  )}
-                  {ratio.high !== null && (
-                    <span className="d-block text-nowrap">
-                      ≤ {formatNumber(ratio.high, languageCode)}
-                    </span>
-                  )}
-                </td>
-                <td>
-                  <Status
-                    status={ratio.status}
-                    certain={ratio.certain}
-                    labels={labels}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+          </table>
+        )}
       </div>
     </>
   );
@@ -334,7 +475,9 @@ function ViewChoice({ labels }) {
 }
 
 export function DaySummary({ report, labels, languageCode, needsUrl }) {
-  const { mode } = useSummaryMode();
+  const { mode, folded, toggleGroup, setFolded } = useSummaryMode();
+  // Two days may be on the page (the day, and a day proposed): ids of each its own.
+  const prefix = useId();
   if (report.needs === null) {
     return (
       <p className="alert alert-info mt-4">
@@ -348,19 +491,41 @@ export function DaySummary({ report, labels, languageCode, needsUrl }) {
 
   const counts = countStatuses([...report.needs, ...report.ratios]);
   const total = report.needs.length + report.ratios.length;
+  const folding = { prefix, folded, toggle: toggleGroup };
+  const groups = [...groupsOf(report.needs).map((g) => g.key), RATIOS];
+  const allFolded = groups.every((group) => folded.includes(group));
 
   return (
     <section className="mt-4" aria-label={labels.dayTitle}>
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
         <h2 className="h4 mb-0">{labels.dayTitle}</h2>
-        <ViewChoice labels={labels} />
+        <div className="d-flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary"
+            onClick={() => setFolded(allFolded ? [] : groups)}
+          >
+            {allFolded ? labels.expandAll : labels.collapseAll}
+          </button>
+          <ViewChoice labels={labels} />
+        </div>
       </div>
       <StatusBar counts={counts} total={total} labels={labels} />
       <p className="small text-body-secondary">{labels.coverageNote}</p>
       {mode === 'table' ? (
-        <Table report={report} labels={labels} languageCode={languageCode} />
+        <Table
+          report={report}
+          labels={labels}
+          languageCode={languageCode}
+          folding={folding}
+        />
       ) : (
-        <Gauges report={report} labels={labels} languageCode={languageCode} />
+        <Gauges
+          report={report}
+          labels={labels}
+          languageCode={languageCode}
+          folding={folding}
+        />
       )}
     </section>
   );

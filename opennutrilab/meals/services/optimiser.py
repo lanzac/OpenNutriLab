@@ -25,6 +25,11 @@ a tenth of one that has none of it. The targets are:
   `numerator - high * denominator <= 0`, and its violation is taken over what the
   denominator is at the need, so that it costs the same whatever the nutrient's unit.
 
+A candidate can be **required whole**: all of a quantity in the day (the package of a
+product the user would have used up), shared between the meals it may be in as the
+optimiser sees fit. It is the one thing a day is held to, not a target: the other
+targets are then the closest that is left, which may be far from them.
+
 And a small cost for each product used and for each product in each meal, so that a
 day is not made of twenty products or of the same one in four places. The price of
 each is a few hundredths of a missed need.
@@ -128,6 +133,9 @@ class Candidate(NamedTuple):
     meals: frozenset[str]
     # Not a product of the inventory: a food a suggestion would have the user get.
     new: bool = False
+    # All of it, this many grams, is in the day: a whole number of steps, which is
+    # for the caller to make this a multiple of. None, as much as is best.
+    required_grams: float | None = None
 
 
 class Pick(NamedTuple):
@@ -162,11 +170,12 @@ class _Model:
     def var(
         self,
         *,
+        lower: float = 0.0,
         upper: float = math.inf,
         cost: float = 0.0,
         integer: bool = False,
     ) -> int:
-        self.lower.append(0.0)
+        self.lower.append(lower)
         self.upper.append(upper)
         self.cost.append(cost)
         self.integer.append(int(integer))
@@ -254,16 +263,24 @@ class _Day:
         """
         model, weights = self.model, self.weights
         most = candidate.max_grams / candidate.step_grams
+        needed = _steps_required(candidate)
         in_meals = [
             (kind, model.var(upper=most)) for kind in KINDS if kind in candidate.meals
         ]
         if not in_meals:
             return
         cost = weights.food + (weights.new if candidate.new else 0.0)
-        used = model.var(upper=1, cost=cost, integer=candidate.new)
+        used = model.var(
+            lower=0 if needed is None else 1,
+            upper=1,
+            cost=cost,
+            integer=candidate.new,
+        )
         if candidate.new:
             self.new_used.append(used)
         model.row({**{x: 1.0 for _kind, x in in_meals}, used: -most}, high=0)
+        if needed is not None:
+            model.row({x: 1.0 for _kind, x in in_meals}, low=needed, high=needed)
         for kind, x in in_meals:
             self.steps[number, kind] = x
 
@@ -274,6 +291,7 @@ class _Day:
             return
         model, weights = self.model, self.weights
         most = math.floor(candidate.max_grams / candidate.step_grams + 1e-9)
+        needed = _steps_required(candidate)
         in_meals: list[int] = []
         for kind in KINDS:
             if kind not in candidate.meals:
@@ -288,16 +306,21 @@ class _Day:
         if not in_meals:
             return
         cost = weights.food + (weights.new if candidate.new else 0.0)
-        used = model.var(upper=1, cost=cost, integer=True)
+        used = model.var(
+            lower=0 if needed is None else 1, upper=1, cost=cost, integer=True
+        )
         if candidate.new:
             self.new_used.append(used)
             # In one meal: it is to be got and eaten, not spread.
             model.row({**dict.fromkeys(in_meals, 1.0), used: -1.0}, high=0)
         else:
             model.row({**dict.fromkeys(in_meals, 1.0), used: -len(in_meals)}, high=0)
-        # The most of it in a day.
+        # The most of it in a day, which is all of it where it is required whole.
         in_day = {x: 1.0 for (n, _kind), x in self.steps.items() if n == number}
-        model.row(in_day, high=most)
+        if needed is None:
+            model.row(in_day, high=most)
+        else:
+            model.row(in_day, low=needed, high=needed)
 
     def terms(
         self, by_nutrient: Mapping[str, Weight], kinds: Iterable[str] = KINDS
@@ -388,6 +411,13 @@ class _Day:
                 )
             )
         return sorted(found, key=lambda p: (KINDS.index(p.kind), p.barcode))
+
+
+def _steps_required(candidate: Candidate) -> int | None:
+    """How many steps of a candidate the day must have, where it is required whole."""
+    if candidate.required_grams is None:
+        return None
+    return round(candidate.required_grams / candidate.step_grams)
 
 
 def _difference(

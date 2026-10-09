@@ -292,6 +292,15 @@ def meals_labels() -> dict[str, str]:
         "totalQuantity": _("Total quantity"),
         # %(percent)s and %(package)s are put in client-side.
         "packageShare": _("%(percent)s of a package of %(package)s"),
+        # %(reached)s and %(total)s are put in client-side.
+        "groupReached": _("%(reached)s of %(total)s met"),
+        "collapseAll": _("Fold all"),
+        "expandAll": _("Unfold all"),
+        "limitsWhole": _("Use the whole package"),
+        "limitsWholeHelp": _(
+            "The day proposed uses all of the package, even if that goes over a need."
+        ),
+        "limitsWholeNeedsPackage": _("Give the product's total quantity first."),
         "coversNeed": _("covers the need"),
         # %(percent)s is put in client-side, with its percent sign.
         "ofNeed": _("%(percent)s of the need"),

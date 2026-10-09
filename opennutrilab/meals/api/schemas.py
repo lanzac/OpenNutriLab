@@ -57,6 +57,8 @@ class LimitsIn(Schema):
         default=None, gt=0, max_digits=7, decimal_places=2
     )
     max_unit: Literal["serving", "g"] | None = None
+    # All of the package in the day, in place of a most.
+    use_all: bool = False
 
 
 class LimitsOut(Schema):
@@ -64,6 +66,7 @@ class LimitsOut(Schema):
     meals: list[str]
     max_quantity: Decimal | None
     max_unit: str
+    use_all: bool
 
 
 class TotalOut(Schema):

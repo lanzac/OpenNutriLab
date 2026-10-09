@@ -8,6 +8,7 @@ from django.test import Client
 
 from opennutrilab.meals.models import Meal
 from opennutrilab.meals.models import Profile
+from opennutrilab.meals.services import limits
 from opennutrilab.meals.services import suggestions
 from opennutrilab.meals.services.day_report import DayReport
 from opennutrilab.meals.services.day_report import GenericItem
@@ -308,6 +309,28 @@ def test_foods_are_suggested_that_close_what_the_inventory_misses(
         assert len(suggested.picks) == 1
     # Nothing is written.
     assert not Meal.objects.exists()
+
+
+def test_a_product_asked_for_whole_is_all_in_the_day_with_the_suggested_foods_too(
+    user: User, oats_stocked: Product, table: Source
+):
+    make_profile(user)
+    Product.objects.filter(pk=OATS).update(package_quantity=D(375), package_unit="g")
+    oats_stocked.refresh_from_db()
+    limits.set_limits(user, oats_stocked, [], None, None, use_all=True)
+
+    found = suggestions.suggest_foods(user, DAY)
+
+    assert found.foods
+    for report in (found.base, found.report):
+        oats = [
+            item
+            for meal in report.meals
+            for item in meal.items
+            if getattr(item, "product", None) == oats_stocked
+        ]
+        assert oats
+        assert sum(item.quantity for item in oats) == D(375)
 
 
 def test_a_suggested_food_is_in_the_day_reported_as_an_item_that_is_not_saved(

@@ -92,6 +92,13 @@ export const labels = {
   shareOfLimit: 'Part de la limite',
   totalQuantity: 'Quantité totale',
   packageShare: '%(percent)s d’un paquet de %(package)s',
+  groupReached: '%(reached)s sur %(total)s respectés',
+  collapseAll: 'Tout replier',
+  expandAll: 'Tout déplier',
+  limitsWhole: 'Utiliser tout le paquet',
+  limitsWholeHelp:
+    'Le jour proposé utilise tout le paquet, même si cela dépasse un besoin.',
+  limitsWholeNeedsPackage: 'Indiquez d’abord la quantité totale du produit.',
 };
 
 export const BREAD = {

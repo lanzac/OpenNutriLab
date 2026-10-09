@@ -323,3 +323,165 @@ describe('the total quantity of a product', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('folding the groups of the day', () => {
+  const group = (region, name) =>
+    within(region).getByRole('button', { name: new RegExp(name) });
+
+  it('shows every group open, each with how many of its needs are met', async () => {
+    const region = await summary();
+
+    for (const name of ['Énergie', 'Macronutriment', 'Minéral', 'Rapports']) {
+      expect(group(region, name)).toHaveAttribute('aria-expanded', 'true');
+    }
+    // Sodium and iron are both met; the omega ratio is short, the other unknown.
+    expect(group(region, 'Minéral')).toHaveTextContent('2 sur 2 respectés');
+    expect(group(region, 'Rapports')).toHaveTextContent('0 sur 2 respectés');
+    expect(group(region, 'Macronutriment')).toHaveTextContent(
+      '0 sur 1 respectés',
+    );
+  });
+
+  it('hides the gauges of a group that is folded, and only those', async () => {
+    const region = await summary();
+
+    fireEvent.click(group(region, 'Minéral'));
+
+    expect(group(region, 'Minéral')).toHaveAttribute('aria-expanded', 'false');
+    expect(within(region).queryByRole('meter', { name: 'Sodium' })).toBeNull();
+    expect(within(region).queryByRole('meter', { name: 'Fer' })).toBeNull();
+    expect(
+      within(region).getByRole('meter', { name: 'Fibres' }),
+    ).toBeInTheDocument();
+    // What a folded group holds is still said, at its head.
+    expect(group(region, 'Minéral')).toHaveTextContent('2 sur 2 respectés');
+  });
+
+  it('opens a group again', async () => {
+    const region = await summary();
+    fireEvent.click(group(region, 'Minéral'));
+
+    fireEvent.click(group(region, 'Minéral'));
+
+    expect(group(region, 'Minéral')).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      within(region).getByRole('meter', { name: 'Sodium' }),
+    ).toBeInTheDocument();
+  });
+
+  it('folds the ratios as a group of their own', async () => {
+    const region = await summary();
+
+    fireEvent.click(group(region, 'Rapports'));
+
+    expect(
+      within(region).queryByRole('meter', { name: 'Oméga-3 / Oméga-6' }),
+    ).toBeNull();
+    expect(
+      within(region).getByRole('meter', { name: 'Sodium' }),
+    ).toBeInTheDocument();
+  });
+
+  it('folds and unfolds all of them at once', async () => {
+    const region = await summary();
+
+    fireEvent.click(
+      within(region).getByRole('button', { name: 'Tout replier' }),
+    );
+
+    expect(within(region).queryByRole('meter')).toBeNull();
+    for (const name of ['Énergie', 'Macronutriment', 'Minéral', 'Rapports']) {
+      expect(group(region, name)).toHaveAttribute('aria-expanded', 'false');
+    }
+    expect(
+      within(region).queryByRole('button', { name: 'Tout replier' }),
+    ).toBeNull();
+
+    fireEvent.click(
+      within(region).getByRole('button', { name: 'Tout déplier' }),
+    );
+
+    expect(within(region).getAllByRole('meter')).toHaveLength(6);
+  });
+
+  it('offers to fold all again once a group is open after all were folded', async () => {
+    const region = await summary();
+    fireEvent.click(
+      within(region).getByRole('button', { name: 'Tout replier' }),
+    );
+
+    fireEvent.click(group(region, 'Minéral'));
+
+    expect(
+      within(region).getByRole('button', { name: 'Tout replier' }),
+    ).toBeInTheDocument();
+    expect(within(region).getAllByRole('meter')).toHaveLength(2);
+  });
+
+  it('keeps what is folded for the next visit', async () => {
+    const first = await summary();
+    fireEvent.click(group(first, 'Minéral'));
+    expect(window.localStorage.getItem('meals.foldedGroups')).toBe(
+      '["mineral"]',
+    );
+    document.body.innerHTML = '';
+
+    const second = await summary();
+
+    expect(group(second, 'Minéral')).toHaveAttribute('aria-expanded', 'false');
+    expect(within(second).queryByRole('meter', { name: 'Sodium' })).toBeNull();
+    expect(
+      within(second).getByRole('meter', { name: 'Fibres' }),
+    ).toBeInTheDocument();
+  });
+
+  it('opens everything when what was kept is not a list of groups', async () => {
+    window.localStorage.setItem('meals.foldedGroups', '{"mineral": true}');
+
+    const region = await summary();
+
+    expect(within(region).getAllByRole('meter')).toHaveLength(6);
+  });
+
+  it('works without storage', async () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    const region = await summary();
+
+    fireEvent.click(group(region, 'Minéral'));
+
+    expect(within(region).queryByRole('meter', { name: 'Sodium' })).toBeNull();
+  });
+
+  it('folds the same groups in the table', async () => {
+    const region = await summary();
+    fireEvent.click(within(region).getByRole('button', { name: 'Tableau' }));
+    expect(
+      within(region).getByRole('row', { name: /^Sodium\s\d/ }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(group(region, 'Minéral'));
+
+    expect(
+      within(region).queryByRole('row', { name: /^Sodium\s\d/ }),
+    ).toBeNull();
+    expect(
+      within(region).getByRole('row', { name: /Fibres/ }),
+    ).toBeInTheDocument();
+    expect(group(region, 'Minéral')).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('folds the table of the ratios', async () => {
+    const region = await summary();
+    fireEvent.click(within(region).getByRole('button', { name: 'Tableau' }));
+    expect(within(region).getAllByRole('table')).toHaveLength(2);
+
+    fireEvent.click(group(region, 'Rapports'));
+
+    expect(within(region).getAllByRole('table')).toHaveLength(1);
+  });
+});

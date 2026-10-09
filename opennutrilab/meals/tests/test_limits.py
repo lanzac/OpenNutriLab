@@ -2,6 +2,8 @@ from decimal import Decimal
 from http import HTTPStatus
 
 import pytest
+from django.db import IntegrityError
+from django.db import transaction
 from django.test import Client
 
 from opennutrilab.meals.models import ItemLimits
@@ -9,6 +11,7 @@ from opennutrilab.meals.services import limits
 from opennutrilab.meals.services.limits import NO_LIMITS
 from opennutrilab.meals.services.limits import InvalidMealError
 from opennutrilab.meals.services.limits import Limits
+from opennutrilab.meals.services.limits import NoPackageError
 from opennutrilab.meals.services.meal_services import NoServingError
 from opennutrilab.meals.services.meal_services import NotInInventoryError
 from opennutrilab.meals.tests.conftest import make_product
@@ -24,7 +27,7 @@ MUESLI = "3229820794556"
 
 @pytest.fixture
 def products(user: User, db: None) -> None:
-    stock(user, make_product(BARS, serving="45"), make_product(MUESLI))
+    stock(user, make_product(BARS, serving="45", package="135"), make_product(MUESLI))
 
 
 @pytest.mark.django_db
@@ -133,6 +136,81 @@ def test_limits_are_each_users_own(user: User, products: None):
 
 
 # ----------------------------------------------------------------------------
+# The whole package
+# ----------------------------------------------------------------------------
+@pytest.mark.django_db
+def test_the_whole_package_can_be_asked_for_of_a_product_that_has_one(
+    user: User, products: None
+):
+    bars = InventoryItem.objects.get(user=user, product_id=BARS).product
+
+    found = limits.set_limits(user, bars, ["lunch", "dinner"], None, None, use_all=True)
+
+    assert found == Limits(("lunch", "dinner"), None, "", use_all=True)
+    assert limits.limits_of(user) == {BARS: found}
+
+
+@pytest.mark.django_db
+def test_the_whole_package_is_asked_for_with_every_meal_too(user: User, products: None):
+    bars = InventoryItem.objects.get(user=user, product_id=BARS).product
+
+    found = limits.set_limits(user, bars, [], None, None, use_all=True)
+
+    # Not "no limits": the row is kept, as it says something.
+    assert found == Limits((), None, "", use_all=True)
+    assert ItemLimits.objects.get().use_all
+
+
+@pytest.mark.django_db
+def test_the_whole_package_takes_the_place_of_a_most(user: User, products: None):
+    bars = InventoryItem.objects.get(user=user, product_id=BARS).product
+    limits.set_limits(user, bars, [], D(2), "serving")
+
+    found = limits.set_limits(user, bars, [], D(2), "serving", use_all=True)
+
+    assert found == Limits((), None, "", use_all=True)
+    kept = ItemLimits.objects.get()
+    assert (kept.max_quantity, kept.max_unit, kept.use_all) == (None, "", True)
+
+
+@pytest.mark.django_db
+def test_a_product_with_no_total_quantity_cannot_be_asked_for_whole(
+    user: User, products: None
+):
+    muesli = InventoryItem.objects.get(user=user, product_id=MUESLI).product
+
+    with pytest.raises(NoPackageError):
+        limits.set_limits(user, muesli, [], None, None, use_all=True)
+
+    assert not ItemLimits.objects.exists()
+
+
+@pytest.mark.django_db
+def test_not_asking_for_the_whole_package_any_more_clears_a_row_with_nothing_else(
+    user: User, products: None
+):
+    bars = InventoryItem.objects.get(user=user, product_id=BARS).product
+    limits.set_limits(user, bars, [], None, None, use_all=True)
+
+    cleared = limits.set_limits(user, bars, [], None, None)
+
+    assert cleared == NO_LIMITS
+    assert not ItemLimits.objects.exists()
+
+
+@pytest.mark.django_db
+def test_the_database_does_not_keep_a_most_with_the_whole_package(
+    user: User, products: None
+):
+    item = InventoryItem.objects.get(user=user, product_id=BARS)
+
+    with pytest.raises(IntegrityError), transaction.atomic():
+        ItemLimits.objects.create(
+            inventory_item=item, max_quantity=D(2), max_unit="g", use_all=True
+        )
+
+
+# ----------------------------------------------------------------------------
 # The API
 # ----------------------------------------------------------------------------
 API = "/api/v1/meals/limits/"
@@ -166,6 +244,7 @@ def test_the_limits_are_set_served_and_cleared(api_client: Client, products: Non
         "meals": ["breakfast", "snack"],
         "max_quantity": "2.00",
         "max_unit": "serving",
+        "use_all": False,
     }
     assert api_client.get(API).json() == [response.json()]
 
@@ -195,3 +274,29 @@ def test_what_cannot_be_set_is_said(api_client: Client, products: None):
 @pytest.mark.django_db
 def test_the_limits_need_a_signed_in_user(client: Client, products: None):
     assert client.get(API).status_code == HTTPStatus.UNAUTHORIZED
+
+
+@pytest.mark.django_db
+def test_the_whole_package_is_set_and_served(api_client: Client, products: None):
+    response = put(api_client, BARS, meals=["lunch"], use_all=True)
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {
+        "barcode": BARS,
+        "meals": ["lunch"],
+        "max_quantity": None,
+        "max_unit": "",
+        "use_all": True,
+    }
+    assert api_client.get(API).json() == [response.json()]
+
+
+@pytest.mark.django_db
+def test_the_whole_package_of_a_product_with_none_is_refused(
+    api_client: Client, products: None
+):
+    response = put(api_client, MUESLI, meals=[], use_all=True)
+
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+    assert "total quantity" in response.json()["detail"]
+    assert api_client.get(API).json() == []
