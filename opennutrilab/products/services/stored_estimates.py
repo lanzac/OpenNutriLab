@@ -13,11 +13,14 @@ once.
 
 A product's composition is what its label declares, where it declares it, with the
 rounding it is written with, and its estimate for the rest: the label is the
-reference for the product (see ProductNutrient).
+reference for the product (see ProductNutrient). What the label's figure gives of
+another nutrient by a one-term derivation (the sodium of its salt) is the label's
+too, so that a composition does not hold a salt and a sodium that disagree.
 """
 
 import logging
 from collections.abc import Iterable
+from collections.abc import Mapping
 from decimal import Decimal
 from typing import NamedTuple
 
@@ -28,6 +31,7 @@ from opennutrilab.products.models import EstimatedNutrient
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductEstimate
 from opennutrilab.products.models import ProductNutrient
+from opennutrilab.products.services.derived_nutrients import DERIVATIONS
 from opennutrilab.products.services.estimate_validation import validate_estimate
 from opennutrilab.products.services.reference_composition import rounding_margin
 
@@ -44,7 +48,8 @@ class Amount(NamedTuple):
     # The share of the product, in percent, that the figure covers: all of it for
     # a declared figure.
     coverage: Decimal
-    # Whether the label declares it.
+    # Whether it comes from the label: declared there, or what the label's own
+    # figure gives (see _worked_back).
     declared: bool
 
 
@@ -113,6 +118,43 @@ def work_out(product: Product) -> ProductEstimate:
     return ProductEstimate.objects.prefetch_related("nutrients").get(pk=estimate.pk)
 
 
+def _declared(amount: Decimal) -> Amount:
+    """A figure of the label, within the rounding it is written with."""
+    margin = rounding_margin(amount)
+    return Amount(
+        amount=amount,
+        low=max(Decimal(0), amount - margin),
+        high=amount + margin,
+        coverage=Decimal(100),
+        declared=True,
+    )
+
+
+def _worked_back(declared: Mapping[str, Amount]) -> dict[str, Amount]:
+    """
+    What the label declares of a nutrient it does not, when a derivation that has
+    one term says it: it declares salt, and salt is sodium times 0.0025, so it
+    declares the sodium that goes with it, however far an estimate from the
+    ingredients lies from it. The rounding of the figure carries over.
+    """
+    found: dict[str, Amount] = {}
+    for derived, terms in DERIVATIONS.items():
+        if len(terms) != 1 or derived not in declared:
+            continue
+        term = terms[0]
+        if term.component in declared:
+            continue
+        figure = declared[derived]
+        found[term.component] = Amount(
+            amount=figure.amount / term.factor,
+            low=figure.low / term.factor,
+            high=None if figure.high is None else figure.high / term.factor,
+            coverage=figure.coverage,
+            declared=True,
+        )
+    return found
+
+
 def mark_stale(barcode: str | None = None) -> None:
     """Mark the kept estimate of a product stale, or every one with no barcode."""
     kept = ProductEstimate.objects.filter(stale=False)
@@ -137,15 +179,12 @@ def compositions(products: Iterable[Product]) -> dict[str, dict[str, Amount]]:
         }
         for barcode, rows in kept_estimates(products).items()
     }
+    label: dict[str, dict[str, Amount]] = {barcode: {} for barcode in composition}
     for barcode, code, amount in ProductNutrient.objects.filter(
         product__in=products
     ).values_list("product_id", "nutrient_id", "amount"):
-        margin = rounding_margin(amount)
-        composition[barcode][code] = Amount(
-            amount=amount,
-            low=max(Decimal(0), amount - margin),
-            high=amount + margin,
-            coverage=Decimal(100),
-            declared=True,
-        )
+        label[barcode][code] = _declared(amount)
+    for barcode, declared in label.items():
+        declared.update(_worked_back(declared))
+        composition[barcode].update(declared)
     return composition

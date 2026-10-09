@@ -200,6 +200,60 @@ def test_a_product_with_no_ingredient_has_its_label_only(source: Source):
     assert compositions([product]) == {BREAD: {"fat": (D(0), D(0), D(0), D(100), True)}}
 
 
+def declare(product: Product, **amounts: str) -> None:
+    for code, amount in amounts.items():
+        ProductNutrient.objects.create(
+            product=product, nutrient=Nutrient.objects.get(code=code), amount=D(amount)
+        )
+
+
+def test_the_sodium_of_a_declared_salt_is_the_labels_with_its_rounding(source: Source):
+    product = product_of(BREAD)
+    declare(product, salt="1.2")
+
+    sodium = compositions([product])[BREAD]["sodium"]
+
+    # Salt is sodium in mg times 0.0025: 1.2 g of salt is 480 mg of sodium, and the
+    # rounding of 1.2 (1.15 to 1.25) carries over.
+    assert sodium.amount == D(480)
+    assert (sodium.low, sodium.high) == (D(460), D(500))
+    assert (sodium.coverage, sodium.declared) == (D(100), True)
+
+
+def test_a_sodium_the_label_declares_is_not_replaced_by_the_one_of_its_salt(
+    source: Source,
+):
+    product = product_of(BREAD)
+    declare(product, salt="1.2", sodium="420")
+
+    assert compositions([product])[BREAD]["sodium"].amount == D(420)
+
+
+def test_the_sodium_of_a_salt_the_label_does_not_declare_is_the_estimates(
+    source: Source,
+):
+    ingredient = reference(source, "7", sodium="500")
+    product = product_of(BREAD, ingredient)
+
+    sodium = compositions([product])[BREAD]["sodium"]
+
+    assert sodium.declared is False
+    assert sodium.amount == D(500)
+
+
+def test_a_declared_salt_gives_the_sodium_over_the_estimate_of_the_ingredients(
+    source: Source,
+):
+    product = product_of(BREAD, reference(source, "7", sodium="2800"))
+    declare(product, salt="0.6")
+
+    sodium = compositions([product])[BREAD]["sodium"]
+
+    # What the ingredients could give is not the label's 0.6 g of salt.
+    assert sodium.amount == D(240)
+    assert sodium.declared is True
+
+
 # ----------------------------------------------------------------------------
 # The command
 # ----------------------------------------------------------------------------
