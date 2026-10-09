@@ -20,6 +20,8 @@ from opennutrilab.products.services.servings import read_serving
         ("30 gr", Serving(Decimal(30), "g")),
         ("30 grammes", Serving(Decimal(30), "g")),
         ("30 Gram", Serving(Decimal(30), "g")),
+        ("0,1 kg", Serving(Decimal(100), "g")),
+        ("2 dl", Serving(Decimal(200), "ml")),
     ],
 )
 def test_a_quantity_alone_is_read_with_its_unit(text: str, serving: Serving):

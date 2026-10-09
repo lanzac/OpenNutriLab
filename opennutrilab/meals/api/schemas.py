@@ -19,7 +19,9 @@ from opennutrilab.meals.services.day_report import Total
 from opennutrilab.meals.services.needs import Kind
 from opennutrilab.meals.services.proposals import Proposal
 from opennutrilab.meals.services.suggestions import Suggestions
+from opennutrilab.products.api.schemas.outbound import PackageOut
 from opennutrilab.products.api.schemas.outbound import ServingOut
+from opennutrilab.products.api.schemas.outbound import package_of
 from opennutrilab.products.api.schemas.outbound import serving_of
 from opennutrilab.products.models import Nutrient
 
@@ -90,6 +92,8 @@ class MealItemOut(Schema):
     # None for servings of a product that has no serving any more.
     grams: Decimal | None
     serving: ServingOut | None
+    # What the product's package holds, which an item is a share of.
+    package: PackageOut | None = None
     # A food of a table that a suggestion names, and not a product: it has no serving,
     # and its sheet in the table is at `url`.
     generic: bool = False
@@ -326,6 +330,9 @@ def _meal(meal: MealReport) -> MealOut:
                 grams=item.grams,
                 serving=(
                     serving_of(item.product) if isinstance(item, MealItem) else None
+                ),
+                package=(
+                    package_of(item.product) if isinstance(item, MealItem) else None
                 ),
                 generic=isinstance(item, GenericItem),
                 url=item.food.url if isinstance(item, GenericItem) else "",

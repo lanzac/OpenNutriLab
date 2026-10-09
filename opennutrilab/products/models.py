@@ -190,6 +190,18 @@ class Product(models.Model):
         default="",
         help_text=_('What the label calls a serving, such as "1 tranche".'),
     )
+    # What the package holds, as its quantity says ("500 g"): read from OpenFoodFacts'
+    # text (see services.packages) or entered by hand, in the same units as a serving.
+    package_quantity = models.DecimalField(
+        max_digits=9,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    package_unit = models.CharField(
+        max_length=2, choices=ServingUnit.choices, blank=True, default=""
+    )
 
     if TYPE_CHECKING:
         declared_nutrients: RelatedManager["ProductNutrient"]
@@ -210,6 +222,16 @@ class Product(models.Model):
                     serving_unit__in=["g", "ml"],
                 ),
                 name="product_serving_is_whole",
+            ),
+            # The same for the package: a quantity and a unit, or nothing at all.
+            models.CheckConstraint(  # pyright: ignore[reportCallIssue]
+                condition=models.Q(package_quantity__isnull=True, package_unit="")  # pyright: ignore[reportCallIssue]
+                | models.Q(
+                    package_quantity__isnull=False,
+                    package_quantity__gt=0,
+                    package_unit__in=["g", "ml"],
+                ),
+                name="product_package_is_whole",
             ),
         ]
 

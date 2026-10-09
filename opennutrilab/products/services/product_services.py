@@ -31,6 +31,7 @@ from opennutrilab.products.api.openfoodfacts.services import (
 )
 from opennutrilab.products.api.schemas.inbound import OFF_IMAGE_HOSTS
 from opennutrilab.products.api.schemas.inbound import IngredientInput
+from opennutrilab.products.api.schemas.inbound import PackageInput
 from opennutrilab.products.api.schemas.inbound import ProductCreate
 from opennutrilab.products.api.schemas.inbound import ProductUpdate
 from opennutrilab.products.api.schemas.inbound import ServingInput
@@ -103,6 +104,7 @@ def create_product(
                 group_level_2=data.group_level_2,
                 ingredients_text=data.ingredients_text,
                 **_serving_fields(data.serving),
+                **_package_fields(data.package),
             )
         except IntegrityError as e:
             raise ProductAlreadyExistsError(data.barcode) from e
@@ -187,8 +189,20 @@ def _apply_fields(product: Product, data: ProductUpdate) -> None:
             setattr(product, field, value)
             update_fields.append(field)
 
+    if data.package is not None or data.clears_package:
+        for field, value in _package_fields(data.package).items():
+            setattr(product, field, value)
+            update_fields.append(field)
+
     if update_fields:
         product.save(update_fields=update_fields)
+
+
+def _package_fields(package: PackageInput | None) -> dict[str, Any]:
+    """The product's package fields for `package`, both empty for None."""
+    if package is None:
+        return {"package_quantity": None, "package_unit": ""}
+    return {"package_quantity": package.quantity, "package_unit": package.unit}
 
 
 def _serving_fields(serving: ServingInput | None) -> dict[str, Any]:

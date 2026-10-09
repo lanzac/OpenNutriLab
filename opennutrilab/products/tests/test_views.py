@@ -353,6 +353,50 @@ class TestProductCreateView:
         assert not InventoryItem.objects.filter(user=other).exists()
 
     @patch("opennutrilab.products.views.fetch_from_off")
+    def test_lookup_fills_the_package_read_from_its_text(
+        self, mock_fetch_from_off: MagicMock, client: Client
+    ):
+        mock_fetch_from_off.return_value = off_product(quantity="6 x 125 g")
+
+        response: HttpResponse = client.get(
+            reverse("create_product"), {"barcode": NUTELLA}
+        )
+
+        form: ProductForm = response.context["form"]
+        assert form["package_quantity"].value() == "750"
+        assert form["package_unit"].value() == "g"
+        assert list(response.context["messages"]) == []
+
+    @patch("opennutrilab.products.views.fetch_from_off")
+    def test_a_package_that_is_not_read_is_said_and_left_empty(
+        self, mock_fetch_from_off: MagicMock, client: Client
+    ):
+        mock_fetch_from_off.return_value = off_product(quantity="2 pots")
+
+        response: HttpResponse = client.get(
+            reverse("create_product"), {"barcode": NUTELLA}
+        )
+
+        form: ProductForm = response.context["form"]
+        assert form["package_quantity"].value() is None
+        [notice] = [str(m) for m in response.context["messages"]]
+        assert '"2 pots"' in notice
+        assert "could not be read" in notice
+
+    @patch("opennutrilab.products.views.fetch_from_off")
+    def test_a_product_openfoodfacts_has_no_quantity_for_has_no_package(
+        self, mock_fetch_from_off: MagicMock, client: Client
+    ):
+        mock_fetch_from_off.return_value = off_product(quantity=None)
+
+        response: HttpResponse = client.get(
+            reverse("create_product"), {"barcode": NUTELLA}
+        )
+
+        assert response.context["form"]["package_quantity"].value() is None
+        assert list(response.context["messages"]) == []
+
+    @patch("opennutrilab.products.views.fetch_from_off")
     def test_a_badly_read_list_imports_no_ingredient_and_says_how_to_fix_it(
         self, mock_fetch_from_off: MagicMock, client: Client
     ):

@@ -71,6 +71,13 @@ class ServingInput(Schema):
     name: str = Field(default="", max_length=100)
 
 
+class PackageInput(Schema):
+    """What a product's package holds (see Product.package_quantity)."""
+
+    quantity: Decimal = Field(gt=0, max_digits=9, decimal_places=2)
+    unit: Literal["g", "ml"] = "g"
+
+
 class ProductCreate(Schema):
     barcode: str
     name: str = Field(min_length=1, max_length=100)
@@ -84,6 +91,7 @@ class ProductCreate(Schema):
     # The label's list those ingredients were read from, when there is one.
     ingredients_text: str = ""
     serving: ServingInput | None = None
+    package: PackageInput | None = None
 
     @field_validator("barcode")
     @classmethod
@@ -106,8 +114,9 @@ class ProductCreate(Schema):
 # UPDATE SCHEMA (PATCH) - every field is optional, for partial updates.
 # A field left out (None) is not touched. In `nutrients`, a code left out is
 # not touched either, and a code set to null clears that value. A list of
-# ingredients that is given replaces the stored tree. The serving is the one
-# field a null clears: left out it is not touched, given as null it is removed.
+# ingredients that is given replaces the stored tree. The serving and the package
+# are the fields a null clears: left out they are not touched, given as null they
+# are removed.
 # -------------------------------------------------------------
 
 
@@ -122,11 +131,17 @@ class ProductUpdate(Schema):
     ingredients: list[IngredientInput] | None = None
     ingredients_text: str | None = None
     serving: ServingInput | None = None
+    package: PackageInput | None = None
 
     @property
     def clears_serving(self) -> bool:
         """Whether the serving was given as null, which removes it."""
         return "serving" in self.model_fields_set and self.serving is None
+
+    @property
+    def clears_package(self) -> bool:
+        """Whether the package was given as null, which removes it."""
+        return "package" in self.model_fields_set and self.package is None
 
     @field_validator("image_url")
     @classmethod

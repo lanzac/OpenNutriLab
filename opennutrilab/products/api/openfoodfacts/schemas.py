@@ -34,6 +34,9 @@ class OFFProductSchema(Schema):
     # The serving as its contributors typed it ("35.7 g (1 tranche)"), read by
     # services.servings. OFF's own reading of it, `serving_quantity`, is not read.
     serving_size: str | None = Field(default=None, validation_alias="serving_size")
+    # What the package holds, as typed from the packaging ("500 g", "6 x 125 g"), read
+    # by services.packages. OFF's own reading of it, `product_quantity`, is not read.
+    quantity: str | None = Field(default=None, validation_alias="quantity")
     group_level_1: str | None = Field(default=None, validation_alias="pnns_groups_1")
     group_level_2: str | None = Field(default=None, validation_alias="pnns_groups_2")
 

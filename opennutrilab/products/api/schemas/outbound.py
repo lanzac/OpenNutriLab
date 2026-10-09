@@ -227,11 +227,29 @@ class EstimateOut(Schema):
     caveat: str
 
 
+class PackageOut(Schema):
+    """What a product's package holds, in g or ml."""
+
+    quantity: Decimal
+    unit: str
+
+
+def package_of(product: Product) -> PackageOut | None:
+    if product.package_quantity is None:
+        return None
+    return PackageOut(quantity=product.package_quantity, unit=product.package_unit)
+
+
 class ProductListItemOut(ModelSchema):
     """A product as a list shows it."""
 
     # Whether it is in the inventory of the user asking (see the route).
     in_inventory: bool = False
+    package: PackageOut | None = None
+
+    @staticmethod
+    def resolve_package(obj: Product) -> PackageOut | None:
+        return package_of(obj)
 
     class Meta:
         model = Product
@@ -270,6 +288,7 @@ class ProductOut(ModelSchema):
     # The label's list of ingredients, as it was when the ingredients were loaded.
     ingredients_text: str
     serving: ServingOut | None = None
+    package: PackageOut | None = None
 
     # Values declared on the label, in catalogue order.
     nutrients: list[DeclaredNutrientOut] = []
@@ -294,6 +313,10 @@ class ProductOut(ModelSchema):
     @staticmethod
     def resolve_serving(obj: Product) -> ServingOut | None:
         return serving_of(obj)
+
+    @staticmethod
+    def resolve_package(obj: Product) -> PackageOut | None:
+        return package_of(obj)
 
     @staticmethod
     def resolve_ingredients(obj: Product) -> QuerySet[Ingredient]:
@@ -331,6 +354,7 @@ class InventoryItemOut(Schema):
     barcode: str
     name: str
     serving: ServingOut | None = None
+    package: PackageOut | None = None
     added_at: datetime
 
     @staticmethod
@@ -344,3 +368,7 @@ class InventoryItemOut(Schema):
     @staticmethod
     def resolve_serving(obj: InventoryItem) -> ServingOut | None:
         return serving_of(obj.product)
+
+    @staticmethod
+    def resolve_package(obj: InventoryItem) -> PackageOut | None:
+        return package_of(obj.product)

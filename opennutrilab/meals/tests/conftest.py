@@ -32,17 +32,21 @@ def make_product(
     barcode: str,
     *,
     serving: str | None = None,
+    package: str | None = None,
     **declared: str,
 ) -> Product:
     """
     A product with no ingredient, whose composition is what its label declares:
-    `declared` are amounts per 100 g by nutrient code.
+    `declared` are amounts per 100 g by nutrient code. `serving` and `package` are in
+    grams.
     """
     product = Product.objects.create(
         barcode=barcode,
         name=f"Product {barcode}",
         serving_quantity=None if serving is None else Decimal(serving),
         serving_unit="" if serving is None else "g",
+        package_quantity=None if package is None else Decimal(package),
+        package_unit="" if package is None else "g",
     )
     for code, amount in declared.items():
         ProductNutrient.objects.create(

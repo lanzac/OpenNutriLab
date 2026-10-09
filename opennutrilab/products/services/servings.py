@@ -21,9 +21,10 @@ from decimal import Decimal
 from typing import NamedTuple
 
 # At most two decimals, as Product.serving_quantity keeps.
-_NUMBER = r"(\d{1,5}(?:[.,]\d{1,2})?)"
-# Every way of writing a unit, and the unit and factor it is read as.
-_UNITS: dict[str, tuple[str, int]] = {
+NUMBER = r"(\d{1,5}(?:[.,]\d{1,2})?)"
+# Every way of writing a unit, and the unit and factor it is read as. Shared with the
+# reading of a package (services.packages).
+UNITS: dict[str, tuple[str, int]] = {
     "g": ("g", 1),
     "gr": ("g", 1),
     "grs": ("g", 1),
@@ -32,17 +33,19 @@ _UNITS: dict[str, tuple[str, int]] = {
     "gramme": ("g", 1),
     "grammes": ("g", 1),
     "ml": ("ml", 1),
+    "kg": ("g", 1000),
     "cl": ("ml", 10),
+    "dl": ("ml", 100),
     "l": ("ml", 1000),
 }
-_UNIT = "(" + "|".join(sorted(_UNITS, key=len, reverse=True)) + ")"
-_QUANTITY = rf"{_NUMBER}\s*{_UNIT}"
+UNIT = "(" + "|".join(sorted(UNITS, key=len, reverse=True)) + ")"
+QUANTITY = rf"{NUMBER}\s*{UNIT}"
 
-_ALONE = re.compile(rf"{_QUANTITY}", re.IGNORECASE)
-_NAME_AFTER = re.compile(rf"{_QUANTITY}\s*\(([^()]*)\)", re.IGNORECASE)
-_NAME_BEFORE = re.compile(rf"([^()]*?)\s*\({_QUANTITY}\)", re.IGNORECASE)
+_ALONE = re.compile(rf"{QUANTITY}", re.IGNORECASE)
+_NAME_AFTER = re.compile(rf"{QUANTITY}\s*\(([^()]*)\)", re.IGNORECASE)
+_NAME_BEFORE = re.compile(rf"([^()]*?)\s*\({QUANTITY}\)", re.IGNORECASE)
 # A quantity anywhere in a name, which makes it no name.
-_ANY_QUANTITY = re.compile(rf"\d\s*{_UNIT}\b", re.IGNORECASE)
+_ANY_QUANTITY = re.compile(rf"\d\s*{UNIT}\b", re.IGNORECASE)
 
 
 class Serving(NamedTuple):
@@ -69,7 +72,7 @@ def read_serving(text: str | None) -> Serving | None:
 
 
 def _serving(number: str, unit: str, name: str = "") -> Serving | None:
-    stored_unit, factor = _UNITS[unit.lower()]
+    stored_unit, factor = UNITS[unit.lower()]
     quantity = Decimal(number.replace(",", ".")) * factor
     if quantity <= 0:
         return None

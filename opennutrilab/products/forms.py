@@ -95,6 +95,21 @@ class ProductForm(forms.ModelForm):
         required=False,
         label=_("Unit"),
     )
+    # What the package holds, as the serving is: whole or not at all.
+    package_quantity = forms.DecimalField(
+        required=False,
+        min_value=Decimal("0.01"),
+        max_digits=9,
+        decimal_places=2,
+        label=_("Total quantity"),
+        help_text=_("What the package holds, in total."),
+    )
+    package_unit = forms.ChoiceField(
+        choices=Product.ServingUnit.choices,
+        initial=Product.ServingUnit.GRAM,
+        required=False,
+        label=_("Unit"),
+    )
     serving_name = forms.CharField(
         required=False,
         max_length=100,
@@ -211,6 +226,10 @@ class ProductForm(forms.ModelForm):
                         Column(Field("serving_quantity"), css_class="col-md-4"),
                         Column(Field("serving_unit"), css_class="col-md-3"),
                         Column(Field("serving_name"), css_class="col-md-5"),
+                    ),
+                    Row(
+                        Column(Field("package_quantity"), css_class="col-md-4"),
+                        Column(Field("package_unit"), css_class="col-md-3"),
                     ),
                     css_class="col-md-8",
                 ),
@@ -346,11 +365,19 @@ class ProductForm(forms.ModelForm):
         own initial gives way to the form's.
         """
         product: Product = self.instance
-        if not self.is_edit or product.serving_quantity is None:
+        if not self.is_edit:
             return
-        self.fields["serving_quantity"].initial = plain_amount(product.serving_quantity)
-        self.fields["serving_unit"].initial = product.serving_unit
-        self.fields["serving_name"].initial = product.serving_name
+        if product.serving_quantity is not None:
+            self.fields["serving_quantity"].initial = plain_amount(
+                product.serving_quantity
+            )
+            self.fields["serving_unit"].initial = product.serving_unit
+            self.fields["serving_name"].initial = product.serving_name
+        if product.package_quantity is not None:
+            self.fields["package_quantity"].initial = plain_amount(
+                product.package_quantity
+            )
+            self.fields["package_unit"].initial = product.package_unit
 
     def _get_nutritional_values_layout(self) -> list[Field]:
         """Return crispy-forms layout for the declared nutrients, with units."""
@@ -396,6 +423,13 @@ class ProductForm(forms.ModelForm):
             "group_level_1": cleaned.get("group_level_1") or "",
             "group_level_2": cleaned.get("group_level_2") or "",
             "image_url": (cleaned.get("off_image_url") or None) if from_off else None,
+            # An empty quantity is no package, and clears a stored one.
+            "package": None
+            if cleaned.get("package_quantity") is None
+            else {
+                "quantity": cleaned["package_quantity"],
+                "unit": cleaned.get("package_unit") or Product.ServingUnit.GRAM,
+            },
             # An empty quantity is no serving, and clears a stored one.
             "serving": None
             if cleaned.get("serving_quantity") is None

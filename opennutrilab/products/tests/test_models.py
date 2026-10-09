@@ -108,6 +108,24 @@ def test_a_serving_has_a_quantity_and_a_unit_or_nothing(serving: dict[str, objec
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    "package",
+    [
+        {"package_quantity": Decimal(500)},
+        {"package_unit": "g"},
+        {"package_quantity": Decimal(0), "package_unit": "g"},
+    ],
+)
+def test_a_package_has_a_quantity_and_a_unit_or_nothing(package: dict[str, object]):
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        Product.objects.create(barcode=BARCODE, name="Muesli", **package)  # pyright: ignore[reportArgumentType]
+
+    Product.objects.create(
+        barcode=BARCODE, name="Muesli", package_quantity=Decimal(375), package_unit="g"
+    )
+
+
+@pytest.mark.django_db
 def test_a_product_is_in_a_users_inventory_once(product: Product):
     user = UserFactory()
     InventoryItem.objects.create(user=user, product=product)

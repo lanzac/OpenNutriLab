@@ -1,3 +1,4 @@
+from decimal import Decimal
 from http import HTTPStatus
 from typing import Any
 
@@ -143,7 +144,7 @@ def test_list_products(api_client: Client, products_two: tuple[Product, Product]
     p1, p2 = products_two
     # Only what a list shows: no nested nutritional values or ingredients.
     assert [set(item) for item in response.json()] == [
-        {"barcode", "name", "created_at", "in_inventory"}
+        {"barcode", "name", "created_at", "in_inventory", "package"}
     ] * 2
     assert {item["barcode"] for item in response.json()} == {p1.barcode, p2.barcode}
 
@@ -290,6 +291,56 @@ def test_the_serving_is_written_served_kept_and_cleared(api_client: Client):
 
     api_client.patch(url, {"serving": None}, content_type="application/json")
     assert api_client.get(url).json()["serving"] is None
+
+
+@pytest.mark.django_db
+def test_the_package_is_written_served_kept_and_cleared(api_client: Client):
+    payload = _minimal_payload("3297760097969", "Created Via API")
+    url = f"{API}{payload['barcode']}"
+    api_client.post(API, payload, content_type="application/json")
+    assert api_client.get(url).json()["package"] is None
+
+    api_client.patch(
+        url, {"package": {"quantity": "500"}}, content_type="application/json"
+    )
+    served = {"quantity": "500.00", "unit": "g"}
+    assert api_client.get(url).json()["package"] == served
+
+    api_client.patch(url, {"name": "Renamed"}, content_type="application/json")
+    assert api_client.get(url).json()["package"] == served
+
+    api_client.patch(
+        url,
+        {"package": {"quantity": "1.5", "unit": "ml"}},
+        content_type="application/json",
+    )
+    assert api_client.get(url).json()["package"] == {"quantity": "1.50", "unit": "ml"}
+
+    api_client.patch(url, {"package": None}, content_type="application/json")
+    assert api_client.get(url).json()["package"] is None
+
+
+@pytest.mark.django_db
+def test_the_package_is_written_on_creation_and_listed(api_client: Client):
+    payload = _minimal_payload("3297760097969", "Created Via API")
+    payload["package"] = {"quantity": "375", "unit": "g"}
+
+    created = api_client.post(API, payload, content_type="application/json")
+    listed = api_client.get(API).json()
+
+    [package] = [item["package"] for item in listed]
+    assert package == {"quantity": "375.00", "unit": "g"}
+    assert Decimal(created.json()["package"]["quantity"]) == Decimal(375)
+
+
+@pytest.mark.django_db
+def test_a_package_of_nothing_is_refused(api_client: Client):
+    payload = _minimal_payload("3297760097969", "Created Via API")
+    payload["package"] = {"quantity": "0"}
+
+    response = api_client.post(API, payload, content_type="application/json")
+
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
 @pytest.mark.django_db

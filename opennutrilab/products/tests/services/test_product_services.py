@@ -623,6 +623,43 @@ def test_update_product_sets_keeps_and_clears_the_serving(product: Product):
 
 
 @pytest.mark.django_db
+def test_create_product_writes_the_package_when_given(product: Product):
+    assert product.package_quantity is None
+    assert product.package_unit == ""
+
+    other = create_product(
+        create_payload(
+            barcode="3229820794556", package={"quantity": "500", "unit": "g"}
+        )
+    ).product
+
+    other.refresh_from_db()
+    assert (other.package_quantity, other.package_unit) == (Decimal(500), "g")
+
+
+@pytest.mark.django_db
+def test_update_product_sets_keeps_and_clears_the_package(product: Product):
+    update_product(
+        product, ProductUpdate.model_validate({"package": {"quantity": "1.5"}})
+    )
+    product.refresh_from_db()
+    assert (product.package_quantity, product.package_unit) == (Decimal("1.5"), "g")
+
+    # Left out, it is not touched; the serving is a field of its own.
+    update_product(
+        product, ProductUpdate.model_validate({"serving": {"quantity": "30"}})
+    )
+    product.refresh_from_db()
+    assert product.package_quantity == Decimal("1.5")
+
+    update_product(product, ProductUpdate.model_validate({"package": None}))
+    product.refresh_from_db()
+    assert product.package_quantity is None
+    assert product.package_unit == ""
+    assert product.serving_quantity == Decimal(30)
+
+
+@pytest.mark.django_db
 def test_update_product_sets_and_clears_declared_values_by_code(product: Product):
     data = ProductUpdate.model_validate(
         {"nutrients": {"sugars": "0", "fat": None, "salt": "0.1"}}

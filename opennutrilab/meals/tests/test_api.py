@@ -219,3 +219,27 @@ def test_a_day_is_set_against_the_needs_of_the_profile(
     molar = [r for r in day["ratios"] if r["molar"]]
     assert [r["numerator"] for r in molar] == ["Sodium"]
     assert all(r["status"] == "unknown" for r in day["ratios"] if r["value"] is None)
+
+
+def test_a_product_in_a_meal_comes_with_what_its_package_holds(
+    api_client: Client, user: User, catalogue: None
+):
+    stock(
+        user,
+        make_product(BREAD, serving="35.7", package="500", energy="1233"),
+        make_product(MUESLI, energy="1532"),
+    )
+
+    breakfast = add(api_client, "breakfast", BREAD, "2").json()
+    lunch = add(api_client, "lunch", MUESLI, "60", "g").json()
+
+    assert breakfast["meals"][0]["items"][0]["package"] == {
+        "quantity": "500.00",
+        "unit": "g",
+    }
+    assert lunch["meals"][1]["items"][0]["package"] is None
+    # The inventory serves it too, for the page's choice of a product.
+    served = {
+        i["barcode"]: i["package"] for i in api_client.get("/api/v1/inventory/").json()
+    }
+    assert served == {BREAD: {"quantity": "500.00", "unit": "g"}, MUESLI: None}

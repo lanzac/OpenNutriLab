@@ -41,6 +41,7 @@ from .models import ReferenceIngredient
 from .services.estimate_report import build_estimate
 from .services.inventory import add_to_inventory
 from .services.label_parser import LabelWarning
+from .services.packages import read_package
 from .services.product_services import plain_amount
 from .services.reference_services import CIQUAL_SOURCE_PREFIX
 from .services.reference_services import Item
@@ -325,6 +326,18 @@ def report_label_warnings(
             messages.warning(request, warning.message())
 
 
+def report_unread_package(request: HttpRequest, barcode: str, text: str) -> None:
+    """Tell the user the quantity OpenFoodFacts gives could not be read."""
+    messages.warning(
+        request,
+        _(
+            'OpenFoodFacts gives the quantity of barcode %(barcode)s as "%(text)s", '
+            "which could not be read. Enter what the package holds by hand."
+        )
+        % {"barcode": barcode, "text": text.strip()},
+    )
+
+
 def report_unread_serving(request: HttpRequest, barcode: str, text: str) -> None:
     """Tell the user the serving OpenFoodFacts gives could not be read."""
     messages.warning(
@@ -398,6 +411,12 @@ def initial_from_off(request: HttpRequest, barcode: str) -> dict[str, Any] | Non
         initial["serving_name"] = serving.name
     elif (fetched.serving_size or "").strip():
         report_unread_serving(request, fetched.barcode, fetched.serving_size or "")
+    package = read_package(fetched.quantity)
+    if package is not None:
+        initial["package_quantity"] = plain_amount(package.quantity)
+        initial["package_unit"] = package.unit
+    elif (fetched.quantity or "").strip():
+        report_unread_package(request, fetched.barcode, fetched.quantity or "")
     return initial
 
 

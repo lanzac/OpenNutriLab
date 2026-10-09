@@ -1210,6 +1210,16 @@ msgstr "couvre le besoin"
 msgid "%(percent)s of the need"
 msgstr "%(percent)s du besoin"
 
+msgid "Total quantity"
+msgstr "Quantité totale"
+
+msgid "What the package holds, in total."
+msgstr "Ce que contient le paquet, en tout."
+
+#, python-format
+msgid "OpenFoodFacts gives the quantity of barcode %(barcode)s as \"%(text)s\", which could not be read. Enter what the package holds by hand."
+msgstr "OpenFoodFacts donne la quantité du code-barres %(barcode)s sous la forme « %(text)s », qui n'a pas pu être lue. Saisissez à la main ce que contient le paquet."
+
 #~ msgid "Fat"
 #~ msgstr "Matières grasses"
 
