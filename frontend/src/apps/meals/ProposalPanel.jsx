@@ -16,6 +16,11 @@ export function ProposalPanel({
 }) {
   const { status, skipped, day } = proposal;
   const found = proposal.items.length > 0;
+  // The best day can be to add nothing, where meals eaten bring what the day needs.
+  const message =
+    status === 'optimal' && !found
+      ? labels.proposal_nothing_to_add
+      : labels[`proposal_${status}`];
 
   return (
     <section
@@ -32,7 +37,7 @@ export function ProposalPanel({
         />
       </div>
       <div className="card-body">
-        <p className="mb-2">{labels[`proposal_${status}`]}</p>
+        <p className="mb-2">{message}</p>
         {skipped.length > 0 && (
           <p className="small text-body-secondary">
             {labels.skipped} {skipped.map((product) => product.name).join(', ')}

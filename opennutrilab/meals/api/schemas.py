@@ -45,6 +45,12 @@ class DayIn(Schema):
     items: list[PlacedItemIn]
 
 
+class MealIn(Schema):
+    """What is changed of a meal of a day."""
+
+    eaten: bool
+
+
 class ItemChange(Schema):
     quantity: Decimal = Field(gt=0, max_digits=7, decimal_places=2)
     unit: Literal["serving", "g"]
@@ -118,6 +124,8 @@ class MealOut(Schema):
     items: list[MealItemOut]
     mass: Decimal
     totals: dict[str, TotalOut]
+    # Whether the meal is marked eaten: behind the user, and kept by a proposal.
+    eaten: bool
 
 
 class NeedOut(Schema):
@@ -133,6 +141,8 @@ class NeedOut(Schema):
     share_low: Decimal | None
     share_high: Decimal | None
     total: TotalOut
+    # How much of the total the meals eaten brought; None when no meal is eaten.
+    eaten: Decimal | None
     status: str
     # Whether the whole interval of the total says the same.
     certain: bool
@@ -195,7 +205,8 @@ class SuggestedFoodOut(Schema):
 
 class SuggestionsOut(Schema):
     # "optimal", "time_limit", "failed", "no_gaps" (the inventory misses nothing),
-    # "no_foods" or "no_suggestion" (none is worth its price).
+    # "no_foods", "no_suggestion" (none is worth its price) or "nothing_to_fill"
+    # (every meal is eaten).
     status: str
     # How many of the `total` needs and ratios the day misses, from the inventory
     # alone and with the suggested foods.
@@ -259,14 +270,15 @@ class SkippedOut(Schema):
 
 
 class ProposalOut(Schema):
-    # "optimal", "time_limit" (the best found when the time was up), "failed", or
-    # "no_candidates".
+    # "optimal", "time_limit" (the best found when the time was up), "failed",
+    # "no_candidates" or "nothing_to_fill" (every meal is eaten).
     status: str
     # What the day misses, weighed; lower is closer to the needs.
     objective: float | None
     items: list[ProposedItemOut]
     skipped: list[SkippedOut]
-    # The proposed day as it would be, not saved: items have no id.
+    # The proposed day as it would be, not saved: the items proposed have no id. The
+    # meals eaten are in it as they are.
     day: DayOut
 
 
@@ -353,6 +365,7 @@ def _meal(meal: MealReport) -> MealOut:
         ],
         mass=meal.mass,
         totals=_totals(meal.totals),
+        eaten=meal.eaten,
     )
 
 
@@ -376,6 +389,7 @@ def _need(
         share_low=None if share is None else share.low,
         share_high=None if share is None else share.high,
         total=_total(status.total),
+        eaten=status.eaten,
         status=status.verdict.status,
         certain=status.verdict.certain,
     )

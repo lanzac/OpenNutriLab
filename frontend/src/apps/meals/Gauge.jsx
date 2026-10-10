@@ -29,6 +29,7 @@ export function Gauge({
   high,
   needLow,
   needHigh,
+  eaten = null,
   status,
   certain,
   coverage,
@@ -37,7 +38,7 @@ export function Gauge({
   languageCode,
   ratio = false,
 }) {
-  const layout = layoutOf({ amount, low, high, needLow, needHigh });
+  const layout = layoutOf({ amount, low, high, needLow, needHigh, eaten });
   const show = (value) =>
     ratio
       ? formatNumber(value, languageCode)
@@ -46,6 +47,8 @@ export function Gauge({
     layout.share === null ? null : formatPercent(layout.share, languageCode);
   const shown = coverage === undefined ? 100 : Math.round(Number(coverage));
   const verdict = `${labels[status]}${certain ? '' : ' ?'}`;
+  const eatenText =
+    layout.eatenFill === null ? null : `${labels.ofWhichEaten} ${show(eaten)}`;
   const range = ratio
     ? formatInterval(low, high, '', languageCode)
     : formatInterval(low, high, unit, languageCode);
@@ -94,7 +97,9 @@ export function Gauge({
         aria-valuemin={0}
         aria-valuemax={layout.max}
         aria-valuenow={Math.min(Number(amount ?? 0), layout.max)}
-        aria-valuetext={`${show(amount)}${percent ? `, ${percent}` : ''}, ${verdict}`}
+        aria-valuetext={`${show(amount)}${percent ? `, ${percent}` : ''}, ${verdict}${
+          eatenText ? `, ${eatenText}` : ''
+        }`}
         title={`${range} · ${(ends ?? []).join(' / ')}`}
       >
         <div className="gauge-track">
@@ -111,6 +116,13 @@ export function Gauge({
             }`}
             style={{ width: `${layout.fill}%` }}
           />
+          {layout.eatenFill !== null && (
+            <div
+              className="gauge-eaten"
+              data-testid="gauge-eaten"
+              style={{ width: `${layout.eatenFill}%` }}
+            />
+          )}
           {!layout.interval.outside && (
             <div
               className={`gauge-interval${
@@ -161,6 +173,9 @@ export function Gauge({
             {percent}
             {certain ? '' : ' ?'}
           </small>
+        )}
+        {eatenText && (
+          <small className="d-block text-body-secondary">{eatenText}</small>
         )}
       </div>
     </div>

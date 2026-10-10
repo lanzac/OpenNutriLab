@@ -21,6 +21,9 @@ decided to come later:
   request now).
 - **Default meals for a product** from its category, so that the balls do not come out
   at breakfast.
+- **Eaten at the level of the item**: a meal is eaten or not today (a starter eaten and
+  the main course to come cannot be told), and no meal is marked eaten from the time of
+  day.
 
 ## Estimate a product's nutrients: what is left
 

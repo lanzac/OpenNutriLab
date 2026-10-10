@@ -341,3 +341,95 @@ def test_the_estimate_of_a_product_fills_in_what_its_label_does_not(
     report = day_report(user, DAY)
 
     assert set(report.totals) == {"energy"}
+
+
+# ----------------------------------------------------------------------------
+# Meals eaten
+# ----------------------------------------------------------------------------
+def test_the_meals_marked_eaten_are_said_so_in_the_report(user: User, catalogue: None):
+    make_product("1111111111116", energy="1000")
+    put(meal_of(user), "1111111111116", "100")
+    put(meal_of(user, "lunch"), "1111111111116", "100")
+    Meal.objects.filter(user=user, kind="breakfast").update(eaten=True)
+
+    report = day_report(user, DAY)
+
+    assert {meal.kind: meal.eaten for meal in report.meals} == {
+        "breakfast": True,
+        "lunch": False,
+        "snack": False,
+        "dinner": False,
+    }
+
+
+def test_each_need_says_what_the_meals_eaten_brought_of_the_day(
+    user: User, catalogue: None
+):
+    Profile.objects.create(
+        user=user,
+        sex="male",
+        birth_year=1995,
+        height=D(180),
+        weight=D(61),
+        activity_level=D("1.7"),
+    )
+    make_product("1111111111116", energy="1000", fiber="10")
+    put(meal_of(user), "1111111111116", "100")  # 1000 kJ, 10 g
+    put(meal_of(user, "lunch"), "1111111111116", "300")  # 3000 kJ, 30 g
+    Meal.objects.filter(user=user, kind="breakfast").update(eaten=True)
+
+    report = day_report(user, DAY)
+
+    assert report.needs is not None
+    by_name = {status.need.nutrients: status for status in report.needs}
+    # The day is the whole of it; the meal eaten is a part.
+    assert (by_name[("energy",)].total.amount, by_name[("energy",)].eaten) == (
+        D(4000),
+        D(1000),
+    )
+    assert (by_name[("fiber",)].total.amount, by_name[("fiber",)].eaten) == (
+        D(40),
+        D(10),
+    )
+    # A need nothing gives was not eaten either.
+    assert by_name[("epa", "dha")].eaten == D(0)
+
+
+def test_a_meal_eaten_with_nothing_in_it_has_brought_nothing(
+    user: User, catalogue: None
+):
+    Profile.objects.create(
+        user=user,
+        sex="male",
+        birth_year=1995,
+        height=D(180),
+        weight=D(61),
+        activity_level=D("1.7"),
+    )
+    make_product("1111111111116", energy="1000")
+    put(meal_of(user, "lunch"), "1111111111116", "100")
+    Meal.objects.create(user=user, date=DAY, kind="breakfast", eaten=True)
+
+    report = day_report(user, DAY)
+
+    assert report.needs is not None
+    energy = next(s for s in report.needs if s.need.nutrients == ("energy",))
+    assert (energy.total.amount, energy.eaten) == (D(1000), D(0))
+
+
+def test_no_need_says_what_was_eaten_when_no_meal_is(user: User, catalogue: None):
+    Profile.objects.create(
+        user=user,
+        sex="male",
+        birth_year=1995,
+        height=D(180),
+        weight=D(61),
+        activity_level=D("1.7"),
+    )
+    make_product("1111111111116", energy="1000")
+    put(meal_of(user), "1111111111116", "100")
+
+    report = day_report(user, DAY)
+
+    assert report.needs is not None
+    assert {status.eaten for status in report.needs} == {None}

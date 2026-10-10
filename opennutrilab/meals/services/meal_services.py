@@ -31,6 +31,10 @@ class AlreadyInMealError(Exception):
     """The product is in the meal already: change its quantity."""
 
 
+class MealEatenError(Exception):
+    """Something was put in place of a meal that is eaten, which is not to change."""
+
+
 def add_item(  # noqa: PLR0913
     user: User,
     day: date,
@@ -53,17 +57,33 @@ def add_item(  # noqa: PLR0913
         raise AlreadyInMealError(product.pk) from e
 
 
+def set_eaten(user: User, day: date, kind: str, *, eaten: bool) -> Meal:
+    """Mark a meal of a day as eaten, or as not eaten. An empty meal can be: skipped."""
+    meal, _created = Meal.objects.update_or_create(
+        user=user, date=day, kind=kind, defaults={"eaten": eaten}
+    )
+    return meal
+
+
 def replace_day(
     user: User, day: date, items: Iterable[tuple[str, Product, Decimal, str]]
 ) -> None:
     """
-    Make the meals of a day what `items` say, (kind, product, quantity, unit) each,
-    in place of what they were. All or nothing: an item that cannot be put in a
-    meal leaves the day as it was.
+    Make the meals of a day that are not eaten what `items` say, (kind, product,
+    quantity, unit) each, in place of what they were; the meals that are eaten stay as
+    they are, and nothing can be put in them. All or nothing: an item that cannot be
+    put in a meal leaves the day as it was.
     """
     with transaction.atomic():
-        Meal.objects.filter(user=user, date=day).delete()
+        eaten = set(
+            Meal.objects.filter(user=user, date=day, eaten=True).values_list(
+                "kind", flat=True
+            )
+        )
+        Meal.objects.filter(user=user, date=day, eaten=False).delete()
         for kind, product, quantity, unit in items:
+            if kind in eaten:
+                raise MealEatenError(kind)
             add_item(user, day, kind, product, quantity, unit)
 
 

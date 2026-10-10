@@ -80,6 +80,18 @@
   background: var(--bs-secondary);
 }
 
+/* What of the amount was eaten already: the darker part of the bar, from the start. */
+.gauge-eaten {
+  position: absolute;
+  top: 0.22rem;
+  bottom: 0.22rem;
+  left: 0;
+  min-width: 0.2rem;
+  border-radius: 0.3rem;
+  background: rgba(0, 0, 0, 0.32);
+  border-right: 2px solid rgba(255, 255, 255, 0.85);
+}
+
 /* A verdict that the whole range of the amount does not bear out is hatched. */
 .gauge-fill--uncertain {
   background-image: repeating-linear-gradient(

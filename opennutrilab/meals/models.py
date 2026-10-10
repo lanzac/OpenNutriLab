@@ -112,7 +112,15 @@ class Profile(models.Model):
 
 
 class Meal(models.Model):
-    """One meal of one day of a user. Made when something is first put in it."""
+    """
+    One meal of one day of a user. Made when something is first put in it, or when it
+    is marked eaten.
+
+    A meal that is eaten is behind the user: what is in it is what they ate, and a day
+    that is proposed (services.proposals) counts it and adds to it, but leaves it as
+    it is and puts nothing in it. A meal that is not eaten is what could be eaten: a
+    day proposed takes its place.
+    """
 
     user_id: int
 
@@ -128,6 +136,13 @@ class Meal(models.Model):
     )
     date = models.DateField(_("Date"))
     kind = models.CharField(_("Meal"), max_length=9, choices=Kind.choices)
+    eaten = models.BooleanField(
+        _("Eaten"),
+        default=False,
+        help_text=_(
+            "Already eaten: a day proposed keeps this meal and works out what to add."
+        ),
+    )
 
     if TYPE_CHECKING:
         items: RelatedManager["MealItem"]

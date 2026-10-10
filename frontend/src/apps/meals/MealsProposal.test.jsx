@@ -228,7 +228,9 @@ describe('proposing a day', () => {
       within(panel).getByRole('button', { name: 'Utiliser ce jour' }),
     );
 
-    expect(confirm).toHaveBeenCalledWith('Remplacer ce qui est dans ce jour ?');
+    expect(confirm).toHaveBeenCalledWith(
+      'Remplacer ce qui est dans les repas pas encore mangés ?',
+    );
     expect(fetch.mock.calls.some(([, o]) => o?.method === 'PUT')).toBe(false);
     expect(
       screen.getByRole('region', { name: 'Jour proposé' }),

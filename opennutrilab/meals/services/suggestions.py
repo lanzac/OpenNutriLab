@@ -21,11 +21,16 @@ EPA or DHA, so the user finds the product that is that food. It is counted in gr
 and has no serving. Every food of the table may be suggested but those that are no
 food for an adult (infant foods), what is drunk (alcohol, water), and salt. No
 suggestion is made for sodium or chloride, which salt would meet.
+
+The day may be partly eaten (Meal.eaten), as it is for a proposal (services.proposals):
+the meals eaten are counted and kept, so the gaps are what they leave, and the foods
+suggested go in the meals that are not eaten.
 """
 
 from collections import defaultdict
 from collections.abc import Iterable
 from collections.abc import Mapping
+from collections.abc import Sequence
 from datetime import date
 from decimal import Decimal
 from typing import NamedTuple
@@ -49,9 +54,12 @@ from opennutrilab.meals.services.optimiser import Pick
 from opennutrilab.meals.services.optimiser import Plan
 from opennutrilab.meals.services.optimiser import optimise
 from opennutrilab.meals.services.optimiser import reference_amount
+from opennutrilab.meals.services.proposals import EatenMeals
+from opennutrilab.meals.services.proposals import Inventory
 from opennutrilab.meals.services.proposals import NoProfileError
-from opennutrilab.meals.services.proposals import ProposedItem
+from opennutrilab.meals.services.proposals import eaten_meals
 from opennutrilab.meals.services.proposals import items_of
+from opennutrilab.meals.services.proposals import kept_items
 from opennutrilab.meals.services.proposals import load_inventory
 from opennutrilab.products.models import SourceFood
 from opennutrilab.products.models import SourceFoodNutrient
@@ -148,8 +156,9 @@ class Suggested(NamedTuple):
 
 class Suggestions(NamedTuple):
     # "optimal", "time_limit", "failed" (the solver found no day), "no_gaps" (the
-    # inventory misses nothing), "no_foods" (no food of the table to look at) or
-    # "no_suggestion" (none is worth its price).
+    # inventory misses nothing), "no_foods" (no food of the table to look at),
+    # "no_suggestion" (none is worth its price) or "nothing_to_fill" (every meal of the
+    # day is eaten).
     status: str
     missed_before: int
     missed_after: int
@@ -173,33 +182,84 @@ class Row(NamedTuple):
     amounts: dict[str, float]
 
 
+class _Ground(NamedTuple):
+    """What suggestions are worked out on: the user's day, needs and inventory."""
+
+    user: User
+    day: date
+    needs: Needs
+    eaten: EatenMeals
+    inventory: Inventory
+    options: Options
+
+    def report(
+        self,
+        plan: Plan | None,
+        added: Mapping[str, Sequence[GenericItem]] | None = None,
+        foods: Mapping[str, Mapping[str, Amount]] | None = None,
+    ) -> DayReport:
+        """
+        The day a plan makes (none: the meals eaten alone), with the generic foods
+        `added`, by meal, whose compositions are `foods`.
+        """
+        proposed = [] if plan is None else items_of(plan, self.inventory.products)
+        kept = kept_items(proposed, self.eaten.items)
+        for kind, found in (added or {}).items():
+            kept.setdefault(kind, []).extend(found)
+        return report_of(
+            self.user, self.day, kept, foods, eaten=self.eaten.items.keys()
+        )
+
+
 def suggest_foods(user: User, day: date, *, time_limit: float = 20.0) -> Suggestions:
     """What to get for the user's inventory to meet the needs of their profile."""
     profile = Profile.objects.filter(user=user).first()
     if profile is None:
         raise NoProfileError(user.pk)
-    needs = daily_needs(profile)
-    inventory = load_inventory(user)
-    options = Options(time_limit=time_limit)
+    eaten = eaten_meals(user, day)
+    ground = _Ground(
+        user,
+        day,
+        daily_needs(profile),
+        eaten,
+        load_inventory(user, eaten.grams),
+        Options(time_limit=time_limit),
+    )
+    if eaten.all_eaten:
+        return _nothing("nothing_to_fill", ground.report(None))
 
-    base_plan = optimise(inventory.candidates, needs, options=options)
-    base = report_of(user, day, _kept(items_of(base_plan, inventory.products)))
-    total = len(base.needs or []) + len(base.ratios or [])
-    before = missed(base)
-    gaps = gaps_of(base, needs)
+    base_plan = optimise(
+        ground.inventory.candidates,
+        ground.needs,
+        options=ground.options,
+        eaten=eaten.eaten,
+    )
+    base = ground.report(base_plan)
+    gaps = gaps_of(base, ground.needs)
     if not gaps:
-        return Suggestions("no_gaps", before, before, total, [], base, base)
+        return _nothing("no_gaps", base)
+    return _suggest_for(ground, gaps, base)
 
-    rows = foods_to_look_at(gaps)
-    foods = {row.pk: row for row in rows}
+
+def _nothing(status: str, base: DayReport) -> Suggestions:
+    """No food is suggested: the day is what it is without."""
+    missing = missed(base)
+    total = len(base.needs or []) + len(base.ratios or [])
+    return Suggestions(status, missing, missing, total, [], base, base)
+
+
+def _suggest_for(ground: _Ground, gaps: list[Gap], base: DayReport) -> Suggestions:
+    """The foods of the table that close the gaps of the best day from the inventory."""
+    foods = {row.pk: row for row in foods_to_look_at(gaps)}
     if not foods:
-        return Suggestions("no_foods", before, before, total, [], base, base)
+        return _nothing("no_foods", base)
     measures = measures_of(foods)
     candidates = {
         f"ciqual:{foods[pk].code}": candidate_of(foods[pk], found)
         for pk, found in measures.items()
         if found
     }
+    inventory, needs, eaten = ground.inventory, ground.needs, ground.eaten.eaten
     # First the foods that are worth having, then the day made with those alone.
     choice = optimise(
         [*inventory.candidates, *candidates.values()],
@@ -210,34 +270,38 @@ def suggest_foods(user: User, day: date, *, time_limit: float = 20.0) -> Suggest
             whole_steps=False,
             gap=CHOICE_GAP,
         ),
+        eaten=eaten,
     )
     chosen = [
         candidates[pick.barcode] for pick in _once(choice) if pick.barcode in candidates
     ]
     if not chosen:
-        status = "failed" if choice.status == "failed" else "no_suggestion"
-        return Suggestions(status, before, before, total, [], base, base)
+        return _nothing(
+            "failed" if choice.status == "failed" else "no_suggestion", base
+        )
     plan = optimise(
         [*inventory.candidates, *chosen],
         needs,
-        options=options._replace(max_new=MOST_NEW),
+        options=ground.options._replace(max_new=MOST_NEW),
+        eaten=eaten,
     )
     if plan.status == "failed":
-        return Suggestions("failed", before, before, total, [], base, base)
+        return _nothing("failed", base)
 
     generic = {
         f"ciqual:{foods[pk].code}": amounts_of(found) for pk, found in measures.items()
     }
-    items = _kept(items_of(plan, inventory.products))
     suggested = _suggested(plan, foods, generic, gaps)
+    if not suggested:
+        return _nothing("no_suggestion", base)
+    added: dict[str, list[GenericItem]] = {}
     for found in suggested:
         for kind, grams in found.picks:
-            items.setdefault(kind, []).append(GenericItem(found.food, grams))
-    report = report_of(user, day, items, generic)
-    if not suggested:
-        return Suggestions("no_suggestion", before, before, total, [], base, base)
+            added.setdefault(kind, []).append(GenericItem(found.food, grams))
+    report = ground.report(plan, added, generic)
+    total = len(base.needs or []) + len(base.ratios or [])
     return Suggestions(
-        plan.status, before, missed(report), total, suggested, report, base
+        plan.status, missed(base), missed(report), total, suggested, report, base
     )
 
 
@@ -461,16 +525,6 @@ def _once(plan: Plan) -> list[Pick]:
             seen.add(pick.barcode)
             found.append(pick)
     return found
-
-
-def _kept(items: Iterable[ProposedItem]) -> dict[str, list[MealItem | GenericItem]]:
-    """Items to be reported, by meal, as items that are not saved."""
-    kept: dict[str, list[MealItem | GenericItem]] = {}
-    for item in items:
-        kept.setdefault(item.kind, []).append(
-            MealItem(product=item.product, quantity=item.quantity, unit=item.unit)
-        )
-    return kept
 
 
 def _suggested(

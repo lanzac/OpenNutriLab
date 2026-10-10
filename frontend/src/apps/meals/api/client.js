@@ -62,7 +62,16 @@ export const changeItem = (id, change, csrfToken) =>
 export const removeItem = (id, csrfToken) =>
   request(`${MEALS_API_BASE}items/${id}`, { method: 'DELETE', csrfToken });
 
-// A day proposed from the inventory: nothing is written until it is taken.
+// Marks a meal of a day as eaten, or as not eaten again.
+export const setMealEaten = (day, kind, eaten, csrfToken) =>
+  request(`${MEALS_API_BASE}${day}/${kind}`, {
+    method: 'PATCH',
+    body: { eaten },
+    csrfToken,
+  });
+
+// What to add to a day, from the inventory, keeping the meals eaten: nothing is
+// written until it is taken.
 export const proposeDay = (day, csrfToken) =>
   writing.then(() =>
     request(`${MEALS_API_BASE}${day}/propose`, { method: 'POST', csrfToken }),

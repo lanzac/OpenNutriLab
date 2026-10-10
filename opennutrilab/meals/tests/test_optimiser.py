@@ -20,6 +20,7 @@ from opennutrilab.meals.services.needs import Ratio
 from opennutrilab.meals.services.optimiser import DEFAULT_SPLIT
 from opennutrilab.meals.services.optimiser import KINDS
 from opennutrilab.meals.services.optimiser import Candidate
+from opennutrilab.meals.services.optimiser import Eaten
 from opennutrilab.meals.services.optimiser import Options
 from opennutrilab.meals.services.optimiser import Plan
 from opennutrilab.meals.services.optimiser import Weights
@@ -526,3 +527,107 @@ def test_a_product_that_is_not_required_whole_is_not():
     plan = optimise([OATS, jam], needs_of())
 
     assert grams_of(plan, "jam") < jam.max_grams
+
+
+# ----------------------------------------------------------------------------
+# A day partly eaten
+# ----------------------------------------------------------------------------
+def eaten_in(*kinds: str, **amounts: float) -> Eaten:
+    """Meals behind the user, and what they brought."""
+    return Eaten(frozenset(kinds), amounts)
+
+
+def test_what_the_meals_eaten_brought_counts_towards_the_needs():
+    candidates = [OATS]
+    eaten = eaten_in("breakfast", "lunch", energy=KJ * 0.6)
+
+    plan = optimise(candidates, needs_of(), eaten=eaten)
+
+    # 60 % of the day is eaten: the energy to add is the 40 % left.
+    day = KJ * 0.6 + brought(plan, candidates, "energy")
+    assert KJ * 0.95 <= day <= KJ * 1.05
+
+
+def test_nothing_is_put_in_a_meal_that_is_eaten():
+    plan = optimise(
+        [OATS], needs_of(), eaten=eaten_in("breakfast", "lunch", energy=KJ * 0.6)
+    )
+
+    assert plan.picks
+    assert {pick.kind for pick in plan.picks} <= {"snack", "dinner"}
+
+
+def test_the_energy_left_is_shared_between_the_meals_that_are_left():
+    candidates = [OATS]
+    eaten = eaten_in("breakfast", "lunch", energy=KJ * 0.6)
+
+    plan = optimise(candidates, needs_of(), eaten=eaten)
+
+    # A snack is 10 and a dinner 30 of the 40 % left: a quarter and three quarters.
+    left = KJ * 0.4
+    snack = brought(plan, candidates, "energy", ("snack",))
+    dinner = brought(plan, candidates, "energy", ("dinner",))
+    assert left * 0.25 * 0.75 <= snack <= left * 0.25 * 1.25
+    assert left * 0.75 * 0.75 <= dinner <= left * 0.75 * 1.25
+
+
+def test_a_need_the_meals_eaten_meet_asks_for_nothing_more():
+    candidates = [OATS, LENTILS]
+    wanted = needs_of(need(("proteins",), low=60))
+
+    asked = optimise(candidates, wanted)
+    met = optimise(candidates, wanted, eaten=eaten_in(proteins=60.0))
+
+    assert "lentils" in {pick.barcode for pick in asked.picks}
+    assert {pick.barcode for pick in met.picks} == {"oats"}
+
+
+def test_a_limit_counts_what_the_meals_eaten_brought():
+    # 40 g of protein is all the day may have; 30 are eaten, and oats alone would
+    # add the 25 g the day's energy makes of them: the day is as near as it can be.
+    candidates = [OATS]
+    wanted = needs_of(need(("proteins",), high=40))
+
+    free = optimise(candidates, wanted)
+    eaten = optimise(candidates, wanted, eaten=eaten_in(proteins=30.0))
+
+    assert brought(free, candidates, "proteins") <= 40 + EPSILON
+    # 10 g are left of the limit, and a cost is paid for the 15 g of excess it ends in.
+    assert eaten.objective is not None
+    assert free.objective is not None
+    assert eaten.objective > free.objective
+
+
+def test_the_users_ratio_counts_what_the_meals_eaten_brought():
+    # Fish oil was eaten: 10 g of DHA and 5 g of EPA. For DHA over EPA at 1:1, the day
+    # needs more EPA than DHA: the 50 g of algae oil there is, which has the EPA.
+    candidates = [OATS, FISH, ALGAE]
+    wanted = needs_of(need(("epa", "dha"), low=EPA_DHA_NEED), ratios=(dha_over_epa(),))
+
+    plan = optimise(candidates, wanted, eaten=eaten_in(dha=10.0, epa=5.0))
+
+    dha = 10.0 + brought(plan, candidates, "dha")
+    epa = 5.0 + brought(plan, candidates, "epa")
+    assert RATIO_LOW - 1e-4 <= dha / epa <= RATIO_HIGH + 1e-4
+    assert grams_of(plan, "algae") > 0
+
+
+def test_a_day_with_every_meal_eaten_has_nothing_to_add():
+    plan = optimise([OATS], needs_of(), eaten=eaten_in(*KINDS, energy=KJ))
+
+    assert plan.picks == []
+
+
+def test_a_day_whose_energy_is_eaten_already_adds_none():
+    # More than the day's energy is eaten, so the meals left share nothing.
+    plan = optimise([OATS], needs_of(), eaten=eaten_in("breakfast", energy=KJ * 1.2))
+
+    assert plan.status == "optimal"
+    assert plan.picks == []
+
+
+def test_no_meal_eaten_is_the_day_as_it_was():
+    candidates = [OATS, LENTILS]
+    wanted = needs_of(need(("proteins",), low=60))
+
+    assert optimise(candidates, wanted, eaten=Eaten()) == optimise(candidates, wanted)

@@ -535,6 +535,59 @@ that the date followed the browser's format rather than the language's.
   the day picker, 3 on the address, 7 on the formats (Vitest), mutations checked; seen
   in Chromium (French page, English browser).
 
+### Addendum 4 (2026-10-10): what is eaten, and what could be added the same day
+
+The user asked for meals to tell **what has been eaten** from **foods that could be
+added the same day** to get closer to the day's needs, and for "Propose a day" to take
+that into account.
+
+- **A meal is marked eaten**: `Meal.eaten` (migration 0006, default false, so every day
+  that was saved before is "not eaten" and a proposal replaces it as it always did).
+  The unit is the meal, not the item: a meal that is behind the user is a meal, which
+  also says what an item cannot, that a meal was **skipped** (marked eaten with nothing
+  in it, so nothing is put in it). `PATCH /api/v1/meals/{day}/{kind}` (`{"eaten":
+bool}`) makes the row if there is none and answers with the day. Adding to or
+  changing an eaten meal is allowed: it is how what was eaten is logged.
+- **The day report** says it: `MealOut.eaten`, and each need has `eaten`, how much of
+  its total the eaten meals brought (null when no meal is eaten, so that a day with
+  nothing eaten shows nothing new). The total is still the whole day.
+- **A proposal adds to the meals eaten** (`proposals.propose_day(user, day)`): what
+  they brought is a **constant in every row** of the programme (a need of 100 is met by
+  60 eaten and 40 to add; the same for a limit and for the ratios, DHA over EPA
+  included), nothing is put in them, and what is in the meals that are _not_ eaten is
+  not counted: it is what the proposal takes the place of. The day's energy still to
+  come is shared between the meals left in the proportions of the split (25, 35, 10, 30
+  of what is left), so a lunch of 366 kcal and a skipped breakfast give a snack and a
+  dinner that carry the rest. With more than the day's energy eaten no share is asked of
+  the meals, and all four eaten gives `nothing_to_fill`. `Eaten` (kinds and amounts) is
+  the optimiser's argument; `load_inventory(user, eaten_grams)` takes what was eaten of
+  a product off the most of it a day (the limit, or the default 6 servings / 500 g) and
+  off a package to be used whole (what is left of it is what is required, the step
+  worked out again from that; none left, no candidate).
+- **The suggestions do the same** (`suggest_foods`): the gaps are what the eaten meals
+  leave, the new foods go in the meals that are left. It was split into
+  `suggest_foods`, `_suggest_for` and `_Ground` for the linter's limits, with no change
+  of what it does.
+- **"Use this day"** (`PUT /api/v1/meals/{day}`) replaces the meals that are not eaten
+  only, and refuses (409) an item for one that is eaten; the page asks for confirmation
+  only when a meal not eaten has something in it.
+- **Page**: a switch "Mangé" on each meal (the card is green when eaten, and says
+  "Rien mangé à ce repas." when it is empty), which flips at once and is put back if
+  the server refuses; the meals of a proposal show a badge, "Mangé" or "À ajouter"; the
+  gauges draw the eaten part as the darker part of the bar, with "dont mangé 366 kcal"
+  and a legend entry, and the table has a "Mangé" column, once a meal is eaten. A
+  proposal or suggestion is closed when a meal is marked or an eaten meal changes (it
+  was made on the day as it was).
+- **Not done, and the user's to say**: an item is eaten or not through its meal only
+  (a starter eaten and a main course still to come are two meals, or one meal not
+  eaten); a product eaten in a meal can still be proposed in the others, and not in the
+  same one; nothing marks a meal eaten from the time of day.
+- Tests: 9 on the optimiser (constants for a need, a limit and the ratios, the energy
+  share, every meal eaten), 6 on the meal services and 4 on the report, 25 on the
+  proposals and the API, 3 on the suggestions (backend, 1548 in all); 22 on the page
+  and 3 on the gauge layout (Vitest, 277 in all); mutations checked on both sides; seen
+  in Chromium (French page, a throwaway user).
+
 ## After the batch
 
 What the eight steps leave open, for the user to say:

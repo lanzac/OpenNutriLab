@@ -182,3 +182,40 @@ describe('countStatuses', () => {
     expect(counts).toEqual({ within: 2, below: 1, above: 0, unknown: 1 });
   });
 });
+
+describe('layoutOf, with what was eaten', () => {
+  it('puts the part eaten on the bar, as a share of the track like the amount', () => {
+    const layout = layoutOf({
+      amount: 12,
+      low: 10,
+      high: 14,
+      needLow: 30,
+      needHigh: null,
+      eaten: '8',
+    });
+
+    near(layout.eatenFill, (8 / layout.max) * 100);
+    near(layout.eatenFill / layout.fill, 8 / 12);
+  });
+
+  it('has none where nothing was eaten, or no meal is', () => {
+    const base = { amount: 12, low: 10, high: 14, needLow: 30, needHigh: null };
+
+    expect(layoutOf({ ...base, eaten: '0' }).eatenFill).toBeNull();
+    expect(layoutOf({ ...base, eaten: null }).eatenFill).toBeNull();
+    expect(layoutOf(base).eatenFill).toBeNull();
+  });
+
+  it('keeps the part eaten on the track when it is past the end', () => {
+    const layout = layoutOf({
+      amount: 1000,
+      low: 1000,
+      high: 1000,
+      needLow: 10,
+      needHigh: null,
+      eaten: '900',
+    });
+
+    expect(layout.eatenFill).toBe(100);
+  });
+});

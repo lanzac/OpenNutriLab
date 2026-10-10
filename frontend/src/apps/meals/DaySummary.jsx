@@ -55,6 +55,9 @@ function NeedRange({ need, languageCode }) {
   );
 }
 
+/** Whether a meal of the day is marked eaten: the figures then say how much it was. */
+const hasEaten = (report) => report.meals.some((meal) => meal.eaten);
+
 function groupsOf(needs) {
   const groups = new Map();
   for (const need of needs) {
@@ -126,7 +129,7 @@ function StatusBar({ counts, total, labels }) {
 }
 
 /** What the drawing of a gauge means: said once, small, above them. */
-function Legend({ labels }) {
+function Legend({ labels, eaten }) {
   return (
     <p className="small text-body-secondary d-flex flex-wrap gap-3">
       <span>
@@ -158,6 +161,15 @@ function Legend({ labels }) {
         {labels.legendUncertain}
       </span>
       <span>{labels.legendOpen}</span>
+      {eaten && (
+        <span>
+          <span
+            className="legend-swatch"
+            style={{ background: 'rgba(0, 0, 0, 0.32)' }}
+          />
+          {labels.legendEaten}
+        </span>
+      )}
     </p>
   );
 }
@@ -191,6 +203,7 @@ function NeedGauge({ need, labels, languageCode }) {
       high={need.total.high}
       needLow={need.low}
       needHigh={need.high}
+      eaten={need.eaten}
       status={need.status}
       certain={need.certain}
       coverage={need.total.coverage}
@@ -226,7 +239,7 @@ function RatioGauge({ ratio, labels, languageCode }) {
 function Gauges({ report, labels, languageCode, folding }) {
   return (
     <>
-      <Legend labels={labels} />
+      <Legend labels={labels} eaten={hasEaten(report)} />
       {groupsOf(report.needs).map((group) => (
         <Group
           key={group.key}
@@ -268,6 +281,9 @@ function Gauges({ report, labels, languageCode, folding }) {
 
 /** The same figures as a table, every one of them. */
 function Table({ report, labels, languageCode, folding }) {
+  // A column for what was eaten, once a meal is.
+  const withEaten = hasEaten(report);
+  const columns = withEaten ? 6 : 5;
   const ratiosFolded = !folding.open.includes(RATIOS);
   const ratiosRegion = `${folding.prefix}-${RATIOS}`;
   return (
@@ -278,6 +294,7 @@ function Table({ report, labels, languageCode, folding }) {
             <tr>
               <th>{labels.nutrient}</th>
               <th className="text-end">{labels.total}</th>
+              {withEaten && <th className="text-end">{labels.eaten}</th>}
               <th className="text-end">{labels.need}</th>
               <th>{labels.status}</th>
               <th className="text-end">{labels.coverage}</th>
@@ -289,7 +306,7 @@ function Table({ report, labels, languageCode, folding }) {
             return (
               <tbody key={group.key} id={region}>
                 <tr className="table-light">
-                  <th colSpan={5}>
+                  <th colSpan={columns}>
                     <GroupHead
                       as="div"
                       id={region}
@@ -320,6 +337,15 @@ function Table({ report, labels, languageCode, folding }) {
                           )}
                         </small>
                       </td>
+                      {withEaten && (
+                        <td className="text-end">
+                          {formatAmount(
+                            need.eaten ?? 0,
+                            need.unit,
+                            languageCode,
+                          )}
+                        </td>
+                      )}
                       <td className="text-end" title={need.ends.join(' / ')}>
                         <NeedRange need={need} languageCode={languageCode} />
                       </td>

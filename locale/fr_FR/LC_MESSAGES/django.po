@@ -1100,6 +1100,21 @@ msgstr "Ajouter"
 msgid "Nothing in this meal yet."
 msgstr "Rien dans ce repas pour l'instant."
 
+msgid "Nothing eaten at this meal."
+msgstr "Rien mangé à ce repas."
+
+msgid "Eaten"
+msgstr "Mangé"
+
+msgid "To add"
+msgstr "À ajouter"
+
+msgid "Mark the meals you have eaten: a proposed day counts what they brought, keeps them as they are, and only adds what the rest of the day needs."
+msgstr "Marquez les repas que vous avez mangés : un jour proposé compte ce qu'ils ont apporté, les garde tels quels et n'ajoute que ce dont le reste de la journée a besoin."
+
+msgid "Already eaten: a day proposed keeps this meal and works out what to add."
+msgstr "Déjà mangé : un jour proposé garde ce repas et cherche ce qu'il faut ajouter."
+
 msgid "Fill in your profile to set the day against your needs."
 msgstr "Renseignez votre profil pour comparer la journée à vos besoins."
 
@@ -1166,14 +1181,20 @@ msgstr "Aucun jour n'a pu être calculé."
 msgid "No product of your inventory has a composition to count."
 msgstr "Aucun produit de votre inventaire n'a de composition à compter."
 
+msgid "Every meal of the day is eaten: there is nothing to add."
+msgstr "Tous les repas du jour sont mangés : il n'y a rien à ajouter."
+
+msgid "Nothing to add: the meals eaten bring what the day needs, as far as your inventory goes."
+msgstr "Rien à ajouter : les repas mangés apportent ce dont la journée a besoin, dans la mesure de votre inventaire."
+
 msgid "Left aside, with no energy value:"
 msgstr "Laissés de côté, sans valeur d'énergie :"
 
 msgid "Use this day"
 msgstr "Utiliser ce jour"
 
-msgid "Replace what is in this day?"
-msgstr "Remplacer ce qui est dans ce jour ?"
+msgid "Replace what is in the meals not yet eaten?"
+msgstr "Remplacer ce qui est dans les repas pas encore mangés ?"
 
 msgid "Limits for the proposed day"
 msgstr "Limites pour le jour proposé"
@@ -1237,6 +1258,9 @@ msgstr "Aucun aliment de la table ne comblerait ce que votre inventaire ne couvr
 msgid "No food is worth getting for what your inventory misses."
 msgstr "Aucun aliment ne vaut d'être acheté pour ce que votre inventaire ne couvre pas."
 
+msgid "Every meal of the day is eaten: there is nothing to suggest."
+msgstr "Tous les repas du jour sont mangés : il n'y a rien à suggérer."
+
 msgid "A suggestion is worked out from composition alone. It takes no account of contaminants (mercury in some fish), of too much of one thing (vitamin A in liver), of cooking or of taste: check it before acting on it. It is a kind of food: the product that is that food is for you to find."
 msgstr "Une suggestion ne se fonde que sur la composition. Elle ne tient compte ni des contaminants (le mercure de certains poissons), ni de l'excès d'une chose (la vitamine A du foie), ni de la cuisson, ni du goût : contrôlez-la avant d'agir. C'est une sorte d'aliment : le produit qui en est un, c'est à vous de le trouver."
 
@@ -1283,6 +1307,12 @@ msgstr "Pas certain"
 
 msgid "Dashed: no upper end is known."
 msgstr "Pointillé : aucun maximum n'est connu."
+
+msgid "Darker: already eaten"
+msgstr "Plus foncé : déjà mangé"
+
+msgid "of which eaten"
+msgstr "dont mangé"
 
 msgid "Share of the minimum"
 msgstr "Part du minimum"

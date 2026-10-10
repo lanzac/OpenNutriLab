@@ -18,11 +18,16 @@ A need is met or not by the amount; the verdict says how far to trust it: a day 
 below a need for certain only when even the upper end is, and within it for certain
 only when the whole interval is.
 
+A meal can be marked eaten (Meal.eaten). The day is then reported as a whole, and each
+need also says how much of its total the meals eaten brought: the rest is what the
+meals not eaten, which could still be eaten, bring.
+
 Energy shares in the needs (fat at 35 to 40 % of the energy) were turned into
 grams at the person's energy need (services.needs): a day within 5 % of its energy,
 which the needs ask, is within 5 % of those grams too.
 """
 
+from collections.abc import Collection
 from collections.abc import Mapping
 from collections.abc import Sequence
 from datetime import date
@@ -82,6 +87,8 @@ class NeedStatus(NamedTuple):
     group: str
     total: Total
     verdict: Verdict
+    # How much of the total the meals eaten brought; None when no meal is eaten.
+    eaten: Decimal | None = None
 
 
 class RatioStatus(NamedTuple):
@@ -140,6 +147,8 @@ class MealReport(NamedTuple):
     # has none is left out of every total.
     mass: Decimal
     totals: dict[str, Total]
+    # Whether the meal is marked eaten.
+    eaten: bool = False
 
 
 class DayReport(NamedTuple):
@@ -251,11 +260,16 @@ def needs_status(
     needs: Sequence[Need],
     totals: Mapping[str, Total],
     catalogue: Mapping[str, Nutrient],
+    eaten: Mapping[str, Total] | None = None,
 ) -> list[NeedStatus]:
-    """Each need set against the totals of a day."""
+    """
+    Each need set against the totals of a day, and against what the meals eaten
+    brought of them when `eaten` are their totals.
+    """
     statuses: list[NeedStatus] = []
     for need in needs:
-        total = combine(totals, dict.fromkeys(need.nutrients, Decimal(1)))
+        terms = dict.fromkeys(need.nutrients, Decimal(1))
+        total = combine(totals, terms)
         first = catalogue[need.nutrients[0]]
         statuses.append(
             NeedStatus(
@@ -265,6 +279,7 @@ def needs_status(
                 group=first.group,
                 total=total,
                 verdict=verdict(total, need.low, need.high),
+                eaten=None if eaten is None else combine(eaten, terms).amount,
             )
         )
     return statuses
@@ -302,7 +317,12 @@ def ratios_status(
 def day_report(user: User, day: date) -> DayReport:
     """The meals of a user on a day, with their totals and the day's against needs."""
     meals = Meal.objects.filter(user=user, date=day).prefetch_related("items__product")
-    return report_of(user, day, {meal.kind: list(meal.items.all()) for meal in meals})
+    return report_of(
+        user,
+        day,
+        {meal.kind: list(meal.items.all()) for meal in meals},
+        eaten={meal.kind for meal in meals if meal.eaten},
+    )
 
 
 def report_of(
@@ -310,13 +330,15 @@ def report_of(
     day: date,
     items: Mapping[str, Sequence[MealItem | GenericItem]],
     foods: Mapping[str, Mapping[str, Amount]] | None = None,
+    eaten: Collection[str] = frozenset(),
 ) -> DayReport:
     """
     The report of a day made of `items`, by kind of meal. They need not be saved:
     a day that is only proposed (services.proposals) is reported the same way.
 
     `foods` are the compositions of the generic foods among the items, by their key
-    (GenericFood.pk): they are no product, so no estimate is kept for them.
+    (GenericFood.pk): they are no product, so no estimate is kept for them. `eaten`
+    are the kinds of the meals marked eaten.
     """
     products = {
         item.product_id: item.product
@@ -344,10 +366,17 @@ def report_of(
                 items=found,
                 mass=sum((p.grams for p in found_portions), Decimal(0)),
                 totals=add_up(found_portions),
+                eaten=kind in eaten,
             )
         )
     every = [p for found in items.values() for p in portions(list(found))]
     totals = add_up(every)
+    # What the meals marked eaten brought, which is nothing before any is.
+    brought = (
+        add_up([p for kind in eaten for p in portions(list(items.get(kind, [])))])
+        if eaten
+        else None
+    )
 
     profile = Profile.objects.filter(user=user).first()
     needs = daily_needs(profile) if profile is not None else None
@@ -367,7 +396,7 @@ def report_of(
         totals=totals,
         needs=None
         if needs is None
-        else needs_status(needs.nutrients, totals, catalogue),
+        else needs_status(needs.nutrients, totals, catalogue, brought),
         ratios=None
         if needs is None
         else ratios_status(needs.ratios, totals, catalogue),

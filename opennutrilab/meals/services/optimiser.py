@@ -39,6 +39,11 @@ A candidate can be **new**: a food that is not in the inventory, which a suggest
 and a day may use at most `Options.max_new` of them, so that only the few that close
 the most of what the inventory misses are worth it.
 
+A day may already be **partly eaten**: some of its meals are behind the user. What they
+brought is a constant in every target (a need of 100 is met by 60 eaten and 40 to
+add), nothing is put in those meals, and the meals that are left share what the day's
+energy still lacks, in the proportions of the split. The plan is then what to add.
+
 The products are those of the inventory, so the day is as good as they allow: where
 the inventory cannot meet a target the plan says how far it is, and the suggestions
 say what could.
@@ -138,6 +143,18 @@ class Candidate(NamedTuple):
     required_grams: float | None = None
 
 
+class Eaten(NamedTuple):
+    """What a day holds already: the meals behind the user, and what they brought."""
+
+    # The meals that are eaten (Meal.Kind), in which nothing more is put.
+    kinds: frozenset[str] = frozenset()
+    # What they brought, by nutrient code, in the catalogue's units.
+    amounts: Mapping[str, float] = {}
+
+
+NOTHING_EATEN = Eaten()
+
+
 class Pick(NamedTuple):
     """Some of a candidate in a meal."""
 
@@ -224,9 +241,10 @@ def optimise(
     *,
     weights: Weights = Weights(),  # noqa: B008
     options: Options = Options(),  # noqa: B008
+    eaten: Eaten = NOTHING_EATEN,
 ) -> Plan:
     """The best day from some candidates, for some needs. See the module."""
-    day = _Day(candidates, weights, options)
+    day = _Day(candidates, weights, options, eaten)
     day.add_needs(needs)
     day.add_split(needs, options.split)
     day.add_ratios(needs)
@@ -240,10 +258,17 @@ class _Day:
     """The programme of a day: what is decided, and what it is held to."""
 
     def __init__(
-        self, candidates: Iterable[Candidate], weights: Weights, options: Options
+        self,
+        candidates: Iterable[Candidate],
+        weights: Weights,
+        options: Options,
+        eaten: Eaten,
     ) -> None:
         self.weights = weights
         self.options = options
+        self.eaten = eaten
+        # The meals something can be put in.
+        self.kinds = tuple(kind for kind in KINDS if kind not in eaten.kinds)
         self.model = _Model()
         self.usable = [c for c in candidates if c.max_grams >= c.step_grams > 0]
         # The number of steps of a product in a meal, by (product, meal).
@@ -265,7 +290,9 @@ class _Day:
         most = candidate.max_grams / candidate.step_grams
         needed = _steps_required(candidate)
         in_meals = [
-            (kind, model.var(upper=most)) for kind in KINDS if kind in candidate.meals
+            (kind, model.var(upper=most))
+            for kind in self.kinds
+            if kind in candidate.meals
         ]
         if not in_meals:
             return
@@ -293,7 +320,7 @@ class _Day:
         most = math.floor(candidate.max_grams / candidate.step_grams + 1e-9)
         needed = _steps_required(candidate)
         in_meals: list[int] = []
-        for kind in KINDS:
+        for kind in self.kinds:
             if kind not in candidate.meals:
                 continue
             # A new food is an order of magnitude, not a count of steps: its quantity
@@ -323,11 +350,11 @@ class _Day:
             model.row(in_day, low=needed, high=needed)
 
     def terms(
-        self, by_nutrient: Mapping[str, Weight], kinds: Iterable[str] = KINDS
+        self, by_nutrient: Mapping[str, Weight], kinds: Iterable[str] | None = None
     ) -> dict[int, float]:
         """What a combination of nutrients is, over the steps of the given meals."""
         found: dict[int, float] = defaultdict(float)
-        for kind in kinds:
+        for kind in self.kinds if kinds is None else kinds:
             for number, candidate in enumerate(self.usable):
                 x = self.steps.get((number, kind))
                 if x is None:
@@ -340,38 +367,68 @@ class _Day:
                     found[x] += candidate.step_grams / 100 * per_gram
         return found
 
+    def brought(self, by_nutrient: Mapping[str, Weight]) -> float:
+        """What the meals eaten brought of a combination of nutrients."""
+        return sum(
+            float(weight) * self.eaten.amounts.get(code, 0.0)
+            for code, weight in by_nutrient.items()
+        )
+
     def at_least(
-        self, expression: Mapping[int, float], bound: float, weight: float
+        self,
+        expression: Mapping[int, float],
+        bound: float,
+        weight: float,
+        brought: float = 0.0,
     ) -> None:
-        """expression >= bound, a shortfall costing its share of the bound."""
+        """
+        brought + expression >= bound, a shortfall costing its share of the bound.
+        `brought` is what is there already, which the expression adds to.
+        """
         shortfall = self.model.var(cost=weight)
         scaled = {x: v / bound for x, v in expression.items()}
-        self.model.row({**scaled, shortfall: 1.0}, low=1.0)
+        self.model.row({**scaled, shortfall: 1.0}, low=1.0 - brought / bound)
 
     def at_most(
-        self, expression: Mapping[int, float], bound: float, weight: float
+        self,
+        expression: Mapping[int, float],
+        bound: float,
+        weight: float,
+        brought: float = 0.0,
     ) -> None:
-        """expression <= bound, an excess costing its share of the bound."""
+        """
+        brought + expression <= bound, an excess costing its share of the bound.
+        """
         excess = self.model.var(cost=weight)
         scaled = {x: v / bound for x, v in expression.items()}
-        self.model.row({**scaled, excess: -1.0}, high=1.0)
+        self.model.row({**scaled, excess: -1.0}, high=1.0 - brought / bound)
 
     def add_needs(self, needs: Needs) -> None:
         """Both ends of every need."""
         for need in needs.nutrients:
-            expression = self.terms(dict.fromkeys(need.nutrients, 1.0))
+            by_nutrient = dict.fromkeys(need.nutrients, 1.0)
+            expression = self.terms(by_nutrient)
+            brought = self.brought(by_nutrient)
             is_energy = need.nutrients == ("energy",)
             weight = self.weights.energy if is_energy else self.weights.need
             if need.low is not None and need.low > 0:
-                self.at_least(expression, float(need.low), weight)
+                self.at_least(expression, float(need.low), weight, brought)
             if need.high is not None and need.high > 0:
-                self.at_most(expression, float(need.high), weight)
+                self.at_most(expression, float(need.high), weight, brought)
 
     def add_split(self, needs: Needs, split: Mapping[str, float]) -> None:
-        """The energy of each meal, near its share of the day's."""
-        energy = float(needs.energy * KJ_PER_KCAL)
-        for kind in KINDS:
-            middle = split[kind] * energy
+        """
+        The energy of each meal that is not eaten, near its share of the day's. With
+        meals eaten, the energy the day still lacks is shared between the others, in the
+        proportions of the split; with none left to give, or none to share, nothing
+        is asked of the meals.
+        """
+        left = float(needs.energy * KJ_PER_KCAL) - self.eaten.amounts.get("energy", 0.0)
+        shares = sum(split[kind] for kind in self.kinds)
+        if left <= 0 or shares <= 0:
+            return
+        for kind in self.kinds:
+            middle = split[kind] / shares * left
             meal = self.terms({"energy": 1.0}, [kind])
             self.at_least(meal, middle * (1 - SPLIT_MARGIN), self.weights.split)
             self.at_most(meal, middle * (1 + SPLIT_MARGIN), self.weights.split)
@@ -385,12 +442,18 @@ class _Day:
             weight = (
                 self.weights.target if ratio.kind == Kind.TARGET else self.weights.ratio
             )
+            # What the meals eaten bring, taken the same way as the rest of the row.
+            top, bottom = self.brought(ratio.numerator), self.brought(ratio.denominator)
             if ratio.high is not None:
                 row = _difference(numerator, denominator, float(ratio.high), scale)
-                self.model.row({**row, self.model.var(cost=weight): -1.0}, high=0.0)
+                brought = (top - float(ratio.high) * bottom) / scale
+                self.model.row(
+                    {**row, self.model.var(cost=weight): -1.0}, high=-brought
+                )
             if ratio.low is not None:
                 row = _difference(numerator, denominator, float(ratio.low), scale)
-                self.model.row({**row, self.model.var(cost=weight): 1.0}, low=0.0)
+                brought = (top - float(ratio.low) * bottom) / scale
+                self.model.row({**row, self.model.var(cost=weight): 1.0}, low=-brought)
 
     def picks(self, values: np.ndarray) -> list[Pick]:
         """The steps that were chosen, in the order of the day."""

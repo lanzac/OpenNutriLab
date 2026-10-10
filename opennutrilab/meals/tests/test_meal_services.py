@@ -143,3 +143,97 @@ def test_a_quantity_of_nothing_is_refused_by_the_database(user: User):
 
     with transaction.atomic(), pytest.raises(IntegrityError):
         MealItem.objects.create(meal=meal, product=product, quantity=0, unit="g")
+
+
+# ----------------------------------------------------------------------------
+# Meals eaten
+# ----------------------------------------------------------------------------
+@pytest.mark.django_db
+def test_a_meal_is_not_eaten_until_it_is_marked(user: User):
+    product = make_product("1111111111116", serving="50")
+    stock(user, product)
+
+    meal_services.add_item(user, DAY, "lunch", product, D(1))
+
+    assert Meal.objects.get().eaten is False
+
+
+@pytest.mark.django_db
+def test_a_meal_is_marked_eaten_and_not_eaten_again(user: User):
+    product = make_product("1111111111116", serving="50")
+    stock(user, product)
+    meal_services.add_item(user, DAY, "lunch", product, D(1))
+
+    meal_services.set_eaten(user, DAY, "lunch", eaten=True)
+    assert Meal.objects.get().eaten is True
+    meal_services.set_eaten(user, DAY, "lunch", eaten=False)
+
+    assert Meal.objects.get().eaten is False
+    # Nothing was made or lost on the way.
+    assert (Meal.objects.count(), MealItem.objects.count()) == (1, 1)
+
+
+@pytest.mark.django_db
+def test_a_meal_with_nothing_in_it_can_be_marked_eaten_for_a_meal_skipped(user: User):
+    meal_services.set_eaten(user, DAY, "breakfast", eaten=True)
+
+    meal = Meal.objects.get()
+    assert (meal.kind, meal.eaten, meal.items.count()) == ("breakfast", True, 0)
+
+
+@pytest.mark.django_db
+def test_a_meal_is_eaten_for_its_own_user_and_day_only(user: User):
+    other = UserFactory()
+    meal_services.set_eaten(other, DAY, "lunch", eaten=True)
+    meal_services.set_eaten(user, DAY, "lunch", eaten=False)
+
+    assert Meal.objects.get(user=other).eaten is True
+    assert Meal.objects.get(user=user).eaten is False
+
+
+@pytest.mark.django_db
+def test_putting_a_day_in_place_keeps_the_meals_eaten(user: User):
+    bread, muesli = (
+        make_product("1111111111116", serving="50"),
+        make_product("2222222222222"),
+    )
+    stock(user, bread, muesli)
+    meal_services.add_item(user, DAY, "breakfast", muesli, D(60), "g")
+    meal_services.set_eaten(user, DAY, "breakfast", eaten=True)
+    meal_services.add_item(user, DAY, "lunch", bread, D(1))
+    meal_services.add_item(user, DAY, "dinner", bread, D(2))
+
+    meal_services.replace_day(user, DAY, [("snack", bread, D(1), "serving")])
+
+    kept = {
+        (item.meal.kind, item.product_id, item.meal.eaten)
+        for item in MealItem.objects.select_related("meal")
+    }
+    # The breakfast eaten stays, what was not eaten is replaced.
+    assert kept == {
+        ("breakfast", muesli.pk, True),
+        ("snack", bread.pk, False),
+    }
+
+
+@pytest.mark.django_db
+def test_nothing_is_put_in_place_of_a_meal_eaten_and_the_day_is_left_as_it_was(
+    user: User,
+):
+    bread = make_product("1111111111116", serving="50")
+    stock(user, bread)
+    meal_services.add_item(user, DAY, "breakfast", bread, D(1))
+    meal_services.set_eaten(user, DAY, "breakfast", eaten=True)
+    meal_services.add_item(user, DAY, "lunch", bread, D(3))
+
+    with pytest.raises(meal_services.MealEatenError):
+        meal_services.replace_day(
+            user,
+            DAY,
+            [("snack", bread, D(1), "serving"), ("breakfast", bread, D(2), "serving")],
+        )
+
+    assert {
+        (item.meal.kind, item.quantity)
+        for item in MealItem.objects.select_related("meal")
+    } == {("breakfast", D(1)), ("lunch", D(3))}

@@ -200,6 +200,13 @@ def meals_labels() -> dict[str, str]:
         "chooseProduct": _("Choose a product…"),
         "add": _("Add"),
         "emptyMeal": _("Nothing in this meal yet."),
+        "emptyMealEaten": _("Nothing eaten at this meal."),
+        "eaten": _("Eaten"),
+        "toAdd": _("To add"),
+        "eatenHelp": _(
+            "Mark the meals you have eaten: a proposed day counts what they brought, "
+            "keeps them as they are, and only adds what the rest of the day needs."
+        ),
         "noProfile": _("Fill in your profile to set the day against your needs."),
         "myNeeds": _("My needs"),
         "emptyDay": _("Put products in a meal to see what the day brings."),
@@ -237,9 +244,16 @@ def meals_labels() -> dict[str, str]:
         "proposal_no_candidates": _(
             "No product of your inventory has a composition to count."
         ),
+        "proposal_nothing_to_fill": _(
+            "Every meal of the day is eaten: there is nothing to add."
+        ),
+        "proposal_nothing_to_add": _(
+            "Nothing to add: the meals eaten bring what the day needs, as far as "
+            "your inventory goes."
+        ),
         "skipped": _("Left aside, with no energy value:"),
         "useDay": _("Use this day"),
-        "confirmReplace": _("Replace what is in this day?"),
+        "confirmReplace": _("Replace what is in the meals not yet eaten?"),
         "limitsTitle": _("Limits for the proposed day"),
         "limitsHelp": _(
             "Switch a product off to leave it out of the proposed day, and choose "
@@ -285,6 +299,9 @@ def meals_labels() -> dict[str, str]:
         "suggestion_no_suggestion": _(
             "No food is worth getting for what your inventory misses."
         ),
+        "suggestion_nothing_to_fill": _(
+            "Every meal of the day is eaten: there is nothing to suggest."
+        ),
         "suggestionCaution": _(
             "A suggestion is worked out from composition alone. It takes no account "
             "of contaminants (mercury in some fish), of too much of one thing "
@@ -301,6 +318,8 @@ def meals_labels() -> dict[str, str]:
         "legendRange": _("Range the value can be in"),
         "legendUncertain": _("Not certain"),
         "legendOpen": _("Dashed: no upper end is known."),
+        "legendEaten": _("Darker: already eaten"),
+        "ofWhichEaten": _("of which eaten"),
         "shareOfMinimum": _("Share of the minimum"),
         "shareOfLimit": _("Share of the limit"),
         "totalQuantity": _("Total quantity"),

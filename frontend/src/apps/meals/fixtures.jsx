@@ -24,6 +24,11 @@ export const labels = {
   chooseProduct: 'Choisir un produit…',
   add: 'Ajouter',
   emptyMeal: 'Rien dans ce repas.',
+  emptyMealEaten: 'Rien mangé à ce repas.',
+  eaten: 'Mangé',
+  toAdd: 'À ajouter',
+  eatenHelp:
+    'Marquez les repas mangés : un jour proposé les garde et n’ajoute que le nécessaire.',
   noProfile: 'Renseignez votre profil.',
   myNeeds: 'Mes besoins',
   emptyDay: 'Mettez des produits dans un repas.',
@@ -53,9 +58,13 @@ export const labels = {
   proposal_time_limit: 'Le temps est écoulé : voici le meilleur jour trouvé.',
   proposal_failed: 'Aucun jour n’a pu être calculé.',
   proposal_no_candidates: 'Aucun produit de l’inventaire n’a de composition.',
+  proposal_nothing_to_fill:
+    'Tous les repas du jour sont mangés : rien à ajouter.',
+  proposal_nothing_to_add:
+    'Rien à ajouter : les repas mangés apportent ce dont la journée a besoin.',
   skipped: 'Laissés de côté, sans valeur d’énergie :',
   useDay: 'Utiliser ce jour',
-  confirmReplace: 'Remplacer ce qui est dans ce jour ?',
+  confirmReplace: 'Remplacer ce qui est dans les repas pas encore mangés ?',
   limitsTitle: 'Limites pour le jour proposé',
   limitsHelp:
     'Désactivez un produit pour l’écarter du jour proposé, et choisissez les repas où il peut être.',
@@ -84,6 +93,8 @@ export const labels = {
   suggestion_no_gaps: 'Votre inventaire ne manque de rien.',
   suggestion_no_foods: 'Aucun aliment de la table ne comble ce qui manque.',
   suggestion_no_suggestion: 'Aucun aliment ne vaut la peine de ce qui manque.',
+  suggestion_nothing_to_fill:
+    'Tous les repas du jour sont mangés : rien à suggérer.',
   suggestionCaution:
     'Une suggestion ne compte que la composition : contrôlez-la avant d’agir.',
   suggestedDay: 'Voir la journée avec ces aliments',
@@ -97,6 +108,8 @@ export const labels = {
   legendRange: 'Fourchette de la valeur',
   legendUncertain: 'Pas certain',
   legendOpen: 'Pointillé : aucun maximum n’est connu.',
+  legendEaten: 'Plus foncé : déjà mangé',
+  ofWhichEaten: 'dont mangé',
   shareOfMinimum: 'Part du minimum',
   shareOfLimit: 'Part de la limite',
   totalQuantity: 'Quantité totale',
@@ -156,8 +169,8 @@ export const total = (
   coverage,
 });
 
-export function meal(kind, label, items = [], totals = {}) {
-  return { kind, label, items, mass: '0', totals };
+export function meal(kind, label, items = [], totals = {}, eaten = false) {
+  return { kind, label, items, mass: '0', totals, eaten };
 }
 
 export function day(overrides = {}) {
@@ -267,6 +280,8 @@ export const need = (overrides) => ({
   share_low: null,
   share_high: null,
   total: total('12', '10', '14', '100'),
+  // How much of the total the meals eaten brought; null when no meal is eaten.
+  eaten: null,
   status: 'below',
   certain: true,
   ...overrides,

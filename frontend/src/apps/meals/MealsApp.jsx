@@ -8,6 +8,7 @@ import {
   proposeDay,
   removeItem,
   replaceDay,
+  setMealEaten,
   suggestFoods,
 } from './api/client.js';
 import { DayPicker } from './DayPicker.jsx';
@@ -103,7 +104,21 @@ export function MealsApp({
     };
   }, [labels.loadError]);
 
-  const save = (write, done) => {
+  // A proposal or a suggestion is made on the meals eaten, so it is out of date as
+  // soon as one of them changes, or which meals are eaten: it is closed.
+  const closeProposals = () => {
+    setProposal(null);
+    setSuggestions(null);
+  };
+  const closeIfEaten = (kind) => {
+    if (report.meals.some((meal) => meal.kind === kind && meal.eaten)) {
+      closeProposals();
+    }
+  };
+  const mealOfItem = (id) =>
+    report.meals.find((meal) => meal.items.some((item) => item.id === id));
+
+  const save = (write, done, failed) => {
     setError(null);
     write()
       .then((data) => {
@@ -115,7 +130,30 @@ export function MealsApp({
       .catch((err) => {
         console.error(err);
         setError(labels.saveError);
+        failed?.();
       });
+  };
+
+  // The switch of a meal answers at once, as a switch should; the server's day
+  // (which takes a moment to work out) replaces it when it comes, or, if the change
+  // is refused, puts the meal back as the server has it.
+  const eat = (kind, eaten) => {
+    setReport((shown) => ({
+      ...shown,
+      meals: shown.meals.map((meal) =>
+        meal.kind === kind ? { ...meal, eaten } : meal,
+      ),
+    }));
+    save(
+      () => setMealEaten(day, kind, eaten, csrfToken),
+      closeProposals,
+      () =>
+        fetchDay(day)
+          .then((data) => {
+            if (data.day === current.current) setReport(data);
+          })
+          .catch((err) => console.error(err)),
+    );
   };
 
   const propose = () => {
@@ -149,8 +187,10 @@ export function MealsApp({
   };
 
   const useProposal = () => {
-    // What is in the day goes: the user is asked first.
-    const filled = report.meals.some((meal) => meal.items.length > 0);
+    // What is in the meals not eaten goes: the user is asked first.
+    const filled = report.meals.some(
+      (meal) => !meal.eaten && meal.items.length > 0,
+    );
     if (filled && !window.confirm(labels.confirmReplace)) return;
     save(
       () => replaceDay(day, proposal.items, csrfToken),
@@ -220,6 +260,8 @@ export function MealsApp({
         </button>
       </div>
 
+      <p className="small text-body-secondary">{labels.eatenHelp}</p>
+
       {error && (
         <p className="alert alert-danger" role="alert">
           {error}
@@ -265,12 +307,26 @@ export function MealsApp({
                   labels={labels}
                   languageCode={languageCode}
                   onAdd={(kind, item) =>
-                    save(() => addItem(day, kind, item, csrfToken))
+                    save(
+                      () => addItem(day, kind, item, csrfToken),
+                      () => closeIfEaten(kind),
+                    )
                   }
-                  onChange={(id, change) =>
-                    save(() => changeItem(id, change, csrfToken))
-                  }
-                  onRemove={(id) => save(() => removeItem(id, csrfToken))}
+                  onChange={(id, change) => {
+                    const kind = mealOfItem(id)?.kind;
+                    save(
+                      () => changeItem(id, change, csrfToken),
+                      () => closeIfEaten(kind),
+                    );
+                  }}
+                  onRemove={(id) => {
+                    const kind = mealOfItem(id)?.kind;
+                    save(
+                      () => removeItem(id, csrfToken),
+                      () => closeIfEaten(kind),
+                    );
+                  }}
+                  onEat={eat}
                 />
               </div>
             ))}

@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 from http import HTTPStatus
 
@@ -7,6 +8,7 @@ from django.test import Client
 from opennutrilab.meals.models import Meal
 from opennutrilab.meals.models import MealItem
 from opennutrilab.meals.services import limits
+from opennutrilab.meals.services import meal_services
 from opennutrilab.meals.services import proposals
 from opennutrilab.meals.services.limits import Limits
 from opennutrilab.meals.services.optimiser import KINDS
@@ -23,6 +25,7 @@ BREAD = "3228857002245"
 MUESLI = "3229820794556"
 BARS = "5060088700112"
 DAY = "2026-10-09"
+ON = date(2026, 10, 9)
 API = f"/api/v1/meals/{DAY}"
 
 
@@ -235,7 +238,7 @@ def test_a_day_cannot_be_proposed_without_a_profile(
     user: User, inventory: list[Product]
 ):
     with pytest.raises(proposals.NoProfileError):
-        proposals.propose_day(user)
+        proposals.propose_day(user, ON)
 
 
 def test_a_day_is_proposed_from_the_inventory_for_the_needs(
@@ -243,7 +246,7 @@ def test_a_day_is_proposed_from_the_inventory_for_the_needs(
 ):
     make_profile(user)
 
-    proposal = proposals.propose_day(user)
+    proposal = proposals.propose_day(user, ON)
 
     assert proposal.status == "optimal"
     assert proposal.items
@@ -280,7 +283,7 @@ def test_the_limits_of_a_product_are_kept_in_the_proposal(
     bars = inventory[2]
     limits.set_limits(user, bars, ["snack"], D(1), "serving")
 
-    proposal = proposals.propose_day(user)
+    proposal = proposals.propose_day(user, ON)
 
     found = [item for item in proposal.items if item.product == bars]
     assert {item.kind for item in found} <= {"snack"}
@@ -295,7 +298,7 @@ def test_a_product_left_out_is_not_in_the_proposed_day(
     limits.set_limits(user, bars, [], None, None, enabled=False)
 
     loaded = proposals.load_inventory(user)
-    proposal = proposals.propose_day(user)
+    proposal = proposals.propose_day(user, ON)
 
     assert bars.pk not in {candidate.barcode for candidate in loaded.candidates}
     # It is the user's choice: it is not left aside for what it lacks.
@@ -310,7 +313,7 @@ def test_a_day_cannot_be_made_of_products_that_are_all_left_out(
     make_profile(user)
     limits.set_all_enabled(user, enabled=False)
 
-    proposal = proposals.propose_day(user)
+    proposal = proposals.propose_day(user, ON)
 
     assert proposal.status == "no_candidates"
     assert proposal.items == []
@@ -325,7 +328,7 @@ def test_a_product_asked_for_whole_is_all_in_the_proposed_day(
     bars.refresh_from_db()
     limits.set_limits(user, bars, ["lunch", "snack"], None, None, use_all=True)
 
-    proposal = proposals.propose_day(user)
+    proposal = proposals.propose_day(user, ON)
 
     found = [item for item in proposal.items if item.product == bars]
     assert found
@@ -340,7 +343,7 @@ def test_the_inventory_of_others_is_not_used(user: User, inventory: list[Product
     stranger = make_product("3017620422003", energy="2500")
     stock(other, stranger)
 
-    proposal = proposals.propose_day(user)
+    proposal = proposals.propose_day(user, ON)
 
     assert stranger.pk not in {item.product.pk for item in proposal.items}
 
@@ -352,7 +355,7 @@ def test_a_product_with_no_energy_is_said_to_be_left_out(
     nothing = make_product("1111111111116")
     stock(user, nothing)
 
-    proposal = proposals.propose_day(user)
+    proposal = proposals.propose_day(user, ON)
 
     assert [(s.barcode, s.reason) for s in proposal.skipped] == [
         (nothing.pk, proposals.NO_ENERGY)
@@ -363,7 +366,7 @@ def test_an_inventory_with_nothing_to_count_gives_no_day(user: User, catalogue: 
     make_profile(user)
     stock(user, make_product("1111111111116"))
 
-    proposal = proposals.propose_day(user)
+    proposal = proposals.propose_day(user, ON)
 
     assert (proposal.status, proposal.items) == ("no_candidates", [])
     assert [s.barcode for s in proposal.skipped] == ["1111111111116"]
@@ -525,3 +528,412 @@ def test_an_empty_day_empties_the_day(api_client: Client, inventory: list[Produc
     assert response.status_code == HTTPStatus.OK
     assert all(meal["items"] == [] for meal in response.json()["meals"])
     assert not MealItem.objects.exists()
+
+
+# ----------------------------------------------------------------------------
+# A day partly eaten
+# ----------------------------------------------------------------------------
+def eat(user: User, kind: str, product: Product, quantity: str, unit: str = "g"):
+    """Put a product in a meal of the day, and mark the meal eaten."""
+    meal_services.add_item(user, ON, kind, product, D(quantity), unit)
+    meal_services.set_eaten(user, ON, kind, eaten=True)
+
+
+def _kilojoules(items: list[proposals.ProposedItem]) -> Decimal:
+    return sum(
+        (
+            item.product.declared_nutrients.get(nutrient_id="energy").amount
+            * _grams(item)
+            / 100
+            for item in items
+        ),
+        D(0),
+    )
+
+
+def test_what_is_eaten_of_a_product_comes_off_the_most_of_it_a_day(db: None):
+    bread = Product(
+        barcode=BREAD, name="Bread", serving_quantity=D("35.7"), serving_unit="g"
+    )
+    energy = {"energy": amount("1233")}
+
+    found = proposals.candidate_of(bread, energy, eaten_grams=D(100))
+    used_up = proposals.candidate_of(bread, energy, eaten_grams=D(300))
+
+    assert found is not None
+    assert found.max_grams == pytest.approx(114.2)
+    # More is eaten than a day may hold: none is left, which the optimiser sees as a
+    # product it cannot take a step of.
+    assert used_up is not None
+    assert used_up.max_grams == 0.0
+
+
+def test_what_is_eaten_of_a_limit_in_grams_comes_off_it(db: None):
+    muesli = Product(barcode=MUESLI, name="Muesli")
+
+    found = proposals.candidate_of(
+        muesli, {"energy": amount("1532")}, Limits((), D(150), "g"), D(60)
+    )
+
+    assert found is not None
+    assert found.max_grams == 90.0  # noqa: PLR2004
+
+
+def test_the_whole_package_asked_for_is_what_is_left_of_it(db: None):
+    found = proposals.candidate_of(
+        packaged("375"),
+        {"energy": amount("1233")},
+        Limits((), None, "", use_all=True),
+        D(60),
+    )
+
+    assert found is not None
+    # 315 g are left, which 5 g steps make whole.
+    assert found.required_grams == 315.0  # noqa: PLR2004
+    assert found.max_grams == 315.0  # noqa: PLR2004
+    assert found.step_grams == 5.0  # noqa: PLR2004
+
+
+def test_the_step_of_what_is_left_of_a_package_follows_what_is_left(db: None):
+    found = proposals.candidate_of(
+        packaged("375"),
+        {"energy": amount("1233")},
+        Limits((), None, "", use_all=True),
+        D("62.5"),
+    )
+
+    assert found is not None
+    assert found.required_grams == 312.5  # noqa: PLR2004
+    assert found.step_grams == 0.5  # noqa: PLR2004
+
+
+def test_a_package_eaten_whole_leaves_none_to_put_in_the_day(db: None):
+    found = proposals.candidate_of(
+        packaged("375"),
+        {"energy": amount("1233")},
+        Limits((), None, "", use_all=True),
+        D(375),
+    )
+
+    assert found is not None
+    assert found.max_grams == 0.0
+    assert found.required_grams is None
+
+
+def test_the_meals_eaten_are_counted_and_kept_by_the_proposal(
+    user: User, inventory: list[Product]
+):
+    make_profile(user)
+    bread, muesli, _bars = inventory
+    eat(user, "breakfast", muesli, "200")  # 3064 kJ
+    eat(user, "lunch", bread, "4", "serving")  # 142.8 g, 1761 kJ
+
+    proposal = proposals.propose_day(user, ON)
+
+    assert proposal.status == "optimal"
+    assert set(proposal.eaten) == {"breakfast", "lunch"}
+    assert [item.product_id for item in proposal.eaten["breakfast"]] == [MUESLI]
+    # Nothing is proposed for them.
+    assert proposal.items
+    assert {item.kind for item in proposal.items} <= {"snack", "dinner"}
+    # The day is the person's energy, with what was eaten: 4825 kJ, and the rest.
+    eaten = D("3064") + D("142.8") * D("1233") / 100
+    needed = D("2651") * D("4.184")
+    assert needed * D("0.9") <= eaten + _kilojoules(proposal.items) <= needed * D("1.1")
+    # Nothing is written.
+    assert Meal.objects.filter(eaten=False).count() == 0
+
+
+def test_a_proposal_for_a_day_with_less_eaten_adds_more(
+    user: User, inventory: list[Product]
+):
+    make_profile(user)
+    muesli = inventory[1]
+    nothing = proposals.propose_day(user, ON)
+    eat(user, "breakfast", muesli, "200")
+
+    some = proposals.propose_day(user, ON)
+
+    assert _kilojoules(some.items) < _kilojoules(nothing.items) - D(2000)
+
+
+def test_a_meal_skipped_is_a_meal_eaten_and_empty_and_nothing_is_put_in_it(
+    user: User, inventory: list[Product]
+):
+    make_profile(user)
+    meal_services.set_eaten(user, ON, "breakfast", eaten=True)
+
+    proposal = proposals.propose_day(user, ON)
+
+    assert proposal.eaten == {"breakfast": []}
+    assert proposal.items
+    assert "breakfast" not in {item.kind for item in proposal.items}
+    # The day's energy is still the person's, to be met by the three meals left.
+    needed = D("2651") * D("4.184")
+    assert needed * D("0.9") <= _kilojoules(proposal.items) <= needed * D("1.1")
+
+
+def test_a_meal_not_eaten_is_what_the_proposal_takes_the_place_of(
+    user: User, inventory: list[Product]
+):
+    make_profile(user)
+    _bread, muesli, _bars = inventory
+    meal_services.add_item(user, ON, "dinner", muesli, D(500), "g")
+
+    proposal = proposals.propose_day(user, ON)
+
+    # What was planned is not counted: the proposal is what the day is, with no more
+    # of it than it needs.
+    needed = D("2651") * D("4.184")
+    assert needed * D("0.9") <= _kilojoules(proposal.items) <= needed * D("1.1")
+    assert proposal.eaten == {}
+
+
+def test_a_day_whose_meals_are_all_eaten_has_nothing_to_propose(
+    user: User, inventory: list[Product]
+):
+    make_profile(user)
+    for kind in KINDS:
+        meal_services.set_eaten(user, ON, kind, eaten=True)
+
+    proposal = proposals.propose_day(user, ON)
+
+    assert (proposal.status, proposal.items) == ("nothing_to_fill", [])
+    assert set(proposal.eaten) == set(KINDS)
+
+
+def test_a_day_with_all_its_meals_eaten_needs_the_profile_all_the_same(
+    user: User, inventory: list[Product]
+):
+    for kind in KINDS:
+        meal_services.set_eaten(user, ON, kind, eaten=True)
+
+    with pytest.raises(proposals.NoProfileError):
+        proposals.propose_day(user, ON)
+
+
+def test_the_meals_eaten_of_another_day_or_user_are_not_counted(
+    user: User, inventory: list[Product]
+):
+    make_profile(user)
+    muesli = inventory[1]
+    meal_services.add_item(user, date(2026, 10, 8), "breakfast", muesli, D(200), "g")
+    meal_services.set_eaten(user, date(2026, 10, 8), "breakfast", eaten=True)
+    stock(UserFactory(), muesli)
+
+    proposal = proposals.propose_day(user, ON)
+
+    assert proposal.eaten == {}
+
+
+def test_a_product_asked_for_whole_is_what_is_left_of_its_package_in_the_proposal(
+    user: User, inventory: list[Product]
+):
+    make_profile(user)
+    _bread, _muesli, bars = inventory
+    Product.objects.filter(pk=bars.pk).update(package_quantity=D(135), package_unit="g")
+    bars.refresh_from_db()
+    limits.set_limits(user, bars, [], None, None, use_all=True)
+    eat(user, "breakfast", bars, "1", "serving")  # 45 g of the 135
+
+    proposal = proposals.propose_day(user, ON)
+
+    found = [item for item in proposal.items if item.product == bars]
+    assert sum(item.quantity for item in found) == D(90)
+    assert {item.unit for item in found} == {"g"}
+
+
+def test_a_package_eaten_whole_is_not_in_the_proposal(
+    user: User, inventory: list[Product]
+):
+    make_profile(user)
+    bars = inventory[2]
+    Product.objects.filter(pk=bars.pk).update(package_quantity=D(135), package_unit="g")
+    bars.refresh_from_db()
+    limits.set_limits(user, bars, [], None, None, use_all=True)
+    eat(user, "breakfast", bars, "135")
+
+    proposal = proposals.propose_day(user, ON)
+
+    assert proposal.status == "optimal"
+    assert bars not in {item.product for item in proposal.items}
+
+
+def test_the_most_of_a_product_a_day_counts_what_was_eaten(
+    user: User, inventory: list[Product]
+):
+    make_profile(user)
+    _bread, _muesli, bars = inventory
+    limits.set_limits(user, bars, [], D(2), "serving")
+    eat(user, "breakfast", bars, "1.5", "serving")
+
+    proposal = proposals.propose_day(user, ON)
+
+    found = [item for item in proposal.items if item.product == bars]
+    # Two servings a day at the most, and one and a half are eaten.
+    assert sum(item.quantity for item in found) <= D("0.5")
+
+
+# ----------------------------------------------------------------------------
+# A day partly eaten, through the API
+# ----------------------------------------------------------------------------
+def patch(client: Client, path: str, body: dict[str, object]):
+    return client.patch(path, body, content_type="application/json")
+
+
+def test_a_meal_is_marked_eaten_and_the_day_says_so(
+    api_client: Client, inventory: list[Product]
+):
+    api_client.post(
+        f"{API}/lunch/items",
+        {"barcode": MUESLI, "quantity": 50, "unit": "g"},
+        content_type="application/json",
+    )
+
+    response = patch(api_client, f"{API}/lunch", {"eaten": True})
+
+    assert response.status_code == HTTPStatus.OK
+    meals = {m["kind"]: m for m in response.json()["meals"]}
+    assert meals["lunch"]["eaten"] is True
+    assert [i["barcode"] for i in meals["lunch"]["items"]] == [MUESLI]
+    assert [meals[k]["eaten"] for k in ("breakfast", "snack", "dinner")] == [False] * 3
+    # And it is the same when the day is read again, and when it is not eaten again.
+    assert {m["kind"]: m["eaten"] for m in api_client.get(API).json()["meals"]}["lunch"]
+    again = patch(api_client, f"{API}/lunch", {"eaten": False})
+    assert {m["kind"]: m["eaten"] for m in again.json()["meals"]}["lunch"] is False
+
+
+def test_a_meal_with_nothing_in_it_is_marked_eaten_through_the_api(
+    api_client: Client, db: None
+):
+    response = patch(api_client, f"{API}/breakfast", {"eaten": True})
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json()["meals"][0]["eaten"] is True
+
+
+def test_only_a_meal_of_the_day_can_be_marked_eaten(api_client: Client, db: None):
+    assert (
+        patch(api_client, f"{API}/brunch", {"eaten": True}).status_code
+        == HTTPStatus.UNPROCESSABLE_ENTITY
+    )
+    assert (
+        patch(api_client, f"{API}/lunch", {}).status_code
+        == HTTPStatus.UNPROCESSABLE_ENTITY
+    )
+
+
+def test_a_meal_is_marked_eaten_by_a_signed_in_user_only(client: Client, db: None):
+    response = patch(client, f"{API}/lunch", {"eaten": True})
+
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
+
+
+def test_the_item_routes_still_take_the_items_path_for_their_own(
+    api_client: Client, user: User, inventory: list[Product]
+):
+    # "items/12" must not be read as the meal "12" of the day "items".
+    meal = Meal.objects.create(user=user, date=ON, kind="lunch")
+    item = MealItem.objects.create(meal=meal, product_id=MUESLI, quantity=50, unit="g")
+
+    response = patch(
+        api_client, f"/api/v1/meals/items/{item.pk}", {"quantity": 80, "unit": "g"}
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    item.refresh_from_db()
+    assert item.quantity == D(80)
+
+
+def test_the_proposal_of_the_page_reports_the_meals_eaten_in_the_day_it_makes(
+    api_client: Client, user: User, inventory: list[Product]
+):
+    make_profile(user)
+    eat(user, "breakfast", inventory[1], "200")
+
+    response = api_client.post(f"{API}/propose")
+
+    assert response.status_code == HTTPStatus.OK
+    body = response.json()
+    meals = {m["kind"]: m for m in body["day"]["meals"]}
+    # The meal eaten is in the day as it is, saved, and the others are proposed.
+    assert meals["breakfast"]["eaten"] is True
+    assert [i["barcode"] for i in meals["breakfast"]["items"]] == [MUESLI]
+    assert all(i["id"] is not None for i in meals["breakfast"]["items"])
+    proposed = [
+        i for kind in ("lunch", "snack", "dinner") for i in meals[kind]["items"]
+    ]
+    assert proposed
+    assert all(i["id"] is None for i in proposed)
+    assert [i["kind"] for i in body["items"] if i["kind"] == "breakfast"] == []
+    # And each need says what the meal eaten brought of it.
+    energy = next(n for n in body["day"]["needs"] if n["name"] == "Energy")
+    assert D(energy["eaten"]) == D("3064")
+    assert D(energy["total"]["amount"]) > D(energy["eaten"])
+
+
+def test_a_day_with_nothing_eaten_says_nothing_was_eaten_in_its_needs(
+    api_client: Client, user: User, inventory: list[Product]
+):
+    make_profile(user)
+
+    body = api_client.post(f"{API}/propose").json()
+
+    assert {need["eaten"] for need in body["day"]["needs"]} == {None}
+    assert not any(meal["eaten"] for meal in body["day"]["meals"])
+
+
+def test_a_proposal_for_a_day_all_eaten_says_there_is_nothing_to_fill(
+    api_client: Client, user: User, inventory: list[Product]
+):
+    make_profile(user)
+    for kind in KINDS:
+        meal_services.set_eaten(user, ON, kind, eaten=True)
+
+    response = api_client.post(f"{API}/propose")
+
+    assert response.status_code == HTTPStatus.OK
+    body = response.json()
+    assert (body["status"], body["items"]) == ("nothing_to_fill", [])
+    assert all(meal["eaten"] for meal in body["day"]["meals"])
+
+
+def test_taking_a_proposal_keeps_the_meals_eaten(
+    api_client: Client, user: User, inventory: list[Product]
+):
+    bread, muesli, _bars = inventory
+    eat(user, "breakfast", muesli, "60")
+    meal_services.add_item(user, ON, "dinner", bread, D(3), "serving")
+
+    response = put(
+        api_client,
+        [{"kind": "snack", "barcode": BREAD, "quantity": "1", "unit": "serving"}],
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    meals = {m["kind"]: m for m in response.json()["meals"]}
+    assert meals["breakfast"]["eaten"] is True
+    assert [i["barcode"] for i in meals["breakfast"]["items"]] == [MUESLI]
+    assert [i["barcode"] for i in meals["snack"]["items"]] == [BREAD]
+    assert meals["dinner"]["items"] == []
+
+
+def test_a_proposal_with_an_item_for_a_meal_eaten_is_refused_and_changes_nothing(
+    api_client: Client, user: User, inventory: list[Product]
+):
+    bread, muesli, _bars = inventory
+    eat(user, "breakfast", muesli, "60")
+    meal_services.add_item(user, ON, "dinner", bread, D(3), "serving")
+
+    response = put(
+        api_client,
+        [
+            {"kind": "snack", "barcode": BREAD, "quantity": "1", "unit": "serving"},
+            {"kind": "breakfast", "barcode": BREAD, "quantity": "1", "unit": "serving"},
+        ],
+    )
+
+    assert response.status_code == HTTPStatus.CONFLICT
+    assert {
+        (i.meal.kind, i.product_id) for i in MealItem.objects.select_related("meal")
+    } == {("breakfast", MUESLI), ("dinner", BREAD)}

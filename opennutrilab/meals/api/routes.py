@@ -14,6 +14,7 @@ from opennutrilab.meals.api.schemas import ItemChange
 from opennutrilab.meals.api.schemas import ItemIn
 from opennutrilab.meals.api.schemas import LimitsIn
 from opennutrilab.meals.api.schemas import LimitsOut
+from opennutrilab.meals.api.schemas import MealIn
 from opennutrilab.meals.api.schemas import ProposalOut
 from opennutrilab.meals.api.schemas import SuggestionsOut
 from opennutrilab.meals.api.schemas import day_out
@@ -125,23 +126,23 @@ def get_day(request: HttpRequest, day: date) -> DayOut:
 @router.post(path="/{day}/propose", response=ProposalOut)
 def propose_day(request: HttpRequest, day: date) -> ProposalOut:
     """
-    The best day from the user's inventory for the needs of their profile, as a
-    proposal: nothing is written, and what is already in the day is not counted.
+    What to add to a day, from the user's inventory, to get closer to the needs of
+    their profile, as a proposal: nothing is written. The meals marked eaten are
+    counted and kept as they are, and the others are what the proposal is made of: what
+    is in them is not counted.
 
     It may take some seconds (the solver is given 20 at most), and longer the first
     time for the products whose estimate was never worked out.
     """
     user = _user(request)
     try:
-        proposal = proposals.propose_day(user)
+        proposal = proposals.propose_day(user, day)
     except proposals.NoProfileError as e:
         raise HttpError(422, "Fill in your profile first.") from e
-    kept: dict[str, list[MealItem]] = {}
-    for item in proposal.items:
-        kept.setdefault(item.kind, []).append(
-            MealItem(product=item.product, quantity=item.quantity, unit=item.unit)
-        )
-    return proposal_out(proposal, report_of(user, day, kept))
+    kept = proposals.kept_items(proposal.items, proposal.eaten)
+    return proposal_out(
+        proposal, report_of(user, day, kept, eaten=proposal.eaten.keys())
+    )
 
 
 @router.post(path="/{day}/suggest", response=SuggestionsOut)
@@ -163,8 +164,9 @@ def suggest_foods(request: HttpRequest, day: date) -> SuggestionsOut:
 @router.put(path="/{day}", response=DayOut)
 def replace_day(request: HttpRequest, day: date, data: DayIn) -> DayOut:
     """
-    Make the meals of a day what the items say, in place of what they were: to take
-    a proposed day. All or nothing.
+    Make the meals of a day that are not eaten what the items say, in place of what
+    they were: to take a proposed day. The meals that are eaten stay as they are, and
+    an item for one is refused. All or nothing.
     """
     user = _user(request)
     found = Product.objects.in_bulk({item.barcode for item in data.items})
@@ -186,6 +188,8 @@ def replace_day(request: HttpRequest, day: date, data: DayIn) -> DayOut:
         raise HttpError(422, "A product has no serving: give grams.") from e
     except meal_services.AlreadyInMealError as e:
         raise HttpError(409, "A product is twice in the same meal.") from e
+    except meal_services.MealEatenError as e:
+        raise HttpError(409, "A meal of the day is eaten: it is not to change.") from e
     return day_out(day_report(user, day))
 
 
@@ -214,6 +218,20 @@ def change_item(request: HttpRequest, item_id: int, data: ItemChange) -> DayOut:
     except meal_services.NoServingError as e:
         raise HttpError(422, "The product has no serving: give grams.") from e
     return day_out(day_report(_user(request), item.meal.date))
+
+
+@router.patch(path="/{day}/{kind}", response=DayOut)
+def change_meal(
+    request: HttpRequest, day: date, kind: MealKind, data: MealIn
+) -> DayOut:
+    """
+    Mark a meal of a day as eaten, or as not eaten again. A meal with nothing in it can
+    be marked, for a meal that was skipped. Registered after the route of the items:
+    "items/12" would else be read as a day and a meal.
+    """
+    user = _user(request)
+    meal_services.set_eaten(user, day, kind, eaten=data.eaten)
+    return day_out(day_report(user, day))
 
 
 @router.delete(path="/items/{item_id}", response=DayOut)

@@ -497,3 +497,63 @@ def test_suggestions_need_a_profile(
 
 def test_suggestions_need_a_signed_in_user(client: Client, db: None):
     assert client.post(API).status_code == HTTPStatus.UNAUTHORIZED
+
+
+# ----------------------------------------------------------------------------
+# A day partly eaten
+# ----------------------------------------------------------------------------
+def test_the_meals_eaten_are_counted_and_the_foods_go_in_the_others(
+    user: User, oats_stocked: Product, table: Source
+):
+    make_profile(user)
+    put(meal_of(user), OATS, "100")
+    Meal.objects.filter(user=user, kind="breakfast").update(eaten=True)
+
+    found = suggestions.suggest_foods(user, DAY)
+
+    assert found.foods
+    for report in (found.base, found.report):
+        by_kind = {meal.kind: meal for meal in report.meals}
+        # The meal eaten is in the day as it is, and nothing else is put in it.
+        assert by_kind["breakfast"].eaten
+        assert [i.product_id for i in by_kind["breakfast"].items] == [OATS]
+        assert not any(by_kind[kind].eaten for kind in ("lunch", "snack", "dinner"))
+    for suggested in found.foods:
+        assert "breakfast" not in {kind for kind, _grams in suggested.picks}
+    # And what it brought counts: the need for energy is the day's, eaten or not.
+    energy = next(
+        s for s in found.report.needs or [] if s.need.nutrients == ("energy",)
+    )
+    assert energy.eaten == D(1600)
+    assert energy.total.amount > D(1600)
+
+
+def test_a_day_with_every_meal_eaten_has_nothing_to_suggest(
+    user: User, oats_stocked: Product, table: Source
+):
+    make_profile(user)
+    put(meal_of(user), OATS, "100")
+    Meal.objects.filter(user=user).update(eaten=True)
+    for kind in ("lunch", "snack", "dinner"):
+        Meal.objects.create(user=user, date=DAY, kind=kind, eaten=True)
+
+    found = suggestions.suggest_foods(user, DAY)
+
+    assert (found.status, found.foods) == ("nothing_to_fill", [])
+    assert found.report == found.base
+    assert all(meal.eaten for meal in found.report.meals)
+
+
+def test_the_suggestions_of_the_page_say_the_meals_eaten(
+    api_client: Client, user: User, oats_stocked: Product, table: Source
+):
+    make_profile(user)
+    put(meal_of(user), OATS, "100")
+    Meal.objects.filter(user=user, kind="breakfast").update(eaten=True)
+
+    response = api_client.post(f"/api/v1/meals/{DAY}/suggest")
+
+    assert response.status_code == HTTPStatus.OK
+    meals = {m["kind"]: m for m in response.json()["day"]["meals"]}
+    assert meals["breakfast"]["eaten"] is True
+    assert meals["lunch"]["eaten"] is False

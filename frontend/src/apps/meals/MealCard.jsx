@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import {
   fill,
@@ -236,6 +236,38 @@ function AddRow({ meal, inventory, labels, languageCode, onAdd }) {
   );
 }
 
+/**
+ * Whether the meal is behind the user. Editable, a switch; in a day that is only
+ * shown, a badge: "Eaten" for a meal that is, "To add" for what is there to be eaten.
+ */
+function EatenMark({ meal, labels, readOnly, onEat }) {
+  const id = useId();
+  if (readOnly) {
+    if (meal.eaten) {
+      return <span className="badge text-bg-success">{labels.eaten}</span>;
+    }
+    return meal.items.length > 0 ? (
+      <span className="badge text-bg-primary">{labels.toAdd}</span>
+    ) : null;
+  }
+  return (
+    <div className="form-check form-switch mb-0">
+      <input
+        id={id}
+        type="checkbox"
+        role="switch"
+        className="form-check-input"
+        checked={meal.eaten}
+        aria-label={`${labels.eaten} – ${meal.label}`}
+        onChange={(event) => onEat(meal.kind, event.target.checked)}
+      />
+      <label className="form-check-label" htmlFor={id}>
+        {labels.eaten}
+      </label>
+    </div>
+  );
+}
+
 export function MealCard({
   meal,
   nutrients,
@@ -245,17 +277,33 @@ export function MealCard({
   onAdd,
   onChange,
   onRemove,
+  onEat,
   readOnly = false,
 }) {
   const shown = SHOWN.filter((code) => meal.totals[code]);
 
   return (
-    <section className="card h-100" aria-label={meal.label}>
-      <div className="card-header fw-semibold">{meal.label}</div>
+    <section
+      className={`card h-100${meal.eaten ? ' border-success' : ''}`}
+      aria-label={meal.label}
+    >
+      <div
+        className={`card-header d-flex justify-content-between align-items-center gap-2${
+          meal.eaten ? ' bg-success-subtle' : ''
+        }`}
+      >
+        <span className="fw-semibold">{meal.label}</span>
+        <EatenMark
+          meal={meal}
+          labels={labels}
+          readOnly={readOnly}
+          onEat={onEat}
+        />
+      </div>
       <ul className="list-group list-group-flush">
         {meal.items.length === 0 && (
           <li className="list-group-item text-body-secondary">
-            {labels.emptyMeal}
+            {meal.eaten ? labels.emptyMealEaten : labels.emptyMeal}
           </li>
         )}
         {meal.items.map((item) =>

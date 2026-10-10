@@ -3,7 +3,8 @@
 // A gauge is a track, from nothing to a maximum chosen to show what matters:
 //   - the zone expected (between the lowest and the highest wanted, or from the
 //     lowest on, or up to the highest);
-//   - the amount, as a bar from the start;
+//   - the amount, as a bar from the start, and how much of it was eaten already, as
+//     the darker part of that bar;
 //   - the range the amount can be in (its low and high ends), as a line, which is
 //     open at the far end when no upper end is known;
 //   - a tick at each end of what is wanted.
@@ -25,9 +26,10 @@ const number = (value) =>
  *
  * `amount` is the point value, `low` and `high` the ends of the range it can be in
  * (`high` is null when none is known), `needLow` and `needHigh` what is wanted (each
- * may be null).
+ * may be null), and `eaten` how much of the amount was eaten already (null when no
+ * meal is eaten).
  */
-export function layoutOf({ amount, low, high, needLow, needHigh }) {
+export function layoutOf({ amount, low, high, needLow, needHigh, eaten }) {
   const value = number(amount) ?? 0;
   const lowest = number(low) ?? value;
   const highest = number(high);
@@ -50,6 +52,8 @@ export function layoutOf({ amount, low, high, needLow, needHigh }) {
   return {
     max,
     fill: at(value),
+    // The part of the bar that was eaten; none where nothing was.
+    eatenFill: number(eaten) > 0 ? at(number(eaten)) : null,
     overflow: value > max,
     zone: { from: at(zoneFrom), to: at(zoneTo) },
     interval: {
