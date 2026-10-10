@@ -164,6 +164,94 @@ def test_a_note_next_to_a_percentage_leaves_the_percentage_where_it_was(text: st
     assert tree(parse_label(text)) == [("tomates", "40", []), ("sel", None, [])]
 
 
+# Salade à l'italienne (3270160642601): the origin of the pasta, with no "origine".
+ITALIAN_SALAD = (
+    "Pâte cuite 60,5% (Allemagne) [eau, semoule de blé dur (gluten)], "
+    "mini-involtini 12% [fromage de vache (lait) 8,4%, speck 3,6% (viande de porc, "
+    "sel)], tomate 11%, huile d'olive vierge extra."
+)
+
+
+def test_a_country_alone_in_parentheses_is_an_origin_not_a_part():
+    """ "allemagne" was read as a part of the pasta, and the brackets after it lost."""
+    reading = read_label(ITALIAN_SALAD)
+
+    assert reading.warnings == []
+    assert tree(reading.items) == [
+        (
+            "pâte cuite",
+            "60.5",
+            [("eau", None, []), ("semoule de blé dur", None, [])],
+        ),
+        (
+            "mini-involtini",
+            "12",
+            [
+                ("fromage de vache", "8.4", []),
+                ("speck", "3.6", [("viande de porc", None, []), ("sel", None, [])]),
+            ],
+        ),
+        ("tomate", "11", []),
+        ("huile d'olive vierge extra", None, []),
+    ]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Jambon (France), sel",
+        "Jambon (FRANCE*), sel",
+        "Jambon (Pays-Bas), sel",
+        "Jambon (Pays Bas), sel",
+        "Jambon (Royaume-Uni), sel",
+        "Jambon (France, Espagne), sel",
+        "Jambon (France et Espagne), sel",
+        "Jambon (UE), sel",
+        "Jambon (UE/non UE), sel",
+        "Jambon (hors UE), sel",
+        "Jambon (Germany), sel",
+        "Jambon (Côte d'Ivoire), sel",
+        "Jambon [Allemagne], sel",
+    ],
+)
+def test_an_origin_is_not_a_part_of_the_ingredient(text: str):
+    assert tree(parse_label(text)) == [("jambon", None, []), ("sel", None, [])]
+
+
+def test_an_origin_ahead_of_the_parts_does_not_hide_them():
+    text = "Gnocchi (Italie) [semoule, eau 5 %], sel"
+
+    assert tree(parse_label(text)) == [
+        ("gnocchi", None, [("semoule", None, []), ("eau", "5", [])]),
+        ("sel", None, []),
+    ]
+
+
+def test_an_origin_next_to_a_percentage_leaves_the_percentage_where_it_was():
+    assert tree(parse_label("Tomates 40 % (Italie), sel")) == [
+        ("tomates", "40", []),
+        ("sel", None, []),
+    ]
+
+
+# Parentheses that hold more than countries, or a word that is also a food.
+NOT_ORIGINS: list[tuple[str, list[Any]]] = [
+    ("Saucisse (Allemagne, porc), sel", [("allemagne", None, []), ("porc", None, [])]),
+    ("Saucisse (dinde, Italie), sel", [("dinde", None, []), ("italie", None, [])]),
+    ("Saucisse (turkey, pork), sel", [("turkey", None, []), ("pork", None, [])]),
+    ("Sauce (chili), sel", [("chili", None, [])]),
+]
+
+
+@pytest.mark.parametrize(("text", "parts"), NOT_ORIGINS)
+def test_parentheses_that_hold_more_than_countries_are_read_as_parts(
+    text: str, parts: list[Any]
+):
+    [first, _salt] = tree(parse_label(text))
+
+    assert first[2] == parts
+
+
 @pytest.mark.parametrize(
     "text",
     [

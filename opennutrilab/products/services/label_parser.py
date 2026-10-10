@@ -47,6 +47,12 @@ parentheses that do list its parts are read whether it comes before them or not:
     Gnocchi (origine : Italie) [semoule, pomme de terre 19,4 %]
         ->  gnocchi: semoule, pomme de terre (19,4 %)
 
+So is an origin written without the word: parentheses that hold nothing but
+countries, as in "Pâte cuite 60,5 % (Allemagne) [eau, semoule]" or "(UE/non UE)". Only
+the countries of the closed list _ORIGINS count, and only when they are all the
+parentheses say: a country is not a part of the ingredient, and read as one it hid
+the brackets that follow.
+
 So is an allergen declaration: parentheses that hold nothing but allergens, as in
 "semoule de blé (gluten)", "lécithines (soja)" or "(contient lait)". An allergen
 is a mention of what an ingredient may cause, not one of its parts. Only the
@@ -221,6 +227,46 @@ _NOTE = re.compile(
     r"|issus?\b.*)\W*$",
     re.IGNORECASE,
 )
+# The countries a label gives as the origin of an ingredient without saying "origine":
+# "Pâte cuite (Allemagne)". Folded (see _folded) with the hyphens as spaces, in French
+# and in English. A word that is also a food is left out, since "(turkey)" is a meat
+# and "(chili)" a pepper: "Turkey", "Chile" and "Chili" are not here.
+_ORIGINS = frozenset(
+    {
+        # Blocs.
+        "ue", "union europeenne", "hors ue", "non ue", "eu", "european union",
+        "non eu", "outside eu", "uk", "usa",
+        # Europe.
+        "france", "allemagne", "germany", "italie", "italy", "espagne", "spain",
+        "portugal", "belgique", "belgium", "pays bas", "netherlands", "holland",
+        "luxembourg", "irlande", "ireland", "royaume uni", "united kingdom",
+        "suisse", "switzerland", "autriche", "austria", "danemark", "denmark",
+        "suede", "sweden", "norvege", "norway", "finlande", "finland", "islande",
+        "iceland", "pologne", "poland", "republique tcheque", "czech republic",
+        "czechia", "slovaquie", "slovakia", "slovenie", "slovenia", "hongrie",
+        "hungary", "roumanie", "romania", "bulgarie", "bulgaria", "croatie",
+        "croatia", "serbie", "serbia", "grece", "greece", "chypre", "cyprus",
+        "malte", "malta", "estonie", "estonia", "lettonie", "latvia", "lituanie",
+        "lithuania", "ukraine", "russie", "russia", "albanie", "albania",
+        # Africa and the Middle East.
+        "maroc", "morocco", "tunisie", "tunisia", "algerie", "algeria", "egypte",
+        "egypt", "senegal", "cote d'ivoire", "ivory coast", "ghana", "nigeria",
+        "cameroun", "cameroon", "madagascar", "kenya", "ethiopie", "ethiopia",
+        "tanzanie", "tanzania", "afrique du sud", "south africa", "israel",
+        "liban", "lebanon", "iran", "jordanie", "jordan",
+        # Asia and Oceania.
+        "chine", "china", "japon", "japan", "inde", "india", "pakistan",
+        "thailande", "thailand", "vietnam", "viet nam", "cambodge", "cambodia",
+        "laos", "indonesie", "indonesia", "malaisie", "malaysia", "philippines",
+        "sri lanka", "coree du sud", "south korea", "turquie", "australie",
+        "australia", "nouvelle zelande", "new zealand",
+        # The Americas.
+        "canada", "etats unis", "united states", "mexique", "mexico", "bresil",
+        "brazil", "argentine", "argentina", "perou", "peru", "colombie",
+        "colombia", "equateur", "ecuador", "bolivie", "bolivia", "uruguay",
+        "paraguay", "cuba", "costa rica", "guatemala", "honduras",
+    }
+)  # fmt: skip
 # Words that introduce what follows rather than name it: "(dont sucre 5 %)".
 _INTRO = re.compile(
     r"^(?:dont|including|of which|davon|di cui|de los cuales"
@@ -568,10 +614,17 @@ def _is_allergen_declaration(inner: str) -> bool:
     return all(term in _ALLERGENS for term in terms)
 
 
+def _is_origin(inner: str) -> bool:
+    """Whether the parentheses hold nothing but countries: "(Allemagne)", "(UE)"."""
+    terms = _ALLERGEN_SEPARATOR.split(_folded(inner).replace("-", " "))
+    return all(term in _ORIGINS for term in terms)
+
+
 def _without_notes(text: str) -> str:
     """
-    `text` without its notes in parentheses ("(origine : Italie)", "(bio)") and its
-    allergen declarations ("(gluten)", "(contient lait)").
+    `text` without its notes in parentheses ("(origine : Italie)", "(bio)"), its
+    origins ("(Allemagne)") and its allergen declarations ("(gluten)", "(contient
+    lait)").
 
     Only the first group is read as the parts of an ingredient, and what follows
     it only for a percentage, so a note ahead of the parentheses that do list the
@@ -583,7 +636,11 @@ def _without_notes(text: str) -> str:
     while (open_at := text.find("(", index)) != -1:
         close_at = _matching(text, open_at)
         inner = text[open_at + 1 : close_at]
-        is_note = _NOTE.match(inner) is not None or _is_allergen_declaration(inner)
+        is_note = (
+            _NOTE.match(inner) is not None
+            or _is_origin(inner)
+            or _is_allergen_declaration(inner)
+        )
         kept.append(text[index:open_at] if is_note else text[index : close_at + 1])
         index = close_at + 1
     kept.append(text[index:])
