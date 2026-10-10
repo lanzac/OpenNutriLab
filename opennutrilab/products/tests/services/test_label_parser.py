@@ -1068,3 +1068,105 @@ def test_the_name_kept_in_the_places_read_is_the_name_read(head: str):
     placed = " ".join(head[a:b] for a, b in spans)
 
     assert _name(placed) == _name(head)
+
+
+# ----------------------------------------------------------------------------
+# Vitamins: a list of them is one ingredient each, a name said twice is one
+# ----------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    ("text", "names"),
+    [
+        (
+            "Farine, vitamines (E, PP, B6, B1, B9), sel",
+            ["farine", "vitamine e", "vitamine pp", "vitamine b6", "vitamine b1",
+             "vitamine b9", "sel"],
+        ),
+        ("Farine, Vitamines (B6, D3)", ["farine", "vitamine b6", "vitamine d3"]),
+        ("Flour, vitamins (B6, D), salt", ["flour", "vitamin b6", "vitamin d", "salt"]),
+        ("Farine, vitamines : C, sel", ["farine", "vitamine c", "sel"]),
+        (
+            "Vitamines (vitamine C, cholécalciférol)",
+            ["vitamine c", "cholécalciférol"],
+        ),
+    ],
+)  # fmt: skip
+def test_a_list_of_vitamins_is_one_ingredient_each_and_no_ingredient_with_parts(
+    text: str, names: list[str]
+):
+    reading = read_label(text)
+
+    assert [i.name for i in reading.items] == names
+    assert all(not i.parts for i in reading.items)
+    assert reading.warnings == []
+
+
+def test_the_vitamins_of_a_list_keep_their_own_percentage():
+    items = parse_label("Farine, vitamines (B6 0,1 %, D)")
+
+    assert tree(items) == [
+        ("farine", None, []),
+        ("vitamine b6", "0.1", []),
+        ("vitamine d", None, []),
+    ]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Farine, vitamines (B6, fer), sel",
+        "Farine, vitamines 0,1 % (B6, D), sel",
+        "Farine, vitamines (B6, D) 0,1 %, sel",
+        "Farine, vitamines (de la bonne famille), sel",
+    ],
+)
+def test_vitamins_that_are_not_only_vitamins_of_the_list_are_read_as_parts(text: str):
+    items = parse_label(text)
+
+    assert [i.name for i in items] == ["farine", "vitamines", "sel"]
+    assert items[1].parts
+
+
+@pytest.mark.parametrize(
+    ("text", "name"),
+    [
+        ("Farine, acide ascorbique (vitamine C)", "acide ascorbique"),
+        ("Farine, riboflavine (vitamine B2)", "riboflavine"),
+        ("Farine, vitamine D (cholécalciférol)", "vitamine d"),
+        ("Farine, vitamine B6 (chlorhydrate de pyridoxine)", "vitamine b6"),
+        ("Flour, vitamin D (cholecalciferol)", "vitamin d"),
+    ],
+)
+def test_a_vitamin_and_the_name_of_its_vitamin_are_one_substance_not_a_part(
+    text: str, name: str
+):
+    items = parse_label(text)
+
+    assert tree(items) == [("farine" if "Farine" in text else "flour", None, []),
+                           (name, None, [])]  # fmt: skip
+
+
+def test_the_vitamin_a_food_is_fortified_with_stays_one_of_its_parts():
+    items = parse_label("Lait enrichi (lait, vitamine D), sel")
+
+    assert tree(items) == [
+        ("lait enrichi", None, [("lait", None, []), ("vitamine d", None, [])]),
+        ("sel", None, []),
+    ]
+
+
+def test_a_vitamin_next_to_a_name_that_is_not_one_keeps_its_parts():
+    items = parse_label("Farine, premix (vitamine C, vitamine D)")
+
+    assert tree(items) == [
+        ("farine", None, []),
+        ("premix", None, [("vitamine c", None, []), ("vitamine d", None, [])]),
+    ]
+
+
+def test_the_places_of_a_list_of_vitamins_are_those_of_the_letters_not_the_heading():
+    text = "Farine, vitamines (B6, D)"
+    reading = read_label(text)
+
+    read = [text[start:end] for start, end in reading.used]
+
+    assert read == ["Farine", "B6", "D"]

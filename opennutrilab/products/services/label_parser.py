@@ -89,6 +89,10 @@ from typing import NamedTuple
 from django.db.models import TextChoices
 from django.utils.translation import gettext_lazy as _
 
+from opennutrilab.products.services.vitamins import HEADINGS
+from opennutrilab.products.services.vitamins import vitamin_called
+from opennutrilab.products.services.vitamins import vitamin_nutrient
+
 
 class LabelItem(NamedTuple):
     name: str
@@ -675,24 +679,62 @@ def _parse_items(raw: str, at: int, used: list[Span]) -> list[LabelItem]:
             used.extend(read_from)
             return [item._replace(function=function) for item in listed_items]
 
+    if (vitamins := _vitamins_listed(head, inner, inner_at, tail, used)) is not None:
+        return vitamins
     name = _name(head)
     if name is None:
         return []
+    percentage = _percentage_read(head, at, tail, tail_at, used)
+    used.extend(_name_spans(head, at, notes))
+    return [_with_code(name, percentage, inner, inner_at, used)]
+
+
+def _percentage_read(
+    head: str, at: int, tail: str, tail_at: int, used: list[Span]
+) -> Decimal | None:
+    """The percentage written in the head of a piece, else after its parentheses."""
     percentage = _percentage(head)
     if percentage:
         used.extend(_percent_span(head, at))
-    else:
-        percentage = _percentage(tail)
-        if percentage:
-            used.extend(_percent_span(tail, tail_at))
-    used.extend(_name_spans(head, at, notes))
-    return [_with_code(name, percentage, inner, inner_at, used)]
+        return percentage
+    percentage = _percentage(tail)
+    if percentage:
+        used.extend(_percent_span(tail, tail_at))
+    return percentage
 
 
 def _under_class(
     function: str, listed: str, at: int, used: list[Span]
 ) -> list[LabelItem]:
     return [item._replace(function=function) for item in _parse_list(listed, at, used)]
+
+
+def _vitamins_listed(
+    head: str, inner: str, inner_at: int, tail: str, used: list[Span]
+) -> list[LabelItem] | None:
+    """
+    The vitamins a heading lists, "vitamine" followed by their letters in
+    parentheses ("Vitamines (E, PP, B6)") or after a colon: one ingredient each,
+    "vitamine e", "vitamine pp", "vitamine b6", and no "vitamines" with letters as
+    its parts. None when it is not that: another heading, a percentage, or a name
+    in it that is no vitamin of the closed list (see vitamins), and the text is then
+    read as any is.
+    """
+    heading = _name(head) or ""
+    if (
+        _folded(heading) not in HEADINGS
+        or not inner.strip()
+        or _percentage(head)
+        or _percentage(tail)
+    ):
+        return None
+    read_from: list[Span] = []
+    listed = _parse_list(inner, inner_at, read_from)
+    called = [vitamin_called(item.name, heading) for item in listed]
+    if not listed or not all(called) or any(item.parts for item in listed):
+        return None
+    used.extend(read_from)
+    return [item._replace(name=name) for item, name in zip(listed, called, strict=True)]
 
 
 def _with_code(
@@ -718,6 +760,16 @@ def _with_code(
     ):
         used.extend(_name_spans(inner, inner_at, ()))
         return LabelItem(named, percentage, code=e_number(name))
+    # "acide ascorbique (vitamine C)", "vitamine D (cholécalciférol)": the same
+    # vitamin said twice, not one made of the other.
+    if (
+        named is not None
+        and vitamin_nutrient(name)
+        and vitamin_nutrient(named)
+        and not any(char in inner for char in ",;")
+    ):
+        used.extend(_name_spans(inner, inner_at, ()))
+        return LabelItem(name, percentage)
     return LabelItem(name, percentage, tuple(_parse_list(inner, inner_at, used)))
 
 

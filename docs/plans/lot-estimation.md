@@ -47,6 +47,13 @@ nutrients from its ingredients"); this file is the execution plan.
   parentheses that hold nothing but allergens ("semoule de blé (gluten)",
   "lécithines (soja)", "(contient lait)"): only the 14 of the regulation, in
   French and English, and only when they are all the parentheses say.
+  Vitamins (2026-10-10): "vitamines (E, PP, B6)" is one ingredient per vitamin
+  ("vitamine e", "vitamine pp", "vitamine b6"), not "vitamines" with letters as its
+  parts, and "acide ascorbique (vitamine C)" or "vitamine D (cholécalciférol)" is one
+  substance said twice, not one made of the other. Only the closed list of
+  `services/vitamins.py` counts (the letters, and the forms a label names a vitamin
+  by); "lait enrichi (lait, vitamine D)" keeps the vitamin as a part, since the
+  milk is made of it, and "vitamines (B6, fer)" is read as parts, as any text is.
   Percentages over 100 in total are only a warning.
 - Uncertainty is part of the result, not a caveat. Every figure is an
   interval: a declared value is rounded to its last digit (33 % is 32.5-33.5,
