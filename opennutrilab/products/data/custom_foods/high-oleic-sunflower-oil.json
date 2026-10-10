@@ -1,0 +1,63 @@
+{
+  "code": "high-oleic-sunflower-oil",
+  "name_fr": "Huile de tournesol oléique",
+  "name_en": "High-oleic sunflower oil",
+  "basis_fr": "huile de tournesol Ciqual 17440; acides gras: Codex Stan 210-1999, tournesol à haute teneur en acide oléique (x 0,95); mono-, polyinsaturés, vitamine E: USDA",
+  "basis_en": "sunflower oil Ciqual 17440; fatty acids: Codex Stan 210-1999, high oleic acid sunflower oil (x 0.95); mono-, polyunsaturated, vitamin E: USDA",
+  "proxies": [
+    {
+      "source": "ciqual-2025",
+      "code": "17440"
+    }
+  ],
+  "nutrients": {
+    "oleic_acid": {
+      "min": 71.2,
+      "max": 86.2
+    },
+    "monounsaturated_fat": {
+      "amount": 83.7,
+      "min": 71.2,
+      "max": 86.2
+    },
+    "linoleic_acid": {
+      "min": 2,
+      "max": 16.2
+    },
+    "polyunsaturated_fat": {
+      "amount": 3.8,
+      "min": 2,
+      "max": 16.4
+    },
+    "alpha_linolenic_acid": {
+      "min": 0,
+      "max": 0.3
+    },
+    "palmitic_acid": {
+      "min": 2.5,
+      "max": 4.8
+    },
+    "stearic_acid": {
+      "min": 2.8,
+      "max": 5.9
+    },
+    "alpha_tocopherol": {
+      "amount": 57.3,
+      "min": 41,
+      "max": 65.9
+    },
+    "energy": {
+      "amount": 3700,
+      "min": 3145,
+      "max": 3700
+    },
+    "energy_jones": {
+      "amount": 3700,
+      "min": 3145,
+      "max": 3700
+    }
+  },
+  "references": [
+    162
+  ]
+}

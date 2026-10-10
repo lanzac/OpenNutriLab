@@ -1,0 +1,38 @@
+{
+  "code": "wheat-starch",
+  "name_fr": "Amidon de blé",
+  "name_en": "Wheat starch",
+  "basis_fr": "amidon de maïs Ciqual 9510 à 12 % d'eau; protéines, lipides et cendres bornés par la fiche Foodcom NWS/3/PB/E (amidon de blé natif, 2024)",
+  "basis_en": "maize starch Ciqual 9510 at 12 % water; proteins, fat and ash bounded by the Foodcom NWS/3/PB/E data sheet (native wheat starch, 2024)",
+  "proxies": [
+    {
+      "source": "ciqual-2025",
+      "code": "9510"
+    }
+  ],
+  "water": 12,
+  "exclude": [
+    "vitamin_c",
+    "vitamin_b1",
+    "vitamin_b9",
+    "intrinsic_folates",
+    "vitamin_b9_dfe"
+  ],
+  "nutrients": {
+    "proteins": {
+      "min": 0,
+      "max": 0.3
+    },
+    "fat": {
+      "min": 0,
+      "max": 0.25
+    },
+    "ash": {
+      "min": 0,
+      "max": 0.25
+    }
+  },
+  "references": [
+    148
+  ]
+}

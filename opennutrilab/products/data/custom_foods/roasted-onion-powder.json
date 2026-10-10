@@ -1,0 +1,14 @@
+{
+  "code": "roasted-onion-powder",
+  "name_fr": "Oignon grillé en poudre",
+  "name_en": "Roasted onion powder",
+  "proxies": [{ "source": "ciqual-2025", "code": "20180" }],
+  "exclude": [
+    "vitamin_c",
+    "vitamin_b1",
+    "vitamin_b9",
+    "intrinsic_folates",
+    "vitamin_b9_dfe"
+  ],
+  "references": [158]
+}

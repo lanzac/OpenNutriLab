@@ -1,0 +1,19 @@
+{
+  "code": "citrus-fibre",
+  "name_fr": "Fibre d'agrume",
+  "name_en": "Citrus fibre",
+  "basis_fr": "fibres de zeste d'agrume: bornes entre les fiches Ingredion FIBERTEX CF 100 (2025) et CF 502 (2025); au plus 12 % d'eau, cendres au plus 100 moins la fibre minimale",
+  "basis_en": "citrus peel fibres: bounds between the Ingredion FIBERTEX CF 100 (2025) and CF 502 (2025) data sheets; at most 12 % water, ash at most 100 minus the least fibre",
+  "nutrients": {
+    "water": { "min": 0, "max": 12 },
+    "fiber": { "min": 86.8, "max": 92.2 },
+    "carbohydrates": { "min": 0.7, "max": 3.4 },
+    "fat": { "min": 0, "max": 1 },
+    "proteins": { "min": 0, "max": 4.5 },
+    "ash": { "min": 0, "max": 13.2 },
+    "salt": { "min": 1.4, "max": 1.84 },
+    "sodium": { "min": 560, "max": 736 },
+    "energy": { "min": 706, "max": 909 }
+  },
+  "references": [156]
+}

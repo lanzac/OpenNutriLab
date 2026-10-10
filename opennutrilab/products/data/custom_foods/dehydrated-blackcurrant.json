@@ -1,0 +1,17 @@
+{
+  "code": "dehydrated-blackcurrant",
+  "name_fr": "Cassis déshydratés",
+  "name_en": "Dehydrated blackcurrants",
+  "basis_fr": "cassis Ciqual 13007 ramené à 18 % d'eau (humidité maximale des baies entières séchées, 18 à 20 %, selon Nutrada)",
+  "basis_en": "black currant Ciqual 13007 brought to 18 % water (most moisture of whole dried berries, 18 to 20 %, per Nutrada)",
+  "proxies": [{ "source": "ciqual-2025", "code": "13007" }],
+  "water": 18,
+  "exclude": [
+    "vitamin_c",
+    "vitamin_b1",
+    "vitamin_b9",
+    "intrinsic_folates",
+    "vitamin_b9_dfe"
+  ],
+  "references": [165]
+}
