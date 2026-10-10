@@ -1,0 +1,173 @@
+{
+  "code": "barley-malt-extract",
+  "name_fr": "Extrait de malt d'orge",
+  "name_en": "Barley malt extract",
+  "basis_fr": "fiche Muntons Cedarex Light (2018) et USDA FDC 169660 (Syrups, malt) pour le sirop; spécification et 3 certificats Kegland Dark DME (2024) pour la poudre",
+  "basis_en": "Muntons Cedarex Light data sheet (2018) and USDA FDC 169660 (Syrups, malt) for the syrup; Kegland Dark DME specification and 3 certificates (2024) for the powder",
+  "nutrients": {
+    "water": {
+      "amount": 21.65,
+      "min": 2,
+      "max": 22.9
+    },
+    "proteins": {
+      "amount": 4.25,
+      "min": 3.36,
+      "max": 7.71
+    },
+    "ash": {
+      "amount": 1.25,
+      "min": 1,
+      "max": 2.7
+    },
+    "fat": {
+      "min": 0,
+      "max": 0.26
+    },
+    "carbohydrates": {
+      "amount": 72.5,
+      "min": 70,
+      "max": 93.9
+    },
+    "fiber": {
+      "amount": 1.5,
+      "min": 1.27,
+      "max": 1.88
+    },
+    "sugars": {
+      "amount": 46.7,
+      "min": 37.8,
+      "max": 69.6
+    },
+    "fructose": {
+      "amount": 1.2,
+      "min": 0.8,
+      "max": 2.01
+    },
+    "glucose": {
+      "amount": 6,
+      "min": 4,
+      "max": 10.1
+    },
+    "sucrose": {
+      "amount": 1.5,
+      "min": 1,
+      "max": 2.51
+    },
+    "maltose": {
+      "amount": 38,
+      "min": 32,
+      "max": 55.1
+    },
+    "energy": {
+      "amount": 1298,
+      "min": 1255,
+      "max": 1677
+    },
+    "saturated_fat": {
+      "min": 0,
+      "max": 0.13
+    },
+    "monounsaturated_fat": {
+      "min": 0,
+      "max": 0.13
+    },
+    "polyunsaturated_fat": {
+      "min": 0,
+      "max": 0.13
+    },
+    "sodium": {
+      "amount": 20,
+      "min": 20,
+      "max": 44
+    },
+    "salt": {
+      "amount": 0.05,
+      "min": 0.05,
+      "max": 0.11
+    },
+    "calcium": {
+      "amount": 61,
+      "min": 51.8,
+      "max": 87.2
+    },
+    "iron": {
+      "amount": 0.96,
+      "min": 0.816,
+      "max": 1.372
+    },
+    "magnesium": {
+      "amount": 72,
+      "min": 61.2,
+      "max": 102.9
+    },
+    "phosphorus": {
+      "amount": 236,
+      "min": 200.6,
+      "max": 337.2
+    },
+    "potassium": {
+      "amount": 320,
+      "min": 272,
+      "max": 457.1
+    },
+    "zinc": {
+      "amount": 0.14,
+      "min": 0.119,
+      "max": 0.2
+    },
+    "copper": {
+      "amount": 0.2,
+      "min": 0.17,
+      "max": 0.286
+    },
+    "manganese": {
+      "amount": 0.1,
+      "min": 0.085,
+      "max": 0.143
+    },
+    "vitamin_b1": {
+      "amount": 0.011,
+      "min": 0.009,
+      "max": 0.016
+    },
+    "vitamin_b2": {
+      "amount": 0.393,
+      "min": 0.334,
+      "max": 0.562
+    },
+    "vitamin_b3": {
+      "amount": 8.12,
+      "min": 6.9,
+      "max": 11.6
+    },
+    "vitamin_b5": {
+      "amount": 0.171,
+      "min": 0.145,
+      "max": 0.245
+    },
+    "vitamin_b6": {
+      "amount": 0.5,
+      "min": 0.425,
+      "max": 0.715
+    },
+    "vitamin_b9": {
+      "amount": 12,
+      "min": 10.2,
+      "max": 17.15
+    },
+    "intrinsic_folates": {
+      "amount": 12,
+      "min": 10.2,
+      "max": 17.15
+    },
+    "vitamin_b9_dfe": {
+      "amount": 12,
+      "min": 10.2,
+      "max": 17.15
+    }
+  },
+  "references": [
+    207
+  ]
+}
