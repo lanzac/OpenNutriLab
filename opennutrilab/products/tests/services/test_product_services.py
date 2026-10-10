@@ -13,6 +13,7 @@ from django.core.files.storage import Storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.files.uploadedfile import UploadedFile
 from django.db.models.fields.files import ImageFieldFile
+from django.utils import timezone
 
 from opennutrilab.products.api.openfoodfacts.services import (
     ingredient_inputs_from_label,
@@ -25,6 +26,7 @@ from opennutrilab.products.models import IngredientTaxon
 from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
+from opennutrilab.products.models import ProductEstimate
 from opennutrilab.products.models import ProductNutrient
 from opennutrilab.products.models import ReferenceIngredient
 from opennutrilab.products.models import Source
@@ -766,6 +768,58 @@ def test_more_than_100_g_in_100_g_is_reported():
     assert warnings == [
         "The amounts add up to 110 g, more than the 100 g they are given for.",
     ]
+
+
+@pytest.mark.django_db
+def test_more_than_100_g_in_100_ml_is_no_inconsistency():
+    # A dense liquid weighs more than 100 g per 100 ml; the table is as printed.
+    values = {"fat": Decimal(60), "carbohydrates": Decimal(30), "proteins": Decimal(20)}
+
+    assert declared_value_warnings(values, "ml") == []
+
+
+# -----------------------
+# The unit the label is given per
+# -----------------------
+@pytest.mark.django_db
+def test_a_label_is_given_per_100_g_unless_said(product: Product):
+    assert product.nutrition_unit == "g"
+
+    other = create_product(
+        create_payload(barcode="3229820794556", nutrition_unit="ml")
+    ).product
+
+    other.refresh_from_db()
+    assert other.nutrition_unit == "ml"
+
+
+@pytest.mark.django_db
+def test_update_product_sets_and_keeps_the_unit_of_the_label(product: Product):
+    update_product(product, ProductUpdate(nutrition_unit="ml"))
+    product.refresh_from_db()
+    assert product.nutrition_unit == "ml"
+
+    # Left out, it is not touched.
+    update_product(product, ProductUpdate(name="Renamed"))
+    product.refresh_from_db()
+    assert product.nutrition_unit == "ml"
+
+
+@pytest.mark.django_db
+def test_changing_the_unit_of_the_label_marks_the_kept_estimate_stale(
+    product: Product,
+):
+    kept = ProductEstimate.objects.create(
+        product=product, worked_out_at=timezone.now(), stale=False
+    )
+
+    update_product(product, ProductUpdate(name="Renamed"))
+    kept.refresh_from_db()
+    assert not kept.stale
+
+    update_product(product, ProductUpdate(nutrition_unit="ml"))
+    kept.refresh_from_db()
+    assert kept.stale
 
 
 # -----------------------

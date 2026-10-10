@@ -50,8 +50,22 @@ msgstr "Chargement du tableau des ingrédients..."
 msgid "Enter the 13-digit EAN code from the packaging."
 msgstr "Entrez le code EAN à 13 chiffres figurant sur l'emballage."
 
-msgid "Nutritional values (per 100g)"
-msgstr "Valeurs nutritionnelles (pour 100g)"
+msgid "Nutritional values"
+msgstr "Valeurs nutritionnelles"
+
+msgid "100 g"
+msgstr "100 g"
+
+msgid "100 ml"
+msgstr "100 ml"
+
+msgid "Values given per"
+msgstr "Valeurs données pour"
+
+msgid "As the label prints it: a liquid's table is often given per 100 ml."
+msgstr ""
+"Telles que l'étiquette les imprime : le tableau d'un liquide est souvent "
+"donné pour 100 ml."
 
 msgid "Ingredients"
 msgstr "Ingrédients"
@@ -332,6 +346,36 @@ msgstr ""
 msgid "The nutrition of the product was not used: it declares none."
 msgstr "La nutrition du produit n'a pas été utilisée : il n'en déclare aucune."
 
+msgid ""
+"The nutrition of the product was not used: the label gives it per 100 ml, "
+"and the density of its ingredients, to convert it to per 100 g, is not known."
+msgstr ""
+"La nutrition du produit n'a pas été utilisée : l'étiquette la donne pour 100 "
+"ml, et la densité de ses ingrédients, pour la convertir en pour 100 g, n'est "
+"pas connue."
+
+#, python-format
+msgid ""
+"%(detail)s: the label is not exactly what the ingredients give, but within "
+"the tolerance the European Commission allows on a label, so it was read with "
+"that tolerance."
+msgstr ""
+"%(detail)s : l'étiquette n'est pas exactement ce que donnent les "
+"ingrédients, mais reste dans la tolérance que la Commission européenne admet "
+"sur une étiquette : elle a été lue avec cette tolérance."
+
+msgid "The least a millilitre of it weighs, in g/ml (olive oil: 0.908)."
+msgstr "Le moins que pèse un millilitre, en g/ml (huile d'olive : 0,908)."
+
+msgid "The most a millilitre of it weighs, in g/ml (olive oil: 0.915)."
+msgstr "Le plus que pèse un millilitre, en g/ml (huile d'olive : 0,915)."
+
+msgid "Give both ends of the density, or neither."
+msgstr "Donnez les deux bornes de la densité, ou aucune."
+
+msgid "The highest density is below the lowest."
+msgstr "La densité la plus haute est sous la plus basse."
+
 #, python-format
 msgid ""
 "The nutrition of the product was not used: the compositions of its "
@@ -395,6 +439,35 @@ msgstr "Étiquette"
 
 msgid "Estimated"
 msgstr "Estimé"
+
+msgid ""
+"The label is given per 100 ml, as it is printed; the estimate is per 100 g."
+msgstr ""
+"L'étiquette est donnée pour 100 ml, telle qu'elle est imprimée ; "
+"l'estimation est pour 100 g."
+
+msgid "Tolerance of the label (European Commission)"
+msgstr "Tolérance de l'étiquette (Commission européenne)"
+
+msgid "Nutrients per 100 ml"
+msgstr "Nutriments pour 100 ml"
+
+msgid "Amounts per"
+msgstr "Quantités pour"
+
+#, python-format
+msgid "Density used to convert: %(low)s to %(high)s g/ml"
+msgstr "Densité utilisée pour convertir : %(low)s à %(high)s g/ml"
+
+msgid "Within tolerance"
+msgstr "Dans la tolérance"
+
+msgid ""
+"The label differs from the estimate by more than its rounding, but within "
+"the tolerance the European Commission allows on a label."
+msgstr ""
+"L'étiquette diffère de l'estimation de plus que son arrondi, mais reste dans "
+"la tolérance que la Commission européenne admet sur une étiquette."
 
 msgid "Nutrients per 100 g"
 msgstr "Nutriments pour 100 g"

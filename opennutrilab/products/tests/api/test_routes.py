@@ -368,6 +368,34 @@ def test_the_serving_is_written_served_kept_and_cleared(api_client: Client):
 
 
 @pytest.mark.django_db
+def test_the_unit_of_the_label_is_written_served_and_kept(api_client: Client):
+    payload = _minimal_payload("3297760097969", "Created Via API")
+    url = f"{API}{payload['barcode']}"
+    api_client.post(API, payload, content_type="application/json")
+    assert api_client.get(url).json()["nutrition_unit"] == "g"
+
+    api_client.patch(
+        url,
+        {"nutrition_unit": "ml", "nutrients": {"fat": "91"}},
+        content_type="application/json",
+    )
+    served = api_client.get(url).json()
+    # The values are the label's, not converted.
+    assert served["nutrition_unit"] == "ml"
+    assert [n["amount"] for n in served["nutrients"] if n["code"] == "fat"] == [
+        "91.0000"
+    ]
+
+    api_client.patch(url, {"name": "Renamed"}, content_type="application/json")
+    assert api_client.get(url).json()["nutrition_unit"] == "ml"
+
+    refused = api_client.patch(
+        url, {"nutrition_unit": "l"}, content_type="application/json"
+    )
+    assert refused.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+
+
+@pytest.mark.django_db
 def test_the_package_is_written_served_kept_and_cleared(api_client: Client):
     payload = _minimal_payload("3297760097969", "Created Via API")
     url = f"{API}{payload['barcode']}"
@@ -543,6 +571,8 @@ def test_the_estimate_is_served_with_its_parts(api_client: Client):
     assert set(data) == {
         "barcode",
         "used_nutrition",
+        "label_unit",
+        "density",
         "warnings",
         "nutrients",
         "ingredients",

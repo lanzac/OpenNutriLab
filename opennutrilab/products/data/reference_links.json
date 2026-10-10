@@ -404,7 +404,11 @@
         "source": "ciqual-2025",
         "code": "17270"
       }
-    ]
+    ],
+    "density": {
+      "min": 0.908,
+      "max": 0.915
+    }
   },
   {
     "reference": "huile de colza",

@@ -50,6 +50,7 @@ from opennutrilab.products.services.reference_proposals import link_confident_fo
 from opennutrilab.products.services.reference_services import Item
 from opennutrilab.products.services.reference_services import name_key
 from opennutrilab.products.services.reference_services import resolve_references_and_new
+from opennutrilab.products.services.stored_estimates import mark_stale
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +106,7 @@ def create_product(
                 ingredients_text=data.ingredients_text,
                 ingredients_language=data.ingredients_language,
                 ingredients_ignored=data.ingredients_ignored,
+                nutrition_unit=data.nutrition_unit,
                 **_serving_fields(data.serving),
                 **_package_fields(data.package),
             )
@@ -184,6 +186,7 @@ def _apply_fields(product: Product, data: ProductUpdate) -> None:
         "ingredients_text",
         "ingredients_language",
         "ingredients_ignored",
+        "nutrition_unit",
     ):
         value = getattr(data, field)
         if value is not None:
@@ -202,6 +205,10 @@ def _apply_fields(product: Product, data: ProductUpdate) -> None:
 
     if update_fields:
         product.save(update_fields=update_fields)
+    # The unit the label is given per decides whether the estimate sets it against
+    # the ingredients, and no ProductNutrient is saved when only it changes.
+    if "nutrition_unit" in update_fields:
+        mark_stale(product.pk)
 
 
 def _ignored_places(product: Product) -> list[tuple[int, int]]:
@@ -317,9 +324,14 @@ def _create_ingredients(
 # -------------------------
 # Consistency of declared values
 # -------------------------
-def declared_value_warnings(values: Mapping[str, Decimal]) -> list[str]:
+def declared_value_warnings(
+    values: Mapping[str, Decimal], unit: str = Product.ServingUnit.GRAM
+) -> list[str]:
     """
     Inconsistencies in label values, as messages for the user.
+
+    `unit` is what the table is given per 100 of. Per 100 ml, the masses may add up
+    to more than 100 g (a dense liquid), so that check is only made per 100 g.
 
     Warnings only, never errors: the label is the reference, and its own
     rounding can make a value slightly exceed another. An inconsistency is
@@ -356,7 +368,7 @@ def declared_value_warnings(values: Mapping[str, Decimal]) -> list[str]:
         ),
         Decimal(0),
     )
-    if total > 100:  # noqa: PLR2004
+    if unit == Product.ServingUnit.GRAM.value and total > 100:  # noqa: PLR2004
         warnings.append(
             _(
                 "The amounts add up to %(total)s g, "

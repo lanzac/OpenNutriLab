@@ -3,8 +3,9 @@ What an estimate says against the label, and how far to trust it.
 
 **Validation.** The values a label declares are the reference, so each nutrient
 the product declares is set against what its ingredients give. A declared figure
-is an interval, its rounding (33 is 32.5 to 33.5, see rounding_margin), and so is
-the estimate. They agree when the two meet. Otherwise the label declares less than
+is an interval, its rounding (33 is 32.5 to 33.5, see rounding_margin) with the
+tolerance the European Commission allows around it (see label_tolerance), and so
+is the estimate. They agree when the two meet. Otherwise the label declares less than
 its ingredients bring at the least, or more than they can bring at the most, and
 a warning says so. Nothing is blocked or corrected: what is off may be the label,
 a composition or the order of the ingredients, and the check does not say which.
@@ -26,6 +27,11 @@ Two things keep this from being as plain as it sounds:
 
 A nutrient whose figure on a label follows a convention the law does not fix is
 compared with what all the conventions give together (CONVENTIONS).
+
+A label given per 100 ml (a liquid) is kept as it is printed, and the estimate,
+which is per 100 g, is set against it per 100 ml through the density of the product
+(see percentage_estimation.product_density). With no density known there is no
+check: the two are not the same quantity.
 
 **Confidence.** The estimate of each nutrient comes with the parts it is built
 from, each between 0 and 1 and 1 being nothing to doubt, and a score that is
@@ -63,6 +69,7 @@ from django.utils.formats import number_format
 
 from opennutrilab.products.models import Product
 from opennutrilab.products.services.derived_nutrients import sums_in
+from opennutrilab.products.services.label_tolerance import label_reading
 from opennutrilab.products.services.nutrient_estimation import NutrientAmount
 from opennutrilab.products.services.nutrient_estimation import nutrients_of
 from opennutrilab.products.services.percentage_estimation import NUTRIENTS
@@ -76,7 +83,6 @@ from opennutrilab.products.services.percentage_estimation import solve_shares
 from opennutrilab.products.services.reference_composition import GRADE_WEIGHTS
 from opennutrilab.products.services.reference_composition import NO_GRADE_WEIGHT
 from opennutrilab.products.services.reference_composition import Estimate
-from opennutrilab.products.services.reference_composition import rounding_margin
 
 # Vitamin A on a label: the regulation gives it in µg with no conversion, so the
 # amount of beta-carotene that counts for a µg of retinol is not known (CIQUAL's
@@ -117,6 +123,11 @@ class Check(NamedTuple):
     # The label's figure was one of the rules the shares were worked out with, so
     # it agrees by construction.
     constrained: bool
+    # It agrees only within the tolerance the Commission allows around a figure,
+    # not within the rounding alone (see label_tolerance).
+    tolerated: bool = False
+    # What the figure can stand for with that tolerance: (low, high).
+    tolerance_range: tuple[Decimal, Decimal] | None = None
 
     @property
     def informative(self) -> bool:
@@ -148,21 +159,40 @@ class ValidatedEstimate(NamedTuple):
     # All there is to say, non-blocking: the shares' own first (the same as
     # `percentages`), then the declared figures that the ingredients do not give.
     warnings: list[EstimateWarning]
+    # What a millilitre of the product weighs, in g/ml, as (low, high), when the
+    # density of every ingredient is known (see percentage_estimation).
+    density: tuple[Decimal, Decimal] | None = None
 
 
 def validate_estimate(product: Product) -> ValidatedEstimate:
     """The nutrients of a product, checked against its label, with their confidence."""
     loaded = load(product)
-    solution = solve_shares(loaded.nodes, loaded.label, loaded.nutrient_names)
+    solution = solve_shares(
+        loaded.nodes,
+        loaded.label,
+        loaded.nutrient_names,
+        label_unit=loaded.label_unit,
+        tolerated=loaded.label_tolerated,
+    )
     sums = sums_in(loaded.units)
     nutrients = nutrients_of(solution, loaded.compositions, loaded.parents, sums)
     declared = dict(product.declared_nutrients.values_list("nutrient_id", "amount"))
+    compared = nutrients
+    if loaded.label_unit != Product.ServingUnit.GRAM.value:
+        # A label per 100 ml is kept as it is printed and set against the estimate
+        # as it is per 100 ml. With no density to tell what that is, the two are
+        # not the same quantity and there is nothing to say about them.
+        if solution.density is None:
+            declared = {}
+        else:
+            compared = _per_volume(nutrients, solution.density)
 
     checks = compare(
         declared,
-        nutrients,
+        compared,
         loaded.units,
         constrained=NUTRIENTS if solution.used_nutrition else (),
+        groups=loaded.groups,
     )
     return ValidatedEstimate(
         nutrients,
@@ -170,7 +200,33 @@ def validate_estimate(product: Product) -> ValidatedEstimate:
         checks,
         confidence_of(solution, loaded.compositions, nutrients, checks, sums),
         [*solution.warnings, *mismatches(checks, loaded.nutrient_names, loaded.units)],
+        None if solution.density is None else _density_figures(solution.density),
     )
+
+
+def _density_figures(density: tuple[float, float]) -> tuple[Decimal, Decimal]:
+    least, most = (Decimal(str(round(end, 6))) for end in density)
+    return least, most
+
+
+def _per_volume(
+    nutrients: Mapping[str, NutrientAmount], density: tuple[float, float]
+) -> dict[str, NutrientAmount]:
+    """
+    The estimate per 100 ml in place of per 100 g: the lowest end with the lightest
+    millilitre, the highest with the heaviest, and the point with the middle. The
+    interval is wider than the truth, never narrower.
+    """
+    least, most = _density_figures(density)
+    middle = (least + most) / 2
+    return {
+        code: amount._replace(
+            amount=amount.amount * middle,
+            low=amount.low * least,
+            high=None if amount.high is None else amount.high * most,
+        )
+        for code, amount in nutrients.items()
+    }
 
 
 def compare(
@@ -179,10 +235,12 @@ def compare(
     units: Mapping[str, str],
     *,
     constrained: Collection[str] = (),
+    groups: Mapping[str, str] | None = None,
 ) -> dict[str, Check]:
     """
     Each declared amount (by nutrient code) set against the estimate. `constrained`
-    are the nutrients whose label figure the shares were worked out with.
+    are the nutrients whose label figure the shares were worked out with, and
+    `groups` the group of the catalogue of each nutrient, which tells its tolerance.
     """
     return {
         code: _check(
@@ -191,6 +249,7 @@ def compare(
             amount,
             _estimated(code, nutrients),
             constrained=code in constrained,
+            group=(groups or {}).get(code, ""),
         )
         for code, amount in declared.items()
     }
@@ -210,24 +269,43 @@ def _estimated(
     )
 
 
-def _check(
+def _check(  # noqa: PLR0913
     code: str,
     unit: str,
     amount: Decimal,
     estimated: tuple[Decimal, Decimal | None] | None,
     *,
     constrained: bool,
+    group: str = "",
 ) -> Check:
-    margin = rounding_margin(amount)
-    low, high = max(Decimal(0), amount - margin), amount + margin
+    reading = label_reading(code, group, amount)
+    low, high = reading.rounded
+    widest_low, widest_high = reading.tolerated
     verdict, gap = Verdict.AGREES, Decimal(0)
     if estimated is None:
         verdict = Verdict.NOT_ESTIMATED
-    elif estimated[0] > high:
-        verdict, gap = Verdict.DECLARED_BELOW, estimated[0] - high
-    elif estimated[1] is not None and estimated[1] < low:
-        verdict, gap = Verdict.DECLARED_ABOVE, low - estimated[1]
-    return Check(code, unit, amount, (low, high), estimated, verdict, gap, constrained)
+    elif estimated[0] > widest_high:
+        verdict, gap = Verdict.DECLARED_BELOW, estimated[0] - widest_high
+    elif estimated[1] is not None and estimated[1] < widest_low:
+        verdict, gap = Verdict.DECLARED_ABOVE, widest_low - estimated[1]
+    # Within the tolerance but not within the rounding.
+    tolerated = (
+        verdict is Verdict.AGREES
+        and estimated is not None
+        and (estimated[0] > high or (estimated[1] is not None and estimated[1] < low))
+    )
+    return Check(
+        code,
+        unit,
+        amount,
+        (low, high),
+        estimated,
+        verdict,
+        gap,
+        constrained,
+        tolerated,
+        reading.tolerated,
+    )
 
 
 def mismatches(

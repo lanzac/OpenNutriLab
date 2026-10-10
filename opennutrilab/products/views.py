@@ -30,6 +30,7 @@ from .api.openfoodfacts.services import OFFProductNotFoundError
 from .api.openfoodfacts.services import declared_nutrients_from_off
 from .api.openfoodfacts.services import fetch_from_off
 from .api.openfoodfacts.services import ingredient_inputs_from_label
+from .api.openfoodfacts.services import nutrition_unit_from_off
 from .api.openfoodfacts.services import read_inputs_from_label
 from .api.schemas.inbound import IngredientInput
 from .api.schemas.inbound import ReadLabelIn
@@ -337,9 +338,16 @@ def product_form_config() -> dict[str, Any]:
                 "expandAll": _("Unfold all"),
                 "legendEstimate": _("Estimate and its range"),
                 "legendLabel": _("Label (value and rounding)"),
+                "legendTolerance": _("Tolerance of the label (European Commission)"),
                 "legendOpen": _("Dashed: no upper end is known."),
                 "ingredients": _("Ingredients"),
                 "nutrients": _("Nutrients per 100 g"),
+                "nutrientsMl": _("Nutrients per 100 ml"),
+                "per": _("Amounts per"),
+                "unitG": _("100 g"),
+                "unitMl": _("100 ml"),
+                # %(low)s and %(high)s are put in client-side.
+                "density": _("Density used to convert: %(low)s to %(high)s g/ml"),
                 "label": _("Label"),
                 "estimate": _("Estimate"),
                 "coverage": _("Coverage"),
@@ -351,6 +359,12 @@ def product_form_config() -> dict[str, Any]:
                 "declaredBelow": _("Label below"),
                 "declaredAbove": _("Label above"),
                 "constrained": _("Used for the estimate"),
+                "tolerated": _("Within tolerance"),
+                "toleratedNote": _(
+                    "The label differs from the estimate by more than its rounding, "
+                    "but within the tolerance the European Commission allows on a "
+                    "label."
+                ),
                 "notEstimated": _("Not estimated"),
                 "declaredBelowNote": _(
                     "The label declares less than the ingredients bring at the least."
@@ -484,9 +498,11 @@ def initial_from_off(request: HttpRequest, barcode: str) -> dict[str, Any] | Non
         "group_level_1": fetched.group_level_1 or "",
         "group_level_2": fetched.group_level_2 or "",
     }
-    # Values from the label, converted to each nutrient's unit.
+    # Values from the label, converted to each nutrient's unit, and what the table
+    # is given per: kept as it is printed, per 100 ml for a liquid that says so.
     for code, amount in declared_nutrients_from_off(fetched.nutriments).items():
         initial[nutrient_field(code)] = plain_amount(amount)
+    initial["nutrition_unit"] = nutrition_unit_from_off(fetched.nutrition_data_per)
     try:
         initial["off_image_url"] = validate_off_image_url(fetched.image_url)
     except ValueError:

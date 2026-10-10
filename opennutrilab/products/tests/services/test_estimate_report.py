@@ -125,6 +125,40 @@ def test_a_nutrient_has_its_estimate_its_coverage_its_label_and_its_check(
     assert estimate.used_nutrition
 
 
+def test_the_unit_of_the_label_and_the_density_that_converts_it_are_served(
+    source: Source,
+):
+    oil = reference(source, "1", fat="99.9", proteins="0.25")
+    oil.density_low, oil.density_high = D("0.908"), D("0.915")
+    oil.save()
+    product = product_of(fat="91")
+    product.nutrition_unit = "ml"
+    product.save()
+    add(product, oil)
+
+    estimate = build_estimate(product)
+
+    assert estimate.label_unit == "ml"
+    assert estimate.density is not None
+    assert estimate.density.high is not None
+    assert (estimate.density.low, estimate.density.high) == (D("0.908"), D("0.915"))
+    assert estimate.density.low <= estimate.density.point <= estimate.density.high
+    fat = nutrients_of(estimate)["fat"]
+    # The estimate is per 100 g, the label as printed, and the check per 100 ml.
+    assert fat.estimated.point == D("99.9")
+    assert fat.declared.amount == D("91")
+    assert fat.check.verdict == "agrees"
+
+
+def test_a_label_in_grams_has_no_density_to_serve(source: Source):
+    product = product_of(proteins="15")
+    add(product, reference(source, "1", proteins="15"))
+
+    estimate = build_estimate(product)
+
+    assert (estimate.label_unit, estimate.density) == ("g", None)
+
+
 def test_nutrients_come_in_catalogue_order(source: Source):
     product = product_of(proteins="15")
     add(product, reference(source, "1", proteins="20", vitamin_c="10"))

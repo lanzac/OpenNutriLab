@@ -216,6 +216,14 @@ class Product(models.Model):
     package_unit = models.CharField(
         max_length=2, choices=ServingUnit.choices, blank=True, default=""
     )
+    # What the label's nutrition table is given per 100 of: 100 g, or 100 ml for a
+    # liquid sold by volume. The declared values are kept as the label prints them
+    # (91 g of fat per 100 ml of oil stays 91, not 99.9 per 100 g): no density is
+    # known, so nothing is converted, and a table per 100 ml is not set against
+    # the compositions of the ingredients, which are per 100 g.
+    nutrition_unit = models.CharField(
+        max_length=2, choices=ServingUnit.choices, default=ServingUnit.GRAM
+    )
 
     if TYPE_CHECKING:
         declared_nutrients: RelatedManager["ProductNutrient"]
@@ -269,7 +277,8 @@ class ProductNutrient(models.Model):
         Product, on_delete=models.CASCADE, related_name="declared_nutrients"
     )
     nutrient = models.ForeignKey(Nutrient, on_delete=models.PROTECT, related_name="+")
-    # Per 100 g, in the nutrient's unit.
+    # Per 100 g, or per 100 ml when the product's nutrition_unit says so, in the
+    # nutrient's unit.
     amount = models.DecimalField(
         max_digits=12,
         decimal_places=4,
@@ -819,6 +828,28 @@ class ReferenceIngredient(CuratedItem):
         ),
     )
 
+    # What a millilitre of it weighs, as a range in g/ml, for a liquid: the sources
+    # give a composition per 100 g and a label can give its table per 100 ml, and
+    # this is what one is set against the other with (see
+    # services.percentage_estimation.product_density). Both ends or neither; a
+    # reference with none is not converted.
+    density_low = models.DecimalField(
+        max_digits=6,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.01"))],
+        help_text=_("The least a millilitre of it weighs, in g/ml (olive oil: 0.908)."),
+    )
+    density_high = models.DecimalField(
+        max_digits=6,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.01"))],
+        help_text=_("The most a millilitre of it weighs, in g/ml (olive oil: 0.915)."),
+    )
+
     if TYPE_CHECKING:
         usages: RelatedManager["Ingredient"]
         used_in_preparations: RelatedManager["Preparation"]
@@ -829,6 +860,17 @@ class ReferenceIngredient(CuratedItem):
                 Lower("name_en"),
                 condition=~models.Q(name_en=""),
                 name="unique_reference_name_en",
+            ),
+            # Both ends or neither, the lowest first.
+            # django-stubs still types `check`, which Django 5.1 renamed.
+            models.CheckConstraint(  # pyright: ignore[reportCallIssue]
+                condition=models.Q(density_low__isnull=True, density_high__isnull=True)  # pyright: ignore[reportCallIssue]
+                | models.Q(
+                    density_low__isnull=False,
+                    density_high__isnull=False,
+                    density_low__lte=models.F("density_high"),
+                ),
+                name="reference_density_is_a_range",
             ),
             models.UniqueConstraint(
                 Lower("name_fr"),

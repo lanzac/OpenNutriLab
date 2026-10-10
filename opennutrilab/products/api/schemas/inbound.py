@@ -106,8 +106,10 @@ class ProductCreate(Schema):
     description: str = ""
     group_level_1: str = Field(default="", max_length=100)
     group_level_2: str = Field(default="", max_length=100)
-    # Values declared on the nutrition label, keyed by Nutrient.code.
+    # Values declared on the nutrition label, keyed by Nutrient.code, and what the
+    # table is given per 100 of (see Product.nutrition_unit).
     nutrients: dict[str, NutrientAmount] = {}
+    nutrition_unit: Literal["g", "ml"] = "g"
     ingredients: list[IngredientInput] = []
     # The label's list those ingredients were read from, when there is one, and the
     # places of it (start, end) that were left out of the reading.
@@ -152,6 +154,7 @@ class ProductUpdate(Schema):
     group_level_1: str | None = Field(default=None, max_length=100)
     group_level_2: str | None = Field(default=None, max_length=100)
     nutrients: dict[str, NutrientAmount | None] | None = None
+    nutrition_unit: Literal["g", "ml"] | None = None
     ingredients: list[IngredientInput] | None = None
     ingredients_text: str | None = None
     ingredients_language: str | None = Field(default=None, max_length=10)

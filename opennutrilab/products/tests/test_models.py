@@ -260,6 +260,25 @@ def test_a_source_value_keeps_how_the_source_published_it(ciqual_carrot: SourceF
 
 
 @pytest.mark.django_db
+def test_a_density_is_both_ends_or_neither_the_lowest_first():
+    ReferenceIngredient.objects.create(name_en="water")
+    ReferenceIngredient.objects.create(
+        name_en="oil", density_low=Decimal("0.908"), density_high=Decimal("0.915")
+    )
+    ReferenceIngredient.objects.create(
+        name_en="mercury", density_low=Decimal("13.5"), density_high=Decimal("13.5")
+    )
+
+    for name, ends in (
+        ("one end", {"density_low": Decimal("0.9")}),
+        ("the other", {"density_high": Decimal("0.9")}),
+        ("upside down", {"density_low": Decimal("1"), "density_high": Decimal("0.9")}),
+    ):
+        with transaction.atomic(), pytest.raises(IntegrityError):
+            ReferenceIngredient.objects.create(name_en=name, **ends)
+
+
+@pytest.mark.django_db
 def test_a_reference_ingredient_draws_on_several_source_foods(
     ciqual_carrot: SourceFood,
 ):

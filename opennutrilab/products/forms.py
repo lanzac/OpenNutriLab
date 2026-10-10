@@ -139,6 +139,20 @@ class ProductForm(forms.ModelForm):
         label=_("Serving name"),
         help_text=_('What the label calls a serving, such as "1 tranche".'),
     )
+    # What the label's table is given per, which the values below are kept in as it
+    # prints them: outside the model's fields too, written by the services.
+    nutrition_unit = forms.ChoiceField(
+        choices=[
+            (Product.ServingUnit.GRAM, _("100 g")),
+            (Product.ServingUnit.MILLILITRE, _("100 ml")),
+        ],
+        initial=Product.ServingUnit.GRAM,
+        required=False,
+        label=_("Values given per"),
+        help_text=_(
+            "As the label prints it: a liquid's table is often given per 100 ml."
+        ),
+    )
 
     class Meta:
         model = Product
@@ -234,9 +248,10 @@ class ProductForm(forms.ModelForm):
 
         # 🔹 Get the "nutritional values" layouts (that include fields) that will
         # be send to the form.
-        nutritional_values_fields_layout: list[Field] = (
-            self._get_nutritional_values_layout()
-        )
+        nutritional_values_fields_layout: list[Field] = [
+            Field("nutrition_unit"),
+            *self._get_nutritional_values_layout(),
+        ]
 
         # --------------------------------------------------------------------
 
@@ -280,7 +295,7 @@ class ProductForm(forms.ModelForm):
             ),
             BS5Accordion(
                 AccordionGroupExtended(
-                    _("Nutritional values (per 100g)"),
+                    _("Nutritional values"),
                     *nutritional_values_fields_layout,
                     extra_data=macronutrients_graph_container_template,
                 ),
@@ -414,8 +429,8 @@ class ProductForm(forms.ModelForm):
 
     def _add_serving_initial(self) -> None:
         """
-        The stored serving, which a lookup on OpenFoodFacts can replace: a field's
-        own initial gives way to the form's.
+        The stored serving, package and unit of the label's table, which a lookup on
+        OpenFoodFacts can replace: a field's own initial gives way to the form's.
         """
         product: Product = self.instance
         if not self.is_edit:
@@ -431,6 +446,7 @@ class ProductForm(forms.ModelForm):
                 product.package_quantity
             )
             self.fields["package_unit"].initial = product.package_unit
+        self.fields["nutrition_unit"].initial = product.nutrition_unit
 
     def _get_nutritional_values_layout(self) -> list[Field]:
         """Return crispy-forms layout for the declared nutrients, with units."""
@@ -475,6 +491,7 @@ class ProductForm(forms.ModelForm):
             "description": cleaned.get("description") or "",
             "group_level_1": cleaned.get("group_level_1") or "",
             "group_level_2": cleaned.get("group_level_2") or "",
+            "nutrition_unit": cleaned.get("nutrition_unit") or Product.ServingUnit.GRAM,
             "image_url": (cleaned.get("off_image_url") or None) if from_off else None,
             # An empty quantity is no package, and clears a stored one.
             "package": None
@@ -537,7 +554,8 @@ class ProductForm(forms.ModelForm):
                 n.code: value
                 for n in self.label_nutrients
                 if (value := self.cleaned_data.get(nutrient_field(n.code))) is not None
-            }
+            },
+            self.cleaned_data.get("nutrition_unit") or Product.ServingUnit.GRAM,
         )
         return result.product
 

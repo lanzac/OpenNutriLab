@@ -17,6 +17,7 @@ from opennutrilab.products.api.openfoodfacts.services import fetch_from_off
 from opennutrilab.products.api.openfoodfacts.services import (
     ingredient_inputs_from_label,
 )
+from opennutrilab.products.api.openfoodfacts.services import nutrition_unit_from_off
 from opennutrilab.products.models import Nutrient
 
 # A product recorded from OpenFoodFacts (API v2: the envelope differs from
@@ -414,6 +415,28 @@ def test_unusable_declared_values_are_left_out():
     )
 
     assert values == {}
+
+
+@pytest.mark.parametrize(
+    ("per", "unit"),
+    [
+        ("100ml", "ml"),
+        (" 100 ML ", "ml"),
+        ("100g", "g"),
+        ("serving", "g"),
+        ("", "g"),
+        (None, "g"),
+    ],
+)
+def test_a_table_per_100_ml_is_read_as_such(per: str | None, unit: str):
+    assert nutrition_unit_from_off(per) == unit
+
+
+def test_the_schema_reads_what_the_table_is_given_per():
+    payload = {"code": "3270190008262", "nutrition_data_per": "100ml"}
+
+    assert OFFProductSchema.model_validate(payload).nutrition_data_per == "100ml"
+    assert OFFProductSchema.model_validate({"code": "1"}).nutrition_data_per is None
 
 
 def test_fetch_product_barcode_mismatch():

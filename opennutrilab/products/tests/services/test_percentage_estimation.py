@@ -32,6 +32,8 @@ from opennutrilab.products.services.percentage_estimation import estimate
 from opennutrilab.products.services.percentage_estimation import estimate_percentages
 from opennutrilab.products.services.percentage_estimation import interval
 from opennutrilab.products.services.percentage_estimation import load
+from opennutrilab.products.services.percentage_estimation import product_density
+from opennutrilab.products.services.percentage_estimation import solve_shares
 from opennutrilab.products.services.reference_composition import Estimate
 
 D = Decimal
@@ -261,6 +263,158 @@ def test_a_nutrition_the_compositions_cannot_give_is_set_aside_and_named():
     assert not result.used_nutrition
     # What the list says is still there.
     assert_spans(result, {1: (50, 100), 2: (0, 50)})
+
+
+def test_a_nutrition_given_per_100_ml_is_not_used_without_a_density_and_says_so():
+    # 91 g of fat per 100 ml of oil of 99.9 g per 100 g: a label that is right, and
+    # that per 100 g would be called wrong. With no density to convert it, it is not
+    # set against the composition.
+    oil = Node(1, None, "oil", None, {"fat": (99.85, 99.95)})
+
+    per_volume = estimate([oil], {"fat": (90.5, 91.5)}, label_unit="ml")
+    per_mass = estimate([oil], {"fat": (90.5, 91.5)})
+
+    assert [w.problem for w in per_volume.warnings] == [Problem.NUTRITION_PER_VOLUME]
+    assert not per_volume.used_nutrition
+    assert_spans(per_volume, {1: (100, 100)})
+    # In grams, the same figures contradict the composition.
+    assert [w.problem for w in per_mass.warnings] == [Problem.LABEL_DISAGREES]
+
+
+def oil(**overrides: Any) -> Node:
+    fields: dict[str, Any] = {
+        "key": 1,
+        "parent": None,
+        "name": "oil",
+        "declared": None,
+        "composition": {"fat": (99.85, 99.95)},
+        "density": (0.908, 0.915),
+    }
+    return Node(**fields | overrides)
+
+
+def test_a_nutrition_given_per_100_ml_is_set_against_the_compositions_by_density():
+    # 91 g per 100 ml is 98.9 to 100.8 g per 100 g of an oil of 0.908 to 0.915.
+    result = solve_shares([oil()], {"fat": (90.5, 91.5)}, label_unit="ml")
+
+    assert result.warnings == []
+    assert result.used_nutrition
+    assert result.density == (0.908, 0.915)
+
+
+def test_a_nutrition_per_100_ml_that_the_density_does_not_reconcile_is_set_aside():
+    # 70 g of fat per 100 ml is 76 to 77.7 g per 100 g: not an oil of 99.9.
+    result = solve_shares(
+        [oil()], {"fat": (69.5, 70.5)}, {"fat": "Fat"}, label_unit="ml"
+    )
+
+    assert [w.problem for w in result.warnings] == [Problem.LABEL_DISAGREES]
+    assert result.warnings[0].codes == ("fat",)
+    assert not result.used_nutrition
+
+
+def test_the_density_of_a_product_is_between_its_lightest_and_heaviest_ingredient():
+    nodes = [oil(), oil(key=2, name="water", density=(0.998, 1.0))]
+
+    assert product_density(nodes, [0, 1]) == (0.908, 1.0)
+
+
+def test_an_additive_or_a_vitamin_is_left_out_of_the_density():
+    nodes = [oil(), oil(key=2, name="E300", density=None, in_a_pinch=True)]
+
+    assert product_density(nodes, [0, 1]) == (0.908, 0.915)
+
+
+@pytest.mark.parametrize(
+    "nodes",
+    [
+        [],
+        [oil(density=None)],
+        [oil(), oil(key=2, density=None)],
+        [oil(key=2, density=None, in_a_pinch=True)],
+    ],
+)
+def test_the_density_of_a_product_is_unknown_when_an_ingredient_has_none(
+    nodes: list[Node],
+):
+    assert product_density(nodes, list(range(len(nodes)))) is None
+
+
+def test_an_ingredient_without_a_composition_leaves_the_density_unknown():
+    nodes = [oil(), oil(key=2, composition=None, density=(0.9, 0.9))]
+
+    result = solve_shares(nodes, {"fat": (90.5, 91.5)}, label_unit="ml")
+
+    assert result.density is None
+    assert [w.problem for w in result.warnings] == [Problem.NO_COMPOSITION]
+
+
+def test_a_product_that_declares_no_nutrition_says_so_even_per_100_ml():
+    result = estimate([node(1, protein=(20, 20))], {}, label_unit="ml")
+
+    assert [w.problem for w in result.warnings] == [Problem.NO_NUTRITION]
+
+
+def test_a_label_the_rounding_cannot_agree_with_is_read_with_its_tolerance():
+    # 21 to 22 g of protein against foods of 20 and 10: no mix gives more than 20.
+    # With a tolerance down to 19, the first is 90 to 100 %.
+    nodes = [node(1, protein=(20, 20)), node(2, protein=(10, 10))]
+
+    result = estimate(
+        nodes,
+        {"proteins": (21, 22)},
+        {"proteins": "Protéines"},
+        tolerated={"proteins": (19, 24)},
+    )
+
+    assert [w.problem for w in result.warnings] == [Problem.WITHIN_TOLERANCE]
+    assert result.warnings[0].detail == "Protéines"
+    assert result.warnings[0].codes == ("proteins",)
+    assert result.used_nutrition
+    assert_spans(result, {1: (90, 100), 2: (0, 10)})
+
+
+def test_the_tolerance_is_not_used_when_the_rounding_agrees():
+    nodes = [node(1, protein=(20, 20)), node(2, protein=(10, 10))]
+    label = {"proteins": (14.5, 15.5)}
+
+    strict = estimate(nodes, label)
+    with_a_fallback = estimate(nodes, label, tolerated={"proteins": (5, 25)})
+
+    assert with_a_fallback == strict
+    assert with_a_fallback.warnings == []
+
+
+def test_only_the_nutrients_off_are_read_with_their_tolerance():
+    # The fat is off the foods' (none) and the protein is not: the protein keeps
+    # narrowing the shares to 50-55 % as it did, the fat alone is widened.
+    nodes = [
+        Node(1, None, "one", None, {"proteins": (20, 20), "fat": (0, 0)}),
+        Node(2, None, "two", None, {"proteins": (10, 10), "fat": (0, 0)}),
+    ]
+
+    result = estimate(
+        nodes,
+        {"proteins": (14.5, 15.5), "fat": (1, 1.5)},
+        tolerated={"proteins": (0, 30), "fat": (0, 2)},
+    )
+
+    assert result.warnings[0].codes == ("fat",)
+    assert_spans(result, {1: (50, 55), 2: (45, 50)})
+
+
+def test_a_label_off_even_with_its_tolerance_is_set_aside_and_named():
+    nodes = [node(1, protein=(20, 20)), node(2, protein=(10, 10))]
+
+    result = estimate(
+        nodes,
+        {"proteins": (40, 41)},
+        {"proteins": "Protéines"},
+        tolerated={"proteins": (30, 45)},
+    )
+
+    assert [w.problem for w in result.warnings] == [Problem.LABEL_DISAGREES]
+    assert not result.used_nutrition
 
 
 def test_only_the_nutrients_that_disagree_are_named():

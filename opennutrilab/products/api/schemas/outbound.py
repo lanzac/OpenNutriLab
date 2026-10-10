@@ -126,6 +126,10 @@ class DeclaredOut(Schema):
     amount: Decimal
     low: Decimal
     high: Decimal
+    # What the figure can stand for with the tolerance the European Commission
+    # allows around a declared one (see label_tolerance), wider than the rounding.
+    tolerance_low: Decimal | None = None
+    tolerance_high: Decimal | None = None
 
 
 class CheckOut(Schema):
@@ -133,11 +137,14 @@ class CheckOut(Schema):
 
     # agrees, declared_below, declared_above or not_estimated.
     verdict: str
-    # How far apart the two intervals are, in the nutrient's unit: 0 when they meet.
+    # How far the estimate is from what the figure can stand for, tolerance included,
+    # in the nutrient's unit: 0 when they meet.
     gap: Decimal
     # The label's figure was one of the rules the shares were worked out with, so
     # it agrees by construction and confirms nothing.
     constrained: bool
+    # It agrees within the tolerance, not within the rounding of the figure.
+    tolerated: bool = False
     # What it was compared with. For a nutrient read more than one way (vitamin A)
     # this holds all the readings, so it is wider than `estimated`.
     compared_low: Decimal | None = None
@@ -230,6 +237,13 @@ class EstimateOut(Schema):
     barcode: str
     # Whether the nutrition of the label narrowed the shares of the ingredients.
     used_nutrition: bool
+    # What the label's table is given per 100 of ("g" or "ml"): its figures are as
+    # printed, and the estimated ones are per 100 g.
+    label_unit: str = "g"
+    # What a millilitre of the product weighs, in g/ml, when the density of every
+    # ingredient is known: what an amount per 100 g and one per 100 ml are
+    # converted with. `point` is the middle of the range.
+    density: RangeOut | None = None
     warnings: list[WarningOut] = []
     # Catalogue order. The nutrients the label declares come with it, estimated
     # or not.
@@ -315,7 +329,9 @@ class ProductOut(ModelSchema):
     serving: ServingOut | None = None
     package: PackageOut | None = None
 
-    # Values declared on the label, in catalogue order.
+    # Values declared on the label, in catalogue order, as it prints them: per 100
+    # of `nutrition_unit` ("g" or "ml"), with no conversion.
+    nutrition_unit: str
     nutrients: list[DeclaredNutrientOut] = []
 
     # Field name is exactly the same as the related_name in the Product model,
@@ -335,6 +351,7 @@ class ProductOut(ModelSchema):
             "ingredients_text",
             "ingredients_language",
             "ingredients_ignored",
+            "nutrition_unit",
         ]
 
     @staticmethod

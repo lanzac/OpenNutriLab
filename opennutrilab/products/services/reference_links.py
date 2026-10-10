@@ -6,14 +6,19 @@ says that "quinoa blanc" is CIQUAL's "Quinoa, cru". The links of a food made by
 hand are kept by its spec (custom_foods). The others, to the foods of a table a
 person chose, are kept in products/data/reference_links.json, by the name of the
 reference (an id would not survive a reset) and the code of the food, with the
-food that gives its value when they are forms of it (`default_food`).
+food that gives its value when they are forms of it (`default_food`). A liquid's
+density, in g/ml as {"min": ..., "max": ...}, is kept with them: it is what a
+person chose too, and a reset loses it as well.
 
-Making them again only adds the links that are missing, and gives a default to a
-reference that has none: a reference keeps the foods and the default it has, and
-stays "to review", as this replays a decision and takes none.
+Making them again only adds the links that are missing, and gives a default or a
+density to a reference that has none: a reference keeps the foods, the default and
+the density it has, and stays "to review", as this replays a decision and takes
+none.
 """
 
 from dataclasses import dataclass
+from decimal import Decimal
+from decimal import InvalidOperation
 from pathlib import Path
 from typing import Any
 from typing import NamedTuple
@@ -45,6 +50,8 @@ class ReferenceLink:
     reference: int | str
     foods: tuple[FoodKey, ...]
     default: FoodKey | None = None
+    # What a millilitre of it weighs, in g/ml: (lowest, highest).
+    density: tuple[Decimal, Decimal] | None = None
 
 
 class LinkResult(NamedTuple):
@@ -56,6 +63,8 @@ class LinkResult(NamedTuple):
     default_set: SourceFood | None = None
     # The default the reference has, when it is not the one the link names.
     default_kept: SourceFood | None = None
+    # The density the link gave to a reference that had none.
+    density_set: bool = False
 
 
 def parse_links(data: object) -> list[ReferenceLink]:
@@ -72,7 +81,7 @@ def _link(item: object) -> ReferenceLink:
         msg = f'A link is {{"reference": ..., "foods": [...]}}, got {item!r}.'
         raise CustomFoodError(msg)
     entry: dict[str, Any] = item  # pyright: ignore[reportUnknownVariableType]
-    if extra := sorted(set(entry) - {"reference", "foods", "default"}):
+    if extra := sorted(set(entry) - {"reference", "foods", "default", "density"}):
         msg = f"Unknown key(s) in a link: {', '.join(extra)}."
         raise CustomFoodError(msg)
     foods: Any = entry.get("foods")
@@ -85,7 +94,30 @@ def _link(item: object) -> ReferenceLink:
         reference=reference_id(entry.get("reference")),
         foods=tuple(_food(food) for food in foods_list),
         default=None if default is None else _food(default),
+        density=_density(entry.get("density")),
     )
+
+
+def _density(item: object) -> tuple[Decimal, Decimal] | None:
+    """A density as {"min": ..., "max": ...} in g/ml, or None for none."""
+    if item is None:
+        return None
+    if not isinstance(item, dict):
+        msg = f'A density is {{"min": ..., "max": ...}} in g/ml, got {item!r}.'
+        raise CustomFoodError(msg)
+    entry: dict[str, Any] = item  # pyright: ignore[reportUnknownVariableType]
+    if extra := sorted(set(entry) - {"min", "max"}):
+        msg = f"Unknown key(s) in a density: {', '.join(extra)}."
+        raise CustomFoodError(msg)
+    try:
+        low, high = Decimal(str(entry.get("min"))), Decimal(str(entry.get("max")))
+    except InvalidOperation as e:
+        msg = f'A density needs its "min" and "max", numbers: {item!r}.'
+        raise CustomFoodError(msg) from e
+    if not (low.is_finite() and high.is_finite()) or not 0 < low <= high:
+        msg = f"A density is a range above zero, the lowest first: {item!r}."
+        raise CustomFoodError(msg)
+    return low, high
 
 
 def _food(item: object) -> FoodKey:
@@ -116,8 +148,22 @@ def link_reference_foods(link: ReferenceLink) -> LinkResult:
         added = tuple(f for f in foods if f.pk not in drawn_on)
         reference.source_foods.add(*added)
         default_set, default_kept = _default(reference, link.default)
+        density_set = _give_density(reference, link.density)
     already = tuple(f for f in foods if f.pk in drawn_on)
-    return LinkResult(reference, added, already, default_set, default_kept)
+    return LinkResult(
+        reference, added, already, default_set, default_kept, density_set=density_set
+    )
+
+
+def _give_density(
+    reference: ReferenceIngredient, density: tuple[Decimal, Decimal] | None
+) -> bool:
+    """Give the density to a reference with none; the one it has is kept."""
+    if density is None or reference.density_low is not None:
+        return False
+    reference.density_low, reference.density_high = density
+    reference.save(update_fields=["density_low", "density_high"])
+    return True
 
 
 def _default(
@@ -182,10 +228,17 @@ def links_to_keep() -> Kept:
                 reference=name,
                 foods=tuple(FoodKey(f.source.code, f.code) for f in foods),
                 default=FoodKey(default.source.code, default.code) if default else None,
+                density=_density_of(reference),
             )
         )
     links.sort(key=lambda link: str(link.reference).lower())
     return Kept(links, unnamed)
+
+
+def _density_of(reference: ReferenceIngredient) -> tuple[Decimal, Decimal] | None:
+    if reference.density_low is None or reference.density_high is None:
+        return None
+    return reference.density_low.normalize(), reference.density_high.normalize()
 
 
 def _name_that_finds(reference: ReferenceIngredient) -> str | None:
@@ -211,5 +264,8 @@ def links_as_data(links: list[ReferenceLink]) -> list[dict[str, Any]]:
         }
         if link.default is not None:
             entry["default"] = link.default._asdict()
+        if link.density is not None:
+            low, high = link.density
+            entry["density"] = {"min": float(low), "max": float(high)}
         data.append(entry)
     return data

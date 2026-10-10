@@ -171,6 +171,36 @@ def test_a_serving_is_in_grams_unless_said():
 
 
 @pytest.mark.django_db
+def test_a_label_is_per_100_g_unless_said_and_keeps_its_values_per_100_ml():
+    assert ProductForm()["nutrition_unit"].value() == "g"
+
+    form = ProductForm(
+        data=form_data(fat="91", saturated_fat="13") | {"nutrition_unit": "ml"}
+    )
+    assert form.is_valid(), form.errors
+    product = form.save()
+
+    product.refresh_from_db()
+    assert product.nutrition_unit == "ml"
+    # As the label prints them: nothing is converted.
+    assert declared(product) == {"fat": Decimal(91), "saturated_fat": Decimal(13)}
+    assert ProductForm(instance=product)["nutrition_unit"].value() == "ml"
+
+
+@pytest.mark.django_db
+def test_a_label_per_100_ml_may_add_up_to_more_than_100_g():
+    form = ProductForm(
+        data=form_data(fat="60", carbohydrates="30", proteins="20")
+        | {"nutrition_unit": "ml"}
+    )
+    assert form.is_valid(), form.errors
+
+    form.save()
+
+    assert form.declared_value_warnings == []
+
+
+@pytest.mark.django_db
 def test_emptying_the_quantity_clears_the_stored_serving():
     product = Product.objects.create(
         barcode=BARCODE, name="Muesli", serving_quantity=Decimal(45), serving_unit="g"

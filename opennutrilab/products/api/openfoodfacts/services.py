@@ -12,6 +12,7 @@ from opennutrilab.products.api.openfoodfacts.schemas import OFFProductSchema
 from opennutrilab.products.api.openfoodfacts.schemas import StatusEnum
 from opennutrilab.products.api.schemas.inbound import IngredientInput
 from opennutrilab.products.models import Nutrient
+from opennutrilab.products.models import Product
 from opennutrilab.products.services.label_parser import LabelItem
 from opennutrilab.products.services.label_parser import LabelWarning
 from opennutrilab.products.services.label_parser import Span
@@ -192,3 +193,17 @@ def declared_nutrients_from_off(nutriments: dict[str, Any]) -> dict[str, Decimal
             amount *= _FROM_GRAMS[unit]
         values[nutrient.code] = amount.quantize(_FOUR_PLACES)
     return values
+
+
+def nutrition_unit_from_off(per: str | None) -> str:
+    """
+    What the nutrition table of an OpenFoodFacts product is given per 100 of: "ml"
+    when it says "100ml", else "g".
+
+    OpenFoodFacts keeps a table per 100 ml under the same `_100g` keys, with the
+    values as the label prints them, so the unit has to be read from here. A table
+    per serving is already worked out per 100 by OpenFoodFacts and is read as it is.
+    """
+    if (per or "").replace(" ", "").lower() == "100ml":
+        return Product.ServingUnit.MILLILITRE.value
+    return Product.ServingUnit.GRAM.value

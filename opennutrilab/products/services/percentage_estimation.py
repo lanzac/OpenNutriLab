@@ -69,6 +69,17 @@ When the rules cannot all hold, nothing is guessed:
 - a label that the compositions cannot give leaves it unused, and says which
   nutrients are off. It is the label that is not trusted here and the composition
   that may be wrong, and the warning does not say which;
+- a figure of the label is read as the rounding it is written with (33 is 32.5 to
+  33.5, and a 0 is "less than 0.5 g" for a macronutrient), see label_tolerance. If
+  that cannot agree with the ingredients for some nutrients, those are read with
+  the tolerance the European Commission allows around a declared figure, and the
+  result says so: a label is never exactly what the food holds. It is only then,
+  since the tolerance is wide and would take from what the other figures tell;
+- a label given per 100 ml (a liquid, Product.nutrition_unit) is kept as it prints
+  it and set against the compositions, which are per 100 g, through the density of
+  the product (see product_density). With no density known for every ingredient it
+  is left unused, and says so: setting the two against each other as they are
+  would call the label wrong for the density of the liquid;
 - declared percentages and order that contradict each other give no estimate.
 
 The processing a food goes through is not modelled: the percentages are of the
@@ -103,6 +114,7 @@ from opennutrilab.products.services.food_forms import COOKED_WORDS
 from opennutrilab.products.services.food_forms import Form
 from opennutrilab.products.services.food_forms import fold
 from opennutrilab.products.services.food_forms import has_a_word_of
+from opennutrilab.products.services.label_tolerance import label_reading
 from opennutrilab.products.services.reference_composition import Estimate
 from opennutrilab.products.services.reference_composition import components_composition
 from opennutrilab.products.services.reference_composition import reference_composition
@@ -137,6 +149,8 @@ PROCESSED_WORDS = COOKED_WORDS | CANNED_WORDS
 
 Range = tuple[float, float]
 Matrix = NDArray[np.float64]
+# The lowest and the highest value of each share, and a combination in the middle.
+Ranges = tuple[Matrix, Matrix, Matrix]
 
 
 class Interval(NamedTuple):
@@ -169,6 +183,22 @@ class Problem(TextChoices):
         _(
             "The nutrition of the product was not used: the compositions of its "
             "ingredients cannot give it (%(detail)s)."
+        ),
+    )
+    WITHIN_TOLERANCE = (
+        "within_tolerance",
+        _(
+            "%(detail)s: the label is not exactly what the ingredients give, but "
+            "within the tolerance the European Commission allows on a label, so "
+            "it was read with that tolerance."
+        ),
+    )
+    NUTRITION_PER_VOLUME = (
+        "nutrition_per_volume",
+        _(
+            "The nutrition of the product was not used: the label gives it per "
+            "100 ml, and the density of its ingredients, to convert it to per 100 "
+            "g, is not known."
         ),
     )
     IMPOSSIBLE = (
@@ -225,6 +255,10 @@ class Node(NamedTuple):
     declared: Decimal | None = None
     # (low, high) per 100 g, for the nutrients in NUTRIENTS; None if it has none.
     composition: Mapping[str, Range] | None = None
+    # (low, high) in g/ml, when its reference has one (see product_density).
+    density: Range | None = None
+    # An additive or a vitamin, added in a pinch: left out of the density.
+    in_a_pinch: bool = False
 
 
 Row = tuple[dict[int, float], float]
@@ -290,6 +324,12 @@ class Loaded(NamedTuple):
     parents: dict[str, str | None]
     # The unit each nutrient is given in, by code.
     units: dict[str, str]
+    # What the label is given per 100 of: "g", or "ml" (see Product.nutrition_unit).
+    label_unit: str = Product.ServingUnit.GRAM
+    # The same figures with the tolerance around them (see label_tolerance).
+    label_tolerated: dict[str, Range] | None = None
+    # The group the catalogue puts each nutrient in, by code.
+    groups: dict[str, str] | None = None
 
 
 def load(product: Product) -> Loaded:
@@ -344,15 +384,19 @@ def load(product: Product) -> Loaded:
             declared=i.percentage,
             composition=_macronutrients(composition, catalogue)
             or (_unknown() if _is_no_food(i) else None),
+            density=_density_of(i),
+            in_a_pinch=_is_no_food(i),
         )
         for i, composition in zip(ingredients, full, strict=True)
     ]
-    label = {
-        code: _declared_range(Decimal(amount))
-        for code, amount in product.declared_nutrients.filter(
-            nutrient__in=NUTRIENTS
-        ).values_list("nutrient_id", "amount")
-    }
+    label: dict[str, Range] = {}
+    tolerated: dict[str, Range] = {}
+    for code, amount in product.declared_nutrients.filter(
+        nutrient__in=NUTRIENTS
+    ).values_list("nutrient_id", "amount"):
+        reading = label_reading(code, catalogue[code].group, Decimal(amount))
+        label[code] = _floats(reading.rounded)
+        tolerated[code] = _floats(reading.tolerated)
     return Loaded(
         nodes,
         label,
@@ -360,6 +404,9 @@ def load(product: Product) -> Loaded:
         full,
         {code: nutrient.parent_id for code, nutrient in catalogue.items()},
         {code: nutrient.unit for code, nutrient in catalogue.items()},
+        product.nutrition_unit,
+        tolerated,
+        {code: nutrient.group for code, nutrient in catalogue.items()},
     )
 
 
@@ -408,7 +455,15 @@ def _is_water(ingredient: Ingredient) -> bool:
 def estimate_percentages(product: Product) -> PercentageEstimate:
     """What the label of a product says of the shares of its ingredients."""
     loaded = load(product)
-    return estimate(loaded.nodes, loaded.label, loaded.nutrient_names)
+    return percentages_of(
+        solve_shares(
+            loaded.nodes,
+            loaded.label,
+            loaded.nutrient_names,
+            label_unit=loaded.label_unit,
+            tolerated=loaded.label_tolerated,
+        )
+    )
 
 
 @dataclass(frozen=True)
@@ -430,48 +485,73 @@ class Solution:
     used_nutrition: bool
     rules: Rules | None = None
     ranges: tuple[Matrix, Matrix, Matrix] | None = None
+    # What a millilitre of the product weighs, in g/ml, when it can be told.
+    density: Range | None = None
+    # The nutrients (by code) whose figure only agreed with the ingredients when
+    # read with the tolerance.
+    tolerated: tuple[str, ...] = ()
 
 
 def solve_shares(
     nodes: Sequence[Node],
     label: Mapping[str, Range],
     nutrient_names: Mapping[str, str] | None = None,
+    *,
+    label_unit: str = Product.ServingUnit.GRAM,
+    tolerated: Mapping[str, Range] | None = None,
 ) -> Solution:
     """
     The share each node can be, from the rules in the module's description.
 
-    `label` is the interval of each nutrient of the whole product, per 100 g.
+    `tolerated` is the label with the tolerance around each figure, to fall back on
+    for the nutrients the rounding alone cannot agree with.
+
+    `label` is the interval of each nutrient of the whole product, per 100 g, or per
+    100 ml when `label_unit` says so. A figure per 100 ml is set against the
+    compositions, which are per 100 g, through the density of the product (see
+    product_density), as it would be per 100 g; with none known it is not used.
     """
     if not nodes:
         return Solution(nodes, [], [], [], used_nutrition=False)
     warnings: list[EstimateWarning] = []
     tree = _tree(nodes)
     units, without = _units(nodes)
+    # An ingredient with no composition may be of any density.
+    density = None if without else product_density(nodes, units)
 
     nutrition: Rules | None = None
-    if not label:
-        warnings.append(EstimateWarning(Problem.NO_NUTRITION))
-    elif without:
-        names = ", ".join(nodes[i].name for i in without)
-        warnings.append(EstimateWarning(Problem.NO_COMPOSITION, names))
+    if reason := _why_unused(nodes, label, without, label_unit, density):
+        warnings.append(reason)
     else:
+        if label_unit != Product.ServingUnit.GRAM.value:
+            assert density is not None  # the branch above
+            label = _per_mass(label, density)
+            tolerated = None if tolerated is None else _per_mass(tolerated, density)
         nutrition = _with_nutrition(tree, nodes, units, label)
 
     rules = nutrition
     ranges = _ranges(nutrition) if nutrition is not None else None
+    read_with_tolerance: tuple[str, ...] = ()
+    if ranges is None and tolerated and nutrition is not None:
+        found = _read_with_tolerance(tree, nodes, units, label, tolerated)
+        if found is not None:
+            nutrition, ranges, read_with_tolerance = found
+            rules = nutrition
+            warnings.append(
+                _named(Problem.WITHIN_TOLERANCE, read_with_tolerance, nutrient_names)
+            )
     if ranges is None:
         rules = tree
         ranges = _ranges(tree)
         if ranges is None:
             warnings.append(EstimateWarning(Problem.IMPOSSIBLE))
-            return Solution(nodes, units, without, warnings, used_nutrition=False)
-        if nutrition is not None:
-            off = _disagreeing(tree, nodes, units, label)
-            names = nutrient_names or {}
-            detail = ", ".join(names.get(code, code) for code in off)
-            warnings.append(
-                EstimateWarning(Problem.LABEL_DISAGREES, detail, tuple(off))
+            return Solution(
+                nodes, units, without, warnings, used_nutrition=False, density=density
             )
+        if nutrition is not None:
+            # Off even with the tolerance, when there is one.
+            off = _disagreeing(tree, nodes, units, {**label, **(tolerated or {})})
+            warnings.append(_named(Problem.LABEL_DISAGREES, off, nutrient_names))
     return Solution(
         nodes,
         units,
@@ -480,16 +560,52 @@ def solve_shares(
         used_nutrition=rules is nutrition,
         rules=rules,
         ranges=ranges,
+        density=density,
+        tolerated=read_with_tolerance,
     )
+
+
+def _why_unused(
+    nodes: Sequence[Node],
+    label: Mapping[str, Range],
+    without: Sequence[int],
+    label_unit: str,
+    density: Range | None,
+) -> EstimateWarning | None:
+    """What keeps the nutrition of the label from being used at all, if anything."""
+    if not label:
+        return EstimateWarning(Problem.NO_NUTRITION)
+    if without:
+        return EstimateWarning(
+            Problem.NO_COMPOSITION, ", ".join(nodes[i].name for i in without)
+        )
+    if label_unit != Product.ServingUnit.GRAM.value and density is None:
+        return EstimateWarning(Problem.NUTRITION_PER_VOLUME)
+    return None
+
+
+def _named(
+    problem: Problem, codes: Sequence[str], names: Mapping[str, str] | None
+) -> EstimateWarning:
+    """A warning about nutrients, which names them in the language served."""
+    detail = ", ".join((names or {}).get(code, code) for code in codes)
+    return EstimateWarning(problem, detail, tuple(codes))
 
 
 def estimate(
     nodes: Sequence[Node],
     label: Mapping[str, Range],
     nutrient_names: Mapping[str, str] | None = None,
+    *,
+    label_unit: str = Product.ServingUnit.GRAM,
+    tolerated: Mapping[str, Range] | None = None,
 ) -> PercentageEstimate:
     """The share each node can be, as intervals. See solve_shares."""
-    return percentages_of(solve_shares(nodes, label, nutrient_names))
+    return percentages_of(
+        solve_shares(
+            nodes, label, nutrient_names, label_unit=label_unit, tolerated=tolerated
+        )
+    )
 
 
 def percentages_of(solution: Solution) -> PercentageEstimate:
@@ -503,6 +619,45 @@ def percentages_of(solution: Solution) -> PercentageEstimate:
     return PercentageEstimate(
         percentages, solution.warnings, used_nutrition=solution.used_nutrition
     )
+
+
+def _floats(ends: tuple[Decimal, Decimal]) -> Range:
+    return float(ends[0]), float(ends[1])
+
+
+def _read_with_tolerance(
+    tree: Rules,
+    nodes: Sequence[Node],
+    units: Sequence[int],
+    label: Mapping[str, Range],
+    tolerated: Mapping[str, Range],
+) -> tuple[Rules, Ranges, tuple[str, ...]] | None:
+    """
+    The rules with the nutrition when the label is read with its tolerance, the
+    ranges they leave, and the nutrients that needed it; None if it does not help.
+
+    The nutrients the rounding cannot agree with are widened first and alone, so
+    that the others keep telling what they do, and all of them if that is not
+    enough.
+    """
+    off = tuple(
+        code for code in _disagreeing(tree, nodes, units, label) if code in tolerated
+    )
+    if not off:
+        return None
+    tried: list[dict[str, Range]] = []
+    for widened in (
+        {**label, **{code: tolerated[code] for code in off}},
+        {**label, **tolerated},
+    ):
+        if widened in tried:
+            continue
+        tried.append(widened)
+        rules = _with_nutrition(tree, nodes, units, widened)
+        ranges = _ranges(rules)
+        if ranges is not None:
+            return rules, ranges, off
+    return None
 
 
 def _declared_range(amount: Decimal) -> Range:
@@ -539,6 +694,49 @@ def _is_no_food(ingredient: Ingredient) -> bool:
     a food in a pinch, and has no composition per 100 g to look for.
     """
     return ingredient.additive is not None or ingredient.nutrient is not None
+
+
+def _density_of(ingredient: Ingredient) -> Range | None:
+    """The density (g/ml) of an ingredient's reference, as (low, high), if any."""
+    reference = ingredient.reference
+    if reference is None or reference.density_low is None:
+        return None
+    assert reference.density_high is not None  # both or neither: see the constraint
+    return float(reference.density_low), float(reference.density_high)
+
+
+def product_density(nodes: Sequence[Node], units: Sequence[int]) -> Range | None:
+    """
+    What a millilitre of the product can weigh, in g/ml, as (low, high); None when
+    it cannot be told.
+
+    The ingredients are mixed, so the product weighs somewhere between the lightest
+    of them and the heaviest, whatever their shares: the harmonic mean that volumes
+    add up to cannot leave that. It is a range wider than the truth, never narrower,
+    and it needs the density of every ingredient that counts. An additive or a
+    vitamin is left out, being added in a pinch (see _is_no_food), and an ingredient
+    with no density, a preparation for one, leaves the product without.
+    """
+    lows: list[float] = []
+    highs: list[float] = []
+    for i in units:
+        node = nodes[i]
+        if node.in_a_pinch:
+            continue
+        if node.density is None:
+            return None
+        lows.append(node.density[0])
+        highs.append(node.density[1])
+    return (min(lows), max(highs)) if lows else None
+
+
+def _per_mass(label: Mapping[str, Range], density: Range) -> dict[str, Range]:
+    """
+    A label given per 100 ml as it would be per 100 g: the lowest figure over the
+    heaviest millilitre, the highest over the lightest.
+    """
+    least, most = density
+    return {code: (low / most, high / least) for code, (low, high) in label.items()}
 
 
 def _unknown() -> dict[str, Range]:

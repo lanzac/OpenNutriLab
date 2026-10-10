@@ -170,7 +170,13 @@ def test_a_nutrient_comes_with_its_group_its_figures_and_the_verdict_on_the_labe
                 "uncertainty": "0.2",
                 "agreement": None,
             },
-            "declared": {"amount": "1.5", "low": "1.4", "high": "1.6"},
+            "declared": {
+                "amount": "1.5",
+                "low": "1.4",
+                "high": "1.6",
+                "tolerance_low": None,
+                "tolerance_high": None,
+            },
             "verdict": "declared_below",
             "constrained": False,
         }

@@ -67,6 +67,8 @@ class Command(BaseCommand):
                         f"Default of {name}: {result.default_set.code} "
                         f"{_name(result.default_set)}"
                     )
+                if result.density_set:
+                    self.stdout.write(f"Density of {name}: set")
                 if result.default_kept:
                     self.stdout.write(
                         self.style.WARNING(

@@ -55,12 +55,21 @@ def given(low: str, high: str | None, amount: str | None = None) -> NutrientAmou
 def check_of(
     declared: str,
     estimate: NutrientAmount | None,
-    code: str = "fat",
+    code: str = "energy",
     constrained: tuple[str, ...] = (),
+    group: str = "",
 ) -> Check:
+    """
+    By default for a nutrient the Commission's guidance gives no tolerance (energy),
+    so that only the rounding of the figure is in the comparison.
+    """
     nutrients = {} if estimate is None else {code: estimate}
     return compare(
-        {code: D(declared)}, nutrients, {code: "g"}, constrained=constrained
+        {code: D(declared)},
+        nutrients,
+        {code: "g"},
+        constrained=constrained,
+        groups={code: group},
     )[code]
 
 
@@ -101,9 +110,71 @@ def test_a_label_over_what_the_ingredients_can_bring_at_the_most_is_above():
     assert check.gap == D("9.5")
 
 
-def test_a_zero_on_the_label_has_no_margin():
+def test_a_zero_on_the_label_of_a_nutrient_with_no_threshold_has_no_margin():
     assert check_of("0", given("0", "3")).verdict is Verdict.AGREES
     assert check_of("0", given("0.2", "3")).verdict is Verdict.DECLARED_BELOW
+
+
+# ----------------------------------------------------------------------------
+# The tolerance a label is allowed (see label_tolerance)
+# ----------------------------------------------------------------------------
+def test_a_label_within_the_tolerance_agrees_and_says_it_needed_it():
+    # 13 g of saturates is 12.5 to 13.5, and 9.9 to 16.1 with a fifth of tolerance.
+    check = check_of("13", given("13.76", "13.95"), "saturated_fat", group="fatty_acid")
+
+    assert check.verdict is Verdict.AGREES
+    assert check.tolerated
+    assert check.declared_range == (D("12.5"), D("13.5"))
+    assert check.tolerance_range == (D("9.9"), D("16.1"))
+    assert check.gap == 0
+
+
+def test_a_label_within_the_rounding_did_not_need_the_tolerance():
+    check = check_of("13", given("13.2", "13.4"), "saturated_fat", group="fatty_acid")
+
+    assert check.verdict is Verdict.AGREES
+    assert not check.tolerated
+
+
+def test_a_label_beyond_the_tolerance_is_below_or_above_it():
+    below = check_of("13", given("17", "18"), "saturated_fat", group="fatty_acid")
+    above = check_of("13", given("6", "8"), "saturated_fat", group="fatty_acid")
+
+    assert (below.verdict, below.gap) == (Verdict.DECLARED_BELOW, D("0.9"))
+    assert (above.verdict, above.gap) == (Verdict.DECLARED_ABOVE, D("1.9"))
+    assert not below.tolerated
+
+
+def test_a_zero_on_the_label_stands_for_less_than_the_guidelines_threshold():
+    # 0 g of protein is less than 0.5 g, and 2.5 g with the tolerance.
+    within_rounding = check_of(
+        "0", given("0.22", "3"), "proteins", group="macronutrient"
+    )
+    within_tolerance = check_of(
+        "0", given("1.5", "3"), "proteins", group="macronutrient"
+    )
+    beyond = check_of("0", given("3", "4"), "proteins", group="macronutrient")
+
+    assert within_rounding.verdict is Verdict.AGREES
+    assert not within_rounding.tolerated
+    assert (within_tolerance.verdict, within_tolerance.tolerated) == (
+        Verdict.AGREES,
+        True,
+    )
+    assert beyond.verdict is Verdict.DECLARED_BELOW
+
+
+def test_energy_has_no_tolerance():
+    assert check_of("3382", given("3400", "3500")).verdict is Verdict.DECLARED_BELOW
+
+
+def test_a_vitamin_is_allowed_a_share_of_its_figure():
+    # Vitamin C of 80 mg: 51.5 to 120.5 with the tolerance of the guidance.
+    within = check_of("80", given("110", "120"), "vitamin_c", group="vitamin")
+    beyond = check_of("80", given("125", "130"), "vitamin_c", group="vitamin")
+
+    assert (within.verdict, within.tolerated) == (Verdict.AGREES, True)
+    assert beyond.verdict is Verdict.DECLARED_BELOW
 
 
 def test_a_nutrient_only_some_ingredients_give_has_no_highest_end_to_exceed():
@@ -535,6 +606,108 @@ def test_the_warnings_of_the_shares_come_first(source: Source):
         Problem.DECLARED_BELOW,
     ]
     assert result.warnings[:1] == result.percentages.warnings
+
+
+def per_100_ml(product: Product) -> Product:
+    product.nutrition_unit = "ml"
+    product.save()
+    return product
+
+
+def an_oil(source: Source, **amounts: str) -> ReferenceIngredient:
+    oil = reference(source, "1", **amounts)
+    oil.density_low, oil.density_high = D("0.908"), D("0.915")
+    oil.save()
+    return oil
+
+
+def test_a_label_per_100_ml_without_a_density_is_kept_as_printed_and_not_compared(
+    source: Source,
+):
+    # 91 g of fat per 100 ml of an oil that is 99.9 g per 100 g: neither wrong nor
+    # contradicted, only not the same quantity as the estimate.
+    oil = reference(source, "1", fat="99.9", proteins="0.25")
+    product = per_100_ml(product_of(oil, fat="91"))
+
+    result = validate_estimate(product)
+
+    assert [w.problem for w in result.warnings] == [Problem.NUTRITION_PER_VOLUME]
+    assert result.checks == {}
+    assert result.density is None
+    assert result.nutrients["fat"].amount == D("99.9")
+    # What is kept is what the label printed.
+    assert product.declared_nutrients.get(nutrient_id="fat").amount == D("91")
+
+
+def test_a_label_per_100_ml_is_set_against_the_estimate_per_100_ml(source: Source):
+    oil = an_oil(source, fat="99.9", proteins="0.25")
+    product = per_100_ml(product_of(oil, fat="91"))
+
+    result = validate_estimate(product)
+
+    assert result.warnings == []
+    assert result.density == (D("0.908"), D("0.915"))
+    fat = result.checks["fat"]
+    assert fat.verdict is Verdict.AGREES
+    assert fat.constrained
+    # The estimate is kept per 100 g, and set against the label per 100 ml.
+    assert result.nutrients["fat"].amount == D("99.9")
+    assert fat.estimated is not None
+    # 99.9 is written to a tenth, so it is 99.85 to 99.95.
+    assert fat.estimated[0] == D("99.85") * D("0.908")
+    assert fat.estimated[1] == D("99.95") * D("0.915")
+    # The label is still the figure as printed.
+    assert fat.declared == D("91")
+
+
+@pytest.mark.parametrize(
+    ("energy", "verdict"),
+    [("3382", Verdict.AGREES), ("3000", Verdict.DECLARED_BELOW)],
+)
+def test_the_energy_of_a_label_per_100_ml_is_checked_through_the_density(
+    source: Source, energy: str, verdict: Verdict
+):
+    # 3700 kJ per 100 g of an oil of 0.908 to 0.915 is 3359 to 3386 kJ per 100 ml.
+    oil = an_oil(source, fat="99.9", energy="3700")
+    product = per_100_ml(product_of(oil, fat="91", energy=energy))
+
+    result = validate_estimate(product)
+
+    assert result.checks["energy"].verdict is verdict
+    assert result.checks["energy"].informative
+
+
+def test_a_label_per_100_ml_within_the_tolerance_is_read_with_it_and_says_so(
+    source: Source,
+):
+    # The label of the oil of the user: 91 g of fat, 13 g of saturates and 0 g of
+    # protein per 100 ml. The saturates are 13.7 to 14 g per 100 ml for CIQUAL, off
+    # the rounding of 13 but within the tolerance; the 0 stands for less than 0.5 g.
+    oil = an_oil(source, fat="99.9", saturated_fat="15.2", proteins="0.25")
+    product = per_100_ml(product_of(oil, fat="91", saturated_fat="13", proteins="0"))
+
+    result = validate_estimate(product)
+
+    assert [w.problem for w in result.warnings] == [Problem.WITHIN_TOLERANCE]
+    assert result.warnings[0].codes == ("saturated_fat",)
+    assert result.percentages.used_nutrition
+    assert {c.verdict for c in result.checks.values()} == {Verdict.AGREES}
+    assert result.checks["saturated_fat"].tolerated
+    assert not result.checks["proteins"].tolerated
+    assert not result.checks["fat"].tolerated
+
+
+def test_a_label_per_100_ml_that_the_density_does_not_reconcile_is_named(
+    source: Source,
+):
+    oil = an_oil(source, fat="99.9", proteins="0.25")
+    product = per_100_ml(product_of(oil, fat="70"))
+
+    result = validate_estimate(product)
+
+    assert next(w.problem for w in result.warnings) is Problem.LABEL_DISAGREES
+    assert result.checks["fat"].verdict is Verdict.DECLARED_BELOW
+    assert result.checks["fat"].estimated is not None
 
 
 def test_a_declared_vitamin_a_is_compared_with_both_readings_of_the_carotene(

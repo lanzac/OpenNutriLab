@@ -23,6 +23,12 @@ class OFFProductSchema(Schema):
     nutriments: dict[str, Any] = Field(
         default_factory=dict, validation_alias="nutriments"
     )
+    # What the nutrition table is given per: "100g", "100ml" or "serving". For a
+    # table per 100 ml the `_100g` values above are that table as it is printed, not
+    # converted to grams (see services.nutrition_unit_from_off).
+    nutrition_data_per: str | None = Field(
+        default=None, validation_alias="nutrition_data_per"
+    )
     # The ingredient list as the label prints it, and its language. The only
     # thing read of an ingredient: OpenFoodFacts' own parsing of it drops what its
     # taxonomy has no word for (see services.label_parser), so its `ingredients`

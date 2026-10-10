@@ -82,7 +82,13 @@ class NutrientsEstimate(NamedTuple):
 def estimate_nutrients(product: Product) -> NutrientsEstimate:
     """The nutrients of a product, as intervals, from its ingredients."""
     loaded = load(product)
-    solution = solve_shares(loaded.nodes, loaded.label, loaded.nutrient_names)
+    solution = solve_shares(
+        loaded.nodes,
+        loaded.label,
+        loaded.nutrient_names,
+        label_unit=loaded.label_unit,
+        tolerated=loaded.label_tolerated,
+    )
     return NutrientsEstimate(
         nutrients_of(
             solution, loaded.compositions, loaded.parents, sums_in(loaded.units)

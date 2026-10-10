@@ -1733,6 +1733,37 @@ def test_a_default_food_has_to_be_one_the_reference_draws_on(
     assert reference.default_food is None
 
 
+def test_a_density_is_a_range_with_both_ends(
+    admin_client: Client, beans: dict[str, Any]
+):
+    reference = beans["reference"]
+
+    one_end = change_reference(admin_client, reference, density_low="0.908")
+    upside_down = change_reference(
+        admin_client, reference, density_low="0.95", density_high="0.9"
+    )
+
+    assert "both ends of the density" in one_end.content.decode()
+    assert "highest density is below the lowest" in upside_down.content.decode()
+    reference.refresh_from_db()
+    assert reference.density_low is None
+
+
+def test_a_density_is_saved(admin_client: Client, beans: dict[str, Any]):
+    reference = beans["reference"]
+
+    response = change_reference(
+        admin_client, reference, density_low="0.908", density_high="0.915"
+    )
+
+    assert response.status_code == HTTPStatus.FOUND
+    reference.refresh_from_db()
+    assert (reference.density_low, reference.density_high) == (
+        Decimal("0.908"),
+        Decimal("0.915"),
+    )
+
+
 def test_a_default_food_among_the_foods_is_saved(
     admin_client: Client, beans: dict[str, Any]
 ):

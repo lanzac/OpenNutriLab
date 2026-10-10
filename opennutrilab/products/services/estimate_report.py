@@ -61,6 +61,8 @@ def build_estimate(product: Product) -> EstimateOut:
     return EstimateOut(
         barcode=product.barcode,
         used_nutrition=validated.percentages.used_nutrition,
+        label_unit=product.nutrition_unit,
+        density=_density(validated),
         warnings=[
             WarningOut(
                 problem=warning.problem.value,
@@ -74,6 +76,13 @@ def build_estimate(product: Product) -> EstimateOut:
         sources=_sources(product),
         caveat=str(CAVEAT),
     )
+
+
+def _density(validated: ValidatedEstimate) -> RangeOut | None:
+    if validated.density is None:
+        return None
+    low, high = validated.density
+    return RangeOut(low=low, point=(low + high) / 2, high=high)
 
 
 def _nutrients(validated: ValidatedEstimate) -> list[NutrientEstimateOut]:
@@ -118,6 +127,12 @@ def _nutrient(
                 amount=check.declared,
                 low=check.declared_range[0],
                 high=check.declared_range[1],
+                tolerance_low=None
+                if check.tolerance_range is None
+                else check.tolerance_range[0],
+                tolerance_high=None
+                if check.tolerance_range is None
+                else check.tolerance_range[1],
             )
         ),
         check=(
@@ -127,6 +142,7 @@ def _nutrient(
                 verdict=check.verdict.value,
                 gap=check.gap,
                 constrained=check.constrained,
+                tolerated=check.tolerated,
                 compared_low=None if check.estimated is None else check.estimated[0],
                 compared_high=None if check.estimated is None else check.estimated[1],
             )

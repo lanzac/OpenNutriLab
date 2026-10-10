@@ -394,7 +394,7 @@ class KnownAsAdditiveFilter(admin.SimpleListFilter):
 
 
 class ReferenceIngredientForm(forms.ModelForm):
-    """A default food has to be one the reference draws on."""
+    """A default food has to be one the reference draws on, a density a range."""
 
     def clean(self) -> dict[str, Any]:
         cleaned = super().clean() or {}
@@ -404,6 +404,16 @@ class ReferenceIngredientForm(forms.ModelForm):
             self.add_error(
                 "default_food",
                 _("The default food must be one of the source foods."),
+            )
+        low, high = cleaned.get("density_low"), cleaned.get("density_high")
+        if (low is None) != (high is None):
+            self.add_error(
+                "density_high" if high is None else "density_low",
+                _("Give both ends of the density, or neither."),
+            )
+        elif low is not None and high is not None and low > high:
+            self.add_error(
+                "density_high", _("The highest density is below the lowest.")
             )
         return cleaned
 
@@ -443,6 +453,8 @@ class ReferenceIngredientAdmin(admin.ModelAdmin[ReferenceIngredient]):
         "description",
         "source_foods",
         "default_food",
+        "density_low",
+        "density_high",
         "suggested_foods",
         "composition",
     )

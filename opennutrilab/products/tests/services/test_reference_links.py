@@ -1,4 +1,5 @@
 import json
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -126,6 +127,102 @@ def test_a_default_is_read():
     )
 
     assert links == [link("quinoa", default="9340")]
+
+
+def test_a_density_is_read():
+    links = parse_links(
+        [
+            {
+                "reference": "huile",
+                "foods": [{"source": "ciqual-2025", "code": "9340"}],
+                "density": {"min": 0.908, "max": "0.915"},
+            }
+        ]
+    )
+
+    assert links[0].density == (Decimal("0.908"), Decimal("0.915"))
+
+
+DENSITIES: list[tuple[object, str]] = [
+    ("0.9", "A density is"),
+    ({"min": 0.9}, 'needs its "min" and "max"'),
+    ({"min": "x", "max": 1}, 'needs its "min" and "max"'),
+    ({"min": 0.9, "max": 0.8}, "a range above zero"),
+    ({"min": 0, "max": 0.8}, "a range above zero"),
+    ({"min": "NaN", "max": 1}, "a range above zero"),
+    ({"min": 0.9, "max": 1, "mode": 1}, "Unknown key"),
+]
+
+
+@pytest.mark.parametrize(("density", "message"), DENSITIES)
+def test_what_a_density_gets_wrong_is_said(density: object, message: str):
+    data = [
+        {
+            "reference": "q",
+            "foods": [{"source": "ciqual-2025", "code": "9340"}],
+            "density": density,
+        }
+    ]
+
+    with pytest.raises(CustomFoodError, match=message):
+        parse_links(data)
+
+
+def test_a_reference_without_a_density_gets_the_one_of_the_link(table: Source):
+    reference = ReferenceIngredient.objects.create(name_fr="quinoa blanc")
+    oil = ReferenceLink(
+        "quinoa blanc",
+        (FoodKey("ciqual-2025", "9340"),),
+        density=(Decimal("0.908"), Decimal("0.915")),
+    )
+
+    first = link_reference_foods(oil)
+    second = link_reference_foods(oil)
+
+    reference.refresh_from_db()
+    assert (reference.density_low, reference.density_high) == (
+        Decimal("0.908"),
+        Decimal("0.915"),
+    )
+    assert first.density_set
+    assert not second.density_set
+
+
+def test_the_density_a_reference_has_is_kept(table: Source):
+    reference = ReferenceIngredient.objects.create(
+        name_fr="quinoa blanc", density_low=Decimal("0.5"), density_high=Decimal("0.6")
+    )
+    other = ReferenceLink(
+        "quinoa blanc",
+        (FoodKey("ciqual-2025", "9340"),),
+        density=(Decimal("0.908"), Decimal("0.915")),
+    )
+
+    result = link_reference_foods(other)
+
+    reference.refresh_from_db()
+    assert (reference.density_low, reference.density_high) == (
+        Decimal("0.5"),
+        Decimal("0.6"),
+    )
+    assert not result.density_set
+
+
+def test_the_density_is_kept_in_the_file_with_the_links(table: Source):
+    reference = ReferenceIngredient.objects.create(
+        name_fr="quinoa blanc",
+        density_low=Decimal("0.9080"),
+        density_high=Decimal("0.9150"),
+    )
+    reference.source_foods.add(SourceFood.objects.get(code="9340"))
+
+    data = links_as_data(links_to_keep().links)
+
+    assert data[0]["density"] == {"min": 0.908, "max": 0.915}
+    assert parse_links(json.loads(json.dumps(data)))[0].density == (
+        Decimal("0.908"),
+        Decimal("0.915"),
+    )
 
 
 def test_a_reference_without_a_default_gets_the_one_of_the_link(table: Source):
