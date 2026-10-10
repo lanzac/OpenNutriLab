@@ -222,6 +222,41 @@ def test_the_text_the_ingredients_were_read_from_is_written_and_served(
 
 
 @pytest.mark.django_db
+def test_the_places_left_out_of_the_text_and_its_language_are_written_and_served(
+    api_client: Client,
+):
+    payload = _minimal_payload("3297760097969", "Created Via API")
+    payload["ingredients_text"] = "Sucre 56,3 %, lait [zone]"
+    payload["ingredients_language"] = "fr"
+    payload["ingredients_ignored"] = [[18, 24]]
+    api_client.post(API, payload, content_type="application/json")
+    url = f"{API}{payload['barcode']}"
+
+    served = api_client.get(url).json()
+    assert (served["ingredients_language"], served["ingredients_ignored"]) == (
+        "fr",
+        [[18, 24]],
+    )
+
+    api_client.patch(url, {"name": "Renamed"}, content_type="application/json")
+    assert api_client.get(url).json()["ingredients_ignored"] == [[18, 24]]
+
+    api_client.patch(url, {"ingredients_ignored": []}, content_type="application/json")
+    assert api_client.get(url).json()["ingredients_ignored"] == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("place", [[5, 2], [-1, 3], [4, 4], [1, 2, 3]])
+def test_a_place_that_is_not_one_is_refused(api_client: Client, place: list[int]):
+    payload = _minimal_payload("3297760097969", "Created Via API")
+    payload["ingredients_ignored"] = [place]
+
+    response = api_client.post(API, payload, content_type="application/json")
+
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+
+
+@pytest.mark.django_db
 def test_an_ingredient_is_served_as_the_one_it_is(api_client: Client):
     """
     No name and no OpenFoodFacts data of its own: what it is says it all. One whose

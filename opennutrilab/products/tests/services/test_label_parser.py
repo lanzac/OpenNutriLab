@@ -1,4 +1,5 @@
 from decimal import Decimal
+from itertools import pairwise
 from typing import Any
 
 import pytest
@@ -10,6 +11,12 @@ from opennutrilab.products.services.label_parser import (
 )
 from opennutrilab.products.services.label_parser import LabelItem
 from opennutrilab.products.services.label_parser import Problem
+from opennutrilab.products.services.label_parser import (
+    _name,  # pyright: ignore[reportPrivateUsage]
+)
+from opennutrilab.products.services.label_parser import (
+    _name_spans,  # pyright: ignore[reportPrivateUsage]
+)
 from opennutrilab.products.services.label_parser import e_number
 from opennutrilab.products.services.label_parser import parse_label
 from opennutrilab.products.services.label_parser import read_label
@@ -874,3 +881,190 @@ def test_an_e_number_among_ingredients_is_not_a_name_that_is_too_short():
 def test_every_class_of_additives_has_its_words_and_is_one_of_the_closed_list():
     assert set(_CLASS_WORDS) == set(Additive.Function.values)
     assert all(words for words in _CLASS_WORDS.values())
+
+
+# ----------------------------------------------------------------------------
+# Where in the text the ingredients were read
+# ----------------------------------------------------------------------------
+def marked(text: str, ignored: list[tuple[int, int]] | None = None) -> str:
+    """The text with the places read between ⟦ ⟧: a reading made visible."""
+    reading = read_label(text, ignored or [])
+    out, position = "", 0
+    for start, end in reading.used:
+        out += text[position:start] + "⟦" + text[start:end] + "⟧"
+        position = end
+    return out + text[position:]
+
+
+# Colin d'Alaska (3270160196876): the fishing zone in brackets was read as parts.
+POLLOCK = (
+    "Filets de colin d'Alaska MSC (POISSONS) 72% qualité sans arête* "
+    "[Theragra chalcogramma sauvage pêché dans l'Océan Pacifique Nord-Est (FAO 67) "
+    "ou Nord-Ouest (FAO 61), zone de pêche indiquée dans le cadre de datage], "
+    "farine de BLÉ (GLUTEN), huile de colza, eau. Peut contenir des traces de : "
+    "sésame. Malgré tout le soin apporté à nos poissons, la présence d'arête "
+    "n'est jamais exclue."
+)
+POLLOCK_ZONE = (
+    POLLOCK.index("[Theragra"),
+    POLLOCK.index("datage]") + len("datage]"),
+)
+
+
+def test_the_names_and_percentages_are_the_places_that_were_read():
+    text = "Flocons de soja* 31%, Dattes* 7% (dattes*, farine de riz*), sel"
+
+    assert marked(text) == (
+        "⟦Flocons de soja* 31%⟧, ⟦Dattes* 7%⟧ (⟦dattes*⟧, ⟦farine de riz*⟧), ⟦sel⟧"
+    )
+
+
+def test_what_is_not_an_ingredient_is_not_a_place_that_was_read():
+    """Notes, origins, allergens, the heading of a class, the statements after."""
+    text = (
+        "Pâte cuite 60,5% (Allemagne) [eau, semoule de blé (gluten)], "
+        "acidifiant : acide citrique, tomates (origine : Italie), lait (bio). "
+        "Peut contenir des traces de sésame."
+    )
+
+    assert marked(text) == (
+        "⟦Pâte cuite 60,5%⟧ (Allemagne) [⟦eau⟧, ⟦semoule de blé⟧ (gluten)], "
+        "acidifiant : ⟦acide citrique⟧, ⟦tomates⟧ (origine : Italie), ⟦lait⟧ (bio). "
+        "Peut contenir des traces de sésame."
+    )
+
+
+def test_a_percentage_in_parentheses_is_read_with_its_name():
+    assert marked("Dattes (7 %), riz") == "⟦Dattes⟧ (⟦7 %⟧), ⟦riz⟧"
+
+
+def test_an_allergen_between_the_words_of_a_name_is_left_out_of_the_place():
+    """The notes are not the name's, though they stand inside it."""
+    text = "Filets de colin (POISSONS) 72% qualité sans arête*, sel"
+
+    assert (
+        marked(text) == "⟦Filets de colin⟧ (POISSONS) ⟦72% qualité sans arête*⟧, ⟦sel⟧"
+    )
+
+
+def test_the_codes_next_to_a_name_are_read_places_too():
+    assert marked("acide citrique (E330), E322 (lécithine)") == (
+        "⟦acide citrique⟧ (⟦E330⟧), ⟦E322⟧ (⟦lécithine⟧)"
+    )
+
+
+def test_the_places_are_those_of_the_text_given_not_of_the_text_cleaned():
+    """A title, tags, carriage returns and the white space around are taken out."""
+    text = "  Ingrédients : <b>sucre</b>\r\n, _lait_ (bio)"
+
+    assert marked(text) == "  Ingrédients : <b>⟦sucre⟧</b>\r\n, ⟦_lait_⟧ (bio)"
+
+
+def test_a_text_that_is_not_read_has_no_place_that_was_read():
+    reading = read_label("Farine, huile, 2,3 %, sel")
+
+    assert reading.items == []
+    assert reading.used == ()
+
+
+def test_the_places_do_not_overlap_and_are_in_order():
+    reading = read_label(MUESLI)
+    spans = list(reading.used)
+
+    assert spans == sorted(spans)
+    assert all(a_end <= b_start for (_, a_end), (b_start, _) in pairwise(spans))
+    assert all(MUESLI[start:end].strip() == MUESLI[start:end] for start, end in spans)
+
+
+def test_the_fishing_zone_is_read_as_parts_until_a_person_ignores_it():
+    first = read_label(POLLOCK)
+    [fish, *others] = first.items
+
+    assert [p.name for p in fish.parts][:1] == [
+        "theragra chalcogramma sauvage pêché dans l'océan pacifique nord-est"
+    ]
+    assert [i.name for i in others] == ["farine de blé", "huile de colza", "eau"]
+
+    second = read_label(POLLOCK, [POLLOCK_ZONE])
+    [fish, *others] = second.items
+
+    assert tree([fish]) == [
+        ("filets de colin d'alaska msc qualité sans arête", "72", [])
+    ]
+    assert [i.name for i in others] == ["farine de blé", "huile de colza", "eau"]
+    assert second.warnings == []
+
+
+def test_an_ignored_place_is_not_marked_and_the_rest_is_still():
+    text = marked(POLLOCK, [POLLOCK_ZONE])
+
+    assert "[Theragra" in text
+    assert "⟦Theragra" not in text
+    assert text.startswith("⟦Filets de colin d'Alaska MSC⟧ (POISSONS) ⟦72% qualité")
+    assert "⟦farine de BLÉ⟧ (GLUTEN), ⟦huile de colza⟧, ⟦eau⟧." in text
+
+
+def test_what_is_wrong_in_an_ignored_place_is_not_seen_any_more():
+    text = "Farine, sucre, Valeurs nutritionnelles 100 kJ, sel"
+    start = text.index("Valeurs")
+    end = text.index(", sel")
+
+    assert Problem.OTHER_TEXT in problems(text)
+    reading = read_label(text, [(start, end)])
+
+    assert reading.warnings == []
+    assert [i.name for i in reading.items] == ["farine", "sucre", "sel"]
+
+
+def test_the_half_of_a_group_ignored_leaves_the_other_unbalanced_and_says_so():
+    """Nothing is repaired: a person who takes out half of a group is told."""
+    text = "Farine, sucre (cassonade, miel), sel"
+    start = text.index("miel")
+
+    reading = read_label(text, [(start, start + len("miel)"))])
+
+    assert Problem.UNBALANCED in [w.problem for w in reading.warnings]
+    assert reading.items == []
+
+
+def test_ignoring_everything_reads_nothing():
+    text = "Farine, sucre"
+
+    reading = read_label(text, [(0, len(text))])
+
+    assert reading.items == []
+    assert [w.problem for w in reading.warnings] == [Problem.NOTHING_READ]
+
+
+@pytest.mark.parametrize("ignored", [[(-5, 3)], [(10, 10_000)], [(7, 3)], [(100, 200)]])
+def test_places_outside_the_text_or_empty_are_harmless(ignored: list[tuple[int, int]]):
+    reading = read_label("Farine, sucre, sel", ignored)
+
+    assert reading.items or reading.warnings
+
+
+def test_ignoring_nothing_reads_the_text_as_it_is():
+    assert read_label(MUESLI, []) == read_label(MUESLI)
+    assert read_label(MUESLI, ()) == read_label(MUESLI)
+
+
+@pytest.mark.parametrize(
+    "head",
+    [
+        "Flocons de soja* 31%",
+        "dont sucre 5 %",
+        "  Fruits rouges* lyophilisés 1,4% ",
+        "_lait_",
+        "Filets  de colin 72% qualité\nsans arête*",
+        "min. 12 % sucre",
+        "Dattes bio",
+        "E330",
+        "dont dont sucre",
+    ],
+)
+def test_the_name_kept_in_the_places_read_is_the_name_read(head: str):
+    """_name_spans does what _name does on blanks, and must stay where it does."""
+    spans = _name_spans(head, 0, ())
+    placed = " ".join(head[a:b] for a, b in spans)
+
+    assert _name(placed) == _name(head)

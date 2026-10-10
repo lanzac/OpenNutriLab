@@ -170,6 +170,17 @@ class Product(models.Model):
         default="",
         help_text=_("The ingredient list as the label prints it."),
     )
+    # The language that text is in ("fr"), when OpenFoodFacts says: it decides which
+    # name of a reference an ingredient is looked up by when the text is read again.
+    ingredients_language = models.CharField(max_length=10, blank=True, default="")
+    # The places of that text (start, end) a person marked as no ingredients, and
+    # that the ingredients were read without. Positions in `ingredients_text`, so it
+    # is emptied when that text is replaced.
+    ingredients_ignored: models.JSONField[list[list[int]]] = models.JSONField(
+        blank=True,
+        default=list,
+        help_text=_("The places of the ingredient list that are no ingredients."),
+    )
     # A serving as the label gives it ("35.7 g (1 tranche)"), which meals are
     # counted in: its quantity, its unit and what the label calls it. Read from
     # OpenFoodFacts' text (see services.servings) or entered by hand. A serving in

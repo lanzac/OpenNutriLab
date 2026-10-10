@@ -294,6 +294,10 @@ class ProductOut(ModelSchema):
     group_level_2: str
     # The label's list of ingredients, as it was when the ingredients were loaded.
     ingredients_text: str
+    # The language it is in when known, and the places of it (start, end) that
+    # are no ingredients, as a person marked them.
+    ingredients_language: str
+    ingredients_ignored: list[tuple[int, int]]
     serving: ServingOut | None = None
     package: PackageOut | None = None
 
@@ -315,6 +319,8 @@ class ProductOut(ModelSchema):
             "group_level_1",
             "group_level_2",
             "ingredients_text",
+            "ingredients_language",
+            "ingredients_ignored",
         ]
 
     @staticmethod

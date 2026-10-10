@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 from django.core.exceptions import ValidationError as DjangoValidationError
 from ninja import Field
 from ninja import Schema
+from pydantic import AfterValidator
 from pydantic import field_validator
 
 from opennutrilab.products.fields import validate_ean13
@@ -39,6 +40,18 @@ def validate_off_image_url(url: str | None) -> str | None:
 NutrientAmount = Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=4)]
 
 
+def _is_a_place(place: tuple[int, int]) -> tuple[int, int]:
+    start, end = place
+    if start < 0 or end <= start:
+        msg = f"{place} is not a place of a text: from 0 or more, and to after it."
+        raise ValueError(msg)
+    return place
+
+
+# A place of the label's text: where it starts, and where it ends (not in it).
+Place = Annotated[tuple[int, int], AfterValidator(_is_a_place)]
+
+
 class IngredientInput(Schema):
     name: str = Field(min_length=1, max_length=255)
     # The language the name is in ("fr"), when it is known: it says which of the
@@ -61,6 +74,14 @@ class IngredientInput(Schema):
 
 
 IngredientInput.model_rebuild()
+
+
+class ReadLabelIn(Schema):
+    """A label's text to read again, without the places a person marked."""
+
+    text: str = Field(max_length=20_000)
+    language: str = Field(default="", max_length=10)
+    ignored: list[Place] = Field(default=[], max_length=500)
 
 
 class ServingInput(Schema):
@@ -88,8 +109,11 @@ class ProductCreate(Schema):
     # Values declared on the nutrition label, keyed by Nutrient.code.
     nutrients: dict[str, NutrientAmount] = {}
     ingredients: list[IngredientInput] = []
-    # The label's list those ingredients were read from, when there is one.
+    # The label's list those ingredients were read from, when there is one, and the
+    # places of it (start, end) that were left out of the reading.
     ingredients_text: str = ""
+    ingredients_language: str = Field(default="", max_length=10)
+    ingredients_ignored: list[Place] = []
     serving: ServingInput | None = None
     package: PackageInput | None = None
 
@@ -130,6 +154,8 @@ class ProductUpdate(Schema):
     nutrients: dict[str, NutrientAmount | None] | None = None
     ingredients: list[IngredientInput] | None = None
     ingredients_text: str | None = None
+    ingredients_language: str | None = Field(default=None, max_length=10)
+    ingredients_ignored: list[Place] | None = None
     serving: ServingInput | None = None
     package: PackageInput | None = None
 

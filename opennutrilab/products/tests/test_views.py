@@ -845,9 +845,14 @@ class TestIngredientListText:
         # Escaped, and its line break kept for the browser to show.
         assert "&lt;b&gt;lait&lt;/b&gt; (lait écrémé)." in page
         assert "<b>lait</b>" not in page
-        # Read only, and without a name: shown, not posted.
-        assert re.search(r"<textarea[^>]*\sreadonly", page)
-        assert 'name="ingredients' not in page.split("<textarea", 1)[1].split(">", 1)[0]
+        # Shown, not posted: a block of text, which is no field.
+        assert 'id="ingredients-text-view"' in page
+        assert (
+            "<textarea"
+            not in page.split('id="ingredients-text"', 1)[1].split(
+                'id="ingredients-text-view"', 1
+            )[0]
+        )
         assert response.context["form"]["off_ingredients_text"].value() == LABEL_TEXT
 
     def test_saving_a_looked_up_product_keeps_the_text(self, client: Client):
@@ -946,6 +951,11 @@ class TestIngredientListText:
 
         assert "Liste des ingrédients, telle que l'étiquette l'imprime" in page
         assert "Chargé depuis OpenFoodFacts." in page
+        assert "Écarter la sélection" in page
+        assert "Remettre la sélection" in page
+        assert "Tout remettre" in page
+        assert 'data-reading="Lecture…"' in page
+        assert 'data-failed="Le texte n&#x27;a pas pu être relu. Réessayez."' in page
 
 
 @pytest.mark.django_db
@@ -1437,3 +1447,262 @@ def test_rows_from_db_show_an_additive_by_its_name_and_marked_as_one(ciqual: Sou
         "Additif, à relire",
         "42200",
     )
+
+
+FISH_TEXT = (
+    "Colin d'Alaska 72% [Theragra chalcogramma pêché dans l'Océan (FAO 67), "
+    "zone de pêche], farine de blé (gluten), sel."
+)
+FISH_ZONE = [
+    FISH_TEXT.index("[Theragra"),
+    FISH_TEXT.index("pêche]") + len("pêche]"),
+]
+
+
+def json_post(client: Client, body: Any) -> "HttpResponse":
+    return client.post(
+        reverse("read_label"), json.dumps(body), content_type="application/json"
+    )
+
+
+def state_of(page: str) -> dict[str, Any]:
+    """What the page hands the script that marks the text."""
+    found = re.search(
+        r'<script id="ingredients-text-state" type="application/json">(.*?)</script>',
+        page,
+        re.DOTALL,
+    )
+    assert found is not None
+    return json.loads(found.group(1))
+
+
+@pytest.mark.django_db
+class TestReadLabelView:
+    """The text read again for the page, without the places a person left out."""
+
+    def test_it_answers_with_the_rows_the_json_the_places_and_the_warnings(
+        self, client: Client
+    ):
+        response = json_post(client, {"text": FISH_TEXT, "language": "fr"})
+
+        assert response.status_code == HTTPStatus.OK
+        body = response.json()
+        [fish, flour, salt] = body["rows"]
+        assert fish["name"] == "colin d'alaska"
+        assert Decimal(fish["percentage"]) == Decimal(72)
+        assert next(row["name"] for row in fish["ingredients"]).startswith("theragra")
+        assert [flour["name"], salt["name"]] == ["farine de blé", "sel"]
+        sent = [(i["name"], i["language"]) for i in json.loads(body["ingredients"])]
+        assert sent == [
+            ("colin d'alaska", "fr"),
+            ("farine de blé", "fr"),
+            ("sel", "fr"),
+        ]
+        assert body["used"][0] == [0, len("Colin d'Alaska 72%")]
+        assert body["warnings"] == []
+
+    def test_what_a_person_left_out_is_not_read(self, client: Client):
+        body = json_post(
+            client, {"text": FISH_TEXT, "language": "fr", "ignored": [FISH_ZONE]}
+        ).json()
+
+        [fish, *_others] = body["rows"]
+        assert fish["ingredients"] is None
+        assert all(
+            not (start < FISH_ZONE[1] and FISH_ZONE[0] < end)
+            for start, end in body["used"]
+        )
+
+    def test_a_text_read_badly_gives_nothing_and_says_why(self, client: Client):
+        body = json_post(client, {"text": "Farine, , sel", "language": "fr"}).json()
+
+        assert body["rows"] == []
+        assert json.loads(body["ingredients"]) == []
+        assert body["used"] == []
+        [warning] = body["warnings"]
+        assert warning["stops"] is True
+        assert warning["message"]
+
+    def test_the_names_are_looked_up_as_the_page_will_save_them(self, client: Client):
+        ReferenceIngredient.objects.create(
+            name_fr="farine de blé", name_en="wheat flour", status="curated"
+        )
+
+        body = json_post(
+            client, {"text": "Farine de blé, sel", "language": "fr"}
+        ).json()
+
+        [flour, salt] = body["rows"]
+        assert flour["reference"] != salt["reference"]
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            {"text": "Sel", "ignored": [[5, 2]]},
+            {"text": "Sel", "ignored": [[-1, 2]]},
+            {"text": "Sel", "ignored": [[1, 2, 3]]},
+            {"language": "fr"},
+            "not an object",
+        ],
+    )
+    def test_a_request_that_makes_no_sense_is_refused(self, client: Client, body: Any):
+        assert json_post(client, body).status_code == HTTPStatus.BAD_REQUEST
+
+    def test_it_needs_a_signed_in_user_and_a_post(self, client: Client):
+        assert (
+            client.get(reverse("read_label")).status_code
+            == HTTPStatus.METHOD_NOT_ALLOWED
+        )
+        client.logout()
+
+        assert json_post(client, {"text": "Sel"}).status_code == HTTPStatus.FORBIDDEN
+
+
+@pytest.mark.django_db
+class TestLeavingPlacesOut:
+    """What the product page keeps of the places a person left out of the list."""
+
+    def stored(self, **fields: Any) -> Product:
+        return Product.objects.create(
+            barcode=NUTELLA, name="Nutella", ingredients_text=FISH_TEXT, **fields
+        )
+
+    def test_the_page_hands_the_script_the_text_what_was_read_and_what_was_left_out(
+        self, client: Client
+    ):
+        product = self.stored(
+            ingredients_ignored=[FISH_ZONE], ingredients_language="fr"
+        )
+
+        page = client.get(reverse("edit_product", args=[product.pk])).content.decode()
+
+        state = state_of(page)
+        assert state["text"] == FISH_TEXT
+        assert state["ignored"] == [FISH_ZONE]
+        assert state["language"] == "fr"
+        assert state["barcode"] == NUTELLA
+        # Read without the zone: its words are not among the places.
+        assert state["used"][0] == [0, len("Colin d'Alaska 72%")]
+        assert all(
+            end <= FISH_ZONE[0] or start >= FISH_ZONE[1] for start, end in state["used"]
+        )
+        form = client.get(reverse("edit_product", args=[product.pk])).context["form"]
+        assert json.loads(form["ingredients_ignored"].value()) == [FISH_ZONE]
+
+    def test_a_lookup_starts_with_nothing_left_out_and_says_the_language(
+        self, client: Client
+    ):
+        product = self.stored(ingredients_ignored=[FISH_ZONE])
+        url = reverse("edit_product", args=[product.pk])
+
+        response = looked_up(client, path=url, reset="1", text=FISH_TEXT)
+
+        form = response.context["form"]
+        assert form["ingredients_ignored"].value() == "[]"
+        assert form["ingredients_lc"].value() == "fr"
+        assert state_of(response.content.decode())["ignored"] == []
+
+    def test_a_correction_made_on_the_page_is_saved_with_the_ingredients_it_gave(
+        self, client: Client
+    ):
+        product = self.stored(ingredients_language="fr")
+        url = reverse("edit_product", args=[product.pk])
+        form = client.get(url).context["form"]
+        # What the script does: read again, and keep the answer in the form.
+        reading = json_post(
+            client, {"text": FISH_TEXT, "language": "fr", "ignored": [FISH_ZONE]}
+        ).json()
+
+        response = client.post(
+            url,
+            submitted(
+                form,
+                off_barcode=product.pk,
+                off_ingredients=reading["ingredients"],
+                off_ingredients_text=FISH_TEXT,
+                ingredients_ignored=json.dumps([FISH_ZONE]),
+            ),
+        )
+
+        assert response.status_code == HTTPStatus.FOUND
+        product.refresh_from_db()
+        assert product.ingredients_ignored == [FISH_ZONE]
+        assert product.ingredients_text == FISH_TEXT
+        assert product.ingredients_language == "fr"
+        [fish, *_] = product.ingredients.filter(parent=None).order_by("id")
+        assert fish.item.name == "colin d'alaska"
+        assert not product.ingredients.filter(parent=fish).exists()
+        assert product.ingredients.count() == len(reading["rows"])
+
+    def test_the_places_come_back_when_the_form_has_to_be_corrected(
+        self, client: Client
+    ):
+        product = self.stored()
+        url = reverse("edit_product", args=[product.pk])
+        form = client.get(url).context["form"]
+
+        response = client.post(
+            url,
+            submitted(
+                form,
+                name="",
+                off_barcode=product.pk,
+                off_ingredients="[]",
+                off_ingredients_text=FISH_TEXT,
+                ingredients_ignored=json.dumps([FISH_ZONE]),
+            ),
+        )
+
+        assert state_of(response.content.decode())["ignored"] == [FISH_ZONE]
+
+    def test_a_plain_edit_leaves_the_places_alone(self, client: Client):
+        product = self.stored(
+            ingredients_ignored=[FISH_ZONE], ingredients_language="fr"
+        )
+        url = reverse("edit_product", args=[product.pk])
+        form = client.get(url).context["form"]
+
+        client.post(url, submitted(form, name="Renamed"))
+
+        product.refresh_from_db()
+        assert product.name == "Renamed"
+        assert product.ingredients_ignored == [FISH_ZONE]
+        assert product.ingredients_language == "fr"
+
+    def test_putting_everything_back_empties_the_places(self, client: Client):
+        product = self.stored(ingredients_ignored=[FISH_ZONE])
+        url = reverse("edit_product", args=[product.pk])
+        form = client.get(url).context["form"]
+        reading = json_post(client, {"text": FISH_TEXT, "language": "fr"}).json()
+
+        client.post(
+            url,
+            submitted(
+                form,
+                off_barcode=product.pk,
+                off_ingredients=reading["ingredients"],
+                off_ingredients_text=FISH_TEXT,
+                ingredients_ignored="[]",
+            ),
+        )
+
+        product.refresh_from_db()
+        assert product.ingredients_ignored == []
+
+    def test_saving_a_lookup_keeps_the_language_of_the_text(self, client: Client):
+        form = looked_up(client, language="en").context["form"]
+
+        client.post(reverse("create_product"), submitted(form))
+
+        product = Product.objects.get(pk=NUTELLA)
+        assert (product.ingredients_language, product.ingredients_ignored) == ("fr", [])
+
+    def test_places_that_are_not_places_are_refused_not_saved(self, client: Client):
+        form = looked_up(client).context["form"]
+
+        response = client.post(
+            reverse("create_product"), submitted(form, ingredients_ignored="[[4, 1]]")
+        )
+
+        assert not Product.objects.exists()
+        assert response.status_code == HTTPStatus.OK

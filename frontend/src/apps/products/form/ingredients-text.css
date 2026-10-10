@@ -1,0 +1,7 @@
+/* The label's ingredient list on the product form (see ingredients-text.js): a block
+   of text, as long as it is up to a point, that keeps the label's line breaks. */
+.ingredients-text-view {
+  white-space: pre-wrap;
+  max-height: 16rem;
+  overflow-y: auto;
+}

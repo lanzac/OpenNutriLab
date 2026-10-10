@@ -5,12 +5,14 @@ from .views import ProductCreateView
 from .views import ProductDeleteView
 from .views import ProductEditView
 from .views import ProductListView
+from .views import ReadLabelView
 
 urlpatterns: list[URLPattern] = [
     path(route="products/", view=ProductListView.as_view(), name="list_products"),
     path(
         route="products/new/", view=ProductCreateView.as_view(), name="create_product"
     ),
+    path(route="products/read-label/", view=ReadLabelView.as_view(), name="read_label"),
     path(
         route="products/<str:pk>/edit/",
         view=ProductEditView.as_view(),

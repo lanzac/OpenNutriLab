@@ -1,3 +1,4 @@
+import json
 from decimal import Decimal
 from typing import TYPE_CHECKING
 from typing import Any
@@ -26,9 +27,11 @@ from pydantic import ValidationError
 
 from opennutrilab.crispy_bootstrap_extended.layouts import AccordionGroupExtended
 from opennutrilab.products.api.schemas.inbound import IngredientInput
+from opennutrilab.products.api.schemas.inbound import Place
 from opennutrilab.products.api.schemas.inbound import ProductCreate
 from opennutrilab.products.api.schemas.inbound import ProductUpdate
 from opennutrilab.products.services import product_services
+from opennutrilab.products.services.label_parser import read_label
 from opennutrilab.products.services.product_services import plain_amount
 
 from .models import Nutrient
@@ -40,6 +43,7 @@ if TYPE_CHECKING:
 
 # How the ingredient tree travels in the off_ingredients hidden field.
 INGREDIENTS_JSON = TypeAdapter(list[IngredientInput])
+PLACES_JSON = TypeAdapter(list[Place])
 
 
 def plain_newlines(text: str) -> str:
@@ -67,6 +71,13 @@ class ProductForm(forms.ModelForm):
     off_ingredients = forms.CharField(required=False, widget=forms.HiddenInput)
     # The list the ingredients above were read from, as the label prints it.
     off_ingredients_text = forms.CharField(required=False, widget=forms.HiddenInput)
+    # The places of that list (start, end) a person marked as no ingredients, as
+    # JSON, and the language it is in: what the ingredients are read again from
+    # (see ingredients-text.js). Written along with the list, when it is.
+    ingredients_ignored = forms.CharField(required=False, widget=forms.HiddenInput)
+    ingredients_lc = forms.CharField(
+        required=False, max_length=10, widget=forms.HiddenInput
+    )
     # A photo chosen by hand; it wins over the OpenFoodFacts one. Deliberately
     # not the model's image field, so ModelForm never assigns product.image
     # itself: the services store the file.
@@ -150,6 +161,14 @@ class ProductForm(forms.ModelForm):
         # new Product's pk is "" rather than None, and ModelForm fills it in
         # while cleaning anyway.
         self.is_edit: bool = not self.instance._state.adding  # noqa: SLF001
+        if self.is_edit:
+            # What a lookup carries instead, when the page comes from one.
+            self.initial.setdefault(
+                "ingredients_ignored", json.dumps(self.instance.ingredients_ignored)
+            )
+            self.initial.setdefault(
+                "ingredients_lc", self.instance.ingredients_language
+            )
         self.image_fetch_failed = False
         self.declared_value_warnings: list[str] = []
         self.label_nutrients = list(Nutrient.objects.filter(on_label=True))
@@ -244,6 +263,8 @@ class ProductForm(forms.ModelForm):
                 Field("off_image_url"),
                 Field("off_ingredients"),
                 Field("off_ingredients_text"),
+                Field("ingredients_ignored"),
+                Field("ingredients_lc"),
             ),
             BS5Accordion(
                 AccordionGroupExtended(
@@ -293,6 +314,7 @@ class ProductForm(forms.ModelForm):
             )
             or ""
         )
+        ignored = self._ignored_places()
         if looked_up:
             note = _("Loaded from OpenFoodFacts. It is saved with the product.")
             empty = _("OpenFoodFacts has no ingredient list for this product.")
@@ -308,11 +330,30 @@ class ProductForm(forms.ModelForm):
         return {
             "show": looked_up or self.is_edit,
             "text": text,
+            # What the script marks in it, and what it sends back to read it again.
+            "state": {
+                "text": text,
+                "used": read_label(text, ignored).used,
+                "ignored": ignored,
+                "language": self["ingredients_lc"].value() or "",
+                # What the lookup is of, when the page was not loaded from one.
+                "barcode": self.instance.barcode if self.is_edit else "",
+            },
             # Tall enough to read without scrolling, a line being some 70 characters.
             "rows": min(12, max(3, text.count("\n") + len(text) // 70 + 2)),
             "note": note,
             "empty": empty,
         }
+
+    def _ignored_places(self) -> list[tuple[int, int]]:
+        """The places of the list marked as no ingredients, none if it is not read."""
+        raw = self["ingredients_ignored"].value()
+        if not raw:
+            return []
+        try:
+            return PLACES_JSON.validate_json(raw)
+        except ValidationError:
+            return []
 
     def _get_barcode_field_layout(self) -> FieldWithButtons:
         if not self.is_edit:
@@ -444,6 +485,11 @@ class ProductForm(forms.ModelForm):
             # left alone when they are.
             payload["ingredients_text"] = plain_newlines(
                 cleaned.get("off_ingredients_text") or ""
+            )
+            payload["ingredients_language"] = cleaned.get("ingredients_lc") or ""
+            ignored = cleaned.get("ingredients_ignored")
+            payload["ingredients_ignored"] = (
+                PLACES_JSON.validate_json(ignored) if ignored else []
             )
         # An empty field means "unknown" and clears the value; 0 is stored as a
         # measurement.

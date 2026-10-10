@@ -1,16 +1,47 @@
 {% load i18n %}
 
-{# The label's ingredient list, word for word, above the tree read from it. See ProductForm._ingredients_text_context. #}
+{% translate "Reading…" as reading %}
+{% translate "The text could not be read again. Try again." as failed %}
+{# The label's ingredient list, word for word, above the tree read from it. See ProductForm._ingredients_text_context and ingredients-text.js, which marks in it what was read and lets a person leave places out. #}
 {% if show %}
-  <div id="ingredients-text" class="mb-3">
+  <div id="ingredients-text"
+       class="mb-3"
+       data-read-url="{% url 'read_label' %}"
+       data-reading="{{ reading|force_escape }}"
+       data-failed="{{ failed|force_escape }}">
     <div id="ingredients-text-label" class="fw-semibold">{% translate "Ingredient list, as the label prints it" %}</div>
     {% if text %}
-      {# No name: it is shown, not posted. #}
-      <textarea class="form-control bg-body-tertiary"
-                rows="{{ rows }}"
-                aria-labelledby="ingredients-text-label"
-                readonly>{{ text }}</textarea>
-      <div class="form-text">{{ note }}</div>
+      {# Plain text until the script marks it. No name: it is shown, not posted. #}
+      <div id="ingredients-text-view"
+           class="ingredients-text-view form-control bg-body-tertiary"
+           aria-labelledby="ingredients-text-label">{{ text }}</div>
+      <div id="ingredients-text-tools"
+           class="d-flex flex-wrap align-items-center gap-2 mt-2"
+           hidden>
+        <button type="button"
+                class="btn btn-sm btn-outline-secondary"
+                data-action="ignore"
+                disabled>{% translate "Leave out the selection" %}</button>
+        <button type="button"
+                class="btn btn-sm btn-outline-secondary"
+                data-action="restore"
+                disabled>{% translate "Put the selection back" %}</button>
+        <button type="button"
+                class="btn btn-sm btn-outline-secondary"
+                data-action="clear"
+                hidden>{% translate "Put everything back" %}</button>
+        <span id="ingredients-text-status"
+              class="small text-body-secondary"
+              role="status"></span>
+      </div>
+      <div id="ingredients-text-warnings" class="small mt-1" role="status"></div>
+      <div class="form-text">
+        {{ note }}
+        <span id="ingredients-text-legend" hidden>
+          {% translate "Highlighted: read as ingredients. Struck through: left out by you. Select a part of the text to leave it out of the reading, or to put it back." %}
+        </span>
+      </div>
+      {{ state|json_script:"ingredients-text-state" }}
     {% else %}
       <div class="text-muted fst-italic">{{ empty }}</div>
     {% endif %}

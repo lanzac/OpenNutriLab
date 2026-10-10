@@ -103,6 +103,8 @@ def create_product(
                 group_level_1=data.group_level_1,
                 group_level_2=data.group_level_2,
                 ingredients_text=data.ingredients_text,
+                ingredients_language=data.ingredients_language,
+                ingredients_ignored=data.ingredients_ignored,
                 **_serving_fields(data.serving),
                 **_package_fields(data.package),
             )
@@ -153,7 +155,9 @@ def reread_ingredients(product: Product, language: str) -> Reread:
     before = product.ingredients.count()
     if not product.ingredients_text.strip():
         return Reread(done=False, before=before, after=before, warnings=[])
-    inputs, warnings = ingredient_inputs_from_label(product.ingredients_text, language)
+    inputs, warnings = ingredient_inputs_from_label(
+        product.ingredients_text, language, _ignored_places(product)
+    )
     if not inputs or any(w.stops_reading for w in warnings):
         return Reread(done=False, before=before, after=before, warnings=warnings)
     with transaction.atomic():
@@ -178,6 +182,8 @@ def _apply_fields(product: Product, data: ProductUpdate) -> None:
         "group_level_1",
         "group_level_2",
         "ingredients_text",
+        "ingredients_language",
+        "ingredients_ignored",
     ):
         value = getattr(data, field)
         if value is not None:
@@ -196,6 +202,11 @@ def _apply_fields(product: Product, data: ProductUpdate) -> None:
 
     if update_fields:
         product.save(update_fields=update_fields)
+
+
+def _ignored_places(product: Product) -> list[tuple[int, int]]:
+    """The places of the product's label text that a person marked as no ingredients."""
+    return [(start, end) for start, end in product.ingredients_ignored]
 
 
 def _package_fields(package: PackageInput | None) -> dict[str, Any]:

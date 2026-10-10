@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from decimal import Decimal
 from decimal import InvalidOperation
 from http import HTTPStatus
@@ -13,6 +14,7 @@ from opennutrilab.products.api.schemas.inbound import IngredientInput
 from opennutrilab.products.models import Nutrient
 from opennutrilab.products.services.label_parser import LabelItem
 from opennutrilab.products.services.label_parser import LabelWarning
+from opennutrilab.products.services.label_parser import Span
 from opennutrilab.products.services.label_parser import read_label
 
 
@@ -120,18 +122,29 @@ def fetch_from_off(
 
 
 def ingredient_inputs_from_label(
-    text: str | None, language: str | None
+    text: str | None, language: str | None, ignored: Iterable[Span] = ()
 ) -> tuple[list[IngredientInput], list[LabelWarning]]:
     """
     The ingredients a label's text lists, ready to save, and what looks wrong in it.
 
     Only the text is read (see services.label_parser), in the language
-    OpenFoodFacts says it is in. A text that looks badly read gives no
-    ingredient and a warning that says so.
+    OpenFoodFacts says it is in, without the places of it that `ignored` are. A text
+    that looks badly read gives no ingredient and a warning that says so.
     """
-    reading = read_label(text)
+    inputs, warnings, _used = read_inputs_from_label(text, language, ignored)
+    return inputs, warnings
+
+
+def read_inputs_from_label(
+    text: str | None, language: str | None, ignored: Iterable[Span] = ()
+) -> tuple[list[IngredientInput], list[LabelWarning], tuple[Span, ...]]:
+    """
+    ingredient_inputs_from_label, and the places of the text they were read from.
+    """
+    reading = read_label(text, ignored)
     code = (language or "").strip().lower()
-    return [_ingredient_input(item, code) for item in reading.items], reading.warnings
+    inputs = [_ingredient_input(item, code) for item in reading.items]
+    return inputs, reading.warnings, reading.used
 
 
 def _ingredient_input(item: LabelItem, language: str) -> IngredientInput:

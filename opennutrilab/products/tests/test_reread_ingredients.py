@@ -106,3 +106,39 @@ def test_only_the_products_asked_for_are_read_again():
 
     assert one.ingredients.exists()
     assert not other.ingredients.exists()
+
+
+def test_what_a_person_left_out_of_the_text_is_left_out_again():
+    text = "Gnocchi, mozzarella [lait, sel], zone de pêche (FAO 67), eau"
+    start = text.index("zone")
+    label = product("3017620422003", text)
+    label.ingredients_ignored = [[start, text.index(", eau")]]
+    label.save()
+
+    reread()
+
+    names = [i.item.name for i in label.ingredients.order_by("id")]
+    assert names == ["gnocchi", "mozzarella", "lait", "sel", "eau"]
+
+
+def test_the_language_stored_with_the_text_is_the_one_a_product_is_read_in():
+    english = product("3229820794556", "Sugar, flour")
+    english.ingredients_language = "en"
+    english.save()
+    french = product("3017620422003", "Gnocchi, sel")
+
+    reread()
+
+    assert ReferenceIngredient.objects.get(name_en="sugar").name_fr == ""
+    assert ReferenceIngredient.objects.get(name_fr="gnocchi").name_en == ""
+    assert french.ingredients.exists()
+
+
+def test_a_language_given_wins_over_the_ones_stored():
+    english = product("3229820794556", "Sugar, flour")
+    english.ingredients_language = "en"
+    english.save()
+
+    reread("--language", "fr")
+
+    assert ReferenceIngredient.objects.get(name_fr="sugar").name_en == ""

@@ -70,10 +70,18 @@ altogether cannot be seen from the text.
 
 Percentages that add up to more than 100 are only a warning: the label itself may
 say so, and the ingredients are read as they are.
+
+Where the ingredients were read is told too (LabelReading.used): the places of the
+text, as (start, end) positions in it, that make up the names and the percentages,
+and no others. It is for showing a person what the reading made of the text. When it
+is wrong, the person says which places are not ingredients (`ignored`), and the text
+is read as if they were not there. That is all they can do, take places out: a
+reading is still the label's words, and nothing is added to it or repaired.
 """
 
 import re
 import unicodedata
+from collections.abc import Iterable
 from decimal import Decimal
 from decimal import InvalidOperation
 from typing import NamedTuple
@@ -143,12 +151,18 @@ class LabelWarning(NamedTuple):
         return self.problem not in _NOT_BLOCKING
 
 
+# A place in the text: where it starts, and where it ends (not in it).
+Span = tuple[int, int]
+
+
 class LabelReading(NamedTuple):
     """The ingredients read, and the warnings. A text that looks badly read gives no
-    ingredients at all, and says why."""
+    ingredients at all, and says why. `used` is where in the text they were read from,
+    in order, without overlap (see the module's docstring)."""
 
     items: list[LabelItem]
     warnings: list[LabelWarning]
+    used: tuple[Span, ...] = ()
 
 
 # What a label puts before its list, and the statements it puts after.
@@ -390,7 +404,12 @@ _CAPITALS_ACCENTED = {
     "BRESIL": "brésil",
 }
 _CAPITAL_WORD = re.compile(r"\b[A-Z]{2,}\b")
-_MARKS = str.maketrans("", "", "*†‡°_")
+# What takes the place of a character a person ignored: white space, but one that
+# tells the place is empty because they emptied it, not because the label has two
+# commas in a row.
+_IGNORED = "\u2008"
+_MARK_CHARS = "*†‡°_"
+_MARKS = str.maketrans("", "", _MARK_CHARS)
 _BRACKETS = str.maketrans("[]{}", "()()")
 _MAX_DECIMALS = 2
 # What a name is trimmed of: punctuation, dashes, quotes.
@@ -421,25 +440,85 @@ def parse_label(text: str) -> list[LabelItem]:
     return read_label(text).items
 
 
-def read_label(text: str | None) -> LabelReading:
-    """The ingredients of a label's text, and what looks wrong in the text."""
+def read_label(text: str | None, ignored: Iterable[Span] = ()) -> LabelReading:
+    """
+    The ingredients of a label's text, and what looks wrong in the text.
+
+    `ignored` are places of the text to read it without, as a person marked them
+    (positions in `text`): they are blank to the reading, which then does not see
+    what is wrong in them either.
+    """
     if text is None or not text.strip():
         return LabelReading([], [LabelWarning(Problem.MISSING)])
-    written = _clean(text)
+    written, origin = _clean(text)
+    written = _blank(written, origin, ignored, len(text))
     # Same length, so the same positions: the list is read with one kind of
     # bracket, and checked with the ones the label has.
     part = _list_part(written.translate(_BRACKETS))
-    items = _parse_list(part)
+    used: list[Span] = []
+    items = _parse_list(part, 0, used)
     warnings = _warnings(part, written[: len(part)], items)
     if any(warning.stops_reading for warning in warnings):
         return LabelReading([], warnings)
-    return LabelReading(items, warnings)
+    return LabelReading(items, warnings, _in_text(used, origin, text))
 
 
-def _clean(text: str) -> str:
-    text = _TAG.sub("", text).replace("\xa0", " ")
-    text = text.replace("\u2019", "'").replace("\r", "")
-    return _LEADING_TITLE.sub("", text.strip())
+def _clean(text: str) -> tuple[str, list[int]]:
+    """
+    `text` as it is read, and for each of its characters where it is in `text`
+    (what is taken out has no place in the result, and so is not there to find).
+    """
+    origin = list(range(len(text)))
+    text, origin = _without(text, origin, [m.span() for m in _TAG.finditer(text)])
+    text = text.replace("\xa0", " ").replace("\u2019", "'")
+    text, origin = _without(text, origin, [m.span() for m in re.finditer("\r", text)])
+    trailing = len(text.rstrip())
+    edges = [(0, len(text) - len(text.lstrip())), (trailing, len(text))]
+    text, origin = _without(text, origin, edges)
+    if (title := _LEADING_TITLE.match(text)) is not None:
+        text, origin = _without(text, origin, [title.span()])
+    return text, origin
+
+
+def _without(
+    text: str, origin: list[int], spans: Iterable[Span]
+) -> tuple[str, list[int]]:
+    """`text` without the characters in `spans`, and `origin` without theirs."""
+    gone = {index for start, end in spans for index in range(start, end)}
+    kept = [index for index in range(len(text)) if index not in gone]
+    return "".join(text[index] for index in kept), [origin[index] for index in kept]
+
+
+def _blank(text: str, origin: list[int], ignored: Iterable[Span], size: int) -> str:
+    """
+    `text` with a blank (_IGNORED) for each character the person ignored: same
+    length. A blank is white space to the reading, whatever it looks at.
+    """
+    gone = {
+        index
+        for start, end in ignored
+        for index in range(max(0, start), min(end, size))
+    }
+    if not gone:
+        return text
+    return "".join(
+        _IGNORED if origin[index] in gone else char for index, char in enumerate(text)
+    )
+
+
+def _in_text(used: list[Span], origin: list[int], text: str) -> tuple[Span, ...]:
+    """
+    The places `used` has in what was read, as places in `text`: in order, the
+    ones that touch or are parted by nothing but white space made one.
+    """
+    placed = sorted((origin[start], origin[end - 1] + 1) for start, end in used)
+    merged: list[Span] = []
+    for start, end in placed:
+        if merged and not text[merged[-1][1] : start].strip():
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+        else:
+            merged.append((start, end))
+    return tuple(merged)
 
 
 def _list_part(text: str) -> str:
@@ -492,13 +571,21 @@ def e_number(name: str) -> str:
     return f"E{digits}{spaced or attached}{roman}".upper()
 
 
-def _parse_list(text: str) -> list[LabelItem]:
-    return [item for piece in _split(text) for item in _parse_items(piece)]
+def _parse_list(text: str, at: int, used: list[Span]) -> list[LabelItem]:
+    """
+    The ingredients of `text`, which starts at `at` in what is read. The places they
+    are read from are added to `used`.
+    """
+    return [
+        item
+        for start, piece in _pieces(text)
+        for item in _parse_items(piece, at + start, used)
+    ]
 
 
-def _split(text: str) -> list[str]:
+def _pieces(text: str) -> list[tuple[int, str]]:
     """The pieces between the commas and semicolons that are not in parentheses."""
-    pieces: list[str] = []
+    pieces: list[tuple[int, str]] = []
     depth = 0
     start = 0
     for index, char in enumerate(text):
@@ -507,10 +594,14 @@ def _split(text: str) -> list[str]:
         elif char == ")":
             depth = max(0, depth - 1)
         elif char in ",;" and depth == 0 and not _decimal_comma(text, index):
-            pieces.append(text[start:index])
+            pieces.append((start, text[start:index]))
             start = index + 1
-    pieces.append(text[start:])
+    pieces.append((start, text[start:]))
     return pieces
+
+
+def _split(text: str) -> list[str]:
+    return [piece for _start, piece in _pieces(text)]
 
 
 def _decimal_comma(text: str, index: int) -> bool:
@@ -538,13 +629,27 @@ def _class_of(heading: str) -> str:
     return _CLASS_OF.get(_folded(_name(heading) or ""), "")
 
 
-def _parse_items(raw: str) -> list[LabelItem]:
-    """What one piece of the list says: an ingredient, or the additives of a class."""
-    head, inner, tail = _split_parenthesis(_percent_beside(_without_notes(raw.strip())))
+def _parse_items(raw: str, at: int, used: list[Span]) -> list[LabelItem]:
+    """
+    What one piece of the list says: an ingredient, or the additives of a class.
+    The piece starts at `at` in what is read; where its ingredients are read from
+    is added to `used`.
+    """
+    noted, notes = _without_notes(raw)
+    text = _percent_beside(noted)
+    group = _split_group(text)
+    head, inner, tail = group.head, group.inner, group.tail
+    inner_at, tail_at = at + group.inner_at, at + group.tail_at
     if ":" in head:
         title, _colon, after = head.partition(":")
+        after_at = len(title) + 1
         # "émulsifiants : lécithines (soja)": the heading names it, the rest is in it.
-        listed = f"{after} ({inner})" if inner and after.strip() else after or inner
+        if inner and after.strip():
+            listed, listed_at = text[after_at : group.tail_at], at + after_at
+        elif after:
+            listed, listed_at = after, at + after_at
+        else:
+            listed, listed_at = inner, inner_at
         function = _class_of(title)
         if (
             function
@@ -553,32 +658,46 @@ def _parse_items(raw: str) -> list[LabelItem]:
         ):
             # "acidifiant : acide citrique": the class is what the item that
             # follows is for, and is not an ingredient.
-            return _under_class(function, listed)
-        head, inner = title, listed
+            return _under_class(function, listed, listed_at, used)
+        head, inner, inner_at = title, listed, listed_at
     elif (
         (function := _class_of(head))
         and inner.strip()
         and not (_percentage(head) or _percentage(tail))
     ):
         # "colorant (E150a)": the class and what it is for, in parentheses.
-        listed_items = _parse_list(inner)
+        read_from: list[Span] = []
+        listed_items = _parse_list(inner, inner_at, read_from)
         if listed_items and (
             function not in _ALSO_INGREDIENTS
             or all(e_number(item.name) for item in listed_items)
         ):
+            used.extend(read_from)
             return [item._replace(function=function) for item in listed_items]
 
     name = _name(head)
     if name is None:
         return []
-    return [_with_code(name, _percentage(head) or _percentage(tail), inner)]
+    percentage = _percentage(head)
+    if percentage:
+        used.extend(_percent_span(head, at))
+    else:
+        percentage = _percentage(tail)
+        if percentage:
+            used.extend(_percent_span(tail, tail_at))
+    used.extend(_name_spans(head, at, notes))
+    return [_with_code(name, percentage, inner, inner_at, used)]
 
 
-def _under_class(function: str, listed: str) -> list[LabelItem]:
-    return [item._replace(function=function) for item in _parse_list(listed)]
+def _under_class(
+    function: str, listed: str, at: int, used: list[Span]
+) -> list[LabelItem]:
+    return [item._replace(function=function) for item in _parse_list(listed, at, used)]
 
 
-def _with_code(name: str, percentage: Decimal | None, inner: str) -> LabelItem:
+def _with_code(
+    name: str, percentage: Decimal | None, inner: str, inner_at: int, used: list[Span]
+) -> LabelItem:
     """
     The ingredient `name` with what is in its parentheses as its parts, or as its
     code when that is an E number: "acide citrique (E330)" is one additive, and so
@@ -588,6 +707,7 @@ def _with_code(name: str, percentage: Decimal | None, inner: str) -> LabelItem:
         return LabelItem(name, percentage)
     code = e_number(_name(inner) or "")
     if code and not e_number(name):
+        used.extend(_name_spans(inner, inner_at, ()))
         return LabelItem(name, percentage, code=code)
     named = _name(inner)
     if (
@@ -596,8 +716,9 @@ def _with_code(name: str, percentage: Decimal | None, inner: str) -> LabelItem:
         and not any(char in inner for char in ",;")
         and not any(char.isdigit() for char in inner)
     ):
+        used.extend(_name_spans(inner, inner_at, ()))
         return LabelItem(named, percentage, code=e_number(name))
-    return LabelItem(name, percentage, tuple(_parse_list(inner)))
+    return LabelItem(name, percentage, tuple(_parse_list(inner, inner_at, used)))
 
 
 def _folded(text: str) -> str:
@@ -620,11 +741,11 @@ def _is_origin(inner: str) -> bool:
     return all(term in _ORIGINS for term in terms)
 
 
-def _without_notes(text: str) -> str:
+def _without_notes(text: str) -> tuple[str, list[Span]]:
     """
     `text` without its notes in parentheses ("(origine : Italie)", "(bio)"), its
     origins ("(Allemagne)") and its allergen declarations ("(gluten)", "(contient
-    lait)").
+    lait)"), and where they were. They are blank, so that the positions are the same.
 
     Only the first group is read as the parts of an ingredient, and what follows
     it only for a percentage, so a note ahead of the parentheses that do list the
@@ -632,6 +753,7 @@ def _without_notes(text: str) -> str:
     inside a group are left to the reading of that group.
     """
     kept: list[str] = []
+    notes: list[Span] = []
     index = 0
     while (open_at := text.find("(", index)) != -1:
         close_at = _matching(text, open_at)
@@ -641,31 +763,59 @@ def _without_notes(text: str) -> str:
             or _is_origin(inner)
             or _is_allergen_declaration(inner)
         )
-        kept.append(text[index:open_at] if is_note else text[index : close_at + 1])
-        index = close_at + 1
+        end = min(close_at + 1, len(text))
+        kept.append(text[index:open_at])
+        kept.append(" " * (end - open_at) if is_note else text[open_at:end])
+        if is_note:
+            notes.append((open_at, end))
+        index = end
     kept.append(text[index:])
-    return "".join(kept)
+    return "".join(kept), notes
+
+
+class _Group(NamedTuple):
+    """A piece cut at its first parentheses, and where the two parts after the
+    head start in it."""
+
+    head: str
+    inner: str
+    tail: str
+    inner_at: int
+    tail_at: int
+
+
+def _split_group(raw: str) -> _Group:
+    open_at = raw.find("(")
+    if open_at == -1:
+        return _Group(raw, "", "", len(raw), len(raw))
+    close_at = _matching(raw, open_at)
+    return _Group(
+        raw[:open_at],
+        raw[open_at + 1 : close_at],
+        raw[close_at + 1 :],
+        open_at + 1,
+        close_at + 1,
+    )
 
 
 def _split_parenthesis(raw: str) -> tuple[str, str, str]:
-    open_at = raw.find("(")
-    if open_at == -1:
-        return raw, "", ""
-    close_at = _matching(raw, open_at)
-    return raw[:open_at], raw[open_at + 1 : close_at], raw[close_at + 1 :]
+    group = _split_group(raw)
+    return group.head, group.inner, group.tail
 
 
 def _percent_beside(text: str) -> str:
     """
     `text` with a percentage that is alone in its parentheses written next to the
     name before them: "Dattes (38 %)" is "Dattes 38 %", and "Dattes (38 %) (dattes,
-    riz)" is "Dattes 38 % (dattes, riz)", where the parts are read as any are.
+    riz)" is "Dattes 38 % (dattes, riz)", where the parts are read as any are. The
+    parentheses are blank, so that the positions are the same.
 
     Only when it is plain whose percentage it is: a name before the parentheses,
     which has no percentage of its own, and none after them. "Dattes 7 % (7 %)"
     and "(7 %)" are left as they are, for what they are: a percentage with no name.
     """
-    head, inner, tail = _split_parenthesis(text)
+    group = _split_group(text)
+    head, inner, tail = group.head, group.inner, group.tail
     if (
         _BARE_PERCENT.match(inner)
         and _percentage(inner) is not None
@@ -673,7 +823,9 @@ def _percent_beside(text: str) -> str:
         and not _PERCENT.search(head)
         and not _PERCENT.search(tail)
     ):
-        return f"{head.rstrip()} {inner.strip()}{tail}"
+        close_at = group.tail_at - 1
+        closed = text[close_at : close_at + 1] == ")"
+        return f"{head} {inner}{' ' if closed else ''}{tail}"
     return text
 
 
@@ -708,6 +860,68 @@ def _accent_back(word: re.Match[str]) -> str:
 
 
 # ----------------------------------------------------------------------------
+# Where in the text is what was read?
+# ----------------------------------------------------------------------------
+def _blanks(found: re.Match[str]) -> str:
+    return " " * len(found.group(0))
+
+
+def _percent_span(text: str, at: int) -> list[Span]:
+    """Where the percentage `_percentage` keeps is in `text`, which starts at `at`."""
+    found = _PERCENT.search(text)
+    if found is None or _percentage(text) is None:
+        return []
+    return [(at + found.start(), at + found.end())]
+
+
+def _name_spans(text: str, at: int, notes: Iterable[Span]) -> list[Span]:
+    """
+    Where in `text`, which starts at `at`, is the name `_name` makes of it: from its
+    first character to its last, less the notes between, and the marks stuck to
+    it ("blé*", "_lait_"). Nothing for a text that makes no name.
+
+    It does what `_name` does on blanks rather than on nothing, so that the
+    positions stay. A test keeps the two together.
+    """
+    if _name(text) is None:
+        return []
+    kept = _ORGANIC.sub(_blanks, _PERCENT.sub(_blanks, text))
+    start, end = _trimmed(kept, 0, len(kept))
+    while (intro := _INTRO.match(kept[start:end])) is not None:
+        start, end = _trimmed(kept, start + intro.end(), end)
+    while start > 0 and text[start - 1] in _MARK_CHARS:
+        start -= 1
+    while end < len(text) and text[end] in _MARK_CHARS:
+        end += 1
+    spans: list[Span] = []
+    for note_start, note_end in sorted(notes):
+        if note_end <= start or note_start >= end:
+            continue
+        spans.append((start, min(note_start, end)))
+        start = max(start, note_end)
+    spans.append((start, end))
+    return [
+        (at + a + _blank_edge(text[a:b]), at + b - _blank_edge(text[a:b][::-1]))
+        for a, b in spans
+        if text[a:b].strip()
+    ]
+
+
+def _trimmed(text: str, start: int, end: int) -> Span:
+    """`start` and `end` moved inwards past what a name is trimmed of."""
+    while start < end and (text[start] in _EDGE or text[start].isspace()):
+        start += 1
+    while end > start and (text[end - 1] in _EDGE or text[end - 1].isspace()):
+        end -= 1
+    return start, end
+
+
+def _blank_edge(text: str) -> int:
+    """How many white space characters `text` starts with."""
+    return len(text) - len(text.lstrip())
+
+
+# ----------------------------------------------------------------------------
 # Does the text look read badly?
 # ----------------------------------------------------------------------------
 def _warnings(part: str, written: str, items: list[LabelItem]) -> list[LabelWarning]:
@@ -722,7 +936,7 @@ def _warnings(part: str, written: str, items: list[LabelItem]) -> list[LabelWarn
     found += _odd_names(items)
     if len(items) == 1 and not items[0].parts and len(part) > _NOT_A_LIST_LENGTH:
         found.append(LabelWarning(Problem.NOT_A_LIST))
-    if any(not piece.strip() for piece in _split(part)[:-1]):
+    if any(not piece.strip() and _IGNORED not in piece for piece in _split(part)[:-1]):
         found.append(LabelWarning(Problem.EMPTY_ITEM))
     if nameless := _nameless_percentages(part):
         found.append(LabelWarning(Problem.NAMELESS_PERCENT, ", ".join(nameless[:3])))
@@ -742,7 +956,7 @@ def _nameless_percentages(text: str) -> list[str]:
     """
     found: list[str] = []
     for raw in _split(text):
-        piece = _percent_beside(_without_notes(raw.strip()))
+        piece = _percent_beside(_without_notes(raw.strip())[0])
         if _BARE_PERCENT.match(piece):
             found.append(piece.strip(_EDGE + "()"))
             continue

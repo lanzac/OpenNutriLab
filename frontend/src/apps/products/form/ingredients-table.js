@@ -34,10 +34,12 @@ export function ciqualCell(label, url) {
  *   Column titles, translated server-side (see product_form_config in
  *   opennutrilab/products/views.py) so the .po catalogue stays the single
  *   source of truth.
+ * @returns {{ setRows: (rows: object[]) => void } | undefined} A way to show other
+ *   ingredients in it, when the page has the table.
  */
 export function initIngredientsTable(labels) {
   const tableDiv = document.getElementById('ingredients_table');
-  if (!tableDiv) return;
+  if (!tableDiv) return undefined;
 
   const loader = document.getElementById('ingredients_graph_loader');
   // An array of rows, or nothing at all when the form has no ingredients yet
@@ -47,7 +49,7 @@ export function initIngredientsTable(labels) {
   );
   const ingredientsData = Array.isArray(rows) ? rows : [];
 
-  new Tabulator('#ingredients_table', {
+  const table = new Tabulator('#ingredients_table', {
     height: '311px',
     data: ingredientsData,
     dataTree: true,
@@ -84,4 +86,6 @@ export function initIngredientsTable(labels) {
   });
 
   if (loader) loader.style.display = 'none';
+
+  return { setRows: (newRows) => table.setData(newRows) };
 }

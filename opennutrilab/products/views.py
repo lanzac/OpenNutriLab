@@ -10,12 +10,16 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db.models import prefetch_related_objects
 from django.http import HttpRequest
+from django.http import HttpResponse
 from django.http import HttpResponseRedirect
+from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from django.templatetags.static import static
 from django.urls import reverse_lazy
 from django.utils.translation import get_language
 from django.utils.translation import gettext as _
+from django.views import View
+from pydantic import ValidationError
 from vanilla import CreateView
 from vanilla import DeleteView
 from vanilla import ListView
@@ -26,7 +30,9 @@ from .api.openfoodfacts.services import OFFProductNotFoundError
 from .api.openfoodfacts.services import declared_nutrients_from_off
 from .api.openfoodfacts.services import fetch_from_off
 from .api.openfoodfacts.services import ingredient_inputs_from_label
+from .api.openfoodfacts.services import read_inputs_from_label
 from .api.schemas.inbound import IngredientInput
+from .api.schemas.inbound import ReadLabelIn
 from .api.schemas.inbound import validate_off_image_url
 from .api.schemas.outbound import EstimateOut
 from .forms import INGREDIENTS_JSON
@@ -213,6 +219,40 @@ class ProductEditView(LoginRequiredMixin, ProductFormViewMixin, UpdateView):
             if initial:
                 initial["off_barcode"] = product.barcode
         return ProductForm(data=data, files=files, initial=initial, **kwargs)
+
+
+class ReadLabelView(LoginRequiredMixin, View):
+    """
+    A label's text read again for the product page, without the places a person
+    marked as no ingredients (see frontend/.../form/ingredients-text.js).
+
+    Nothing is stored: the page keeps what this answers until the product is saved.
+    The answer is what the page needs to show the reading: the ingredients as rows
+    for its table and as the JSON its form posts, where in the text they were read
+    from, and what looks wrong in the text.
+    """
+
+    raise_exception = True
+    http_method_names = ["post"]
+
+    def post(self, request: HttpRequest) -> HttpResponse:
+        try:
+            data = ReadLabelIn.model_validate_json(request.body)
+        except ValidationError:
+            return JsonResponse({"error": "invalid"}, status=400)
+        inputs, warnings, used = read_inputs_from_label(
+            data.text, data.language, data.ignored
+        )
+        return JsonResponse(
+            {
+                "rows": ingredient_rows_from_inputs(inputs),
+                "ingredients": INGREDIENTS_JSON.dump_json(inputs).decode(),
+                "used": used,
+                "warnings": [
+                    {"message": w.message(), "stops": w.stops_reading} for w in warnings
+                ],
+            }
+        )
 
 
 class ProductDeleteView(UserPassesTestMixin, DeleteView):
@@ -459,6 +499,9 @@ def initial_from_off(request: HttpRequest, barcode: str) -> dict[str, Any] | Non
     report_label_warnings(request, fetched.barcode, warnings)
     initial["off_ingredients"] = INGREDIENTS_JSON.dump_json(ingredients).decode()
     initial["off_ingredients_text"] = fetched.ingredients_text or ""
+    # Nothing is ignored in a text that is new.
+    initial["ingredients_ignored"] = "[]"
+    initial["ingredients_lc"] = (fetched.ingredients_lc or "").strip().lower()[:10]
     # From its text too. With none, or one that is not read, the form keeps what
     # it had: nothing on a new product, the stored serving on a reset.
     serving = read_serving(fetched.serving_size)

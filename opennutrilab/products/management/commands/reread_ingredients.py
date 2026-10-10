@@ -25,10 +25,10 @@ class Command(BaseCommand):
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument(
             "--language",
-            default="fr",
             help=(
-                "The language of the labels (default fr): the stored text does not "
-                "say, and it decides where the name of what is new is written."
+                "The language of the labels, for all of them: it decides where the "
+                "name of what is new is written. By default the one stored with each "
+                "product, and fr for a product that has none."
             ),
         )
         parser.add_argument(
@@ -51,7 +51,8 @@ class Command(BaseCommand):
             counts = _counts()
             done = skipped = 0
             for product in products:
-                result = reread_ingredients(product, options["language"])
+                language = options["language"] or product.ingredients_language or "fr"
+                result = reread_ingredients(product, language)
                 if result.done:
                     done += 1
                     self.stdout.write(

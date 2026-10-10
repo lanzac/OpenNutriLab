@@ -7,6 +7,7 @@
 import { initEstimatePanel } from './estimate/index.jsx';
 import { initBarcodeActions } from './form/barcode-actions.js';
 import { initIngredientsTable } from './form/ingredients-table.js';
+import { initIngredientsText } from './form/ingredients-text.js';
 import { initNutrientChart } from './form/nutrient-chart.js';
 import { initPlotlyTheme } from './form/plotly-theme.js';
 
@@ -30,6 +31,11 @@ ready(() => {
   initBarcodeActions(config.barcodeActions);
   initPlotlyTheme();
   initNutrientChart(config.nutrientChart);
-  initIngredientsTable(config.ingredientsTable);
+  const ingredients = initIngredientsTable(config.ingredientsTable);
+  // The text the ingredients were read from, read again without the places a
+  // person left out: the table shows the new reading.
+  initIngredientsText({
+    onRead: (reading) => ingredients?.setRows(reading.rows),
+  });
   initEstimatePanel(config.estimatePanel);
 });
