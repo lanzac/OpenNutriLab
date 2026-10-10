@@ -42,6 +42,7 @@ from opennutrilab.meals.models import Profile
 from opennutrilab.meals.services.needs import Need
 from opennutrilab.meals.services.needs import Ratio
 from opennutrilab.meals.services.needs import daily_needs
+from opennutrilab.meals.services.needs import need_name
 from opennutrilab.products.models import Nutrient
 from opennutrilab.products.services.stored_estimates import Amount
 from opennutrilab.products.services.stored_estimates import compositions
@@ -274,7 +275,7 @@ def needs_status(
         statuses.append(
             NeedStatus(
                 need=need,
-                name=" + ".join(catalogue[code].name for code in need.nutrients),
+                name=need_name(need, catalogue),
                 unit=first.unit,
                 group=first.group,
                 total=total,

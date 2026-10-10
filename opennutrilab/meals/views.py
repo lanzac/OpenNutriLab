@@ -24,6 +24,7 @@ from opennutrilab.meals.services.energy import KJ_PER_KCAL
 from opennutrilab.meals.services.needs import Kind
 from opennutrilab.meals.services.needs import Needs
 from opennutrilab.meals.services.needs import daily_needs
+from opennutrilab.meals.services.needs import need_name
 from opennutrilab.meals.services.needs import references
 from opennutrilab.products.models import Nutrient
 from opennutrilab.products.pnns import pnns_group_names
@@ -35,6 +36,7 @@ if TYPE_CHECKING:
 GROUPS = [
     Nutrient.Group.ENERGY,
     Nutrient.Group.MACRONUTRIENT,
+    Nutrient.Group.FATTY_ACID,
     Nutrient.Group.VITAMIN,
     Nutrient.Group.MINERAL,
     Nutrient.Group.OTHER,
@@ -97,7 +99,7 @@ def need_rows(needs: Needs) -> list[dict[str, Any]]:
         share = need.energy_share
         by_group[first.group].append(
             {
-                "name": " + ".join(catalogue[code].name for code in need.nutrients),
+                "name": need_name(need, catalogue),
                 "low": need.low,
                 "high": need.high,
                 "unit": first.unit,

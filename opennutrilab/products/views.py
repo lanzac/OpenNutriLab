@@ -37,6 +37,7 @@ from .api.schemas.inbound import validate_off_image_url
 from .api.schemas.outbound import EstimateOut
 from .forms import INGREDIENTS_JSON
 from .forms import ProductForm
+from .forms import label_wording
 from .forms import nutrient_field
 from .models import Additive
 from .models import Ingredient
@@ -315,7 +316,7 @@ def product_form_config() -> dict[str, Any]:
                     "code": n.code,
                     "field": nutrient_field(n.code),
                     "parent": n.parent_id,
-                    "label": n.name,
+                    "label": label_wording(n),
                 }
                 for n in Nutrient.objects.filter(on_label=True, unit=Nutrient.Unit.GRAM)
             ],

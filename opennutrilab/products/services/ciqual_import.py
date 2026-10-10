@@ -39,6 +39,7 @@ from opennutrilab.products.models import Source
 from opennutrilab.products.models import SourceFood
 from opennutrilab.products.models import SourceFoodNutrient
 from opennutrilab.products.services.ciqual_constituents import CONSTITUENTS
+from opennutrilab.products.services.ciqual_constituents import NAMES
 from opennutrilab.products.services.ciqual_constituents import SKIPPED
 from opennutrilab.products.services.derived_nutrients import ensure_derivations
 from opennutrilab.products.services.stored_estimates import mark_stale
@@ -356,10 +357,11 @@ def ensure_nutrients(
             or Nutrient.objects.filter(code=mapped.code, ciqual_code=None).first()
         )
         if nutrient is None:
+            name_en, name_fr = NAMES.get(mapped.code, (row.name_en, row.name_fr))
             nutrient = Nutrient.objects.create(
                 code=mapped.code,
-                name_en=row.name_en,
-                name_fr=row.name_fr,
+                name_en=name_en,
+                name_fr=name_fr,
                 unit=unit,
                 group=mapped.group,
                 parent_id=mapped.parent,

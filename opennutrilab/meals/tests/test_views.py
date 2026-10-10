@@ -62,7 +62,7 @@ def test_saving_the_profile_shows_the_needs_it_gives(
     assert (profile.sex, profile.age, profile.weight) == ("male", 31, Decimal(61))
     assert round(response.context["needs"].energy) == 2651  # noqa: PLR2004
     labels = [group["label"] for group in response.context["groups"]]
-    assert labels == ["Energy", "Macronutrient", "Vitamin", "Mineral"]
+    assert labels == ["Energy", "Macronutrient", "Fatty acid", "Vitamin", "Mineral"]
     with translation.override("fr"):
         response = client.get(URL, headers={"accept-language": "fr"})
     assert "Besoins pour une journée".encode() in response.content

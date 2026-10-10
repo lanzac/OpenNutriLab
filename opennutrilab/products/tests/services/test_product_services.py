@@ -753,7 +753,7 @@ def test_a_part_exceeding_its_whole_is_reported():
     )
 
     assert warnings == [
-        "of which sugars (10 g) exceed Carbohydrate (9.9 g).",
+        "Sugars (10 g) exceed Carbohydrate (9.9 g).",
     ]
 
 

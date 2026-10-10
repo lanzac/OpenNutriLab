@@ -254,7 +254,7 @@ def test_the_omega_totals_are_created_under_the_polyunsaturated_fatty_acids(
     oleic = Nutrient.objects.get(code="oleic_acid")
     linoleic = Nutrient.objects.get(code="linoleic_acid")
 
-    assert (omega_3.unit, omega_3.group) == ("g", "macronutrient")
+    assert (omega_3.unit, omega_3.group) == ("g", "fatty_acid")
     assert omega_3.name_fr == "Oméga-3 (ALA + EPA + DHA)"
     assert omega_6.name_en == "Omega-6 (LA + AA)"
     assert omega_3.parent_id == omega_6.parent_id == "polyunsaturated_fat"

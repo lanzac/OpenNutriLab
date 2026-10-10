@@ -21,7 +21,8 @@
     "Vitamins and minerals are the 2021 opinion's, newer than the 2016 table, whose own values for them differ (magnesium 420 mg, vitamin D up to 50 µg).",
     "An upper limit that the opinion gives for an added form only is not a limit on food: magnesium (salts and supplements), nicotinic acid. The one for folic acid applies to folic acid, and the one for vitamin A to retinol.",
     "Zinc: the 2016 report takes the reference for 900 mg/day of phytates, which no table gives the content of.",
-    "Sugars: the 2016 limit is on total sugars less lactose; it is compared here with total sugars, lactose included."
+    "Sugars: the 2016 limit is on total sugars less lactose; it is compared here with total sugars, lactose included.",
+    "Oleic acid (the omega-9 of the foods): the 2011 recommended intake is 15 to 20 % of the energy without alcohol, for an adult at 2000 kcal. The same report gives none for the other monounsaturated acids (omega-7, 22:1 omega-9), and caps trans fatty acids at 2 % of the energy; CIQUAL lists none of them."
   ],
   "references": [
     {
@@ -78,11 +79,23 @@
     },
     {
       "nutrients": ["lauric_acid", "myristic_acid", "palmitic_acid"],
+      "name_en": "Lauric + myristic + palmitic acids",
+      "name_fr": "Acides laurique + myristique + palmitique",
       "basis": "energy_percent",
       "kcal_per_g": "9",
       "high": "8",
       "high_kind": "constraint",
       "source": "anses-2016"
+    },
+    {
+      "nutrients": ["oleic_acid"],
+      "basis": "energy_percent",
+      "kcal_per_g": "9",
+      "low": "15",
+      "low_kind": "anc",
+      "high": "20",
+      "high_kind": "anc",
+      "source": "anses-2011"
     },
     {
       "nutrients": ["linoleic_acid"],
@@ -102,6 +115,8 @@
     },
     {
       "nutrients": ["epa", "dha"],
+      "name_en": "EPA + DHA",
+      "name_fr": "EPA + DHA",
       "basis": "day",
       "low": "0.5",
       "low_kind": "constraint",

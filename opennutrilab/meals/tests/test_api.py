@@ -213,6 +213,13 @@ def test_a_day_is_set_against_the_needs_of_the_profile(
     assert energy["ends"] == ["Energy need (anses-2016)"]
     protein = needs["Protein"]
     assert (protein["share_low"], protein["share_high"]) == ("10", "20")
+    oleic = needs["Oleic acid (omega-9)"]
+    assert (oleic["group"], oleic["group_label"]) == ("fatty_acid", "Fatty acid")
+    assert (oleic["share_low"], oleic["share_high"]) == ("15", "20")
+    assert "Lauric + myristic + palmitic acids" in needs
+    assert needs["Saturated fatty acids"]["group"] == "fatty_acid"
+    assert needs["Sugars"]["group"] == "macronutrient"
+    assert needs["Fat"]["group"] == "macronutrient"
     assert D(protein["total"]["amount"]) == D(40)
     ratios = {(r["numerator"], r["denominator"]): r for r in day["ratios"]}
     assert len(ratios) == 4  # noqa: PLR2004

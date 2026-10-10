@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import pytest
+from django.utils import translation
 
 from opennutrilab.meals.services.energy import KCAL_PER_MJ
 from opennutrilab.meals.services.energy import KJ_PER_KCAL
@@ -12,6 +13,7 @@ from opennutrilab.meals.services.needs import NoReferenceError
 from opennutrilab.meals.services.needs import (
     _merged,  # pyright: ignore[reportPrivateUsage]
 )
+from opennutrilab.meals.services.needs import need_name
 from opennutrilab.meals.services.needs import needs_for
 from opennutrilab.meals.services.needs import references
 from opennutrilab.products.models import Nutrient
@@ -96,6 +98,73 @@ def test_a_need_can_be_on_a_sum_of_nutrients():
     saturated = need(needs, "lauric_acid", "myristic_acid", "palmitic_acid")
     assert saturated.high == needs.energy * 8 / 100 / 9
     assert saturated.low is None
+
+
+def test_oleic_acid_has_the_2011_recommended_share_of_the_energy():
+    needs = needs_for(MAN, D("1.7"))
+
+    oleic = need(needs, "oleic_acid")
+    assert oleic.low is not None
+    assert oleic.high is not None
+    # Worked out in another order than the code's: equal to the last digits only.
+    assert oleic.low == pytest.approx(needs.energy * 15 / 100 / 9)
+    assert oleic.high == pytest.approx(needs.energy * 20 / 100 / 9)
+    assert round(oleic.low) == 44  # noqa: PLR2004
+    assert round(oleic.high) == 59  # noqa: PLR2004
+    assert (oleic.low_kind, oleic.high_kind) == (Kind.ANC, Kind.ANC)
+    assert (oleic.low_source, oleic.high_source) == ("anses-2011", "anses-2011")
+    assert oleic.energy_share is not None
+    assert (oleic.energy_share.low, oleic.energy_share.high) == (D(15), D(20))
+
+
+def test_a_sum_is_called_by_the_name_the_references_give_it(catalogue: None):
+    needs = needs_for(MAN, D("1.7"))
+    catalogue_by_code = Nutrient.objects.in_bulk()
+    saturated = need(needs, "lauric_acid", "myristic_acid", "palmitic_acid")
+    both = need(needs, "epa", "dha")
+
+    with translation.override("fr"):
+        assert (
+            need_name(saturated, catalogue_by_code)
+            == "Acides laurique + myristique + palmitique"
+        )
+        assert need_name(both, catalogue_by_code) == "EPA + DHA"
+    with translation.override("en"):
+        assert (
+            need_name(saturated, catalogue_by_code)
+            == "Lauric + myristic + palmitic acids"
+        )
+
+
+def test_a_need_with_no_name_of_its_own_takes_its_nutrients(catalogue: None):
+    needs = needs_for(MAN, D("1.7"))
+    catalogue_by_code = Nutrient.objects.in_bulk()
+
+    with translation.override("fr"):
+        assert (
+            need_name(need(needs, "oleic_acid"), catalogue_by_code)
+            == "Acide oléique (oméga-9)"
+        )
+    with translation.override("en"):
+        assert (
+            need_name(need(needs, "oleic_acid"), catalogue_by_code)
+            == "Oleic acid (omega-9)"
+        )
+
+
+def test_only_the_sums_have_names_of_their_own():
+    named = {
+        tuple(entry["nutrients"])
+        for entry in references()["references"]
+        if "name_en" in entry or "name_fr" in entry
+    }
+
+    assert named == {
+        ("lauric_acid", "myristic_acid", "palmitic_acid"),
+        ("epa", "dha"),
+    }
+    for entry in references()["references"]:
+        assert ("name_en" in entry) == ("name_fr" in entry)
 
 
 def test_the_two_ends_of_a_need_can_come_from_two_opinions():

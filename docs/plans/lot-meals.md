@@ -588,6 +588,52 @@ bool}`) makes the row if there is none and answers with the day. Adding to or
   and 3 on the gauge layout (Vitest, 277 in all); mutations checked on both sides; seen
   in Chromium (French page, a throwaway user).
 
+### Addendum 5 (2026-10-10): oleic acid, plain names for the fatty acids, and a category of their own
+
+The user asked about the intakes of the other fatty acids (omega-9, omega-7...), was
+told what the data and ANSES give (below), and asked for three things: **add oleic
+acid**, **simplify names like** "AG 12:0, laurique + AG 14:0, myristique + AG 16:0,
+palmitique", and **put the fatty acids in a category of their own**.
+
+- **What the sources give** (counted and read on 2026-10-10): CIQUAL gives one
+  monounsaturated acid, oleic (C18:1 n-9), for 1,732 of 3,009 foods (the MUFA total for
+  2,375); where both are given oleic is a median 91 % of the MUFA (10th percentile
+  54 %: fish, pastries, biscuits have more of another kind). It has no omega-7, no
+  22:1, no trans, no CLA. ANSES' 2011 report (table 19, p. 252, note n, p. 253) gives
+  an ANC for oleic acid only, 15 to 20 % of the energy; "other non-essential acids"
+  (about 2 % of the energy: 16:1 n-7, 18:1 n-7, 22:1 n-9, 18:3 n-6, 22:5 n-3, trans and
+  conjugated) have none, and trans acids are capped at 2 % (Afssa 2005).
+- **Oleic acid is a need**: 15 to 20 % of the energy, `anc` at both ends, source
+  `anses-2011` (`anses_references.json`, with a note on what is not covered): 44 to
+  59 g at 2,651 kcal. Foods that give no oleic count for nothing and the coverage says
+  so. Not done: "MUFA minus oleic", omega-7 and trans (no source, no reference).
+- **Plain names**: CIQUAL's ("AG 18:3 c9,c12,c15 (n-3), alpha-linolénique") are replaced
+  by "Acide alpha-linolénique (ALA, oméga-3)", "Acide laurique (C12:0)", "Acide oléique
+  (oméga-9)", "EPA", "DHA", "Acides gras monoinsaturés"... (`ciqual_constituents.NAMES`
+  for an import, migration 0022 for a catalogue that exists). The two **sums** have a
+  name of their own in the references (`name_en`/`name_fr`, `needs.need_name`):
+  "Acides laurique + myristique + palmitique" and "EPA + DHA"; any other need is named
+  by its nutrients.
+- **The label's two parts of another nutrient** (saturated fat, sugars) were seeded
+  with the label's wording, "dont acides gras saturés" and "dont sucres", which read
+  wrongly alone: at the head of the new group, in a gauge, in the warning "of which
+  sugars (10 g) exceed Carbohydrate". Their catalogue names are plain now ("Acides gras
+  saturés", "Sucres"; migration 0023, which leaves a name an admin changed), and the
+  product form writes "dont" itself (`forms.label_wording`: a label nutrient that has a
+  parent, "of which %(name)s" in the .po), as does the form's chart, so that page reads
+  as before. Sugars was not asked for; it had the same fault.
+- **A category of their own**: `Nutrient.Group.FATTY_ACID` ("Acide gras"): the three
+  totals, the fourteen acids and the omega-3 and omega-6 sums; total fat stays a
+  macronutrient. It is the group of the catalogue, so it is the same on every page
+  that groups by it: the day's gauges and table, "Mes besoins" (`GROUPS` in
+  `meals/views.py`) and the estimate card of the product page. Migration 0022 (the
+  choice, then the data; going back puts them in the macronutrients, the names stay).
+  No change to the React code, which draws the groups it is given.
+- Tests: the oleic need and the names (4 in `test_needs`), the group in the API, the
+  needs page and the import (3 on the mapping and the migration's copy of it); seen in
+  Chromium (French page, a throwaway user, deleted): six groups, "Acide gras" with
+  "2 sur 8 respectés", oleic drawn against 44,2 g – 58,9 g.
+
 ## After the batch
 
 What the eight steps leave open, for the user to say:

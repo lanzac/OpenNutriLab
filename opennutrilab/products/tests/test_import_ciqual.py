@@ -1,3 +1,4 @@
+import importlib
 import shutil
 from decimal import Decimal
 from pathlib import Path
@@ -17,6 +18,7 @@ from opennutrilab.products.models import SourceFood
 from opennutrilab.products.models import SourceFoodNutrient
 from opennutrilab.products.services import ciqual_import
 from opennutrilab.products.services.ciqual_constituents import CONSTITUENTS
+from opennutrilab.products.services.ciqual_constituents import NAMES
 from opennutrilab.products.services.ciqual_constituents import SKIPPED
 from opennutrilab.products.services.ciqual_import import CiqualError
 from opennutrilab.products.services.ciqual_import import import_ciqual
@@ -459,6 +461,48 @@ def test_the_nutrient_codes_are_unique_and_parents_come_first():
         assert mapped.code not in seen
         assert mapped.parent is None or mapped.parent in seen | label
         seen.add(mapped.code)
+
+
+def test_the_fatty_acids_have_a_group_and_all_but_the_labels_one_a_plain_name():
+    fatty = {
+        mapped.code
+        for mapped in CONSTITUENTS.values()
+        if mapped.group == Nutrient.Group.FATTY_ACID
+    }
+
+    assert fatty >= {"saturated_fat", "oleic_acid", "epa", "dha"}
+    assert "fat" not in fatty
+    # Saturated fat is the label's: it is seeded, and renamed by a migration.
+    assert fatty - {"saturated_fat"} == set(NAMES)
+    assert all(name_en and name_fr for name_en, name_fr in NAMES.values())
+
+
+@pytest.mark.django_db
+def test_the_fatty_acids_are_imported_in_their_group_under_plain_names(
+    directory: Path,
+):
+    import_ciqual(directory)
+
+    lauric = Nutrient.objects.get(code="lauric_acid")
+    assert (lauric.name_en, lauric.name_fr) == (
+        "Lauric acid (C12:0)",
+        "Acide laurique (C12:0)",
+    )
+    assert Nutrient.objects.get(code="oleic_acid").name_fr == "Acide oléique (oméga-9)"
+    assert Nutrient.objects.get(code="dha").name_fr == "DHA"
+    assert set(
+        Nutrient.objects.filter(group="fatty_acid").values_list("code", flat=True)
+    ) == {*NAMES, "saturated_fat", "omega_3", "omega_6"}
+    assert Nutrient.objects.get(code="fat").group == "macronutrient"
+
+
+def test_the_migration_that_regroups_the_fatty_acids_agrees_with_the_import():
+    migration = importlib.import_module(
+        "opennutrilab.products.migrations.0022_fatty_acid_group"
+    )
+
+    assert migration.NAMES == NAMES
+    assert set(migration.FATTY_ACIDS) == {*NAMES, "saturated_fat", "omega_3", "omega_6"}
 
 
 @pytest.mark.django_db

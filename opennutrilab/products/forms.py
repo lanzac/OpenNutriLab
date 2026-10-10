@@ -56,6 +56,18 @@ def nutrient_field(code: str) -> str:
     return f"nutrient_{code}"
 
 
+def label_wording(nutrient: Nutrient) -> str:
+    """
+    How the label's table writes a nutrient of the declaration: the part of another
+    is "of which ...". The catalogue's name is the plain one, which reads on its own
+    (a gauge, a warning), so the wording is added here, where the table is.
+    """
+    if nutrient.parent_id is None:
+        return nutrient.name
+    name = nutrient.name
+    return _("of which %(name)s") % {"name": name[:1].lower() + name[1:]}
+
+
 class ProductForm(forms.ModelForm):
     """
     The product create/edit page. It only validates and describes the change:
@@ -392,7 +404,7 @@ class ProductForm(forms.ModelForm):
         for nutrient in self.label_nutrients:
             amount = stored.get(nutrient.code)
             self.fields[nutrient_field(nutrient.code)] = forms.DecimalField(
-                label=nutrient.name,
+                label=label_wording(nutrient),
                 required=False,
                 min_value=0,
                 max_digits=12,

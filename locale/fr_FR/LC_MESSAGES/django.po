@@ -77,6 +77,9 @@ msgstr ""
 msgid "Energy"
 msgstr "Énergie"
 
+msgid "Fatty acid"
+msgstr "Acide gras"
+
 msgid "Macronutrient"
 msgstr "Macronutriment"
 
@@ -1313,6 +1316,9 @@ msgstr "Plus foncé : déjà mangé"
 
 msgid "of which eaten"
 msgstr "dont mangé"
+
+msgid "of which %(name)s"
+msgstr "dont %(name)s"
 
 msgid "Share of the minimum"
 msgstr "Part du minimum"

@@ -13,6 +13,8 @@ from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductNutrient
 
+FATS = ["fat", "saturated_fat", "carbohydrates", "sugars"]
+
 BARCODE = "3229820794556"
 
 
@@ -62,6 +64,35 @@ def test_one_field_per_label_nutrient_named_in_the_language_served():
         nutrient_field(code) for code in codes
     ]
     assert form.fields[nutrient_field("salt")].label == "Sel"
+
+
+@pytest.mark.django_db
+def test_the_form_writes_the_parts_of_a_nutrient_as_the_label_does():
+    with translation.override("fr-fr"):
+        french = ProductForm()
+    with translation.override("en"):
+        english = ProductForm()
+
+    labels = {code: french.fields[nutrient_field(code)].label for code in FATS}
+    assert labels == {
+        "fat": "Matières grasses",
+        "saturated_fat": "dont acides gras saturés",
+        "carbohydrates": "Glucides",
+        "sugars": "dont sucres",
+    }
+    assert english.fields[nutrient_field("saturated_fat")].label == (
+        "of which saturated fatty acids"
+    )
+    assert english.fields[nutrient_field("sugars")].label == "of which sugars"
+
+
+@pytest.mark.django_db
+def test_the_catalogue_names_the_parts_of_the_label_plainly():
+    with translation.override("fr-fr"):
+        names = {n.code: n.name for n in Nutrient.objects.filter(code__in=FATS)}
+
+    assert names["saturated_fat"] == "Acides gras saturés"
+    assert names["sugars"] == "Sucres"
 
 
 @pytest.mark.django_db

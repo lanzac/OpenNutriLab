@@ -4,9 +4,10 @@ How CIQUAL's constituents become nutrients of the catalogue.
 CIQUAL gives each constituent a numeric code and a label that ends with its
 unit ("Vitamine C (mg/100 g)"). The import reads names and units from the file;
 what the file does not say, and the catalogue needs, is here: the nutrient's
-code, its group and the nutrient it is part of. A nutrient that already exists
-with that CIQUAL code (the label's eight, seeded by migration) is used as it
-is, and not changed.
+code, its group and the nutrient it is part of, and a plainer name for the fatty
+acids ("AG 12:0, laurique" becomes "Acide laurique (C12:0)"). A nutrient that
+already exists with that CIQUAL code (the label's eight, seeded by migration) is
+used as it is, and not changed.
 
 Every constituent of the file must be in CONSTITUENTS or SKIPPED: a new one,
 in a later CIQUAL release, is a decision to take, so the import refuses it.
@@ -18,6 +19,7 @@ from opennutrilab.products.models import Nutrient
 
 ENERGY = Nutrient.Group.ENERGY
 MACRO = Nutrient.Group.MACRONUTRIENT
+FATTY = Nutrient.Group.FATTY_ACID
 MINERAL = Nutrient.Group.MINERAL
 VITAMIN = Nutrient.Group.VITAMIN
 OTHER = Nutrient.Group.OTHER
@@ -67,23 +69,23 @@ CONSTITUENTS: dict[str, Constituent] = {
     "34100": Constituent("fiber", MACRO),
     # Fats and fatty acids.
     "40000": Constituent("fat", MACRO),
-    "40302": Constituent("saturated_fat", MACRO, "fat"),
-    "40303": Constituent("monounsaturated_fat", MACRO, "fat"),
-    "40304": Constituent("polyunsaturated_fat", MACRO, "fat"),
-    "40400": Constituent("butyric_acid", MACRO, "saturated_fat"),
-    "40600": Constituent("caproic_acid", MACRO, "saturated_fat"),
-    "40800": Constituent("caprylic_acid", MACRO, "saturated_fat"),
-    "41000": Constituent("capric_acid", MACRO, "saturated_fat"),
-    "41200": Constituent("lauric_acid", MACRO, "saturated_fat"),
-    "41400": Constituent("myristic_acid", MACRO, "saturated_fat"),
-    "41600": Constituent("palmitic_acid", MACRO, "saturated_fat"),
-    "41800": Constituent("stearic_acid", MACRO, "saturated_fat"),
-    "41819": Constituent("oleic_acid", MACRO, "monounsaturated_fat"),
-    "41826": Constituent("linoleic_acid", MACRO, "polyunsaturated_fat"),
-    "41833": Constituent("alpha_linolenic_acid", MACRO, "polyunsaturated_fat"),
-    "42046": Constituent("arachidonic_acid", MACRO, "polyunsaturated_fat"),
-    "42053": Constituent("epa", MACRO, "polyunsaturated_fat"),
-    "42263": Constituent("dha", MACRO, "polyunsaturated_fat"),
+    "40302": Constituent("saturated_fat", FATTY, "fat"),
+    "40303": Constituent("monounsaturated_fat", FATTY, "fat"),
+    "40304": Constituent("polyunsaturated_fat", FATTY, "fat"),
+    "40400": Constituent("butyric_acid", FATTY, "saturated_fat"),
+    "40600": Constituent("caproic_acid", FATTY, "saturated_fat"),
+    "40800": Constituent("caprylic_acid", FATTY, "saturated_fat"),
+    "41000": Constituent("capric_acid", FATTY, "saturated_fat"),
+    "41200": Constituent("lauric_acid", FATTY, "saturated_fat"),
+    "41400": Constituent("myristic_acid", FATTY, "saturated_fat"),
+    "41600": Constituent("palmitic_acid", FATTY, "saturated_fat"),
+    "41800": Constituent("stearic_acid", FATTY, "saturated_fat"),
+    "41819": Constituent("oleic_acid", FATTY, "monounsaturated_fat"),
+    "41826": Constituent("linoleic_acid", FATTY, "polyunsaturated_fat"),
+    "41833": Constituent("alpha_linolenic_acid", FATTY, "polyunsaturated_fat"),
+    "42046": Constituent("arachidonic_acid", FATTY, "polyunsaturated_fat"),
+    "42053": Constituent("epa", FATTY, "polyunsaturated_fat"),
+    "42263": Constituent("dha", FATTY, "polyunsaturated_fat"),
     # Vitamins. 51104 is vitamin A in retinol equivalents, 56702 folates in
     # dietary folate equivalents: CIQUAL 2025 gives them directly.
     "51104": Constituent("vitamin_a", VITAMIN),
@@ -111,6 +113,44 @@ CONSTITUENTS: dict[str, Constituent] = {
     "60000": Constituent("alcohol", OTHER),
     "65000": Constituent("organic_acids", OTHER),
     "75100": Constituent("cholesterol", OTHER),
+}
+
+# Nutrient code -> (English, French) name, where CIQUAL's own is a code and a
+# name ("AG 18:3 c9,c12,c15 (n-3), alpha-linolénique"). The omega family is said
+# for the acids whose name does not tell it, but not for EPA and DHA, which are
+# known as omega-3 by their initials.
+NAMES: dict[str, tuple[str, str]] = {
+    "monounsaturated_fat": (
+        "Monounsaturated fatty acids",
+        "Acides gras monoinsaturés",
+    ),
+    "polyunsaturated_fat": (
+        "Polyunsaturated fatty acids",
+        "Acides gras polyinsaturés",
+    ),
+    "butyric_acid": ("Butyric acid (C4:0)", "Acide butyrique (C4:0)"),
+    "caproic_acid": ("Caproic acid (C6:0)", "Acide caproïque (C6:0)"),
+    "caprylic_acid": ("Caprylic acid (C8:0)", "Acide caprylique (C8:0)"),
+    "capric_acid": ("Capric acid (C10:0)", "Acide caprique (C10:0)"),
+    "lauric_acid": ("Lauric acid (C12:0)", "Acide laurique (C12:0)"),
+    "myristic_acid": ("Myristic acid (C14:0)", "Acide myristique (C14:0)"),
+    "palmitic_acid": ("Palmitic acid (C16:0)", "Acide palmitique (C16:0)"),
+    "stearic_acid": ("Stearic acid (C18:0)", "Acide stéarique (C18:0)"),
+    "oleic_acid": ("Oleic acid (omega-9)", "Acide oléique (oméga-9)"),
+    "linoleic_acid": (
+        "Linoleic acid (LA, omega-6)",
+        "Acide linoléique (LA, oméga-6)",
+    ),
+    "alpha_linolenic_acid": (
+        "Alpha-linolenic acid (ALA, omega-3)",
+        "Acide alpha-linolénique (ALA, oméga-3)",
+    ),
+    "arachidonic_acid": (
+        "Arachidonic acid (AA, omega-6)",
+        "Acide arachidonique (AA, oméga-6)",
+    ),
+    "epa": ("EPA", "EPA"),
+    "dha": ("DHA", "DHA"),
 }
 
 # Constituents left out on purpose, and why.

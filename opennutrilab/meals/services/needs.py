@@ -20,6 +20,7 @@ Only adults are covered, neither pregnant nor breastfeeding, as the profile is.
 
 import json
 from collections.abc import Iterable
+from collections.abc import Mapping
 from decimal import Decimal
 from functools import cache
 from pathlib import Path
@@ -27,6 +28,7 @@ from typing import Any
 from typing import NamedTuple
 
 from django.db.models import TextChoices
+from django.utils.translation import get_language
 from django.utils.translation import gettext_lazy as _
 
 from opennutrilab.meals.models import Profile
@@ -36,6 +38,7 @@ from opennutrilab.meals.services.energy import KJ_PER_KCAL
 from opennutrilab.meals.services.energy import Person
 from opennutrilab.meals.services.energy import basal_metabolisms
 from opennutrilab.meals.services.energy import energy_need
+from opennutrilab.products.models import Nutrient
 
 REFERENCES_FILE = Path(__file__).parents[1] / "data" / "anses_references.json"
 ADULT_AGE = 18
@@ -77,6 +80,9 @@ class Need(NamedTuple):
     low_source: str
     high_source: str
     energy_share: EnergyShare | None = None
+    # What a sum is called, when its nutrients' names joined would be too long.
+    name_en: str = ""
+    name_fr: str = ""
 
 
 class Ratio(NamedTuple):
@@ -235,7 +241,15 @@ def _need(entry: dict[str, Any], kcal: Decimal) -> Need:
         low_source=entry["source"] if low is not None else "",
         high_source=entry["source"] if high is not None else "",
         energy_share=share,
+        name_en=entry.get("name_en", ""),
+        name_fr=entry.get("name_fr", ""),
     )
+
+
+def need_name(need: Need, catalogue: Mapping[str, Nutrient]) -> str:
+    """What a need is called: its own name if it has one, else its nutrients' joined."""
+    given = need.name_fr if (get_language() or "").startswith("fr") else need.name_en
+    return given or " + ".join(catalogue[code].name for code in need.nutrients)
 
 
 def _merged(needs: Iterable[Need]) -> list[Need]:

@@ -61,6 +61,7 @@ class Nutrient(models.Model):
     class Group(models.TextChoices):
         ENERGY = "energy", _("Energy")
         MACRONUTRIENT = "macronutrient", _("Macronutrient")
+        FATTY_ACID = "fatty_acid", _("Fatty acid")
         MINERAL = "mineral", _("Mineral")
         VITAMIN = "vitamin", _("Vitamin")
         OTHER = "other", _("Other")
