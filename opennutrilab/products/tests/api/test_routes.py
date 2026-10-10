@@ -11,6 +11,7 @@ from opennutrilab.products.api.schemas.outbound import ProductOut
 from opennutrilab.products.models import Additive
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import InventoryItem
+from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ReferenceIngredient
@@ -283,11 +284,13 @@ def test_an_ingredient_is_served_as_the_one_it_is(api_client: Client):
         "reference",
         "preparation",
         "additive",
+        "nutrient",
         "sub_ingredients",
     }
-    # It lists its parts: a preparation, and the other two are null.
+    # It lists its parts: a preparation, and the other three are null.
     assert dates["reference"] is None
     assert dates["additive"] is None
+    assert dates["nutrient"] is None
     assert dates["percentage"] == "7.00"
     assert dates["preparation"] == {
         "id": Preparation.objects.get(name_en="Dates").pk,
@@ -554,12 +557,14 @@ def test_the_estimate_is_served_with_its_parts(api_client: Client):
         "reference",
         "preparation",
         "additive",
+        "nutrient",
         "declared",
         "estimated",
         "sub_ingredients",
     }
     assert dates["reference"] is None
     assert dates["additive"] is None
+    assert dates["nutrient"] is None
     # The label's figure and the estimate are two fields.
     assert dates["declared"] == "7.00"
     assert dates["estimated"] == {"low": "6.50", "point": "7.00", "high": "7.50"}
@@ -628,6 +633,28 @@ def test_an_ingredient_that_is_an_additive_is_served_as_one(
         "function": "acid",
         "status": "curated",
     }
+
+
+@pytest.mark.django_db
+def test_an_ingredient_that_is_a_nutrient_is_served_as_one(
+    api_client: Client, products_two: tuple[Product, Product]
+):
+    product, _ = products_two
+    vitamin_d = Nutrient.objects.create(
+        code="vitamin_d",
+        name_en="Vitamin D",
+        name_fr="Vitamine D",
+        unit=Nutrient.Unit.MICROGRAM,
+        group=Nutrient.Group.VITAMIN,
+    )
+    Ingredient.objects.create(product=product, nutrient=vitamin_d)
+
+    [ingredient] = api_client.get(f"{API}{product.barcode}").json()["ingredients"]
+
+    assert ingredient["reference"] is None
+    assert ingredient["preparation"] is None
+    assert ingredient["additive"] is None
+    assert ingredient["nutrient"] == {"code": "vitamin_d", "name": "Vitamin D"}
 
 
 # -----------------------

@@ -258,9 +258,10 @@ def _replace_ingredients(product: Product, items: list[IngredientInput]) -> None
     Replace the product's ingredient tree with `items`.
 
     Each ingredient is the reference ingredient, the preparation or the additive
-    that has its name, a reference being created when none has, and an additive
-    for an E number (see reference_services). One whose parts the label lists is
-    a preparation, whichever it was found to be (see preparation_services).
+    that has its name, or the nutrient a vitamin's name is, a reference being
+    created when none is, and an additive for an E number (see
+    reference_services). One whose parts the label lists is a preparation,
+    whichever it was found to be (see preparation_services).
     Nothing of the old tree needs carrying over: the name finds the same one
     again. A preparation takes the parts the label lists for it as its children,
     as any ingredient does.
@@ -296,6 +297,8 @@ def _create_ingredients(
             if isinstance(found, Preparation)
             else "additive"
             if isinstance(found, Additive)
+            else "nutrient"
+            if isinstance(found, Nutrient)
             else "reference"
         )
         # update_or_create rather than create: an ingredient can be listed

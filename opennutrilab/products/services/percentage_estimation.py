@@ -56,11 +56,16 @@ An additive with no composition does not leave the nutrition unused. What it
 brings is unknown, anything from nothing to 100 g of each nutrient per 100 g of
 itself (see _unknown), which only widens what the ingredients may add up to; it
 is not counted as zero. The nutrition of the label then still narrows the other
-ingredients, which an additive in a pinch should not keep from doing.
+ingredients, which an additive in a pinch should not keep from doing. So does a
+vitamin: an ingredient that is a nutrient (Ingredient.nutrient), "vitamine B6",
+is added to a food in a pinch too, and no one knows how much it is diluted in.
+Its own nutrient is not given by it either, so that nutrient is only what the other
+ingredients bring, at least (see nutrient_estimation): the label's figure for it,
+which can be more, then agrees.
 
 When the rules cannot all hold, nothing is guessed:
-- an ingredient with no composition, other than an additive, leaves the nutrition
-  unused, and says which;
+- an ingredient with no composition, other than an additive or a nutrient, leaves
+  the nutrition unused, and says which;
 - a label that the compositions cannot give leaves it unused, and says which
   nutrients are off. It is the label that is not trusted here and the composition
   that may be wrong, and the warning does not say which;
@@ -291,7 +296,7 @@ def load(product: Product) -> Loaded:
     """Read a product's ingredients, their compositions and its label."""
     ingredients = list(
         product.ingredients.select_related(
-            "reference", "preparation", "additive"
+            "reference", "preparation", "additive", "nutrient"
         ).prefetch_related(
             "preparation__source_foods",
             "preparation__components",
@@ -338,7 +343,7 @@ def load(product: Product) -> Loaded:
             name=i.item.name,
             declared=i.percentage,
             composition=_macronutrients(composition, catalogue)
-            or (_unknown() if i.additive is not None else None),
+            or (_unknown() if _is_no_food(i) else None),
         )
         for i, composition in zip(ingredients, full, strict=True)
     ]
@@ -526,6 +531,14 @@ def _macronutrients(
         parent = catalogue[code].parent_id if code in catalogue else None
         ranges[code] = (0.0, ranges[parent][1] if parent in ranges else _HUNDRED)
     return ranges
+
+
+def _is_no_food(ingredient: Ingredient) -> bool:
+    """
+    Whether an ingredient is an additive or a nutrient (a vitamin): what is added to
+    a food in a pinch, and has no composition per 100 g to look for.
+    """
+    return ingredient.additive is not None or ingredient.nutrient is not None
 
 
 def _unknown() -> dict[str, Range]:

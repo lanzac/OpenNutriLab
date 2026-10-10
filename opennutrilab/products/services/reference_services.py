@@ -1,6 +1,6 @@
 """
-Finding the reference ingredient, the preparation or the additive an ingredient
-is, and creating one when there is none.
+Finding the reference ingredient, the preparation, the additive or the nutrient
+an ingredient is, and creating a reference when there is none.
 
 What a client sends for an ingredient is an IngredientInput: a name, a
 percentage, and what OpenFoodFacts said about it. The English name is the
@@ -8,8 +8,10 @@ reference ingredient's key, but nothing is refused for lacking it: a name is
 looked up as it is, in either language, in the references, the preparations
 and the additives (a name is one of them, never two), and if none has it, through
 its English correspondence, as OpenFoodFacts' taxonomy gives it ("flocons
-d'avoine" is "oat flakes"). When there is still none, a reference is created, to
-review, so that every ingredient is one of the three. What the text says of an
+d'avoine" is "oat flakes"). A vitamin's name ("vitamine B6", see vitamins) is the
+nutrient of the catalogue, found when no reference, preparation or additive has
+it: nothing is made for it. When there is still none, a reference is created, to
+review, so that every ingredient is one of the four. What the text says of an
 ingredient is what makes it more than a reference: an E number ("E330", "E 330")
 is an additive, found by its code (and one no additive has gets one created, to
 review), and a list of parts makes it a preparation, which is done after this
@@ -42,10 +44,12 @@ from django.utils.translation import get_language
 from opennutrilab.products.api.schemas.inbound import IngredientInput
 from opennutrilab.products.models import Additive
 from opennutrilab.products.models import IngredientTaxon
+from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import ReferenceIngredient
 from opennutrilab.products.models import SourceFood
 from opennutrilab.products.services.label_parser import e_number
+from opennutrilab.products.services.vitamins import vitamin_nutrient
 
 # What the Source of a CIQUAL table is named after (ciqual-2025, ...).
 CIQUAL_SOURCE_PREFIX = "ciqual"
@@ -55,7 +59,7 @@ SUGGESTION_LIMIT = 20
 SUGGESTION_MIN_WORD = 3
 
 # What an ingredient of a product is.
-type Item = ReferenceIngredient | Preparation | Additive
+type Item = ReferenceIngredient | Preparation | Additive | Nutrient
 
 
 class Correspondence(NamedTuple):
@@ -215,11 +219,12 @@ def existing_references(
     items: Iterable[IngredientInput],
 ) -> dict[str, Item]:
     """
-    The reference, preparation or additive of each ingredient of these trees that
-    has one, by name_key.
+    The reference, preparation, additive or nutrient of each ingredient of these
+    trees that has one, by name_key.
 
     An E number is looked up by its code first. Any name is looked up as it is,
-    then through its English correspondence. Nothing is created.
+    then through its English correspondence, and a vitamin's name is the nutrient
+    it is when nothing else has it. Nothing is created.
     """
     flat = list(walk_ingredients(items))
     found: dict[str, Item] = dict(_by_code(flat))
@@ -236,6 +241,9 @@ def existing_references(
             if name_key(name) in candidates:
                 found[key] = candidates[name_key(name)]
                 break
+    # A vitamin is the nutrient it is: nothing is made for it, whatever the
+    # taxonomy says of it.
+    found |= _nutrients_named(i for i in flat if name_key(i.name) not in found)
     return found
 
 
@@ -319,6 +327,25 @@ def resolve_references_and_new(
         references[key] = made
     _fill_functions(flat, references)
     return references, new_references
+
+
+def _nutrients_named(items: Iterable[IngredientInput]) -> dict[str, Nutrient]:
+    """
+    The nutrients of the catalogue these ingredients are, by name_key of their
+    names: "vitamine B6" is `vitamin_b6` (see vitamins). An ingredient the label
+    gave an E number or a class is an additive, whatever its name.
+    """
+    codes = {
+        name_key(item.name): code
+        for item in items
+        if not _code_of(item)
+        and not _function_of(item)
+        and (code := vitamin_nutrient(item.name))
+    }
+    if not codes:
+        return {}
+    catalogue = Nutrient.objects.in_bulk(set(codes.values()))
+    return {name: catalogue[code] for name, code in codes.items() if code in catalogue}
 
 
 def _fill_functions(

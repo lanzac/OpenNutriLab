@@ -8,8 +8,8 @@ Products, their ingredients, and the nutrient data behind them.
 - ProductEstimate and EstimatedNutrient: a product's estimate as last worked
   out, kept for what reads many products at once.
 - Ingredient: a product's ingredient tree, as its label lists it. Each one is
-  a reference ingredient, a preparation or an additive, and has no name of its
-  own.
+  a reference ingredient, a preparation, an additive or a nutrient of the
+  catalogue (a vitamin), and has no name of its own.
 - IngredientTaxon: OpenFoodFacts' ingredient taxonomy, a dictionary of the
   English and French names of what a label names, with a CIQUAL hint. It gives
   a wording its English name, and proposes foods. Nothing links to it.
@@ -26,8 +26,10 @@ Products, their ingredients, and the nutrient data behind them.
   Product ingredients link to it as well.
 """
 
+import operator
 from collections.abc import Iterable
 from decimal import Decimal
+from functools import reduce
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import override
@@ -380,16 +382,22 @@ class EstimatedNutrient(models.Model):
         return f"{self.estimate.product}: {self.amount} {self.nutrient}"
 
 
+# What an ingredient can be: the columns of Ingredient, of which exactly one is set.
+_KINDS = ("reference", "preparation", "additive", "nutrient")
+
+
 class Ingredient(models.Model):
     """
-    An ingredient of a product, which is a reference ingredient, a preparation or
-    an additive.
+    An ingredient of a product, which is a reference ingredient, a preparation, an
+    additive or a nutrient.
 
     It has no name and keeps nothing OpenFoodFacts says about it: the name is
     that of the one it is, and what OFF gave only served to find or create it
     (see services.reference_services). A preparation is what the label says is
     made of several ingredients: it has the ingredients the label lists in it as
-    its children.
+    its children. A nutrient is a vitamin the label lists ("vitamine B6"): no food,
+    nothing to curate, the nutrient of the catalogue itself, added to the product in
+    a quantity the label does not give (see services.vitamins).
     """
 
     id: int
@@ -398,6 +406,7 @@ class Ingredient(models.Model):
     reference_id: int | None
     preparation_id: int | None
     additive_id: int | None
+    nutrient_id: str | None
 
     product = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="ingredients"
@@ -411,7 +420,7 @@ class Ingredient(models.Model):
         on_delete=models.CASCADE,
         related_name="sub_ingredients",
     )
-    # One of the three is set, and protected: what is in use cannot be deleted. An
+    # One of the four is set, and protected: what is in use cannot be deleted. An
     # ingredient nothing has the name of gets a reference created, to review, or a
     # preparation when the label lists its parts.
     reference: "models.ForeignKey[ReferenceIngredient | None]" = models.ForeignKey(
@@ -430,6 +439,13 @@ class Ingredient(models.Model):
     )
     additive: "models.ForeignKey[Additive | None]" = models.ForeignKey(
         "Additive",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="usages",
+    )
+    nutrient: "models.ForeignKey[Nutrient | None]" = models.ForeignKey(
+        Nutrient,
         null=True,
         blank=True,
         on_delete=models.PROTECT,
@@ -488,29 +504,28 @@ class Ingredient(models.Model):
                 condition=models.Q(parent__isnull=True),
                 name="unique_root_additive_per_product",
             ),
+            models.UniqueConstraint(
+                fields=["product", "parent", "nutrient"],
+                name="unique_nutrient_per_product_parent",
+            ),
+            models.UniqueConstraint(
+                fields=["product", "nutrient"],
+                condition=models.Q(parent__isnull=True),
+                name="unique_root_nutrient_per_product",
+            ),
             # django-stubs still types `check`, which Django 5.1 renamed.
             models.CheckConstraint(  # pyright: ignore[reportCallIssue]
-                condition=(  # pyright: ignore[reportCallIssue]
-                    models.Q(
-                        reference__isnull=False,
-                        preparation__isnull=True,
-                        additive__isnull=True,
-                    )
-                    | models.Q(
-                        reference__isnull=True,
-                        preparation__isnull=False,
-                        additive__isnull=True,
-                    )
-                    | models.Q(
-                        reference__isnull=True,
-                        preparation__isnull=True,
-                        additive__isnull=False,
-                    )
+                condition=reduce(  # pyright: ignore[reportCallIssue]
+                    operator.or_,
+                    (
+                        models.Q(**{f"{k}__isnull": k != kind for k in _KINDS})
+                        for kind in _KINDS
+                    ),
                 ),
-                name="ingredient_is_a_reference_a_preparation_or_an_additive",
+                name="ingredient_is_one_kind",
                 violation_error_message=_(
-                    "An ingredient is a reference, a preparation or an additive, "
-                    "and only one of them."
+                    "An ingredient is a reference, a preparation, an additive or a "
+                    "nutrient, and only one of them."
                 ),
             ),
         ]
@@ -520,9 +535,9 @@ class Ingredient(models.Model):
         return str(self.item)
 
     @property
-    def item(self) -> "ReferenceIngredient | Preparation | Additive":
-        """The reference, the preparation or the additive this ingredient is."""
-        item = self.reference or self.preparation or self.additive
+    def item(self) -> "ReferenceIngredient | Preparation | Additive | Nutrient":
+        """The reference, the preparation, the additive or the nutrient it is."""
+        item = self.reference or self.preparation or self.additive or self.nutrient
         assert item is not None  # The constraint says one of them is set.
         return item
 

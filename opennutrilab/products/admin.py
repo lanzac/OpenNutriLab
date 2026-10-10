@@ -81,6 +81,7 @@ class NutrientAdmin(admin.ModelAdmin[Nutrient]):
         "off_key",
     )
     list_filter = ("group", "on_label")
+    search_fields = ("code", "name_fr", "name_en")
     inlines = (NutrientComponentInline,)
 
 
@@ -119,11 +120,20 @@ class IngredientAdmin(admin.ModelAdmin[Ingredient]):
         "additive__name_fr",
         "additive__name_en",
         "additive__code",
+        "nutrient__code",
+        "nutrient__name_fr",
+        "nutrient__name_en",
         "product__name",
         "product__barcode",
     )
-    list_select_related = ("product", "reference", "preparation", "additive")
-    autocomplete_fields = ("reference", "preparation", "additive")
+    list_select_related = (
+        "product",
+        "reference",
+        "preparation",
+        "additive",
+        "nutrient",
+    )
+    autocomplete_fields = ("reference", "preparation", "additive", "nutrient")
     ordering = ("id",)
 
     @admin.display(description="Ingredient (hierarchical)")

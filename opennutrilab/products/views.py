@@ -549,14 +549,17 @@ def _ciqual_url(food_code: str, proxy_food_code: str) -> str | None:
 
 
 def _reference_ciqual(
-    reference: ReferenceIngredient | Preparation | Additive,
+    reference: ReferenceIngredient | Preparation | Additive | Nutrient,
 ) -> tuple[str, str | None]:
     """
     The CIQUAL codes of the foods a reference draws on, and where to check them.
 
     The sheet is linked only when there is one code: with several, a single
-    link would pass for the others. Needs source_foods__source prefetched.
+    link would pass for the others. Needs source_foods__source prefetched. A
+    nutrient draws on no food.
     """
+    if isinstance(reference, Nutrient):
+        return "", None
     codes = sorted(
         food.code
         for food in reference.source_foods.all()
@@ -582,8 +585,10 @@ def _row(
     }
 
 
-def _status_label(item: ReferenceIngredient | Preparation | Additive) -> str:
+def _status_label(item: ReferenceIngredient | Preparation | Additive | Nutrient) -> str:
     """Whether it is curated, and what it is when it is not a reference."""
+    if isinstance(item, Nutrient):
+        return str(_("Nutrient"))
     label = str(ReferenceIngredient.Status(item.status).label)
     if isinstance(item, Preparation):
         return _("Preparation, %(status)s") % {"status": label.lower()}
@@ -653,7 +658,7 @@ def ingredient_rows_from_db(product: Product) -> list[dict[str, Any]]:
     """The stored ingredient tree, in a few queries however many there are."""
     ingredients = list(
         Ingredient.objects.filter(product=product)
-        .select_related("reference", "preparation", "additive")
+        .select_related("reference", "preparation", "additive", "nutrient")
         .prefetch_related(
             "reference__source_foods__source",
             "preparation__source_foods__source",

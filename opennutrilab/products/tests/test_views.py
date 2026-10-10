@@ -1130,6 +1130,27 @@ def test_rows_from_inputs_show_off_ciqual_codes_marking_proxies():
 
 
 @pytest.mark.django_db
+def test_rows_from_inputs_show_a_vitamin_as_the_nutrient_it_is_and_not_as_new():
+    """The page that previews a product says what saving it will make."""
+    Nutrient.objects.create(
+        code="vitamin_d",
+        name_en="Vitamin D",
+        name_fr="Vitamine D",
+        unit=Nutrient.Unit.MICROGRAM,
+        group=Nutrient.Group.VITAMIN,
+    )
+    items = [IngredientInput(name="Farine"), IngredientInput(name="vitamine D")]
+
+    with translation.override("fr"):
+        rows = ingredient_rows_from_inputs(items)
+
+    assert [(r["name"], r["reference"], r["ciqual"]) for r in rows] == [
+        ("Farine", "Nouvelle", ""),
+        ("Vitamine D", "Nutriment", ""),
+    ]
+
+
+@pytest.mark.django_db
 def test_rows_link_ciqual_codes_to_the_ciqual_site():
     items = [
         IngredientInput(name="Flocons d'avoine", off_ciqual_food_code="9311"),
@@ -1446,6 +1467,30 @@ def test_rows_from_db_show_an_additive_by_its_name_and_marked_as_one(ciqual: Sou
         "lécithine de soja",
         "Additif, à relire",
         "42200",
+    )
+
+
+@pytest.mark.django_db
+def test_rows_from_db_show_a_nutrient_by_its_name_and_marked_as_one():
+    vitamin_d = Nutrient.objects.create(
+        code="vitamin_d",
+        name_en="Vitamin D",
+        name_fr="Vitamine D",
+        unit=Nutrient.Unit.MICROGRAM,
+        group=Nutrient.Group.VITAMIN,
+    )
+    product = Product.objects.create(barcode=NUTELLA, name="Milk")
+    Ingredient.objects.create(product=product, nutrient=vitamin_d)
+
+    with translation.override("fr"):
+        rows = ingredient_rows_from_db(product)
+
+    (row,) = rows
+    assert (row["name"], row["reference"], row["ciqual"], row["ciqual_url"]) == (
+        "Vitamine D",
+        "Nutriment",
+        "",
+        None,
     )
 
 

@@ -9,6 +9,7 @@ from opennutrilab.products.api.schemas.outbound import ConfidenceOut
 from opennutrilab.products.api.schemas.outbound import DeclaredOut
 from opennutrilab.products.api.schemas.outbound import EstimateOut
 from opennutrilab.products.api.schemas.outbound import IngredientEstimateOut
+from opennutrilab.products.api.schemas.outbound import IngredientNutrientOut
 from opennutrilab.products.api.schemas.outbound import NutrientEstimateOut
 from opennutrilab.products.api.schemas.outbound import PreparationOut
 from opennutrilab.products.api.schemas.outbound import RangeOut
@@ -91,7 +92,7 @@ def test_the_ingredients_are_one_list_in_the_order_of_the_label_with_their_depth
     ]
 
 
-def test_an_ingredient_is_named_whether_it_is_a_food_a_preparation_or_an_additive():
+def test_an_ingredient_is_named_whatever_kind_it_is():
     food = ingredient("sugar")
     preparation = IngredientEstimateOut(
         preparation=PreparationOut.model_construct(
@@ -107,14 +108,14 @@ def test_an_ingredient_is_named_whether_it_is_a_food_a_preparation_or_an_additiv
             status="curated",
         )
     )
+    nutrient = IngredientEstimateOut(
+        nutrient=IngredientNutrientOut.model_construct(code="vitamin_d", name="Vit D")
+    )
     nothing = IngredientEstimateOut()
 
-    assert [ingredient_name(i) for i in (food, preparation, additive, nothing)] == [
-        "sugar",
-        "praline",
-        "lecithins",
-        "",
-    ]
+    assert [
+        ingredient_name(i) for i in (food, preparation, additive, nutrient, nothing)
+    ] == ["sugar", "praline", "lecithins", "Vit D", ""]
 
 
 def test_the_tree_is_walked_depth_first():

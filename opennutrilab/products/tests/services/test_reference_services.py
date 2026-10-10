@@ -7,11 +7,13 @@ from django.utils import translation
 from opennutrilab.products.api.schemas.inbound import IngredientInput
 from opennutrilab.products.models import Additive
 from opennutrilab.products.models import IngredientTaxon
+from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import ReferenceIngredient
 from opennutrilab.products.models import Source
 from opennutrilab.products.models import SourceFood
 from opennutrilab.products.services import reference_services
+from opennutrilab.products.services.reference_services import Item
 from opennutrilab.products.services.reference_services import ReferenceNameError
 from opennutrilab.products.services.reference_services import (
     create_reference_from_foods,
@@ -25,6 +27,12 @@ from opennutrilab.products.services.reference_services import suggest_source_foo
 
 def ingredient(name: str, **fields: Any) -> IngredientInput:
     return IngredientInput.model_validate({"name": name, **fields})
+
+
+def the_reference(found: Item) -> ReferenceIngredient:
+    """What was created for a name nothing had: a reference."""
+    assert isinstance(found, ReferenceIngredient)
+    return found
 
 
 @pytest.fixture
@@ -112,7 +120,7 @@ def test_an_existing_reference_is_used_not_created_again():
 def test_a_missing_reference_is_created_to_review_under_the_name_given():
     references = resolve_references([ingredient("oat flakes")])
 
-    created = references["oat flakes"]
+    created = the_reference(references["oat flakes"])
     assert (created.name_en, created.name_fr) == ("oat flakes", "")
     assert created.status == ReferenceIngredient.Status.TO_REVIEW
     assert not created.source_foods.exists()
@@ -136,7 +144,9 @@ def test_a_preparation_is_used_and_no_reference_is_created_under_its_name():
         "tomato",
     }
     assert isinstance(resolved["milk"], ReferenceIngredient)
-    assert resolved["tomato"].status == ReferenceIngredient.Status.TO_REVIEW
+    assert (
+        the_reference(resolved["tomato"]).status == ReferenceIngredient.Status.TO_REVIEW
+    )
     assert Preparation.objects.get() == mozzarella
 
 
@@ -179,9 +189,11 @@ def test_a_created_reference_takes_the_taxonomys_french_name():
         off_id="en:oat-flakes", name_en="oat flakes", name_fr="flocons d'avoine"
     )
 
-    created = resolve_references([ingredient("oat flakes", off_id="en:oat-flakes")])[
-        "oat flakes"
-    ]
+    created = the_reference(
+        resolve_references([ingredient("oat flakes", off_id="en:oat-flakes")])[
+            "oat flakes"
+        ]
+    )
 
     assert created.name_fr == "flocons d'avoine"
     assert "en:oat-flakes" in created.description
@@ -214,9 +226,11 @@ def test_an_id_the_taxonomy_does_not_know_gives_no_french_name():
 
 @pytest.mark.django_db
 def test_an_exact_ciqual_code_of_an_imported_food_links_it(oat_flakes: SourceFood):
-    created = resolve_references(
-        [ingredient("oat flakes", off_ciqual_food_code="9311")]
-    )["oat flakes"]
+    created = the_reference(
+        resolve_references([ingredient("oat flakes", off_ciqual_food_code="9311")])[
+            "oat flakes"
+        ]
+    )
 
     assert list(created.source_foods.all()) == [oat_flakes]
     assert created.status == ReferenceIngredient.Status.TO_REVIEW
@@ -225,9 +239,11 @@ def test_an_exact_ciqual_code_of_an_imported_food_links_it(oat_flakes: SourceFoo
 
 @pytest.mark.django_db
 def test_a_ciqual_code_that_was_not_imported_links_nothing_and_is_noted():
-    created = resolve_references(
-        [ingredient("oat flakes", off_ciqual_food_code="9311")]
-    )["oat flakes"]
+    created = the_reference(
+        resolve_references([ingredient("oat flakes", off_ciqual_food_code="9311")])[
+            "oat flakes"
+        ]
+    )
 
     assert not created.source_foods.exists()
     assert "9311 (not among the imported foods)" in created.description
@@ -235,9 +251,11 @@ def test_a_ciqual_code_that_was_not_imported_links_nothing_and_is_noted():
 
 @pytest.mark.django_db
 def test_a_proxy_code_never_links_a_food_and_is_noted(oat_flakes: SourceFood):
-    created = resolve_references(
-        [ingredient("oat flakes", off_ciqual_proxy_food_code="9311")]
-    )["oat flakes"]
+    created = the_reference(
+        resolve_references(
+            [ingredient("oat flakes", off_ciqual_proxy_food_code="9311")]
+        )["oat flakes"]
+    )
 
     assert not created.source_foods.exists()
     assert "proxy CIQUAL code: 9311 (not linked)" in created.description
@@ -248,9 +266,11 @@ def test_only_a_ciqual_food_is_linked_by_a_ciqual_code(oat_flakes: SourceFood):
     other = Source.objects.create(code="manual", name="Saisie manuelle")
     SourceFood.objects.create(source=other, code="1234", name_fr="Autre")
 
-    created = resolve_references(
-        [ingredient("something", off_ciqual_food_code="1234")]
-    )["something"]
+    created = the_reference(
+        resolve_references([ingredient("something", off_ciqual_food_code="1234")])[
+            "something"
+        ]
+    )
 
     assert not created.source_foods.exists()
 
@@ -831,3 +851,102 @@ def test_looking_up_an_additive_by_its_code_next_to_a_name_creates_nothing():
 
     assert found == {"acide citrique": citric}
     assert Additive.objects.count() == 1
+
+
+# ----------------------------------------------------------------------------
+# A vitamin is the nutrient it is
+# ----------------------------------------------------------------------------
+@pytest.fixture
+def vitamins(db: None) -> dict[str, Nutrient]:
+    return {
+        code: Nutrient.objects.create(
+            code=code,
+            name_en=name,
+            name_fr=name.replace("Vitamin", "Vitamine"),
+            unit=Nutrient.Unit.MILLIGRAM,
+            group=Nutrient.Group.VITAMIN,
+        )
+        for code, name in (
+            ("vitamin_b6", "Vitamin B6"),
+            ("vitamin_d", "Vitamin D"),
+            ("vitamin_c", "Vitamin C"),
+        )
+    }
+
+
+def test_a_vitamin_is_the_nutrient_it_is_and_no_reference_is_made(
+    vitamins: dict[str, Nutrient],
+):
+    references = resolve_references(
+        [
+            ingredient("vitamine B6"),
+            ingredient("Vitamin D"),
+            ingredient("chlorhydrate de pyridoxine"),
+        ]
+    )
+
+    assert references == {
+        "vitamine b6": vitamins["vitamin_b6"],
+        "vitamin d": vitamins["vitamin_d"],
+        "chlorhydrate de pyridoxine": vitamins["vitamin_b6"],
+    }
+    assert not ReferenceIngredient.objects.exists()
+
+
+def test_a_vitamin_is_found_through_the_sub_ingredients_too(
+    vitamins: dict[str, Nutrient],
+):
+    tree = [ingredient("lait enrichi", sub_ingredients=[ingredient("vitamine D")])]
+
+    references = resolve_references(tree)
+
+    assert references["vitamine d"] == vitamins["vitamin_d"]
+    assert isinstance(references["lait enrichi"], ReferenceIngredient)
+
+
+def test_a_reference_that_has_the_name_of_a_vitamin_is_used_as_it_is(
+    vitamins: dict[str, Nutrient],
+):
+    mine = ReferenceIngredient.objects.create(name_fr="vitamine B6", name_en="vit B6")
+
+    references = resolve_references([ingredient("vitamine B6")])
+
+    assert references == {"vitamine b6": mine}
+
+
+def test_an_e_number_or_a_class_makes_an_additive_of_a_vitamin_name(
+    vitamins: dict[str, Nutrient],
+):
+    references = resolve_references(
+        [
+            ingredient("vitamine C", code="E300"),
+            ingredient("vitamine B6", function="antioxidant"),
+        ]
+    )
+
+    assert all(isinstance(found, Additive) for found in references.values())
+    assert not ReferenceIngredient.objects.exists()
+
+
+def test_a_vitamin_whose_nutrient_the_catalogue_lacks_makes_a_reference(db: None):
+    references = resolve_references([ingredient("vitamine B6")])
+
+    assert isinstance(references["vitamine b6"], ReferenceIngredient)
+
+
+def test_a_name_that_is_no_vitamin_makes_a_reference_as_before(
+    vitamins: dict[str, Nutrient],
+):
+    references = resolve_references([ingredient("farine"), ingredient("fer")])
+
+    assert all(isinstance(found, ReferenceIngredient) for found in references.values())
+    assert len(references) == 2  # noqa: PLR2004
+
+
+def test_looking_up_a_vitamin_finds_its_nutrient_and_creates_nothing(
+    vitamins: dict[str, Nutrient],
+):
+    found = existing_references([ingredient("vitamine B6"), ingredient("farine")])
+
+    assert found == {"vitamine b6": vitamins["vitamin_b6"]}
+    assert not ReferenceIngredient.objects.exists()

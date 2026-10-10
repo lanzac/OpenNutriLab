@@ -87,7 +87,7 @@ class Measure(NamedTuple):
 
 
 def reference_composition(
-    item: ReferenceIngredient | Preparation | Additive,
+    item: ReferenceIngredient | Preparation | Additive | Nutrient,
     derived: Iterable[Nutrient] | None = None,
     forms: Collection[Form] | None = None,
 ) -> dict[str, Estimate]:
@@ -95,14 +95,18 @@ def reference_composition(
     What the foods of a reference, of a preparation or of an additive say
     together, by nutrient code.
 
-    One with no source food has no composition. `derived` is derived_nutrients()
-    when not given; pass it when computing many, to read the catalogue once.
+    One with no source food has no composition, and a nutrient (a vitamin the label
+    lists) has none: it is what is added, in a quantity no food tells. `derived`
+    is derived_nutrients() when not given; pass it when computing many, to read the
+    catalogue once.
 
     `forms` limits a reference to its foods in those forms, when it has some: an
     ingredient the label says went into a cooking is the raw one, not the cooked.
     A reference with none in those forms keeps all of its foods, as it would be
     left with nothing otherwise.
     """
+    if isinstance(item, Nutrient):
+        return {}
     drawn_on = (
         {"food__reference_ingredients": item}
         if isinstance(item, ReferenceIngredient)

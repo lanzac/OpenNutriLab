@@ -746,6 +746,63 @@ def test_an_additive_with_a_figure_for_no_macronutrient_is_unknown_for_them(
     assert result.warnings == []
 
 
+# ----------------------------------------------------------------------------
+# A vitamin is no food: it is a nutrient added, as an additive is
+# ----------------------------------------------------------------------------
+def vitamin(product: Product, code: str = "vitamin_b6") -> Ingredient:
+    """A vitamin the label lists: the nutrient itself, with no food to draw on."""
+    return Ingredient.objects.create(
+        product=product, nutrient=Nutrient.objects.get(code=code)
+    )
+
+
+def test_a_vitamin_does_not_leave_the_nutrition_unused(source: Source):
+    """Unknown, not zero, as an additive with no composition is."""
+    product = product_with(proteins="10")
+    oats = add(product, reference(source, "1", proteins="20"))
+    sugar = add(product, reference(source, "2", proteins="0"))
+    b6 = vitamin(product)
+
+    result = estimate_percentages(product)
+
+    assert result.used_nutrition
+    assert result.warnings == []
+    assert_spans(
+        result,
+        {oats.id: (33.33, 53.85), sugar.id: (23.07, 50), b6.id: (0, 33.33)},
+    )
+
+
+def test_a_vitamin_is_unknown_not_zero(source: Source):
+    """The label has more protein than the oats give: something else brings it."""
+    product = product_with(proteins="30")
+    add(product, reference(source, "1", proteins="20"))
+    b6 = vitamin(product)
+
+    result = estimate_percentages(product)
+
+    assert result.used_nutrition
+    assert result.warnings == []
+    assert float(result.percentages[b6.id].high) > 0
+
+
+def test_a_reference_without_composition_is_still_named_next_to_a_vitamin(
+    source: Source,
+):
+    product = product_with(proteins="15")
+    add(product, reference(source, "1", proteins="20"))
+    add(
+        product,
+        ReferenceIngredient.objects.create(name_fr="fiche vide", name_en="empty"),
+    )
+    vitamin(product)
+
+    result = estimate_percentages(product)
+
+    assert [w.problem for w in result.warnings] == [Problem.NO_COMPOSITION]
+    assert result.warnings[0].detail == "empty"
+
+
 def test_a_reference_a_preparation_and_an_additive_with_one_id_are_not_confused(
     source: Source,
 ):

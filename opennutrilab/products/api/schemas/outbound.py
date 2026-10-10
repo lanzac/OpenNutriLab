@@ -9,6 +9,7 @@ from ninja import Schema
 from opennutrilab.products.models import Additive
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import InventoryItem
+from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductNutrient
@@ -48,6 +49,16 @@ class AdditiveOut(ModelSchema):
         fields: list[str] = ["id", "code", "function", "status"]
 
 
+class IngredientNutrientOut(ModelSchema):
+    """The nutrient an ingredient is (a vitamin), named in the language served."""
+
+    name: str
+
+    class Meta:
+        model = Nutrient
+        fields: list[str] = ["code"]
+
+
 # How many levels of sub-ingredients a product's tree is loaded with in one go.
 SUB_INGREDIENT_LEVELS = 3
 
@@ -55,10 +66,12 @@ SUB_INGREDIENT_LEVELS = 3
 class IngredientOut(Schema):
     # As declared on the label.
     percentage: Decimal | None = None
-    # One of the three: a true ingredient, what is made of several, or an additive.
+    # One of the four: a true ingredient, what is made of several, an additive, or a
+    # nutrient (a vitamin the label lists).
     reference: ReferenceOut | None = None
     preparation: PreparationOut | None = None
     additive: AdditiveOut | None = None
+    nutrient: IngredientNutrientOut | None = None
 
     # https://django-ninja.dev/guides/response/?h=self#self-referencing-schemes
     # Read from the related manager, with no resolver: below the first level
@@ -169,10 +182,11 @@ class NutrientEstimateOut(Schema):
 
 
 class IngredientEstimateOut(Schema):
-    # One of the three, as in IngredientOut.
+    # One of the four, as in IngredientOut.
     reference: ReferenceOut | None = None
     preparation: PreparationOut | None = None
     additive: AdditiveOut | None = None
+    nutrient: IngredientNutrientOut | None = None
     # As on the label: None when it gives none. Never estimated.
     declared: Decimal | None = None
     # The share of the whole product, a sub-ingredient's included. For a declared
@@ -345,14 +359,14 @@ class ProductOut(ModelSchema):
             Prefetch(
                 "__".join([path] * depth),
                 queryset=Ingredient.objects.select_related(
-                    "reference", "preparation", "additive"
+                    "reference", "preparation", "additive", "nutrient"
                 ),
             )
             for depth in range(1, SUB_INGREDIENT_LEVELS + 1)
         ]
         return (
             obj.ingredients.filter(parent__isnull=True)
-            .select_related("reference", "preparation", "additive")
+            .select_related("reference", "preparation", "additive", "nutrient")
             .prefetch_related(*levels)
         )
 

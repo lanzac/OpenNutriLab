@@ -22,6 +22,7 @@ from opennutrilab.products.api.schemas.inbound import ProductUpdate
 from opennutrilab.products.models import Additive
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import IngredientTaxon
+from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductNutrient
@@ -33,6 +34,7 @@ from opennutrilab.products.services.product_services import UnknownNutrientError
 from opennutrilab.products.services.product_services import create_product
 from opennutrilab.products.services.product_services import declared_value_warnings
 from opennutrilab.products.services.product_services import download_image
+from opennutrilab.products.services.product_services import reread_ingredients
 from opennutrilab.products.services.product_services import save_image_overwrite
 from opennutrilab.products.services.product_services import update_product
 
@@ -971,3 +973,39 @@ def test_a_label_with_a_class_and_a_code_is_written_with_its_additives():
     assert product.ingredients.filter(parent=None, additive__isnull=False).count() == 1
     # The class that headed them is no ingredient.
     assert not ReferenceIngredient.objects.filter(name_fr="acidifiant").exists()
+
+
+@pytest.mark.django_db
+def test_a_label_with_vitamins_is_written_with_their_nutrients():
+    for code, name in (("vitamin_b6", "Vitamin B6"), ("vitamin_d", "Vitamin D")):
+        Nutrient.objects.create(
+            code=code,
+            name_en=name,
+            unit=Nutrient.Unit.MILLIGRAM,
+            group=Nutrient.Group.VITAMIN,
+        )
+    text = "Farine, sel, vitamines (B6, D)"
+    inputs, warnings = ingredient_inputs_from_label(text, "fr")
+    assert warnings == []
+
+    product = create_product(create_payload(ingredients=inputs)).product
+
+    ingredients = list(product.ingredients.order_by("id"))
+    assert [i.item.name for i in ingredients] == [
+        "farine",
+        "sel",
+        "Vitamin B6",
+        "Vitamin D",
+    ]
+    assert [i.nutrient_id for i in ingredients] == [
+        None,
+        None,
+        "vitamin_b6",
+        "vitamin_d",
+    ]
+    assert not ReferenceIngredient.objects.filter(name_en__icontains="vitamin").exists()
+    # And it is read the same way again.
+    product.ingredients_text = text
+    product.save(update_fields=["ingredients_text"])
+    assert reread_ingredients(product, "fr").done
+    assert product.ingredients.filter(nutrient__isnull=False).count() == 2  # noqa: PLR2004

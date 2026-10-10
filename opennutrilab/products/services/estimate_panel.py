@@ -35,8 +35,13 @@ def walk_ingredients(
 
 
 def ingredient_name(ingredient: IngredientEstimateOut) -> str:
-    """What the ingredient is, whether a food, a preparation or an additive."""
-    for found in (ingredient.reference, ingredient.preparation, ingredient.additive):
+    """What the ingredient is: a food, a preparation, an additive or a nutrient."""
+    for found in (
+        ingredient.reference,
+        ingredient.preparation,
+        ingredient.additive,
+        ingredient.nutrient,
+    ):
         if found is not None:
             return found.name
     return ""

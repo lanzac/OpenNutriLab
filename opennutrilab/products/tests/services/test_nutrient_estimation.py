@@ -421,6 +421,27 @@ def test_the_warnings_of_the_shares_come_with_the_nutrients(source: Source):
     assert result.nutrients["fat"].coverage.point == D(100)
 
 
+def test_the_vitamin_a_product_lists_is_only_what_the_other_ingredients_bring_at_least(
+    source: Source,
+):
+    oats = reference(source, "1", proteins="20", vitamin_b6="0.2")
+    sugar = reference(source, "2", proteins="0", vitamin_b6="0")
+    product = product_of(oats, sugar, proteins="10")
+    Ingredient.objects.create(
+        product=product, nutrient=Nutrient.objects.get(code="vitamin_b6")
+    )
+
+    result = estimate_nutrients(product)
+
+    # The vitamin is a part of the product and gives no figure of its own: the
+    # amount is a minimum, which a label with more B6 than the oats bring meets.
+    vitamin_b6 = result.nutrients["vitamin_b6"]
+    assert vitamin_b6.high is None
+    assert vitamin_b6.coverage.point < D(100)
+    assert result.percentages.used_nutrition
+    assert result.percentages.warnings == []
+
+
 def test_a_product_without_ingredients_has_no_nutrients(source: Source):
     result = estimate_nutrients(product_of())
 

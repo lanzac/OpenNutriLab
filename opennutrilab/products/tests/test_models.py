@@ -477,6 +477,59 @@ def test_an_ingredient_is_a_reference_a_preparation_or_an_additive(product: Prod
         ).full_clean()
 
 
+def vitamin_d() -> Nutrient:
+    return Nutrient.objects.create(
+        code="vitamin_d",
+        name_en="Vitamin D",
+        name_fr="Vitamine D",
+        unit=Nutrient.Unit.MICROGRAM,
+        group=Nutrient.Group.VITAMIN,
+    )
+
+
+@pytest.mark.django_db
+def test_an_ingredient_can_be_a_nutrient_of_the_catalogue(product: Product):
+    nutrient = vitamin_d()
+    salt = ReferenceIngredient.objects.create(name_en="salt")
+    citric = Additive.objects.create(name_en="citric acid", code="E330")
+
+    as_nutrient = Ingredient.objects.create(product=product, nutrient=nutrient)
+
+    assert as_nutrient.item == nutrient
+    assert as_nutrient.item.name == "Vitamin D"
+    # It is the one kind: the database refuses it with another.
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        Ingredient.objects.create(
+            product=product, reference=salt, nutrient=nutrient, parent=as_nutrient
+        )
+    with pytest.raises(ValidationError, match="and only one of them"):
+        Ingredient(product=product, additive=citric, nutrient=nutrient).full_clean()
+
+
+@pytest.mark.django_db
+def test_a_product_lists_a_nutrient_once_per_parent(product: Product):
+    nutrient = vitamin_d()
+    mozzarella = Preparation.objects.create(name_en="mozzarella")
+    Ingredient.objects.create(product=product, nutrient=nutrient)
+    parent = Ingredient.objects.create(product=product, preparation=mozzarella)
+    # Under another parent it is a different ingredient.
+    Ingredient.objects.create(product=product, parent=parent, nutrient=nutrient)
+
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        Ingredient.objects.create(product=product, nutrient=nutrient)
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        Ingredient.objects.create(product=product, parent=parent, nutrient=nutrient)
+
+
+@pytest.mark.django_db
+def test_a_nutrient_in_use_in_a_product_cannot_be_deleted(product: Product):
+    nutrient = vitamin_d()
+    Ingredient.objects.create(product=product, nutrient=nutrient)
+
+    with transaction.atomic(), pytest.raises(ProtectedError):
+        nutrient.delete()
+
+
 @pytest.mark.django_db
 def test_a_product_lists_an_additive_once_per_parent(product: Product):
     citric = Additive.objects.create(name_en="citric acid")

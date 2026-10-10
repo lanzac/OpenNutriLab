@@ -527,6 +527,28 @@ written.
      nothing of whether the label or the composition is wrong; declared
      percentages and order that contradict each other give no estimate.
      `used_nutrition` tells whether the label narrowed the result.
+   - **A vitamin is the nutrient it is (2026-10-10).** "Vitamine B6" is no food: it
+     has no composition per 100 g, only the nutrient it adds, in a dilution no label
+     gives. So it is a fourth kind of ingredient, as an additive is a third:
+     `Ingredient.nutrient` points to the catalogue's nutrient (`vitamin_b6`), found
+     from the name by the closed list of `services/vitamins.py` after the references,
+     the preparations and the additives, and before a reference would be made. No
+     reference, no curation, no source food. (A field on `ReferenceIngredient` was
+     tried first and dropped the same day: it needed a special case in the
+     estimate, the creation and two admin filters, and nothing kept a reference
+     with a nutrient from having foods.) The estimate treats it as it does an
+     additive with no composition: unknown (0 to 100 g of each macronutrient per
+     100 g of itself), not zero, so it neither leaves the nutrition unused nor makes
+     the "no composition" warning. Its own nutrient is not given by it: that
+     nutrient is only what the other ingredients bring, at least (no highest end),
+     which the label's figure for it meets. For the meals the label's figure is
+     what counts where it is declared (`stored_estimates.compositions`).
+     Four kinds are four columns and four checks to keep in step: at a fifth,
+     one `item` link would replace them. Not done: using the label's figure for the
+     vitamin to say how much was added (declared minus what the others bring); the
+     minerals, which a label also lists ("carbonate de calcium") and would follow
+     the same rule. A bound of 0 to 100 g of the vitamin was refused: it would only
+     turn an "at least" into a maximum that says nothing.
    - On the muesli (the three missing foods added by hand in the source
      "Manual", see step 4), with the label's order: wheat flakes 28.77-31.50
      %, oat flakes 24.43-29.91 %, raisins 1.35-3.54 %, buckwheat 0-1.45 %. Without

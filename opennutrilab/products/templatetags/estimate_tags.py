@@ -71,5 +71,5 @@ def walk(
 
 @register.filter
 def name_of(ingredient: IngredientEstimateOut) -> str:
-    """What the ingredient is, whether a food, a preparation or an additive."""
+    """What the ingredient is: a food, a preparation, an additive or a nutrient."""
     return ingredient_name(ingredient)

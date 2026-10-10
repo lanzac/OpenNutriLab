@@ -452,6 +452,25 @@ def test_an_ingredient_that_is_an_additive_is_served_as_one(source: Source):
     }
 
 
+def test_an_ingredient_that_is_a_nutrient_is_served_as_one(source: Source):
+    product = product_of()
+    vitamin_d = Nutrient.objects.get(code="vitamin_d")
+    Ingredient.objects.create(product=product, nutrient=vitamin_d)
+
+    (ingredient,) = build_estimate(product).ingredients
+
+    assert (ingredient.reference, ingredient.preparation, ingredient.additive) == (
+        None,
+        None,
+        None,
+    )
+    assert ingredient.nutrient is not None
+    assert ingredient.nutrient.model_dump() == {
+        "code": "vitamin_d",
+        "name": vitamin_d.name,
+    }
+
+
 def test_the_sources_of_an_additive_are_credited_too(source: Source):
     product = product_of()
     other = Source.objects.create(code="other", name="Other", attribution="Other.")

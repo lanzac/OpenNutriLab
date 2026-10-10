@@ -52,7 +52,8 @@ def parts_seen(reference: ReferenceIngredient) -> list[Part]:
     once.
 
     They are what the label listed under it, in the order they were first seen. An
-    additive is not one: it is not an ingredient the preparation is made of. Nor
+    additive or a nutrient is not one: it is not an ingredient the preparation is
+    made of. Nor
     is the reference itself, which a label lists among its own parts ("dattes
     (dattes, farine de riz)").
     """
@@ -60,6 +61,7 @@ def parts_seen(reference: ReferenceIngredient) -> list[Part]:
         Ingredient.objects.filter(parent__reference=reference)
         .exclude(reference=reference)
         .exclude(additive__isnull=False)
+        .exclude(nutrient__isnull=False)
         .order_by("id")
         .values_list("reference_id", "preparation_id")
     )

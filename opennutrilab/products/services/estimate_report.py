@@ -25,6 +25,7 @@ from opennutrilab.products.api.schemas.outbound import ConfidenceOut
 from opennutrilab.products.api.schemas.outbound import DeclaredOut
 from opennutrilab.products.api.schemas.outbound import EstimateOut
 from opennutrilab.products.api.schemas.outbound import IngredientEstimateOut
+from opennutrilab.products.api.schemas.outbound import IngredientNutrientOut
 from opennutrilab.products.api.schemas.outbound import NutrientEstimateOut
 from opennutrilab.products.api.schemas.outbound import PreparationOut
 from opennutrilab.products.api.schemas.outbound import RangeOut
@@ -153,7 +154,7 @@ def _ingredients(
     children: defaultdict[int | None, list[Ingredient]] = defaultdict(list)
     # In the order of the label, which is the order they were created in.
     for ingredient in product.ingredients.select_related(
-        "reference", "preparation", "additive"
+        "reference", "preparation", "additive", "nutrient"
     ):
         children[ingredient.parent_id].append(ingredient)
 
@@ -174,6 +175,11 @@ def _ingredients(
                 None
                 if ingredient.additive is None
                 else AdditiveOut.model_validate(ingredient.additive)
+            ),
+            nutrient=(
+                None
+                if ingredient.nutrient is None
+                else IngredientNutrientOut.model_validate(ingredient.nutrient)
             ),
             declared=ingredient.percentage,
             estimated=None if share is None else _range(share),
