@@ -187,6 +187,65 @@ describe('MealsApp', () => {
     expect(options.headers['X-CSRFToken']).toBe('test-csrf-token');
   });
 
+  it('moves a quantity by half a serving or ten grams with the arrows, from a round number', async () => {
+    stubFetch({
+      [`GET ${DAY_URL}`]: ok(withBread()),
+      'GET /api/v1/inventory/': ok([BREAD, MUESLI]),
+    });
+    renderApp();
+    const field = await screen.findByLabelText('Quantité – Pain de mie');
+    // The arrows count from `min` by `step`: from 0.01 they landed on 1.01, 2.01...
+    expect(field).toHaveAttribute('min', '0');
+    expect(field).toHaveAttribute('step', '0.5');
+
+    const add = screen.getByLabelText('Ajouter un produit – Déjeuner');
+    fireEvent.change(add, { target: { value: BREAD.barcode } });
+    const lunch = screen.getByLabelText('Quantité – Déjeuner');
+    expect(lunch).toHaveAttribute('min', '0');
+    expect(lunch).toHaveAttribute('step', '0.5');
+    fireEvent.change(add, { target: { value: MUESLI.barcode } });
+    expect(lunch).toHaveAttribute('step', '10');
+  });
+
+  it('keeps any value typed in a quantity, whatever the arrows move it by', async () => {
+    const fetch = stubFetch({
+      [`GET ${DAY_URL}`]: ok(withBread()),
+      'GET /api/v1/inventory/': ok([BREAD]),
+      'PATCH /api/v1/meals/items/7': ok(withBread()),
+    });
+    renderApp();
+    const field = await screen.findByLabelText('Quantité – Pain de mie');
+
+    fireEvent.change(field, { target: { value: '0.33' } });
+    fireEvent.blur(field);
+
+    await waitFor(() =>
+      expect(fetch.mock.calls.some(([, o]) => o?.method === 'PATCH')).toBe(
+        true,
+      ),
+    );
+    const [, options] = fetch.mock.calls.find(([, o]) => o?.method === 'PATCH');
+    expect(JSON.parse(options.body)).toEqual({
+      quantity: 0.33,
+      unit: 'serving',
+    });
+  });
+
+  it('puts back what is saved when a quantity is left at 0', async () => {
+    const fetch = stubFetch({
+      [`GET ${DAY_URL}`]: ok(withBread()),
+      'GET /api/v1/inventory/': ok([BREAD]),
+    });
+    renderApp();
+    const field = await screen.findByLabelText('Quantité – Pain de mie');
+
+    fireEvent.change(field, { target: { value: '0' } });
+    fireEvent.blur(field);
+
+    expect(field).toHaveValue(2);
+    expect(fetch.mock.calls.some(([, o]) => o?.method === 'PATCH')).toBe(false);
+  });
+
   it('changes the unit at once, keeping the quantity', async () => {
     const fetch = stubFetch({
       [`GET ${DAY_URL}`]: ok(withBread()),

@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { groupProducts } from '../products/groups.js';
 import { fetchLimits, setAllEnabled, setLimits } from './api/client.js';
-import { fill, formatAmount } from './format.js';
+import { fill, formatAmount, quantityStep } from './format.js';
 
 // A quantity being typed is saved once it has been left alone this long, or as soon
 // as the field is left.
@@ -143,8 +143,8 @@ function LimitsRow({ product, meals, found, labels, languageCode, onChange }) {
       <td className="text-nowrap">
         <input
           type="number"
-          min="0.01"
-          step="any"
+          min="0"
+          step={quantityStep(unit)}
           className="form-control form-control-sm d-inline-block"
           style={{ width: '5.5rem' }}
           aria-label={`${labels.limitsMost} – ${product.name}`}

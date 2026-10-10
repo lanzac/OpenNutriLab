@@ -1,6 +1,12 @@
 import { useState } from 'react';
 
-import { fill, formatAmount, formatInterval, formatPercent } from './format.js';
+import {
+  fill,
+  formatAmount,
+  formatInterval,
+  formatPercent,
+  quantityStep,
+} from './format.js';
 
 // What a meal shows of what it brings: the rest is in the day's table.
 const SHOWN = [
@@ -70,17 +76,21 @@ function ItemRow({ item, labels, languageCode, onChange, onRemove }) {
         </button>
       </div>
       <div className="d-flex flex-wrap align-items-center gap-2 mt-1">
+        {/* The arrows count from `min` by `step`: from a `min` of 0.01 they landed on 1.01, 2.01... */}
         <input
           type="number"
-          min="0.01"
-          step="any"
+          min="0"
+          step={quantityStep(item.unit)}
           className="form-control form-control-sm"
           style={{ width: '6rem' }}
           aria-label={`${labels.quantity} – ${item.name}`}
           value={quantity}
           onChange={(event) => setQuantity(event.target.value)}
           onBlur={() => {
-            if (Number(quantity) !== Number(item.quantity)) {
+            if (!(Number(quantity) > 0)) {
+              // Nothing to keep: the field goes back to what is saved.
+              setQuantity(String(Number(item.quantity)));
+            } else if (Number(quantity) !== Number(item.quantity)) {
               commit({ quantity, unit: item.unit });
             }
           }}
@@ -188,8 +198,8 @@ function AddRow({ meal, inventory, labels, languageCode, onAdd }) {
         <div className="d-flex flex-wrap align-items-center gap-2 mt-2">
           <input
             type="number"
-            min="0.01"
-            step="any"
+            min="0"
+            step={quantityStep(unit)}
             className="form-control form-control-sm"
             style={{ width: '6rem' }}
             aria-label={`${labels.quantity} – ${meal.label}`}

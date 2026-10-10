@@ -97,6 +97,26 @@ describe('the limits of the products', () => {
     );
   });
 
+  it('moves the most by half a serving or ten grams with the arrows, from a round number', async () => {
+    stubFetch({
+      [`GET ${DAY_URL}`]: ok(day()),
+      'GET /api/v1/inventory/': ok([BREAD]),
+      [putUrl(BREAD)]: ok({}),
+    });
+    const limits = await open();
+    const most = within(limits).getByLabelText(
+      'Au plus par jour – Pain de mie',
+    );
+
+    expect(most).toHaveAttribute('min', '0');
+    expect(most).toHaveAttribute('step', '0.5');
+
+    fireEvent.change(within(limits).getByLabelText('Unité – Pain de mie'), {
+      target: { value: 'g' },
+    });
+    expect(most).toHaveAttribute('step', '10');
+  });
+
   describe('saved as they are made', () => {
     it('saves a meal ticked at once, with no button to press, and says so', async () => {
       const fetch = stubFetch({

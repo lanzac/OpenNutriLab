@@ -8,6 +8,12 @@ export const KJ_PER_KCAL = 4.184;
 
 export const kcal = (kilojoules) => Number(kilojoules) / KJ_PER_KCAL;
 
+/**
+ * How far the arrows of a quantity field move it: half a serving, or ten grams, the
+ * steps a proposed day is counted in. Any other value can still be typed.
+ */
+export const quantityStep = (unit) => (unit === 'serving' ? 0.5 : 10);
+
 /** "12.3 g", or "450 kcal" for the energy, which the catalogue keeps in kJ. */
 export function formatAmount(value, unit, languageCode) {
   if (unit === 'kJ') {
