@@ -87,7 +87,10 @@ describe('proposing a day', () => {
     ).toBeInTheDocument();
     // The meals read only: what is in them, and nothing to change.
     expect(within(panel).getByText('Pain de mie')).toBeInTheDocument();
-    expect(within(panel).getByText('2 portion (71,4 g)')).toBeInTheDocument();
+    // The serving as the label names it.
+    expect(
+      within(panel).getByText('2 × 1 tranche (71,4 g)'),
+    ).toBeInTheDocument();
     expect(within(panel).queryByRole('spinbutton')).toBeNull();
     expect(within(panel).queryByRole('button', { name: /Retirer/ })).toBeNull();
     // The day against the needs, as for a day that is saved.

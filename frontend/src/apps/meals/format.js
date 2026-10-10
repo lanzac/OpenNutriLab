@@ -14,6 +14,19 @@ export const kcal = (kilojoules) => Number(kilojoules) / KJ_PER_KCAL;
  */
 export const quantityStep = (unit) => (unit === 'serving' ? 0.5 : 10);
 
+/** What a product calls its serving: the name its label gives ("1 tranche"), else "serving". */
+export const servingName = (serving, labels) => serving?.name || labels.serving;
+
+/**
+ * A number of servings as a proposed day writes it: "2 × 1 tranche" for a product
+ * whose label names its serving, "2 serving" for the others.
+ */
+export function formatServings(quantity, serving, labels) {
+  const count = Number(quantity);
+  if (!serving?.name) return `${count} ${labels.serving}`;
+  return count === 1 ? serving.name : `${count} × ${serving.name}`;
+}
+
 /** "12.3 g", or "450 kcal" for the energy, which the catalogue keeps in kJ. */
 export function formatAmount(value, unit, languageCode) {
   if (unit === 'kJ') {

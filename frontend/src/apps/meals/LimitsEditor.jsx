@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { groupProducts } from '../products/groups.js';
 import { fetchLimits, setAllEnabled, setLimits } from './api/client.js';
-import { fill, formatAmount, quantityStep } from './format.js';
+import { fill, formatAmount, quantityStep, servingName } from './format.js';
 
 // A quantity being typed is saved once it has been left alone this long, or as soon
 // as the field is left.
@@ -164,7 +164,11 @@ function LimitsRow({ product, meals, found, labels, languageCode, onChange }) {
             send({ unit: event.target.value });
           }}
         >
-          {product.serving && <option value="serving">{labels.serving}</option>}
+          {product.serving && (
+            <option value="serving">
+              {servingName(product.serving, labels)}
+            </option>
+          )}
           <option value="g">g</option>
         </select>
         <label

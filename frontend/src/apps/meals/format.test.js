@@ -5,10 +5,14 @@ import {
   formatDay,
   formatInterval,
   formatNumber,
+  formatServings,
   kcal,
   parseDay,
+  servingName,
   shiftDay,
 } from './format.js';
+
+const labels = { serving: 'portion' };
 
 describe('formatNumber', () => {
   it('keeps three significant digits and never rounds the integer part', () => {
@@ -105,5 +109,30 @@ describe('parseDay', () => {
         '2026-03-04',
       );
     }
+  });
+});
+
+describe('the name of a serving', () => {
+  it('is the one the label gives, or the generic word', () => {
+    expect(
+      servingName({ quantity: '35.70', unit: 'g', name: '1 tranche' }, labels),
+    ).toBe('1 tranche');
+    expect(
+      servingName({ quantity: '30.00', unit: 'g', name: '' }, labels),
+    ).toBe('portion');
+    expect(servingName(null, labels)).toBe('portion');
+  });
+
+  it('is counted as the label names it', () => {
+    const named = { quantity: '35.70', unit: 'g', name: '1 tranche' };
+    expect(formatServings('1.00', named, labels)).toBe('1 tranche');
+    expect(formatServings('2.00', named, labels)).toBe('2 × 1 tranche');
+    expect(formatServings('1.50', named, labels)).toBe('1.5 × 1 tranche');
+  });
+
+  it('is counted in the generic word when the label names nothing', () => {
+    const unnamed = { quantity: '30.00', unit: 'g', name: '' };
+    expect(formatServings('2.00', unnamed, labels)).toBe('2 portion');
+    expect(formatServings('2.00', null, labels)).toBe('2 portion');
   });
 });

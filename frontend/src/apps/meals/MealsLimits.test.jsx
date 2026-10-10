@@ -62,6 +62,26 @@ describe('the limits of the products', () => {
     ).toHaveValue(null);
   });
 
+  it('names the serving of a product as its label does', async () => {
+    stubFetch({
+      [`GET ${DAY_URL}`]: ok(day()),
+      'GET /api/v1/inventory/': ok([BREAD, COMPOTE]),
+    });
+
+    const limits = await open();
+
+    for (const [product, name] of [
+      [BREAD, '1 tranche'],
+      [COMPOTE, '1 pot'],
+    ]) {
+      expect(
+        within(within(limits).getByLabelText(`Unité – ${product.name}`))
+          .getAllByRole('option')
+          .map((o) => o.textContent),
+      ).toEqual([name, 'g']);
+    }
+  });
+
   it('shows the limits already set', async () => {
     stubFetch({
       [`GET ${DAY_URL}`]: ok(day()),

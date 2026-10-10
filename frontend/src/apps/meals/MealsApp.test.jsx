@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   BREAD,
+  COMPOTE,
   DAY_URL,
   MUESLI,
   day,
@@ -160,6 +161,45 @@ describe('MealsApp', () => {
       'Pain de mie (500 g)',
       'Muesli (375 g)',
     ]);
+  });
+
+  it("names a product's serving as its label does, in a meal and when adding", async () => {
+    const unnamed = {
+      ...MUESLI,
+      barcode: '3229820794557',
+      name: 'Barre',
+      serving: { quantity: '30.00', unit: 'g', name: '' },
+    };
+    stubFetch({
+      [`GET ${DAY_URL}`]: ok(withBread()),
+      'GET /api/v1/inventory/': ok([BREAD, COMPOTE, unnamed]),
+    });
+    renderApp();
+    const breakfast = await screen.findByRole('region', {
+      name: 'Petit-déjeuner',
+    });
+    const lunch = screen.getByRole('region', { name: 'Déjeuner' });
+    const unitsOf = (card, label) =>
+      within(within(card).getByLabelText(label))
+        .getAllByRole('option')
+        .map((o) => o.textContent);
+
+    // The item of the meal: the name of the label, with what it weighs.
+    expect(unitsOf(breakfast, 'Unité – Pain de mie')).toEqual([
+      '1 tranche (35,7 g)',
+      'g',
+    ]);
+
+    // The product being added, named or not.
+    const choose = (barcode) =>
+      fireEvent.change(
+        within(lunch).getByLabelText('Ajouter un produit – Déjeuner'),
+        { target: { value: barcode } },
+      );
+    choose(COMPOTE.barcode);
+    expect(unitsOf(lunch, 'Unité – Déjeuner')).toEqual(['1 pot (100 g)', 'g']);
+    choose(unnamed.barcode);
+    expect(unitsOf(lunch, 'Unité – Déjeuner')).toEqual(['portion (30 g)', 'g']);
   });
 
   it('changes a quantity when the field is left, and not when it did not change', async () => {

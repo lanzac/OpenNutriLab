@@ -5,7 +5,9 @@ import {
   formatAmount,
   formatInterval,
   formatPercent,
+  formatServings,
   quantityStep,
+  servingName,
 } from './format.js';
 
 // What a meal shows of what it brings: the rest is in the day's table.
@@ -40,14 +42,17 @@ function PackageShare({ item, labels, languageCode }) {
   );
 }
 
-/** What a unit of a product is called: its serving, with the mass it stands for. */
+/**
+ * What a unit of a product is called: its serving, as its label names it, with the
+ * mass it stands for.
+ */
 function unitOptions(serving, labels, languageCode) {
   const options = [{ value: 'g', label: 'g' }];
   if (serving) {
     const mass = `${new Intl.NumberFormat(languageCode).format(Number(serving.quantity))} ${serving.unit}`;
     options.unshift({
       value: 'serving',
-      label: `${labels.serving} (${mass})`,
+      label: `${servingName(serving, labels)} (${mass})`,
     });
   }
   return options;
@@ -126,7 +131,7 @@ function ItemRow({ item, labels, languageCode, onChange, onRemove }) {
 function ReadOnlyRow({ item, labels, languageCode }) {
   const serving =
     item.unit === 'serving'
-      ? `${Number(item.quantity)} ${labels.serving}`
+      ? formatServings(item.quantity, item.serving, labels)
       : `${Number(item.quantity)} g`;
   return (
     <li className="list-group-item d-flex justify-content-between gap-2">
