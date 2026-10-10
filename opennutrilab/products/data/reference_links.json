@@ -21,11 +21,29 @@
     }
   },
   {
+    "reference": "ail en poudre",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11023"
+      }
+    ]
+  },
+  {
     "reference": "alcool",
     "foods": [
       {
         "source": "ciqual-2025",
         "code": "1014"
+      }
+    ]
+  },
+  {
+    "reference": "amidon de maïs",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "9510"
       }
     ]
   },
@@ -99,6 +117,23 @@
     }
   },
   {
+    "reference": "carotte jaune",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "20009"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "20353"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "20009"
+    }
+  },
+  {
     "reference": "cassis",
     "foods": [
       {
@@ -134,11 +169,29 @@
     }
   },
   {
+    "reference": "cranberries déshydratées",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "13178"
+      }
+    ]
+  },
+  {
     "reference": "cumin",
     "foods": [
       {
         "source": "ciqual-2025",
         "code": "11042"
+      }
+    ]
+  },
+  {
+    "reference": "curcuma",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11089"
       }
     ]
   },
@@ -166,6 +219,15 @@
       {
         "source": "ciqual-2025",
         "code": "2040"
+      }
+    ]
+  },
+  {
+    "reference": "farine complète de grand épeautre",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "9480"
       }
     ]
   },
@@ -221,6 +283,15 @@
       {
         "source": "ciqual-2025",
         "code": "9520"
+      }
+    ]
+  },
+  {
+    "reference": "filet de colin d'Alaska",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "26006"
       }
     ]
   },
@@ -345,6 +416,36 @@
     ]
   },
   {
+    "reference": "jus de citron",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "2028"
+      }
+    ]
+  },
+  {
+    "reference": "jus de citron vert",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "13415"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "2030"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "2031"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "2030"
+    }
+  },
+  {
     "reference": "jus de tomate",
     "foods": [
       {
@@ -370,6 +471,32 @@
         "code": "19041"
       }
     ]
+  },
+  {
+    "reference": "laurier en poudre",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11053"
+      }
+    ]
+  },
+  {
+    "reference": "lentille verte",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "20585"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "20587"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "20585"
+    }
   },
   {
     "reference": "levure",
@@ -400,6 +527,15 @@
       "source": "ciqual-2025",
       "code": "20233"
     }
+  },
+  {
+    "reference": "miel",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "31008"
+      }
+    ]
   },
   {
     "reference": "moût de raisin",
@@ -463,6 +599,23 @@
     ]
   },
   {
+    "reference": "oignon rouge",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "20238"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "20324"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "20238"
+    }
+  },
+  {
     "reference": "orge perlée",
     "foods": [
       {
@@ -505,6 +658,40 @@
         "code": "11049"
       }
     ]
+  },
+  {
+    "reference": "patate douce grillée",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "4101"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "4102"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "4101"
+    }
+  },
+  {
+    "reference": "persil",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11014"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "11024"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "11014"
+    }
   },
   {
     "reference": "petit épeautre",
@@ -638,6 +825,15 @@
     ]
   },
   {
+    "reference": "pomme granny smith",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "13122"
+      }
+    ]
+  },
+  {
     "reference": "purée de tomate",
     "foods": [
       {
@@ -687,20 +883,37 @@
     "foods": [
       {
         "source": "ciqual-2025",
-        "code": "26034"
-      },
-      {
-        "source": "ciqual-2025",
         "code": "26065"
-      },
-      {
-        "source": "ciqual-2025",
-        "code": "26136"
       }
     ],
     "default": {
       "source": "ciqual-2025",
       "code": "26065"
+    }
+  },
+  {
+    "reference": "saumon",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "26036"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "26038"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "26119"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "26229"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "26036"
     }
   },
   {
@@ -738,6 +951,44 @@
         "code": "9610"
       }
     ]
+  },
+  {
+    "reference": "semoule de blé tendre",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "9435"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "9436"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "9440"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "9436"
+    }
+  },
+  {
+    "reference": "sucre de canne",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "31016"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "31017"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "31016"
+    }
   },
   {
     "reference": "thym",
@@ -848,11 +1099,29 @@
     ]
   },
   {
+    "reference": "vinaigre d'alcool",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11018"
+      }
+    ]
+  },
+  {
     "reference": "vinaigre de vin",
     "foods": [
       {
         "source": "ciqual-2025",
         "code": "11220"
+      }
+    ]
+  },
+  {
+    "reference": "yaourt nature",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "19593"
       }
     ]
   },
