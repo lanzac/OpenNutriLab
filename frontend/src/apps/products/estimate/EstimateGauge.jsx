@@ -1,7 +1,7 @@
 import './estimate.css';
 
 import { formatNumber } from '../../../shared/format.js';
-import { layoutOf } from './layout.js';
+import { layoutOf, showsTolerance } from './layout.js';
 
 // How each verdict looks: the colour of the band and of its badge, and the label that
 // says it. A row with no label to be set against has the neutral one.
@@ -71,13 +71,15 @@ export function EstimateGauge({
   declared,
   verdict = null,
   constrained = false,
+  tolerated = false,
   confidence = null,
   coverage = null,
   max,
   labels,
   languageCode,
 }) {
-  const layout = layoutOf({ estimated, declared }, max);
+  const showTolerance = showsTolerance({ declared, verdict, tolerated });
+  const layout = layoutOf({ estimated, declared, showTolerance }, max);
   const kind = kindOf({ verdict, constrained });
   const text = verdictText(verdict, constrained, labels);
   const show = (value) => `${formatNumber(value, languageCode)} ${unit}`;
@@ -88,6 +90,7 @@ export function EstimateGauge({
       : null,
     declared ? `${labels.label} ${show(declared.amount)}` : null,
     text || null,
+    tolerated ? labels.tolerated : null,
   ]
     .filter(Boolean)
     .join(' ; ');
@@ -106,6 +109,14 @@ export function EstimateGauge({
             title={verdictNote(verdict, constrained, labels)}
           >
             {text}
+          </span>
+        )}
+        {tolerated && (
+          <span
+            className="badge text-bg-info d-table mt-1"
+            title={labels.toleratedNote}
+          >
+            {labels.tolerated}
           </span>
         )}
       </div>
@@ -128,6 +139,16 @@ export function EstimateGauge({
                 style={{ left: `${layout.band.point}%` }}
               />
             </>
+          )}
+          {layout.label?.tolerance && (
+            <div
+              className="est-tolerance"
+              style={{
+                left: `${layout.label.tolerance.from}%`,
+                width: `${layout.label.tolerance.to - layout.label.tolerance.from}%`,
+              }}
+              title={labels.legendTolerance}
+            />
           )}
           {layout.label?.rounding && (
             <div

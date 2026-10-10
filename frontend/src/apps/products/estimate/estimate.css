@@ -108,6 +108,19 @@
   opacity: 0.55;
 }
 
+/* What the label's figure stands for with the tolerance the Commission allows: a faint
+   band with a bracket at each end, behind the rounding. */
+.est-tolerance {
+  position: absolute;
+  top: 50%;
+  height: 0.7rem;
+  margin-top: -0.35rem;
+  border-inline: 2px solid var(--bs-body-color);
+  border-radius: 0.15rem;
+  background: color-mix(in srgb, var(--bs-body-color) 14%, transparent);
+  opacity: 0.7;
+}
+
 /* The label's own figure: a tick that goes beyond the track, in the colour of the text. */
 .est-label-tick {
   position: absolute;
@@ -159,6 +172,13 @@
   margin-inline-end: 0.3rem;
   vertical-align: -0.15rem;
   border-radius: 0.2rem;
+}
+
+.est-swatch--tolerance {
+  height: 0.7rem;
+  border-inline: 2px solid var(--bs-body-color);
+  border-radius: 0.15rem;
+  background: color-mix(in srgb, var(--bs-body-color) 14%, transparent);
 }
 
 .est-swatch--band {

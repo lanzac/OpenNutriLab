@@ -1,10 +1,11 @@
-import { useEffect, useId } from 'react';
+import { useEffect, useId, useMemo } from 'react';
 
 import { FoldHead } from '../../../shared/FoldHead.jsx';
-import { fill } from '../../../shared/format.js';
-import { useViewState } from '../../../shared/useViewState.js';
+import { fill, formatNumber } from '../../../shared/format.js';
+import { useStoredChoice, useViewState } from '../../../shared/useViewState.js';
+import { convertDeclared, convertRange } from './convert.js';
 import { EstimateGauge } from './EstimateGauge.jsx';
-import { countVerdicts, sharedScaleOf } from './layout.js';
+import { countVerdicts, sharedScaleOf, showsTolerance } from './layout.js';
 
 const MODES = ['gauges', 'table'];
 const KEYS = {
@@ -12,6 +13,10 @@ const KEYS = {
   openKey: 'products.estimateOpenGroups',
   modes: MODES,
 };
+// The unit the amounts are read in, per 100 g or per 100 ml, kept like the rest.
+const UNIT_KEY = 'products.estimateUnit';
+// What an estimate is worked out in (see estimate_validation).
+const ESTIMATE_UNIT = 'g';
 
 function groupsOf(nutrients) {
   const groups = new Map();
@@ -39,7 +44,7 @@ function summaryOf(counts, labels) {
 }
 
 /** The legend of the drawing: said once, small, above the gauges. */
-function Legend({ labels }) {
+function Legend({ labels, tolerance }) {
   return (
     <p className="small text-body-secondary d-flex flex-wrap gap-3">
       <span>
@@ -53,6 +58,12 @@ function Legend({ labels }) {
         />
         {labels.legendLabel}
       </span>
+      {tolerance && (
+        <span>
+          <span className="est-swatch est-swatch--tolerance" />
+          {labels.legendTolerance}
+        </span>
+      )}
       <span>{labels.legendOpen}</span>
     </p>
   );
@@ -98,6 +109,7 @@ function NutrientGauge({ nutrient, labels, languageCode }) {
       declared={nutrient.declared}
       verdict={nutrient.verdict}
       constrained={nutrient.constrained}
+      tolerated={nutrient.tolerated}
       confidence={nutrient.confidence}
       coverage={nutrient.coverage}
       labels={labels}
@@ -106,12 +118,12 @@ function NutrientGauge({ nutrient, labels, languageCode }) {
   );
 }
 
-function Nutrients({ nutrients, labels, languageCode, view, prefix }) {
+function Nutrients({ nutrients, heading, labels, languageCode, view, prefix }) {
   const groups = groupsOf(nutrients);
   const all = countVerdicts(nutrients);
   return (
     <>
-      <h3 className="h6 mt-4">{labels.nutrients}</h3>
+      <h3 className="h6 mt-4">{heading}</h3>
       <p className="small text-body-secondary">{summaryOf(all, labels)}</p>
       {groups.map((group) => {
         const isFolded = !view.open.includes(group.key);
@@ -160,6 +172,30 @@ export function EstimatePanel({ data, labels, languageCode, tables = [] }) {
   const groups = groupsOf(data.nutrients).map((group) => group.key);
   const allFolded = groups.every((group) => !view.open.includes(group));
 
+  // The unit of the amounts. The label's own at first, the one on the pack; and only
+  // where the density of the product is known, which is what converts one to the other.
+  const density = data.density ?? null;
+  const labelUnit = data.label_unit ?? ESTIMATE_UNIT;
+  const [chosen, setUnit] = useStoredChoice(
+    UNIT_KEY,
+    labelUnit === 'ml' ? ['ml', 'g'] : ['g', 'ml'],
+  );
+  const unit = density ? chosen : ESTIMATE_UNIT;
+  const nutrients = useMemo(
+    () =>
+      data.nutrients.map((nutrient) => ({
+        ...nutrient,
+        estimated: convertRange(
+          nutrient.estimated,
+          density,
+          ESTIMATE_UNIT,
+          unit,
+        ),
+        declared: convertDeclared(nutrient.declared, density, labelUnit, unit),
+      })),
+    [data.nutrients, density, labelUnit, unit],
+  );
+
   useEffect(() => {
     for (const table of tables) table.hidden = gauges;
     return () => {
@@ -178,6 +214,28 @@ export function EstimatePanel({ data, labels, languageCode, tables = [] }) {
           >
             {allFolded ? labels.expandAll : labels.collapseAll}
           </button>
+        )}
+        {gauges && density && (
+          <div
+            className="btn-group btn-group-sm"
+            role="group"
+            aria-label={labels.per}
+          >
+            {[
+              ['g', labels.unitG],
+              ['ml', labels.unitMl],
+            ].map(([value, text]) => (
+              <button
+                key={value}
+                type="button"
+                className={`btn ${unit === value ? 'btn-primary' : 'btn-outline-primary'}`}
+                aria-pressed={unit === value}
+                onClick={() => setUnit(value)}
+              >
+                {text}
+              </button>
+            ))}
+          </div>
         )}
         <div
           className="btn-group btn-group-sm"
@@ -200,9 +258,17 @@ export function EstimatePanel({ data, labels, languageCode, tables = [] }) {
           ))}
         </div>
       </div>
+      {gauges && density && (
+        <p className="small text-body-secondary text-end">
+          {fill(labels.density, {
+            low: formatNumber(density.low, languageCode),
+            high: formatNumber(density.high, languageCode),
+          })}
+        </p>
+      )}
       {gauges && (
         <>
-          <Legend labels={labels} />
+          <Legend labels={labels} tolerance={nutrients.some(showsTolerance)} />
           {data.ingredients.length > 0 && (
             <Ingredients
               rows={data.ingredients}
@@ -210,9 +276,10 @@ export function EstimatePanel({ data, labels, languageCode, tables = [] }) {
               languageCode={languageCode}
             />
           )}
-          {data.nutrients.length > 0 && (
+          {nutrients.length > 0 && (
             <Nutrients
-              nutrients={data.nutrients}
+              nutrients={nutrients}
+              heading={unit === 'ml' ? labels.nutrientsMl : labels.nutrients}
               labels={labels}
               languageCode={languageCode}
               view={view}

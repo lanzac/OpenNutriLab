@@ -52,6 +52,7 @@ def ingredient(
 def estimate_of(
     nutrients: list[NutrientEstimateOut] | None = None,
     ingredients: list[IngredientEstimateOut] | None = None,
+    **fields: object,
 ) -> EstimateOut:
     return EstimateOut(
         barcode="1",
@@ -59,6 +60,7 @@ def estimate_of(
         nutrients=nutrients or [],
         ingredients=ingredients or [],
         caveat="",
+        **fields,  # pyright: ignore[reportArgumentType]
     )
 
 
@@ -179,6 +181,7 @@ def test_a_nutrient_comes_with_its_group_its_figures_and_the_verdict_on_the_labe
             },
             "verdict": "declared_below",
             "constrained": False,
+            "tolerated": False,
         }
     ]
 
@@ -222,6 +225,47 @@ def test_a_nutrient_with_no_label_has_no_verdict_and_one_the_estimate_used_is_ma
     assert (found[0]["verdict"], found[0]["constrained"]) == (None, False)
     assert found[0]["estimated"]["high"] is None
     assert (found[1]["verdict"], found[1]["constrained"]) == ("agrees", True)
+
+
+@pytest.mark.django_db
+def test_a_nutrient_read_with_the_tolerance_is_marked_with_the_bounds_it_stands_for():
+    found = NutrientEstimateOut(
+        code="saturated_fat",
+        name="Saturés",
+        unit="g",
+        estimated=rng("13.7", "13.8", "13.9"),
+        declared=DeclaredOut(
+            amount=D("13"),
+            low=D("12.5"),
+            high=D("13.5"),
+            tolerance_low=D("9.9"),
+            tolerance_high=D("16.1"),
+        ),
+        check=CheckOut(verdict="agrees", gap=D(0), constrained=True, tolerated=True),
+    )
+
+    (nutrient,) = estimate_panel(estimate_of(nutrients=[found]))["nutrients"]
+
+    assert nutrient["tolerated"] is True
+    assert nutrient["declared"]["tolerance_low"] == "9.9"
+    assert nutrient["declared"]["tolerance_high"] == "16.1"
+
+
+@pytest.mark.django_db
+def test_the_unit_of_the_label_and_the_density_that_converts_it_come_with_the_panel():
+    panel = estimate_of(label_unit="ml", density=rng("0.908", "0.9115", "0.915"))
+
+    found = estimate_panel(panel)
+
+    assert found["label_unit"] == "ml"
+    assert found["density"] == {"low": "0.908", "point": "0.9115", "high": "0.915"}
+
+
+@pytest.mark.django_db
+def test_a_panel_with_no_density_says_so():
+    found = estimate_panel(estimate_of())
+
+    assert (found["label_unit"], found["density"]) == ("g", None)
 
 
 @pytest.mark.django_db

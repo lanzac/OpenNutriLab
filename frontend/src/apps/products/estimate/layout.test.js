@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { countVerdicts, layoutOf, scaleOf, sharedScaleOf } from './layout.js';
+import {
+  countVerdicts,
+  layoutOf,
+  scaleOf,
+  sharedScaleOf,
+  showsTolerance,
+} from './layout.js';
 
 const estimate = (low, point, high) => ({ low, point, high });
 const label = (amount, low = amount, high = amount) => ({ amount, low, high });
@@ -137,5 +143,80 @@ describe('the verdicts of a group', () => {
       used: 1,
       none: 2,
     });
+  });
+});
+
+describe('the tolerance of the label', () => {
+  const tolerant = {
+    amount: '13',
+    low: '12.5',
+    high: '13.5',
+    tolerance_low: '9.9',
+    tolerance_high: '16.1',
+  };
+
+  it('is drawn when the label only agrees thanks to it, or differs despite it', () => {
+    expect(
+      showsTolerance({
+        declared: tolerant,
+        verdict: 'agrees',
+        tolerated: true,
+      }),
+    ).toBe(true);
+    expect(
+      showsTolerance({ declared: tolerant, verdict: 'declared_below' }),
+    ).toBe(true);
+    expect(
+      showsTolerance({ declared: tolerant, verdict: 'declared_above' }),
+    ).toBe(true);
+  });
+
+  it('is left out where it says nothing', () => {
+    expect(showsTolerance({ declared: tolerant, verdict: 'agrees' })).toBe(
+      false,
+    );
+    expect(
+      showsTolerance({ declared: tolerant, verdict: 'not_estimated' }),
+    ).toBe(false);
+    expect(showsTolerance({ declared: null, verdict: 'declared_below' })).toBe(
+      false,
+    );
+    expect(
+      showsTolerance({
+        declared: { amount: '1', low: '1', high: '1' },
+        verdict: 'declared_below',
+      }),
+    ).toBe(false);
+  });
+
+  it('puts the track where it holds the whole band', () => {
+    const row = {
+      estimated: estimate('13.7', '13.8', '13.9'),
+      declared: tolerant,
+    };
+
+    expect(scaleOf({ ...row, showTolerance: false })).toBeCloseTo(13.9 * 1.15);
+    expect(scaleOf({ ...row, showTolerance: true })).toBeCloseTo(16.1 * 1.15);
+  });
+
+  it('is placed as a share of the track, with the rounding inside it', () => {
+    const { label } = layoutOf({
+      estimated: estimate('13.7', '13.8', '13.9'),
+      declared: tolerant,
+      showTolerance: true,
+    });
+
+    expect(label.tolerance.from).toBeLessThan(label.rounding.from);
+    expect(label.tolerance.to).toBeGreaterThan(label.rounding.to);
+    expect(label.tolerance.to).toBeCloseTo((16.1 / (16.1 * 1.15)) * 100);
+  });
+
+  it('has no mark where it is not shown', () => {
+    const { label } = layoutOf({
+      estimated: estimate('13.7', '13.8', '13.9'),
+      declared: tolerant,
+    });
+
+    expect(label.tolerance).toBeNull();
   });
 });

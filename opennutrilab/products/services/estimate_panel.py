@@ -76,6 +76,8 @@ def _nutrient(
         # anything: a figure the estimate was worked out with confirms nothing.
         "verdict": None if found.check is None else found.check.verdict,
         "constrained": found.check is not None and found.check.constrained,
+        # It agrees within the tolerance the Commission allows, not the rounding.
+        "tolerated": found.check is not None and found.check.tolerated,
     }
 
 
@@ -88,6 +90,12 @@ def estimate_panel(estimate: EstimateOut) -> dict[str, Any]:
         )
     }
     return {
+        # What the label's table is given per 100 of ("g" or "ml"), and what a
+        # millilitre weighs when it is known: the page converts between the two, so
+        # that the estimate (per 100 g) and the label (as printed) can be shown in
+        # either, and the label is never changed.
+        "label_unit": estimate.label_unit,
+        "density": _range(estimate.density),
         "ingredients": [
             {
                 "name": ingredient_name(ingredient),

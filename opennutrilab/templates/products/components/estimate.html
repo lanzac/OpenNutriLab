@@ -48,6 +48,11 @@
       {% if estimate.nutrients %}
         <div data-estimate-table>
           <h2 class="h6 mt-4">{% translate "Nutrients per 100 g" %}</h2>
+          {% if estimate.label_unit == "ml" %}
+            <p class="small text-muted mb-2">
+              {% translate "The label is given per 100 ml, as it is printed; the estimate is per 100 g." %}
+            </p>
+          {% endif %}
           <div class="table-responsive">
             <table class="table table-sm align-middle">
               <thead>
@@ -114,6 +119,12 @@
                           </span>
                         {% else %}
                           <span class="badge text-bg-light">{% translate "Not estimated" %}</span>
+                        {% endif %}
+                        {% if nutrient.check.tolerated %}
+                          <span class="badge text-bg-info"
+                                title="{% translate "The label differs from the estimate by more than its rounding, but within the tolerance the European Commission allows on a label." %}">
+                            {% translate "Within tolerance" %}
+                          </span>
                         {% endif %}
                       {% endif %}
                     </td>

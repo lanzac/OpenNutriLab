@@ -38,6 +38,21 @@ function storedOpen(key) {
 }
 
 /**
+ * A choice among `choices` (the first at first), kept under `key` of the browser's
+ * storage: the unit a person reads the figures in, say.
+ */
+export function useStoredChoice(key, choices) {
+  const [choice, setChoiceState] = useState(() => storedMode(key, choices));
+
+  const setChoice = (next) => {
+    setChoiceState(next);
+    write(key, next);
+  };
+
+  return [choice, setChoice];
+}
+
+/**
  * The view chosen (the first of `modes` at first) and the groups that are open, kept
  * under `modeKey` and `openKey` of the browser's storage.
  */

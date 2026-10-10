@@ -1,6 +1,7 @@
 // Where the figures of an estimate stand on a gauge. The estimate is a range with a
-// point in it, the label a value with the rounding it is written with: the gauge draws
-// both on one track from zero, and the page only has to put them where this says.
+// point in it, the label a value with the rounding it is written with, and, where it
+// matters, the tolerance the European Commission allows around it: the gauge draws them
+// on one track from zero, and the page only has to put them where this says.
 
 // Room left above the highest figure, and, where the range has no upper end, past the
 // highest known one, for the open end of it to be seen.
@@ -13,15 +14,32 @@ const finite = (value) =>
   value !== null && value !== undefined && Number.isFinite(Number(value));
 const number = (value) => (finite(value) ? Number(value) : null);
 
+/**
+ * Whether a row draws the tolerance of its label: when the label only agrees with the
+ * estimate thanks to it, and when it differs although it is allowed. Everywhere else it
+ * is wide and says nothing, and would only crowd the track.
+ */
+export function showsTolerance({ declared, verdict, tolerated }) {
+  if (!declared) return false;
+  if (!finite(declared.tolerance_low) || !finite(declared.tolerance_high))
+    return false;
+  return (
+    Boolean(tolerated) ||
+    verdict === 'declared_below' ||
+    verdict === 'declared_above'
+  );
+}
+
 /** The highest figure of a row, which its track is made to hold. */
-function topOf({ estimated, declared }) {
+function topOf({ estimated, declared, showTolerance = false }) {
   const figures = [
     estimated && number(estimated.high),
     estimated && number(estimated.point),
     estimated && number(estimated.low),
     declared && number(declared.amount),
     declared && number(declared.high),
-  ].filter((value) => value !== null);
+    showTolerance && declared && number(declared.tolerance_high),
+  ].filter((value) => typeof value === 'number');
   return figures.length === 0 ? 0 : Math.max(...figures);
 }
 
@@ -47,13 +65,14 @@ const share = (value, max) => Math.min(Math.max((value / max) * 100, 0), 100);
 /**
  * Where each mark goes, as a share of the track:
  * - `band`, the range of the estimate, open when it has no upper end, and `point`;
- * - `label`, the label's value, and `rounding`, the range it stands for.
+ * - `label`, the label's value, `rounding`, the range it stands for once rounded, and
+ *   `tolerance`, the one it stands for with the tolerance, when `showTolerance`.
  * Either is null where there is none. `max` is the end of the track; by default the
  * row's own.
  */
 export function layoutOf(
-  { estimated, declared },
-  max = scaleOf({ estimated, declared }),
+  { estimated, declared, showTolerance = false },
+  max = scaleOf({ estimated, declared, showTolerance }),
 ) {
   let band = null;
   if (estimated) {
@@ -76,9 +95,18 @@ export function layoutOf(
       at,
       // What the label's rounding covers, when it is wide enough to be seen.
       rounding: to - from >= LEAST_WIDTH ? { from, to } : null,
+      tolerance: showTolerance ? toleranceOf(declared, max) : null,
     };
   }
   return { max, band, label };
+}
+
+function toleranceOf(declared, max) {
+  if (!finite(declared.tolerance_low) || !finite(declared.tolerance_high))
+    return null;
+  const from = share(Number(declared.tolerance_low), max);
+  const to = share(Number(declared.tolerance_high), max);
+  return to - from >= LEAST_WIDTH ? { from, to } : null;
 }
 
 /** How many nutrients of each kind of verdict a group holds, for its head. */
