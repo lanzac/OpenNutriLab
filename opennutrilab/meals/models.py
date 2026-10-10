@@ -217,6 +217,63 @@ class MealItem(models.Model):
             return None
         return product.grams_of(self.quantity * serving, product.serving_unit)
 
+    @property
+    def servings(self) -> Decimal | None:
+        """
+        How many servings of the product the item is: its quantity when it is counted in
+        servings, its mass over the mass of a serving when it is counted in grams. None
+        for a product that has no serving.
+        """
+        product = self.product
+        if product.serving_quantity is None:
+            return None
+        if self.unit == self.Unit.SERVING:
+            return self.quantity
+        serving = product.grams_of(product.serving_quantity, product.serving_unit)
+        return self.quantity / serving if serving > 0 else None
+
+
+class StockTaken(models.Model):
+    """
+    What an item of a meal that is eaten took from the stock of its product, so that
+    the same is given back when the meal is not eaten any more, or the item changes.
+    The row is there only if the stock was counted when the item was eaten: an item
+    eaten before has nothing to give back, nor take. The stock may hold less than the
+    item needs, and then this is what it held. It is in the unit the stock is counted
+    in: a count in another unit is a new count, which this row is older than.
+    """
+
+    meal_item_id: int
+    inventory_item_id: int
+
+    meal_item = models.OneToOneField(
+        MealItem,
+        primary_key=True,
+        on_delete=models.CASCADE,
+        related_name="stock_taken",
+    )
+    # The stock it took from; if the product leaves the inventory, the row goes.
+    inventory_item = models.ForeignKey(
+        InventoryItem, on_delete=models.CASCADE, related_name="taken_by"
+    )
+    quantity = models.DecimalField(max_digits=9, decimal_places=2)
+    # When it was taken: a row older than the last count of the stock (counted_at) is
+    # in that count already.
+    at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            # django-stubs still types `check`, which Django 5.1 renamed.
+            models.CheckConstraint(  # pyright: ignore[reportCallIssue]
+                condition=models.Q(quantity__gt=0),  # pyright: ignore[reportCallIssue]
+                name="stock_taken_is_positive",
+            ),
+        ]
+
+    @override
+    def __str__(self) -> str:
+        return f"{self.meal_item}: {self.quantity} from the stock"
+
 
 class ItemLimits(models.Model):
     """

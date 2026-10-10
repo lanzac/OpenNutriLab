@@ -14,6 +14,12 @@ that what is proposed is what to add to get closer to the needs; nothing is put 
 them, and they are kept when the proposal is taken. What a product was eaten of
 comes off the most of it that is allowed, and off the package of one that is to be
 used whole.
+
+A product whose stock the user counted (InventoryItem.stock_quantity) is never used
+beyond what is left of it, and not at all when none is: it is left out and said so.
+What the meals eaten took is off the stock already, so it is not taken off twice. A
+stock counted in servings is of whole things, so such a product is counted in whole
+servings, not halves.
 """
 
 from collections import defaultdict
@@ -42,6 +48,7 @@ from opennutrilab.meals.services.optimiser import Plan
 from opennutrilab.meals.services.optimiser import optimise
 from opennutrilab.products.models import InventoryItem
 from opennutrilab.products.models import Product
+from opennutrilab.products.services.stock import grams_in_stock
 from opennutrilab.products.services.stored_estimates import Amount
 from opennutrilab.products.services.stored_estimates import compositions
 from opennutrilab.users.models import User
@@ -73,6 +80,14 @@ class ProposedItem(NamedTuple):
     product: Product
     quantity: Decimal
     unit: str
+
+
+class StockLeft(NamedTuple):
+    """What is left of a product the user counted the stock of."""
+
+    grams: Decimal
+    # Counted in servings: whole things, which a day takes whole.
+    in_servings: bool = False
 
 
 class Skipped(NamedTuple):
@@ -114,6 +129,7 @@ class EatenMeals(NamedTuple):
 
 # Why a product was left out.
 NO_ENERGY = "no_energy"
+OUT_OF_STOCK = "out_of_stock"
 
 
 def eaten_meals(user: User, day: date) -> EatenMeals:
@@ -161,13 +177,17 @@ def candidate_of(
     composition: dict[str, Amount],
     limits: Limits = NO_LIMITS,
     eaten_grams: Decimal = Decimal(0),
+    left: StockLeft | None = None,
 ) -> Candidate | None:
     """
     The product as the optimiser counts it, or None when it has no energy to count
     (a day with no energy for a product cannot be told from one without it).
 
     `eaten_grams` of it are eaten already, which come off the most of it a day, and off
-    the package where it is to be used whole.
+    the package where it is to be used whole. `left` is what is left of it, when the
+    stock was counted: no more than that is used, and not the whole package of a
+    product to be used whole when less is left. A stock counted in servings is of whole
+    things: the product is counted in whole servings.
     """
     energy = composition.get("energy")
     if energy is None or energy.amount <= 0:
@@ -184,6 +204,8 @@ def candidate_of(
     if limits.use_all and product.package_quantity is not None:
         package = product.grams_of(product.package_quantity, product.package_unit)
         whole = (package - eaten_grams).quantize(Decimal("0.01"))
+        if left is not None:
+            whole = min(whole, left.grams)
         if whole <= 0:
             # Used up: none is left to put in the day, so it is not a candidate.
             return Candidate(
@@ -212,13 +234,16 @@ def candidate_of(
         step_grams, step_quantity, unit = GRAM_STEP, GRAM_STEP, MealItem.Unit.GRAM
         most = DEFAULT_MAX_GRAMS
     else:
-        step_grams = SERVING_STEP * serving
-        step_quantity, unit = SERVING_STEP, MealItem.Unit.SERVING
+        step_quantity = 1.0 if left and left.in_servings else SERVING_STEP
+        step_grams = step_quantity * serving
+        unit = MealItem.Unit.SERVING
         most = min(DEFAULT_MAX_SERVINGS * serving, DEFAULT_MAX_GRAMS)
     if limits.max_quantity is not None:
         by_unit = serving if limits.max_unit == MealItem.Unit.SERVING else 1.0
         most = float(limits.max_quantity) * (by_unit or 1.0)
     most = max(most - float(eaten_grams), 0.0)
+    if left is not None:
+        most = min(most, float(left.grams))
     return Candidate(
         barcode=product.pk,
         name=product.name,
@@ -249,10 +274,15 @@ def load_inventory(
     The estimate of each is worked out first where it never was (about a second
     each), which `refresh_estimates` does ahead of time.
     """
-    products = [
-        item.product
-        for item in InventoryItem.objects.filter(user=user).select_related("product")
-    ]
+    items = list(InventoryItem.objects.filter(user=user).select_related("product"))
+    products = [item.product for item in items]
+    stocks = {
+        item.product_id: StockLeft(
+            grams, item.stock_unit == InventoryItem.StockUnit.SERVING.value
+        )
+        for item in items
+        if (grams := grams_in_stock(item)) is not None
+    }
     composition = compositions(products)
     limits = limits_of(user)
     candidates: list[Candidate] = []
@@ -262,11 +292,16 @@ def load_inventory(
         # Left out by the user: not a candidate, and not left aside for lack of energy.
         if not wanted.enabled:
             continue
+        left = stocks.get(product.pk)
+        if left is not None and left.grams <= 0:
+            skipped.append(Skipped(product.pk, product.name, OUT_OF_STOCK))
+            continue
         found = candidate_of(
             product,
             composition[product.pk],
             wanted,
             (eaten_grams or {}).get(product.pk, Decimal(0)),
+            left,
         )
         if found is None:
             skipped.append(Skipped(product.pk, product.name, NO_ENERGY))
