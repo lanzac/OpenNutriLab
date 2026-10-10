@@ -11,8 +11,9 @@ with the user's own ratios, and the suggestion of foods to get (`docs/plans/lot-
 whose "After the batch" has the questions it leaves to the user). What is left, and
 decided to come later:
 
-- **Stock**: how much of a product is left, not only that it is at hand (its total
-  quantity is kept now, and could cap what a day uses).
+- **Stock, further**: the stock is counted and follows the meals eaten (Addendum 7 of
+  `docs/plans/lot-meals.md`); what is left is to show it on the meals page, to reserve
+  it for the meals planned on other days, and a shopping list from what runs out.
 - **Generic foods in the inventory**, a loose apple with no barcode, and their
   portions, for which no open source was found.
 - **Other diets** than omnivore (pescetarian, vegetarian, vegan), by CIQUAL's groups,

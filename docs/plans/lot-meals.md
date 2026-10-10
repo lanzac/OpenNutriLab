@@ -123,7 +123,7 @@ left, and what was found on the way, is in "After the batch" at the end.
    (pescetarian, vegetarian, vegan), filtering through CIQUAL's food groups, comes
    when the user asks for it.
 7. **Stock** (decided 2026-10-09): later, not in this lot. The inventory says what
-   is there, not how much is left.
+   is there, not how much is left. Done afterwards, see Addendum 7.
 8. **The page.** Recommended: a React page (its own Vite entry) on a new API (foods
    of the inventory with their composition per serving, days and meals, needs,
    optimise, suggest), which goes the way of the SPA the project aims at.
@@ -671,6 +671,93 @@ product. The gain, one need of 39 at weight 1, was 0.09. Three things followed.
   `reference_links.json`); a preparation has none; the sunflower oil in the inventory is
   read as it was.
 
+### Addendum 7 (2026-10-10): the stock of the inventory, which the meals eaten take from
+
+The user asked to **manage the stock of the products in the inventory**, to reflect what
+is really at home, and for the stock to **follow the meals eaten** they declared.
+
+- **A stock is a count**: `InventoryItem.stock_quantity` and `stock_unit` (g, ml or
+  **serving**, see below; migration 0028), `counted_at` when it was counted. **Null is "not counted"**, which is what every item is until the user counts
+  it: nothing limits a day then, as before, and nothing is taken. 0 is "used up", which
+  is not the same. `PUT /api/v1/inventory/{barcode}/stock` (`{quantity, unit}`, a null
+  quantity clears the count) answers with the item; the inventory and the list of
+  products serve `stock` (`{quantity, unit}`, the unit it would be counted in when not
+  counted; null in the list for a product that is not in the user's inventory).
+  `services/stock.py` (`set_stock`, `needed_from_stock`, `take_from_stock`,
+  `give_back_to_stock`); a volume is taken from by what the product's density says
+  (`Product.quantity_of`, the inverse of `grams_of`, to a hundredth of a unit).
+- **A meal eaten takes from it, and gives back** (`meal_services`, the only code that
+  writes meals): marking a meal eaten takes what is in it, in the unit the stock is
+  counted in; marking it not eaten again, adding to or taking from an eaten meal, or
+  changing an item of one, takes or gives the difference. The stock stops at 0 and the
+  item keeps what it really took. **What an item took is kept**, in the unit of the
+  stock (`meals.StockTaken.quantity`, one row per item, migration 0007), so that exactly
+  that is given back, whatever the density or the serving became since.
+- **A count is the truth as of then.** Setting a stock does not look back: what was
+  eaten before is in what the user counted. So a row older than the last count
+  (`StockTaken.at` < `counted_at`) is dropped on contact and gives nothing back, and an
+  item eaten while the stock was not counted (or before this existed) is left alone
+  when it changes later. It is the choice that makes "I counted 300 g after breakfast"
+  and then "un-eat the breakfast" not add 60 g to a count that already holds them.
+  `StockTaken` goes with the inventory item it took from.
+- **The day proposed cannot use more than is left** (`proposals.candidate_of`'s
+  `stock_grams`): the most of a product a day becomes the least of the default or
+  limit and the stock; a product to be used whole is the package or what is left of it
+  if less; a product with none left is **left out and said so**
+  (`Skipped(..., "out_of_stock")`, the panel names them apart from the products with no
+  energy). What the meals eaten took is off the stock already, so it is **not** taken
+  off twice (it still comes off the daily most, as before). The suggestions inherit it
+  (they load the same candidates). `proposal_no_candidates` now says "no composition
+  to count, or all used up".
+- **Servings, for what a label names as a thing** (asked 2026-10-10): a pot of compote,
+  a slice, a bottle, a sachet, an egg are counted whole, as `stock_unit = "serving"`.
+  `stock.counting_noun` reads the serving's name ("1 pot" gives "pot"): a name that is
+  a measure ("1 portion", "1 cs", "1 cuillère"), says several things ("2 biscuits") or
+  is missing gives none, and such a product stays in grams (the pasta of 80 g with no
+  name, the sardines). The default unit of a product that has a noun is servings, else
+  its package's; the user may count in the other (a select on the page converts the
+  count: grams to the pots they need, a started pot being a pot). Servings are whole
+  (422 otherwise) and need a serving. **A meal takes whole servings**: the servings it
+  needs rounded up (`needed_from_stock`: half a pot, 50 g of a 100 g pot, take one: a
+  pot opened is a pot gone; 107.1 g of 35.7 g slices are 3 slices, not 4), and the day
+  proposed counts such a product in **whole servings** (step 1 serving, not a half),
+  up to the pots left (`StockLeft.in_servings`). The API serves `count_noun` with the
+  inventory and the list of products, which also gets `serving`.
+- **The multiplier** (asked the same day): the stock may be typed as a **number of
+  packages** ("2 boxes of sardines" is 2 × 135 g = 270 g, 3 packages of 4 pots are 12
+  pots); it is the same count seen in packages, so a count of 1.5 packages after a
+  meal reads 1.5, and a part of a package typed in pots is rounded up to the pot
+  started. Shown where a package is a whole number of the unit (within a fiftieth); no
+  separate list of sealed and opened packages is kept.
+- **The total of the list** says what a package holds in the servings that are things:
+  "4 pots de 100 g" instead of "400 g", "14 tranches de 35,7 g"; the package of a
+  product counted in grams, or that is not a whole number of servings (375 g of muesli
+  in 30 g servings), stays "375 g".
+- **Page**: a "Stock" column on the inventory list: the number of packages, "× what one
+  holds =", a number field kept as it is left (Enter or leaving, no button, as the limits
+  are), the unit (a select where the product has two), a "+" that adds a package, a
+  badge "Used up" at 0, "Not counted" as the placeholder. It follows what the server
+  holds, so a meal eaten shows on the next load.
+- **Decided by me, to confirm**: "not counted" is the default (nothing existing
+  changes); no negative stock (it stops at 0, and the meal item is still eaten); the
+  stock is not checked when a meal is composed (a meal can hold more than is left: the
+  user may have bought it); a serving is a thing only when its name starts with "1"
+  and is no measure (the words are in `stock._MEASURE`, to complete when one is
+  missed: the select puts it right by hand); a half pot takes a whole pot, so two meals
+  of half a pot each take two.
+- **Not done**: the stock is not shown on the meals page (the list of products to add
+  does not say what is left, nor does an item warn that it is more than the stock);
+  planned meals of other days do not reserve stock (a day proposed may use what a day
+  planned for tomorrow also uses); no shopping list from what is used up; an item eaten
+  on a past day, marked after a recount, takes from the new count (the day is not
+  looked at, only when it was marked).
+- Tests: 47 on the stock service (units, nouns, whole servings), 39 on meals and stock
+  (every transition, the count as the truth, the clamp, ml with a density, pots, other
+  users, replacing a day), 18 on proposals, 21 on the stock API; 40 on the stock field
+  and the list, 31 on the units and 1 on the panel (Vitest, 422 in all); mutations
+  checked on both sides; seen in Chromium (a throwaway user: count, reload, packages,
+  pots, unit switch, +package, used up, a meal eaten and not eaten again).
+
 ## After the batch
 
 What the eight steps leave open, for the user to say:
@@ -696,17 +783,14 @@ What the eight steps leave open, for the user to say:
 - The proposal and the suggestions run in the request (20 s at most, 10 s in practice):
   a background task (Django 6, see the roadmap) would be better once the inventory is
   large.
-- **The package could cap a product** in a day once stock exists (a day cannot use
-  more of a muesli than the 375 g that are left): the quantity is kept for that, and
-  nothing uses it yet.
-- Not done, as said: stock, generic foods in the inventory, other diets, losses in
-  cooking.
+- Not done, as said: generic foods in the inventory, other diets, losses in cooking.
+  (The stock was done afterwards, Addendum 7, and caps what a day may use.)
 
 ## Out of scope
 
 - Generic foods without a barcode (a loose apple), and the portions they would need.
 - Diets other than omnivore.
-- Stock levels, shopping lists, prices.
+- Shopping lists, prices (the stock levels were done: Addendum 7).
 - Losses in cooking and processing (already on the roadmap).
 - Variety from one day to the next, taste, several people at one table.
 - Pregnancy, breastfeeding, children: the references are for adults.
