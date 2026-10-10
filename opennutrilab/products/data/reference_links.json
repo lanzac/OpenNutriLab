@@ -305,6 +305,15 @@
     ]
   },
   {
+    "reference": "fraise",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "13014"
+      }
+    ]
+  },
+  {
     "reference": "framboise",
     "foods": [
       {
@@ -473,6 +482,44 @@
     ]
   },
   {
+    "reference": "lait partiellement écrémé",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "19033"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "19041"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "19042"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "19033"
+    }
+  },
+  {
+    "reference": "lait écrémé reconstitué",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "19050"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "19051"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "19051"
+    }
+  },
+  {
     "reference": "laurier en poudre",
     "foods": [
       {
@@ -579,6 +626,15 @@
       "source": "ciqual-2025",
       "code": "15004"
     }
+  },
+  {
+    "reference": "oeufs de poules élevés en plein air de catégorie a",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "22000"
+      }
+    ]
   },
   {
     "reference": "oignon",
@@ -834,6 +890,15 @@
     ]
   },
   {
+    "reference": "purée de pomme",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "13187"
+      }
+    ]
+  },
+  {
     "reference": "purée de tomate",
     "foods": [
       {
@@ -875,6 +940,15 @@
       {
         "source": "ciqual-2025",
         "code": "13046"
+      }
+    ]
+  },
+  {
+    "reference": "Saccharose",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "31016"
       }
     ]
   },

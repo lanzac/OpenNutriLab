@@ -1,0 +1,56 @@
+{
+  "code": "dextrose",
+  "name_fr": "Dextrose",
+  "name_en": "Dextrose",
+  "basis_fr": "21 CFR 168.111 et fiches Murphy & Son SP067 (2025) et Ingredion Cerelose: eau 10 % au plus, dextrose 99,5 % au moins hors eau, cendres 0,25 % au plus",
+  "basis_en": "21 CFR 168.111 and the Murphy & Son SP067 (2025) and Ingredion Cerelose data sheets: water at most 10 %, dextrose at least 99.5 % excluding water, ash at most 0.25 %",
+  "nutrients": {
+    "water": {
+      "min": 0,
+      "max": 10
+    },
+    "carbohydrates": {
+      "min": 89.5,
+      "max": 100
+    },
+    "sugars": {
+      "min": 89.5,
+      "max": 100
+    },
+    "glucose": {
+      "min": 89.5,
+      "max": 100
+    },
+    "fat": {
+      "min": 0,
+      "max": 0.5
+    },
+    "saturated_fat": {
+      "min": 0,
+      "max": 0.5
+    },
+    "proteins": {
+      "min": 0,
+      "max": 0.5
+    },
+    "fiber": {
+      "min": 0,
+      "max": 0.5
+    },
+    "ash": {
+      "min": 0,
+      "max": 0.25
+    },
+    "salt": {
+      "min": 0,
+      "max": 0.25
+    },
+    "energy": {
+      "min": 1520,
+      "max": 1710
+    }
+  },
+  "references": [
+    200
+  ]
+}

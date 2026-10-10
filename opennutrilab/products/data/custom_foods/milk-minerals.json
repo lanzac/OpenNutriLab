@@ -1,0 +1,56 @@
+{
+  "code": "milk-minerals",
+  "name_fr": "Concentré de minéraux du lait",
+  "name_en": "Milk mineral concentrate",
+  "basis_fr": "norme ADPI Milk Minerals v2.0 (2023) élargie aux plages typiques de l'USDEC: minéraux 70 % au moins, calcium de 22 à 40 %, protéines 8 % au plus, lipides 1 %, eau 7 %, lactose 11 %",
+  "basis_en": "ADPI Milk Minerals standard v2.0 (2023) widened to USDEC typical ranges: minerals at least 70 %, calcium 22 to 40 %, protein at most 8 %, fat 1 %, moisture 7 %, lactose 11 %",
+  "nutrients": {
+    "water": {
+      "min": 0,
+      "max": 7
+    },
+    "ash": {
+      "min": 70,
+      "max": 100
+    },
+    "calcium": {
+      "min": 22000,
+      "max": 40000
+    },
+    "proteins": {
+      "min": 0,
+      "max": 8
+    },
+    "fat": {
+      "min": 0,
+      "max": 1
+    },
+    "saturated_fat": {
+      "min": 0,
+      "max": 1
+    },
+    "carbohydrates": {
+      "min": 0,
+      "max": 30
+    },
+    "sugars": {
+      "min": 0,
+      "max": 30
+    },
+    "lactose": {
+      "min": 0,
+      "max": 11
+    },
+    "fiber": {
+      "min": 0,
+      "max": 0
+    },
+    "energy": {
+      "min": 0,
+      "max": 530
+    }
+  },
+  "references": [
+    201
+  ]
+}

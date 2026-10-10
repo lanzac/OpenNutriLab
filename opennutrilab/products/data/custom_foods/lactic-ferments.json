@@ -1,0 +1,17 @@
+{
+  "code": "lactic-ferments",
+  "name_fr": "Ferments lactiques",
+  "name_en": "Lactic ferments",
+  "basis_fr": "bornes physiques: des bactéries lactiques (dont Lactobacillus casei) dans un support (lait écrémé, maltodextrine, dextrose, tréhalose)",
+  "basis_en": "physical bounds: lactic acid bacteria (including Lactobacillus casei) in a carrier (skimmed milk, maltodextrin, dextrose, trehalose)",
+  "nutrients": {
+    "water": { "min": 0, "max": 100 },
+    "fat": { "min": 0, "max": 100 },
+    "carbohydrates": { "min": 0, "max": 100 },
+    "fiber": { "min": 0, "max": 100 },
+    "proteins": { "min": 0, "max": 100 },
+    "ash": { "min": 0, "max": 100 },
+    "energy": { "min": 0, "max": 3700 }
+  },
+  "references": [202]
+}
