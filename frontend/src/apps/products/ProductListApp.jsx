@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { fetchProducts, setInInventory } from './api/client.js';
 import { groupProducts } from './groups.js';
 import { ProductRow } from './ProductRow.jsx';
+import { ProductScanner } from './scan/ProductScanner.jsx';
 
 // Photo, name, barcode, quantity, date, actions.
 const COLUMNS = 6;
@@ -38,6 +39,8 @@ export function ProductListApp({
   const [inventoryError, setInventoryError] = useState(false);
   // The groups the user has folded away, by key.
   const [folded, setFolded] = useState(() => new Set());
+  // Whether the camera that scans products into the inventory is open.
+  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,17 +88,18 @@ export function ProductListApp({
     return null;
   }
 
+  const markInInventory = (barcode, wanted) =>
+    setProducts((current) =>
+      current.map((p) =>
+        p.barcode === barcode ? { ...p, in_inventory: wanted } : p,
+      ),
+    );
+
   const toggleInventory = (product) => {
     const wanted = !product.in_inventory;
     setInventoryError(false);
     setInInventory(product.barcode, wanted, csrfToken)
-      .then(() => {
-        setProducts((current) =>
-          current.map((p) =>
-            p.barcode === product.barcode ? { ...p, in_inventory: wanted } : p,
-          ),
-        );
-      })
+      .then(() => markInInventory(product.barcode, wanted))
       .catch((err) => {
         console.error(err);
         setInventoryError(true);
@@ -120,24 +124,43 @@ export function ProductListApp({
 
   return (
     <>
-      <div className="btn-group btn-group-sm mb-3" role="group">
+      <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <div className="btn-group btn-group-sm" role="group">
+          <button
+            type="button"
+            className={`btn ${showAll ? 'btn-outline-primary' : 'btn-primary'}`}
+            aria-pressed={!showAll}
+            onClick={() => setShowAll(false)}
+          >
+            {labels.myInventory}
+          </button>
+          <button
+            type="button"
+            className={`btn ${showAll ? 'btn-primary' : 'btn-outline-primary'}`}
+            aria-pressed={showAll}
+            onClick={() => setShowAll(true)}
+          >
+            {labels.allProducts}
+          </button>
+        </div>
         <button
           type="button"
-          className={`btn ${showAll ? 'btn-outline-primary' : 'btn-primary'}`}
-          aria-pressed={!showAll}
-          onClick={() => setShowAll(false)}
+          className="btn btn-sm btn-outline-primary ms-auto"
+          aria-expanded={scanning}
+          onClick={() => setScanning((open) => !open)}
         >
-          {labels.myInventory}
-        </button>
-        <button
-          type="button"
-          className={`btn ${showAll ? 'btn-primary' : 'btn-outline-primary'}`}
-          aria-pressed={showAll}
-          onClick={() => setShowAll(true)}
-        >
-          {labels.allProducts}
+          <i className="fa-solid fa-barcode" /> {labels.scanProduct}
         </button>
       </div>
+      {scanning && (
+        <ProductScanner
+          products={products}
+          labels={labels}
+          csrfToken={csrfToken}
+          onAdded={(barcode) => markInInventory(barcode, true)}
+          onClose={() => setScanning(false)}
+        />
+      )}
       {inventoryError && (
         <p className="text-danger" role="alert">
           {labels.inventoryError}
