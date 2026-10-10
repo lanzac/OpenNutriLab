@@ -14,6 +14,8 @@ from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductNutrient
 from opennutrilab.products.models import ReferenceIngredient
+from opennutrilab.products.services.stock import counting_noun
+from opennutrilab.products.services.stock import default_unit
 
 # More information on : Regulation (EU) No 1169/2011
 # https://eur-lex.europa.eu/eli/reg/2011/1169/oj?locale=fr
@@ -278,29 +280,6 @@ def package_of(product: Product) -> PackageOut | None:
     return PackageOut(quantity=product.package_quantity, unit=product.package_unit)
 
 
-class ProductListItemOut(ModelSchema):
-    """A product as a list shows it."""
-
-    # Whether it is in the inventory of the user asking (see the route).
-    in_inventory: bool = False
-    package: PackageOut | None = None
-
-    @staticmethod
-    def resolve_package(obj: Product) -> PackageOut | None:
-        return package_of(obj)
-
-    class Meta:
-        model = Product
-        fields: list[str] = [
-            "barcode",
-            "name",
-            "image",
-            "created_at",
-            "group_level_1",
-            "group_level_2",
-        ]
-
-
 class ServingOut(Schema):
     """A product's serving: a quantity in g or ml, and what the label calls it."""
 
@@ -317,6 +296,64 @@ def serving_of(product: Product) -> ServingOut | None:
         unit=product.serving_unit,
         name=product.serving_name,
     )
+
+
+class StockOut(Schema):
+    """
+    How much of a product a user has at hand, in g, in ml or in servings (whole
+    ones): None when it was never counted, and then the unit is the one it would be
+    counted in.
+    """
+
+    quantity: Decimal | None
+    unit: str
+
+
+class ProductListItemOut(ModelSchema):
+    """A product as a list shows it."""
+
+    # Whether it is in the inventory of the user asking (see the route).
+    in_inventory: bool = False
+    package: PackageOut | None = None
+    serving: ServingOut | None = None
+    # What the serving is called when it is a thing that is counted ("pot"), else null.
+    count_noun: str | None = None
+    # The stock of the user asking, for a product in their inventory.
+    stock: StockOut | None = None
+
+    @staticmethod
+    def resolve_package(obj: Product) -> PackageOut | None:
+        return package_of(obj)
+
+    @staticmethod
+    def resolve_serving(obj: Product) -> ServingOut | None:
+        return serving_of(obj)
+
+    @staticmethod
+    def resolve_count_noun(obj: Product) -> str | None:
+        return counting_noun(obj)
+
+    @staticmethod
+    def resolve_stock(obj: Product) -> StockOut | None:
+        # Annotated by the route from the inventory item (a deferred field of the
+        # product is not read here: that would be a query for each one).
+        if not getattr(obj, "in_inventory", False):
+            return None
+        return StockOut(
+            quantity=getattr(obj, "stock_quantity", None),
+            unit=getattr(obj, "stock_unit", "") or default_unit(obj),
+        )
+
+    class Meta:
+        model = Product
+        fields: list[str] = [
+            "barcode",
+            "name",
+            "image",
+            "created_at",
+            "group_level_1",
+            "group_level_2",
+        ]
 
 
 class ProductOut(ModelSchema):
@@ -412,6 +449,8 @@ class InventoryItemOut(Schema):
     group_level_2: str = ""
     serving: ServingOut | None = None
     package: PackageOut | None = None
+    count_noun: str | None = None
+    stock: StockOut
     added_at: datetime
 
     @staticmethod
@@ -437,3 +476,14 @@ class InventoryItemOut(Schema):
     @staticmethod
     def resolve_package(obj: InventoryItem) -> PackageOut | None:
         return package_of(obj.product)
+
+    @staticmethod
+    def resolve_count_noun(obj: InventoryItem) -> str | None:
+        return counting_noun(obj.product)
+
+    @staticmethod
+    def resolve_stock(obj: InventoryItem) -> StockOut:
+        return StockOut(
+            quantity=obj.stock_quantity,
+            unit=obj.stock_unit or default_unit(obj.product),
+        )

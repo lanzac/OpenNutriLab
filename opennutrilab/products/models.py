@@ -290,6 +290,16 @@ class Product(models.Model):
             return quantity
         return (quantity * (density[0] + density[1]) / 2).quantize(Decimal("0.01"))
 
+    def quantity_of(self, grams: Decimal, unit: str) -> Decimal:
+        """
+        The quantity in `unit` (g or ml) that weighs `grams`: what grams_of undoes, to a
+        hundredth, which is how it keeps the grams.
+        """
+        density = self.density
+        if unit != self.ServingUnit.MILLILITRE.value or density is None:
+            return grams
+        return (grams / ((density[0] + density[1]) / 2)).quantize(Decimal("0.01"))
+
 
 class ProductNutrient(models.Model):
     """
@@ -336,6 +346,13 @@ class InventoryItem(models.Model):
     user_id: int
     product_id: str
 
+    class StockUnit(models.TextChoices):
+        GRAM = "g", "g"
+        MILLILITRE = "ml", "ml"
+        # In servings of the product, as its label names them: pots, slices,
+        # bottles. They are not cut: a stock of 3 pots is 3 pots, not 2.5.
+        SERVING = "serving", _("serving")
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="inventory"
     )
@@ -343,12 +360,45 @@ class InventoryItem(models.Model):
         Product, on_delete=models.CASCADE, related_name="inventory_items"
     )
     added_at = models.DateTimeField(auto_now_add=True)
+    # How much of the product is at hand, as the user counted it and in the unit they
+    # counted it in (g or ml, as a package is, or servings, whole ones); the meals
+    # eaten take from it (see services.stock). None: it was not counted, so nothing
+    # limits what a day uses.
+    stock_quantity = models.DecimalField(
+        _("Stock"),
+        max_digits=9,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+    )
+    stock_unit = models.CharField(
+        max_length=7, choices=StockUnit.choices, blank=True, default=""
+    )
+    # When it was counted. What is eaten from then on takes from the count; what was
+    # eaten before is in it already.
+    counted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["added_at", "id"]
         constraints = [
             models.UniqueConstraint(
                 fields=["user", "product"], name="unique_inventory_item"
+            ),
+            # A stock has a quantity and a unit, or it is not there at all.
+            # django-stubs still types `check`, which Django 5.1 renamed.
+            models.CheckConstraint(  # pyright: ignore[reportCallIssue]
+                condition=models.Q(  # pyright: ignore[reportCallIssue]
+                    stock_quantity__isnull=True, stock_unit="", counted_at__isnull=True
+                )
+                # Not null as well: `NULL >= 0` is NULL, which a check lets through.
+                | models.Q(
+                    stock_quantity__isnull=False,
+                    stock_quantity__gte=0,
+                    stock_unit__in=["g", "ml", "serving"],
+                    counted_at__isnull=False,
+                ),
+                name="inventory_stock_is_whole",
             ),
         ]
 

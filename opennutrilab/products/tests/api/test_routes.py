@@ -154,6 +154,9 @@ def test_list_products(api_client: Client, products_two: tuple[Product, Product]
             "group_level_2",
             "in_inventory",
             "package",
+            "serving",
+            "count_noun",
+            "stock",
         }
     ] * 2
     assert {item["barcode"] for item in response.json()} == {p1.barcode, p2.barcode}

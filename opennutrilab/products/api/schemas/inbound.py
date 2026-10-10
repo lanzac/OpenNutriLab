@@ -99,6 +99,16 @@ class PackageInput(Schema):
     unit: Literal["g", "ml"] = "g"
 
 
+class StockInput(Schema):
+    """How much of a product is at hand now (see InventoryItem.stock_quantity)."""
+
+    # Null says it is not counted. Nothing is below nothing: 0 is used up.
+    quantity: Decimal | None = Field(default=None, ge=0, max_digits=9, decimal_places=2)
+    # The unit it was counted in, or the one it would be counted in when it was not
+    # counted yet. Servings are whole, and the product has a serving.
+    unit: Literal["g", "ml", "serving"] | None = None
+
+
 class ProductCreate(Schema):
     barcode: str
     name: str = Field(min_length=1, max_length=100)

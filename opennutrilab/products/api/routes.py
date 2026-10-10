@@ -3,6 +3,7 @@ from typing import cast
 from django.db.models import Exists
 from django.db.models import OuterRef
 from django.db.models import QuerySet
+from django.db.models import Subquery
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from ninja import Router
@@ -10,6 +11,7 @@ from ninja.errors import HttpError
 
 from opennutrilab.products.api.schemas.inbound import ProductCreate
 from opennutrilab.products.api.schemas.inbound import ProductUpdate
+from opennutrilab.products.api.schemas.inbound import StockInput
 from opennutrilab.products.api.schemas.outbound import EstimateOut
 from opennutrilab.products.api.schemas.outbound import InventoryItemOut
 from opennutrilab.products.api.schemas.outbound import ProductListItemOut
@@ -21,6 +23,8 @@ from opennutrilab.products.services.estimate_report import build_estimate
 from opennutrilab.products.services.inventory import add_to_inventory
 from opennutrilab.products.services.inventory import inventory_of
 from opennutrilab.products.services.inventory import remove_from_inventory
+from opennutrilab.products.services.stock import InvalidStockError
+from opennutrilab.products.services.stock import set_stock
 from opennutrilab.users.models import User
 
 router = Router(tags=["Products"])
@@ -47,8 +51,15 @@ def list_products(request: HttpRequest) -> QuerySet[Product]:
             "group_level_2",
             "package_quantity",
             "package_unit",
+            "serving_quantity",
+            "serving_unit",
+            "serving_name",
         )
-        .annotate(in_inventory=Exists(mine))
+        .annotate(
+            in_inventory=Exists(mine),
+            stock_quantity=Subquery(mine.values("stock_quantity")[:1]),
+            stock_unit=Subquery(mine.values("stock_unit")[:1]),
+        )
         .order_by("created_at")
     )
 
@@ -118,6 +129,24 @@ def add_to_my_inventory(request: HttpRequest, product_id: str) -> InventoryItem:
     """Put a product in the inventory. Putting one that is there changes nothing."""
     product = get_object_or_404(Product, barcode=product_id)
     return add_to_inventory(_user(request), product)
+
+
+@inventory_router.put(path="/{product_id}/stock", response=InventoryItemOut)
+def count_my_stock(
+    request: HttpRequest, product_id: str, data: StockInput
+) -> InventoryItem:
+    """
+    Say how much of a product of the inventory is at hand now, which is the stock from
+    then on: the meals eaten take from it. A null quantity says it is not counted, and
+    then nothing limits what a day uses of the product.
+    """
+    item = get_object_or_404(inventory_of(_user(request)), product_id=product_id)
+    try:
+        return set_stock(item, data.quantity, data.unit)
+    except InvalidStockError as e:
+        raise HttpError(
+            422, "Servings must be whole, and the product must have a serving."
+        ) from e
 
 
 @inventory_router.delete(path="/{product_id}")
