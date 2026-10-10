@@ -1,4 +1,6 @@
 import { Barcode } from './Barcode.jsx';
+import { StockCell } from './StockCell.jsx';
+import { describePackage } from './stockUnits.js';
 
 // Django's edit/delete class-based views still own these URLs (see
 // opennutrilab/products/urls.py) - React only needs to build links to them.
@@ -24,6 +26,7 @@ const THUMBNAIL_SIZE = 56;
  * @param {boolean} props.canDelete True for staff only.
  * @param {string} props.placeholderImage Shown for a product with no photo.
  * @param {(product: object) => void} props.onToggleInventory
+ * @param {(product: object, quantity: number | null, unit: string) => Promise<void>} props.onCountStock
  */
 export function ProductRow({
   product,
@@ -33,6 +36,7 @@ export function ProductRow({
   canDelete,
   placeholderImage,
   onToggleInventory,
+  onCountStock,
 }) {
   const inventoryLabel = product.in_inventory
     ? labels.removeFromInventory
@@ -59,12 +63,14 @@ export function ProductRow({
         <Barcode code={product.barcode} label={labels.barcode} />
       </td>
       <td className="text-nowrap d-none d-sm-table-cell">
-        {product.package
-          ? `${new Intl.NumberFormat(languageCode).format(
-              Number(product.package.quantity),
-            )} ${product.package.unit}`
-          : ''}
+        {describePackage(product, labels, languageCode)}
       </td>
+      <StockCell
+        product={product}
+        labels={labels}
+        languageCode={languageCode}
+        onCount={onCountStock}
+      />
       <td className="text-nowrap text-body-secondary d-none d-md-table-cell">
         {new Date(product.created_at).toLocaleDateString(languageCode)}
       </td>

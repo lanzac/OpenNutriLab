@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { fetchProducts, setInInventory } from './api/client.js';
+import { fetchProducts, setInInventory, setStock } from './api/client.js';
 import { groupProducts } from './groups.js';
 import { ProductRow } from './ProductRow.jsx';
 import { ProductScanner } from './scan/ProductScanner.jsx';
 
-// Photo, name, barcode, quantity, date, actions.
-const COLUMNS = 6;
+// Photo, name, barcode, quantity, stock, date, actions.
+const COLUMNS = 7;
 
 /**
  * Renders the inventory: the user's own, or every product of the shared
@@ -106,6 +106,16 @@ export function ProductListApp({
       });
   };
 
+  // Keeps the stock counted for a product; the server answers with what it holds.
+  const countStock = (product, quantity, unit) =>
+    setStock(product.barcode, quantity, unit, csrfToken).then((item) =>
+      setProducts((current) =>
+        current.map((p) =>
+          p.barcode === product.barcode ? { ...p, stock: item.stock } : p,
+        ),
+      ),
+    );
+
   const toggleFolded = (key) =>
     setFolded((current) => {
       const next = new Set(current);
@@ -120,6 +130,7 @@ export function ProductListApp({
     canDelete,
     placeholderImage,
     onToggleInventory: toggleInventory,
+    onCountStock: countStock,
   };
 
   return (
@@ -183,6 +194,7 @@ export function ProductListApp({
                 <th scope="col" className="d-none d-sm-table-cell">
                   {labels.totalQuantity}
                 </th>
+                <th scope="col">{labels.stock}</th>
                 <th scope="col" className="d-none d-md-table-cell">
                   {labels.createdAt}
                 </th>

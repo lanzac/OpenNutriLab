@@ -119,6 +119,18 @@ class ProductListView(LoginRequiredMixin, ListView):
                 # %(name)s is interpolated client-side with the product name.
                 "confirmDelete": _('Delete "%(name)s"?'),
                 "totalQuantity": _("Total quantity"),
+                # "4 pots of 100 g": what a package holds in servings that are
+                # things. Every %(...)s is put in client-side.
+                "packageOfServings": _("%(count)s %(noun)s of %(serving)s"),
+                # The stock of the inventory. %(package)s is put in client-side.
+                "stock": _("Stock"),
+                "stockUnit": _("Unit of the stock"),
+                "stockPackages": _("Number of packages"),
+                "stockServings": _("servings"),
+                "stockNotCounted": _("Not counted"),
+                "stockUsedUp": _("Used up"),
+                "stockAddPackage": _("Add a package (%(package)s) to the stock"),
+                "stockSaveError": _("The stock could not be saved."),
                 "myInventory": _("My inventory"),
                 "allProducts": _("All products"),
                 "addToInventory": _("Add to my inventory"),

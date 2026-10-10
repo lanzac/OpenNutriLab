@@ -1,5 +1,9 @@
 import { DayPreview } from './DayPreview.jsx';
 
+/** The label that says why products were left out, by the reason the server gives. */
+const skippedLabel = (reason, labels) =>
+  labels[`skipped_${reason}`] ?? labels.skipped;
+
 /**
  * A day proposed from the inventory, as it would be: the meals, and the day against
  * the needs. Nothing is written until the user takes it, so the meals here only
@@ -16,6 +20,8 @@ export function ProposalPanel({
 }) {
   const { status, skipped, day } = proposal;
   const found = proposal.items.length > 0;
+  // Told apart by reason: a product with no energy value, and one that is used up.
+  const reasons = [...new Set(skipped.map((product) => product.reason))];
   // The best day can be to add nothing, where meals eaten bring what the day needs.
   const message =
     status === 'optimal' && !found
@@ -38,11 +44,15 @@ export function ProposalPanel({
       </div>
       <div className="card-body">
         <p className="mb-2">{message}</p>
-        {skipped.length > 0 && (
-          <p className="small text-body-secondary">
-            {labels.skipped} {skipped.map((product) => product.name).join(', ')}
+        {reasons.map((reason) => (
+          <p key={reason} className="small text-body-secondary">
+            {skippedLabel(reason, labels)}{' '}
+            {skipped
+              .filter((product) => product.reason === reason)
+              .map((product) => product.name)
+              .join(', ')}
           </p>
-        )}
+        ))}
         {found && (
           <>
             <DayPreview

@@ -244,7 +244,8 @@ def meals_labels() -> dict[str, str]:
         "proposal_time_limit": _("The time ran out: this is the best day found."),
         "proposal_failed": _("No day could be worked out."),
         "proposal_no_candidates": _(
-            "No product of your inventory has a composition to count."
+            "No product of your inventory can make up a day: none has a "
+            "composition to count, or all are used up."
         ),
         "proposal_nothing_to_fill": _(
             "Every meal of the day is eaten: there is nothing to add."
@@ -254,6 +255,8 @@ def meals_labels() -> dict[str, str]:
             "your inventory goes."
         ),
         "skipped": _("Left aside, with no energy value:"),
+        "skipped_no_energy": _("Left aside, with no energy value:"),
+        "skipped_out_of_stock": _("Left aside, used up:"),
         "useDay": _("Use this day"),
         "confirmReplace": _("Replace what is in the meals not yet eaten?"),
         "limitsTitle": _("Limits for the proposed day"),

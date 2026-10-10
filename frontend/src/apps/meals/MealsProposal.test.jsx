@@ -161,16 +161,43 @@ describe('proposing a day', () => {
 
     const panel = await screen.findByRole('region', { name: 'Jour proposé' });
     expect(
-      within(panel).getByText(
-        'Aucun produit de l’inventaire n’a de composition.',
-      ),
+      within(panel).getByText(/Aucun produit de l’inventaire ne peut composer/),
     ).toBeInTheDocument();
     expect(
-      within(panel).getByText(/Laissés de côté.*Muesli/),
+      within(panel).getByText(/Laissés de côté, sans valeur d’énergie.*Muesli/),
     ).toBeInTheDocument();
     expect(
       within(panel).queryByRole('button', { name: 'Utiliser ce jour' }),
     ).toBeNull();
+  });
+
+  it('says which products are used up apart from those with no energy value', async () => {
+    stubFetch({
+      [`GET ${DAY_URL}`]: ok(withProfile()),
+      'GET /api/v1/inventory/': ok([BREAD]),
+      [`POST ${PROPOSE_URL}`]: ok(
+        proposal({
+          skipped: [
+            { barcode: MUESLI.barcode, name: 'Muesli', reason: 'no_energy' },
+            { barcode: '3017620422003', name: 'Huile', reason: 'out_of_stock' },
+            { barcode: '3017620422004', name: 'Lait', reason: 'out_of_stock' },
+          ],
+        }),
+      ),
+    });
+    renderApp();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Proposer un jour/ }),
+    );
+
+    const panel = await screen.findByRole('region', { name: 'Jour proposé' });
+    expect(
+      within(panel).getByText(/sans valeur d’énergie.*Muesli$/),
+    ).toBeInTheDocument();
+    expect(
+      within(panel).getByText(/épuisés.*Huile, Lait$/),
+    ).toBeInTheDocument();
   });
 
   it('puts the proposed day in place of the day when it is taken', async () => {

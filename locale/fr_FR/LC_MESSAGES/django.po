@@ -992,6 +992,35 @@ msgid "Your inventory is empty. Show all products to add some."
 msgstr ""
 "Votre inventaire est vide. Affichez tous les produits pour en ajouter."
 
+msgid "Stock"
+msgstr "Stock"
+
+msgid "Unit of the stock"
+msgstr "Unité du stock"
+
+msgid "Number of packages"
+msgstr "Nombre de paquets"
+
+msgid "servings"
+msgstr "portions"
+
+#, python-format
+msgid "%(count)s %(noun)s of %(serving)s"
+msgstr "%(count)s %(noun)s de %(serving)s"
+
+msgid "Not counted"
+msgstr "Non compté"
+
+msgid "Used up"
+msgstr "Épuisé"
+
+#, python-format
+msgid "Add a package (%(package)s) to the stock"
+msgstr "Ajouter un paquet (%(package)s) au stock"
+
+msgid "The stock could not be saved."
+msgstr "Le stock n'a pas pu être enregistré."
+
 msgid "Your inventory could not be changed."
 msgstr "Votre inventaire n'a pas pu être modifié."
 
@@ -1306,8 +1335,12 @@ msgstr "Le temps est écoulé : voici le meilleur jour trouvé."
 msgid "No day could be worked out."
 msgstr "Aucun jour n'a pu être calculé."
 
-msgid "No product of your inventory has a composition to count."
-msgstr "Aucun produit de votre inventaire n'a de composition à compter."
+msgid ""
+"No product of your inventory can make up a day: none has a composition to "
+"count, or all are used up."
+msgstr ""
+"Aucun produit de votre inventaire ne peut composer un jour : aucun n'a de "
+"composition à compter, ou tous sont épuisés."
 
 msgid "Every meal of the day is eaten: there is nothing to add."
 msgstr "Tous les repas du jour sont mangés : il n'y a rien à ajouter."
@@ -1317,6 +1350,9 @@ msgstr "Rien à ajouter : les repas mangés apportent ce dont la journée a beso
 
 msgid "Left aside, with no energy value:"
 msgstr "Laissés de côté, sans valeur d'énergie :"
+
+msgid "Left aside, used up:"
+msgstr "Laissés de côté, épuisés :"
 
 msgid "Use this day"
 msgstr "Utiliser ce jour"

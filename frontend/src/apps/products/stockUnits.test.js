@@ -1,0 +1,210 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  convertStock,
+  describePackage,
+  packageContent,
+  packageServings,
+  plural,
+  stockUnitOptions,
+} from './stockUnits.js';
+
+const labels = {
+  packageOfServings: '%(count)s %(noun)s de %(serving)s',
+  stockServings: 'portions',
+};
+
+const COMPOTE = {
+  name: 'Compote',
+  count_noun: 'pot',
+  package: { quantity: '400.00', unit: 'g' },
+  serving: { quantity: '100.00', unit: 'g', name: '1 pot' },
+};
+const BREAD = {
+  name: 'Pain',
+  count_noun: 'tranche',
+  package: { quantity: '500.00', unit: 'g' },
+  serving: { quantity: '35.70', unit: 'g', name: '1 tranche' },
+};
+const PASTA = {
+  name: 'girandole 34',
+  count_noun: null,
+  package: { quantity: '1000.00', unit: 'g' },
+  serving: { quantity: '80.00', unit: 'g', name: '' },
+};
+const OIL = {
+  name: 'Huile',
+  count_noun: null,
+  package: { quantity: '1000.00', unit: 'ml' },
+  serving: { quantity: '12.00', unit: 'g', name: '1 cs' },
+};
+
+describe('plural', () => {
+  it.each([
+    ['pot', 1, 'pot'],
+    ['pot', 0, 'pot'],
+    ['pot', 4, 'pots'],
+    ['tranche', 14, 'tranches'],
+    ['tranche de pain', 3, 'tranches de pain'],
+    ['gâteau', 2, 'gâteaux'],
+    ['noix', 2, 'noix'],
+    ['oeuf', 6, 'oeufs'],
+  ])('writes %s for %s as %s', (noun, count, expected) => {
+    expect(plural(noun, count)).toBe(expected);
+  });
+});
+
+describe('packageServings', () => {
+  it('counts the servings a package holds', () => {
+    expect(packageServings(COMPOTE)).toBe(4);
+    expect(
+      packageServings({ ...COMPOTE, package: { quantity: '1200', unit: 'g' } }),
+    ).toBe(12);
+  });
+
+  it('takes 500 g of bread in slices of 35.7 g for 14 slices', () => {
+    expect(packageServings(BREAD)).toBe(14);
+  });
+
+  it('is null where the package is not a whole number of servings', () => {
+    const muesli = {
+      package: { quantity: '375', unit: 'g' },
+      serving: { quantity: '30', unit: 'g' },
+    };
+    expect(packageServings(muesli)).toBeNull();
+  });
+
+  it('is null with no package, no serving, or other units', () => {
+    expect(packageServings({ ...COMPOTE, package: null })).toBeNull();
+    expect(packageServings({ ...COMPOTE, serving: null })).toBeNull();
+    expect(packageServings(OIL)).toBeNull();
+  });
+
+  it('is null for a package smaller than a serving', () => {
+    expect(
+      packageServings({
+        package: { quantity: '50', unit: 'g' },
+        serving: { quantity: '100', unit: 'g' },
+      }),
+    ).toBeNull();
+  });
+});
+
+describe('packageContent', () => {
+  it('is the package in grams or millilitres where the stock is in that unit', () => {
+    expect(packageContent(COMPOTE, 'g')).toBe(400);
+    expect(packageContent(OIL, 'ml')).toBe(1000);
+  });
+
+  it('is the servings it holds where the stock is in servings', () => {
+    expect(packageContent(COMPOTE, 'serving')).toBe(4);
+  });
+
+  it('is null where the units differ or the package is not whole servings', () => {
+    expect(packageContent(OIL, 'g')).toBeNull();
+    expect(packageContent(PASTA, 'serving')).toBeNull();
+    expect(packageContent({ ...COMPOTE, package: null }, 'g')).toBeNull();
+  });
+});
+
+describe('convertStock', () => {
+  it('turns grams into the pots they need, a started pot being a pot', () => {
+    expect(convertStock(400, 'g', 'serving', COMPOTE)).toBe(4);
+    expect(convertStock(450, 'g', 'serving', COMPOTE)).toBe(5);
+    expect(convertStock(30, 'g', 'serving', COMPOTE)).toBe(1);
+  });
+
+  it('turns pots into grams', () => {
+    expect(convertStock(3, 'serving', 'g', COMPOTE)).toBe(300);
+    expect(convertStock(3, 'serving', 'g', BREAD)).toBe(107.1);
+  });
+
+  it('keeps a quantity in its own unit', () => {
+    expect(convertStock(7, 'g', 'g', COMPOTE)).toBe(7);
+  });
+
+  it('is null where the units cannot be told apart', () => {
+    expect(convertStock(5, 'ml', 'serving', COMPOTE)).toBeNull();
+    expect(convertStock(5, 'g', 'ml', COMPOTE)).toBeNull();
+    expect(
+      convertStock(5, 'g', 'serving', { ...COMPOTE, serving: null }),
+    ).toBeNull();
+  });
+});
+
+describe('stockUnitOptions', () => {
+  it('offers grams and pots for a product counted by pot', () => {
+    expect(stockUnitOptions(COMPOTE, 'serving', null, labels)).toEqual([
+      { value: 'g', label: 'g' },
+      { value: 'serving', label: 'pots' },
+    ]);
+  });
+
+  it('offers grams only for the pasta, which has no serving to count by', () => {
+    expect(stockUnitOptions(PASTA, 'g', null, labels)).toEqual([
+      { value: 'g', label: 'g' },
+    ]);
+  });
+
+  it('offers the millilitres of an oil, whatever its serving', () => {
+    expect(stockUnitOptions(OIL, 'ml', 250, labels)).toEqual([
+      { value: 'ml', label: 'ml' },
+    ]);
+  });
+
+  it('keeps the unit a stock is counted in, even if the product no longer offers it', () => {
+    expect(
+      stockUnitOptions(PASTA, 'serving', null, labels).map((o) => o.value),
+    ).toContain('serving');
+  });
+
+  it('offers only the units a counted stock can be brought to', () => {
+    const odd = {
+      ...COMPOTE,
+      serving: { quantity: '100', unit: 'ml', name: '1 pot' },
+    };
+    expect(stockUnitOptions(odd, 'g', 400, labels).map((o) => o.value)).toEqual(
+      ['g'],
+    );
+  });
+});
+
+describe('describePackage', () => {
+  it('says a package of pots as pots', () => {
+    expect(describePackage(COMPOTE, labels, 'fr-fr')).toBe('4 pots de 100 g');
+  });
+
+  it('says a single thing in the singular', () => {
+    const sachet = {
+      count_noun: 'sachet',
+      package: { quantity: '220', unit: 'g' },
+      serving: { quantity: '220', unit: 'g', name: '1 sachet' },
+    };
+    expect(describePackage(sachet, labels, 'fr-fr')).toBe('1 sachet de 220 g');
+  });
+
+  it('writes the weight of a slice with its decimals', () => {
+    expect(describePackage(BREAD, labels, 'fr-fr')).toMatch(
+      /^14 tranches de 35,7 g$/,
+    );
+  });
+
+  it('keeps grams for a product whose serving is not a thing', () => {
+    expect(describePackage(PASTA, labels, 'fr-fr')).toMatch(/^1\s?000 g$/);
+  });
+
+  it('keeps the package where it is not a whole number of servings', () => {
+    const muesli = {
+      count_noun: 'bol',
+      package: { quantity: '375', unit: 'g' },
+      serving: { quantity: '30', unit: 'g', name: '1 bol' },
+    };
+    expect(describePackage(muesli, labels, 'fr-fr')).toBe('375 g');
+  });
+
+  it('says nothing for a product with no package', () => {
+    expect(
+      describePackage({ ...COMPOTE, package: null }, labels, 'fr-fr'),
+    ).toBe('');
+  });
+});

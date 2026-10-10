@@ -57,12 +57,15 @@ export const labels = {
   proposal_optimal: 'Le meilleur jour que permet l’inventaire.',
   proposal_time_limit: 'Le temps est écoulé : voici le meilleur jour trouvé.',
   proposal_failed: 'Aucun jour n’a pu être calculé.',
-  proposal_no_candidates: 'Aucun produit de l’inventaire n’a de composition.',
+  proposal_no_candidates:
+    'Aucun produit de l’inventaire ne peut composer un jour : sans composition à compter, ou épuisés.',
   proposal_nothing_to_fill:
     'Tous les repas du jour sont mangés : rien à ajouter.',
   proposal_nothing_to_add:
     'Rien à ajouter : les repas mangés apportent ce dont la journée a besoin.',
   skipped: 'Laissés de côté, sans valeur d’énergie :',
+  skipped_no_energy: 'Laissés de côté, sans valeur d’énergie :',
+  skipped_out_of_stock: 'Laissés de côté, épuisés :',
   useDay: 'Utiliser ce jour',
   confirmReplace: 'Remplacer ce qui est dans les repas pas encore mangés ?',
   limitsTitle: 'Limites pour le jour proposé',

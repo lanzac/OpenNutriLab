@@ -24,6 +24,26 @@ export async function fetchProducts() {
   return response.json();
 }
 
+// Counts the stock of a product of the inventory: how much is at hand now, in
+// the unit it is counted in, or null when it is not counted. Answers with the
+// inventory item.
+export async function setStock(barcode, quantity, unit, csrfToken) {
+  const url = `${INVENTORY_API_BASE}${barcode}/stock`;
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrfToken,
+    },
+    body: JSON.stringify({ quantity, unit }),
+  });
+  if (!response.ok) {
+    throw new Error(`PUT ${url} failed (HTTP ${response.status})`);
+  }
+  return response.json();
+}
+
 // Puts a product in the user's inventory, or takes it out.
 export async function setInInventory(barcode, inInventory, csrfToken) {
   const url = `${INVENTORY_API_BASE}${barcode}`;
