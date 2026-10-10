@@ -426,7 +426,11 @@
         "source": "ciqual-2025",
         "code": "17440"
       }
-    ]
+    ],
+    "density": {
+      "min": 0.916,
+      "max": 0.922
+    }
   },
   {
     "reference": "jus de citron",
