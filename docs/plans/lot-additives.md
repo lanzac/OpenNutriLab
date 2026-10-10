@@ -125,8 +125,14 @@ were told to the user before they were built.
    gélifiant, exhausteur de goût, stabilisant...) as headings, in French, English
    and, for the commonest, Spanish, and not as ingredients. See step 3.
 4. **The estimate.** An additive has the composition its nutrients give. One with
-   none is **unknown, as any ingredient with none is**, which is a warning and a
-   lower confidence: that is the honest default. The curator can say of an
+   none is **unknown**, not zero. _Changed 2026-10-10, at the user's remark that
+   "no composition is known for sodium ascorbate, citric acid..." makes no sense
+   for additives:_ unlike any other ingredient, it does not leave the label's
+   nutrition unused and is not named in a warning; it counts as anything from 0
+   to 100 g of each nutrient, which only widens what the ingredients may add up
+   to, so the nutrition still narrows the others (`percentage_estimation._unknown`).
+   No lower confidence is given for it either: the coverage of the nutrients still
+   counts its share as unknown. The curator can say of an
    additive that it brings nothing of the nutrients (citric acid and the vitamins,
    say) with a flag and a note, which counts for zero _by that claim_, per
    additive, written down, and not by default. Its share stays an interval
@@ -284,8 +290,9 @@ were told to the user before they were built.
      shared page and service, see the plan of the preparations). The other
      direction, a French name for an additive that has none, is not there: a French
      label finds an additive by its French name.
-6. **The estimate** (not done): the nutrients of an additive, the flag "brings nothing" and what
-   it does to the warnings, the confidence and the report's credit of sources.
+6. **The estimate** (partly done, 2026-10-10: an additive with no composition no longer
+   leaves the nutrition unused, see decision 4). Not done: the nutrients of an additive, the
+   flag "brings nothing" and what it does to the confidence and the report's credit of sources.
 7. **Docs and translations** (not done): the roadmap, this plan, the `.po`. The deployment guide
    and the French catalogue already have what steps 4 and 5 add.
 

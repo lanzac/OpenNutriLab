@@ -9,8 +9,10 @@ the rules it has to follow:
 - the ingredients at the top of the list add up to 100 %;
 - the sub-ingredients of an ingredient add up to that ingredient;
 - a declared percentage holds within its rounding (33 is 32.5 to 33.5, see
-  rounding_margin). One written next to a sub-ingredient is a share of its
-  parent, as "Dattes 7 % (dattes, farine de riz 2 %)" reads;
+  rounding_margin). It is a share of the whole product, one written next to a
+  sub-ingredient too (Regulation (EU) 1169/2011, annex VIII: the quantity of an
+  ingredient is given as a percentage of the finished food): in "mini-involtini
+  12 % (fromage 8,4 %, speck 3,6 %)" the two add up to the 12 %;
 - the list is in descending order of weight (Regulation (EU) 1169/2011,
   article 18), so an ingredient never weighs more than the one before it in the
   same list. The regulation has exceptions that a text does not show, which can
@@ -50,8 +52,15 @@ value is a combination in the middle of them, which follows the rules as they
 do (see _ranges), and a declared percentage keeps its own figure when it still
 holds.
 
+An additive with no composition does not leave the nutrition unused. What it
+brings is unknown, anything from nothing to 100 g of each nutrient per 100 g of
+itself (see _unknown), which only widens what the ingredients may add up to; it
+is not counted as zero. The nutrition of the label then still narrows the other
+ingredients, which an additive in a pinch should not keep from doing.
+
 When the rules cannot all hold, nothing is guessed:
-- an ingredient with no composition leaves the nutrition unused, and says which;
+- an ingredient with no composition, other than an additive, leaves the nutrition
+  unused, and says which;
 - a label that the compositions cannot give leaves it unused, and says which
   nutrients are off. It is the label that is not trusted here and the composition
   that may be wrong, and the warning does not say which;
@@ -328,7 +337,8 @@ def load(product: Product) -> Loaded:
             parent=i.parent_id,
             name=i.item.name,
             declared=i.percentage,
-            composition=_macronutrients(composition, catalogue),
+            composition=_macronutrients(composition, catalogue)
+            or (_unknown() if i.additive is not None else None),
         )
         for i, composition in zip(ingredients, full, strict=True)
     ]
@@ -518,6 +528,15 @@ def _macronutrients(
     return ranges
 
 
+def _unknown() -> dict[str, Range]:
+    """
+    What an ingredient can be when nothing is known of it: anything from nothing
+    to the 100 g everything is given for, for each nutrient. It never narrows the
+    nutrition rule and never makes it wrong.
+    """
+    return dict.fromkeys(NUTRIENTS, (0.0, _HUNDRED))
+
+
 def _units(nodes: Sequence[Node]) -> tuple[list[int], list[int]]:
     """
     The indices of the nodes whose composition counts, which is the coarsest that
@@ -555,14 +574,10 @@ def _tree(nodes: Sequence[Node]) -> Rules:
     for i, node in enumerate(nodes):
         if node.declared is None:
             continue
+        # A share of the whole product, whatever the level: that it is within its
+        # parent follows from the parent being the sum of its parts.
         low, high = _declared_range(node.declared)
-        if node.parent is None:
-            problem.bounds[i] = (low, min(high, _HUNDRED))
-        else:
-            # A share of its parent: low% of it at least, high% of it at most.
-            parent = index[node.parent]
-            problem.ub.append(({i: 1.0, parent: -min(high, _HUNDRED) / 100}, 0.0))
-            problem.ub.append(({parent: low / 100, i: -1.0}, 0.0))
+        problem.bounds[i] = (low, min(high, _HUNDRED))
 
     roots = siblings[None]
     # A label that declares every ingredient need not add up to 100: 99.4 is
@@ -683,4 +698,5 @@ def interval(
 
 
 def _decimal(value: float) -> Decimal:
-    return Decimal(str(round(value, 6)))
+    # + 0.0 turns the -0.0 a solver leaves for nothing into 0.0, not "-0.00".
+    return Decimal(str(round(value, 6) + 0.0))

@@ -30,6 +30,7 @@ from opennutrilab.products.services.percentage_estimation import (
 )
 from opennutrilab.products.services.percentage_estimation import estimate
 from opennutrilab.products.services.percentage_estimation import estimate_percentages
+from opennutrilab.products.services.percentage_estimation import interval
 from opennutrilab.products.services.percentage_estimation import load
 from opennutrilab.products.services.reference_composition import Estimate
 
@@ -106,17 +107,40 @@ def test_the_sub_ingredients_add_up_to_their_parent():
     assert_spans(result, {2: (19.75, 40.5), 3: (0, 20.25)})
 
 
-def test_a_sub_ingredients_percentage_is_a_share_of_its_parent():
-    """Dattes 50 % (dattes, farine de riz 20 %): the flour is a fifth of the 50.
-
-    So it is 19.5 % of 49.5 at least and 20.5 % of 50.5 at most, not 20 +- 0.5 of
-    the whole product.
-    """
+def test_a_sub_ingredients_percentage_is_a_share_of_the_whole_product():
+    """Dattes 50 % (dattes, farine de riz 20 %): the flour is 20 % of the product,
+    which leaves 30 % for the dates, and not a fifth of the 50."""
     result = estimate(
         [node(1, declared="50"), node(2, 1), node(3, 1, declared="20")], {}
     )
 
-    assert_spans(result, {3: (9.65, 10.36), 2: (39.35, 40.66)})
+    assert_spans(result, {3: (19.5, 20.5), 2: (29, 31)})
+
+
+def test_sub_ingredients_that_add_up_to_their_parent_do_not_contradict_it():
+    """Pasta, mini-involtini 12 % (fromage 8,4 %, speck 3,6 %): 8.4 + 3.6 is the 12."""
+    result = estimate(
+        [
+            node(1),
+            node(2, declared="12"),
+            node(3, 2, declared="8.4"),
+            node(4, 2, declared="3.6"),
+        ],
+        {},
+    )
+
+    assert Problem.IMPOSSIBLE not in [w.problem for w in result.warnings]
+    assert_spans(result, {2: (11.9, 12.1), 3: (8.35, 8.45), 4: (3.55, 3.65)})
+
+
+def test_a_share_of_nothing_is_not_written_as_minus_zero():
+    assert str(interval(None, -1e-9, 0.0, 1.0).low) == "0.00"
+
+
+def test_a_sub_ingredient_cannot_be_declared_more_than_its_parent():
+    result = estimate([node(1, declared="12"), node(2, 1, declared="30"), node(3)], {})
+
+    assert Problem.IMPOSSIBLE in [w.problem for w in result.warnings]
 
 
 def test_a_declared_percentage_keeps_its_own_figure_as_the_point():
@@ -636,9 +660,58 @@ def test_an_additive_counts_by_its_source_foods_as_a_reference_does(source: Sour
     assert result.warnings == []
 
 
-def test_an_additive_with_no_composition_is_named_in_the_warning(source: Source):
+def test_an_additive_with_no_composition_does_not_leave_the_nutrition_unused(
+    source: Source,
+):
+    """Unknown, not zero: the label still narrows the others, and no warning."""
+    product = product_with(proteins="10")
+    oats = add(product, reference(source, "1", proteins="20"))
+    sugar = add(product, reference(source, "2", proteins="0"))
+    citric = Ingredient.objects.create(
+        product=product,
+        additive=Additive.objects.create(name_en="citric acid", code="E330"),
+    )
+
+    result = estimate_percentages(product)
+
+    assert result.used_nutrition
+    assert result.warnings == []
+    # The oats bring 19.5 g of protein per 100 g at least, so at most 10.5 / 0.195
+    # of the product: the nutrition narrows them although the additive is unknown.
+    # Order of the list: the additive weighs no more than the sugar, nor the sugar
+    # more than the oats. What the oats leave is shared between those two.
+    assert_spans(
+        result,
+        {oats.id: (33.33, 53.85), sugar.id: (23.07, 50), citric.id: (0, 33.33)},
+    )
+
+
+def test_an_additive_is_unknown_not_zero(source: Source):
+    """The label has more protein than the oats give: something else brings it."""
+    product = product_with(proteins="30")
+    add(product, reference(source, "1", proteins="20"))
+    citric = Ingredient.objects.create(
+        product=product,
+        additive=Additive.objects.create(name_en="citric acid", code="E330"),
+    )
+
+    result = estimate_percentages(product)
+
+    # Were the additive counted for nothing, the label could not hold at all.
+    assert result.used_nutrition
+    assert result.warnings == []
+    assert float(result.percentages[citric.id].high) > 0
+
+
+def test_only_the_references_with_no_composition_are_named_not_the_additives(
+    source: Source,
+):
     product = product_with(proteins="15")
     add(product, reference(source, "1", proteins="20"))
+    add(
+        product,
+        ReferenceIngredient.objects.create(name_fr="fiche vide", name_en="empty"),
+    )
     Ingredient.objects.create(
         product=product,
         additive=Additive.objects.create(name_en="citric acid", code="E330"),
@@ -647,7 +720,30 @@ def test_an_additive_with_no_composition_is_named_in_the_warning(source: Source)
     result = estimate_percentages(product)
 
     assert [w.problem for w in result.warnings] == [Problem.NO_COMPOSITION]
-    assert result.warnings[0].detail == "citric acid"
+    assert result.warnings[0].detail == "empty"
+
+
+def test_an_additive_with_a_figure_for_no_macronutrient_is_unknown_for_them(
+    source: Source,
+):
+    """A vitamin C figure, say: it says nothing of fat, carbohydrates or proteins."""
+    product = product_with(proteins="15")
+    add(product, reference(source, "1", proteins="20"))
+    ascorbate = Additive.objects.create(name_en="sodium ascorbate", code="E301")
+    food = SourceFood.objects.create(source=source, code="9", name_fr="Ascorbate")
+    SourceFoodNutrient.objects.create(
+        food=food,
+        nutrient=Nutrient.objects.get(code="vitamin_c"),
+        amount=D("900"),
+        confidence="A",
+    )
+    ascorbate.source_foods.add(food)
+    Ingredient.objects.create(product=product, additive=ascorbate)
+
+    result = estimate_percentages(product)
+
+    assert result.used_nutrition
+    assert result.warnings == []
 
 
 def test_a_reference_a_preparation_and_an_additive_with_one_id_are_not_confused(

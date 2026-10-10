@@ -476,7 +476,8 @@ written.
      top add up to 100 (only when one of them is undeclared, since a label that
      declares all of them need not add up: 99.4 is rounding); the
      sub-ingredients add up to their parent; a declared percentage holds within
-     its rounding, and a sub-ingredient's is a share of its parent; the list is
+     its rounding, a sub-ingredient's too being a share of the whole product
+     (changed 2026-10-10, see below); the list is
      in non-increasing order (Regulation 1169/2011, article 18); and, for each
      of fat, saturated fat, carbohydrates, sugars, fibre, proteins and salt of
      the label, the lowest the compositions can make is under the label's upper
@@ -502,10 +503,16 @@ written.
      figures moved the declared soy and dates to the edge of their margin (31.5
      and 7.5) and put wheat and oats level, because the compositions are only as
      good as their intervals (the manual foods are known to 15 %).
-   - **Difference from decision 5:** a sub-ingredient's percentage is always a
-     share of its parent. The exception (a parent with no percentage and a
-     value above every root's) was left out: it is ambiguous, and a reading that
-     cannot hold already gives the "contradict each other" warning.
+   - **Difference from decision 5:** a sub-ingredient's percentage was read as a
+     share of its parent, with no exception. **Changed 2026-10-10: it is a share
+     of the whole product, at every level** (Regulation 1169/2011, annex VIII
+     gives a quantity as a percentage of the finished food). On the products of
+     the development database that declare one (four), the parent reading made two
+     impossible, among them "mini-involtini 12 % (fromage 8,4 %, speck 3,6 %)",
+     whose parts add up to the 12; the product reading made none impossible. The
+     parent reading survives nowhere: a label that gives a share of the parent
+     would be read as a share of the product, and a contradiction gives the
+     "contradict each other" warning. Decision 5's exception is not needed.
    - When the rules cannot all hold, nothing is guessed, and a warning says
      why: no composition for an ingredient (named) leaves the nutrition unused;
      a product with no declared nutrient too; a label the compositions cannot
