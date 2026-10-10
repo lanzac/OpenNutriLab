@@ -15,6 +15,23 @@ D = Decimal
 
 
 @pytest.mark.django_db
+def test_a_serving_in_ml_weighs_what_the_density_says_when_it_is_known(user: User):
+    oil = make_product("1111111111116", serving="14")
+    oil.serving_unit = "ml"
+    oil.save()
+    stock(user, oil)
+    item = meal_services.add_item(user, DAY, "breakfast", oil, D(2))
+    item = MealItem.objects.select_related("product").get(pk=item.pk)
+
+    # No density known: a millilitre is a gram.
+    assert item.grams == D(28)
+
+    vars(item.product)["density"] = (D("0.908"), D("0.915"))
+
+    assert item.grams == D("25.52")
+
+
+@pytest.mark.django_db
 def test_a_product_of_the_inventory_is_put_in_a_meal_made_for_it(user: User):
     product = make_product("1111111111116", serving="35.7")
     stock(user, product)

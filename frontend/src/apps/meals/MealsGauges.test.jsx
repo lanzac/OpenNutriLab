@@ -291,6 +291,31 @@ describe('the total quantity of a product', () => {
     ).toBeInTheDocument();
   });
 
+  it('is a share of what the package weighs, which a density gives for a volume', async () => {
+    // 100 g of an oil of which the package is 1000 ml: it weighs 911.5 g.
+    const found = withNeeds();
+    found.meals[0].items[0] = {
+      ...found.meals[0].items[0],
+      grams: '91.15',
+      package: { quantity: '1000.00', unit: 'ml' },
+      package_grams: '911.50',
+    };
+    stubFetch({
+      [`GET ${DAY_URL}`]: ok(found),
+      'GET /api/v1/inventory/': ok([BREAD]),
+    });
+    renderApp();
+
+    const breakfast = await screen.findByRole('region', {
+      name: 'Petit-déjeuner',
+    });
+
+    // 91.15 of 911.5, a tenth, where 1000 would have made it 9 %.
+    expect(
+      within(breakfast).getByText(/10\s%\sd’un paquet de 1\s?000 ml/),
+    ).toBeInTheDocument();
+  });
+
   it('is said in the limits of each product', async () => {
     stubFetch({
       [`GET ${DAY_URL}`]: ok(withNeeds()),

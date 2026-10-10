@@ -109,8 +109,9 @@ class ProductForm(forms.ModelForm):
         decimal_places=2,
         label=_("Serving"),
         help_text=_(
-            "Meals are counted in servings. "
-            "A serving in ml counts as the same number of grams."
+            "Meals are counted in servings. A serving in ml weighs what the "
+            "density of the product says, or counts as the same number of grams "
+            "when it is not known."
         ),
     )
     # Without an empty choice: a serving is in grams unless said.

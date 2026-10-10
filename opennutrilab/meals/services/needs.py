@@ -83,6 +83,10 @@ class Need(NamedTuple):
     # What a sum is called, when its nutrients' names joined would be too long.
     name_en: str = ""
     name_fr: str = ""
+    # How much a miss of this need counts, against the others', in the day the
+    # optimiser proposes: 1, or what the reference says. A choice of the planner, not
+    # a fact of nutrition (see optimiser.Weights).
+    priority: Decimal = Decimal(1)
 
 
 class Ratio(NamedTuple):
@@ -243,6 +247,7 @@ def _need(entry: dict[str, Any], kcal: Decimal) -> Need:
         energy_share=share,
         name_en=entry.get("name_en", ""),
         name_fr=entry.get("name_fr", ""),
+        priority=Decimal(entry.get("priority", "1")),
     )
 
 
@@ -283,6 +288,7 @@ def _merged(needs: Iterable[Need]) -> list[Need]:
                 }
             ),
             energy_share=kept.energy_share or need.energy_share,
+            priority=max(kept.priority, need.priority),
         )
     return list(merged.values())
 

@@ -27,11 +27,15 @@ const packageText = (pack, languageCode) =>
 
 /**
  * How much of a package an item is, "14 % of a package of 500 g", for the products
- * that have a quantity. A volume counts as the same number of grams.
+ * that have a quantity. A volume weighs what the product's density says when it is
+ * known, and counts as the same number of grams when it is not.
  */
 function PackageShare({ item, labels, languageCode }) {
   if (!item.package || item.grams === null) return null;
-  const share = Number(item.grams) / Number(item.package.quantity);
+  // What the package weighs, which is its quantity unless it is in ml of a product
+  // whose density is known.
+  const whole = Number(item.package_grams ?? item.package.quantity);
+  const share = Number(item.grams) / whole;
   return (
     <small className="d-block text-body-secondary">
       {fill(labels.packageShare, {

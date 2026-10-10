@@ -16,11 +16,20 @@ rounding it is written with, and its estimate for the rest: the label is the
 reference for the product (see ProductNutrient). What the label's figure gives of
 another nutrient by a one-term derivation (the sodium of its salt) is the label's
 too, so that a composition does not hold a salt and a sodium that disagree.
+
+A composition is per 100 g, as the estimate is. A label given per 100 ml (Product.
+nutrition_unit) is kept as it is printed, and is turned into one per 100 g with the
+density of the product, which the kept estimate holds (Product.density): 91 g of fat
+per 100 ml of an oil of 0.91 g/ml is 100 g per 100 g. With no density known it is
+used as it is, as per 100 g, which is what a millilitre counting as a gram makes of it
+(see Product.grams_of).
 """
 
 import logging
 from collections.abc import Iterable
 from collections.abc import Mapping
+from decimal import ROUND_CEILING
+from decimal import ROUND_FLOOR
 from decimal import Decimal
 from typing import NamedTuple
 
@@ -36,6 +45,9 @@ from opennutrilab.products.services.estimate_validation import validate_estimate
 from opennutrilab.products.services.reference_composition import rounding_margin
 
 logger = logging.getLogger(__name__)
+
+# The figures of a label turned into another unit are given to this many places.
+_FIGURE = Decimal("0.000001")
 
 
 class Amount(NamedTuple):
@@ -60,19 +72,26 @@ def kept_estimates(
     The kept estimate of each product, by barcode and nutrient code, worked out
     again where it is stale or was never worked out.
     """
-    products = list(products)
+    return {
+        barcode: {row.nutrient_id: row for row in estimate.nutrients.all()}
+        for barcode, estimate in _worked_out(list(products)).items()
+    }
+
+
+def _worked_out(products: list[Product]) -> dict[str, ProductEstimate]:
+    """The kept estimate of each product, worked out again where it has to be."""
     kept = {
         estimate.product_id: estimate
         for estimate in ProductEstimate.objects.filter(
             product__in=products
         ).prefetch_related("nutrients")
     }
-    found: dict[str, dict[str, EstimatedNutrient]] = {}
+    found: dict[str, ProductEstimate] = {}
     for product in products:
         estimate = kept.get(product.pk)
         if estimate is None or estimate.stale:
             estimate = work_out(product)
-        found[product.pk] = {row.nutrient_id: row for row in estimate.nutrients.all()}
+        found[product.pk] = estimate
     return found
 
 
@@ -91,13 +110,20 @@ def work_out(product: Product) -> ProductEstimate:
         )
         nutrients = {}
         confidence = {}
+        density = None
     else:
         nutrients = validated.nutrients
         confidence = validated.confidence
+        density = validated.density
     with transaction.atomic():
         estimate, _created = ProductEstimate.objects.update_or_create(
             product=product,
-            defaults={"worked_out_at": timezone.now(), "stale": False},
+            defaults={
+                "worked_out_at": timezone.now(),
+                "stale": False,
+                "density_low": None if density is None else density[0],
+                "density_high": None if density is None else density[1],
+            },
         )
         estimate.nutrients.all().delete()
         EstimatedNutrient.objects.bulk_create(
@@ -163,27 +189,66 @@ def mark_stale(barcode: str | None = None) -> None:
     kept.update(stale=True)
 
 
+def _declared_per_mass(amount: Decimal, density: tuple[Decimal, Decimal]) -> Amount:
+    """
+    A figure of a label given per 100 ml as it is per 100 g: the amount over the
+    middle of the density, its lowest end over the heaviest millilitre, its highest
+    over the lightest, so that the range is never narrower than the truth.
+    """
+    declared = _declared(amount)
+    least, most = density
+    return Amount(
+        amount=(amount / ((least + most) / 2)).quantize(_FIGURE),
+        low=(declared.low / most).quantize(_FIGURE, ROUND_FLOOR),
+        high=(
+            None
+            if declared.high is None
+            else (declared.high / least).quantize(_FIGURE, ROUND_CEILING)
+        ),
+        coverage=declared.coverage,
+        declared=True,
+    )
+
+
 def compositions(products: Iterable[Product]) -> dict[str, dict[str, Amount]]:
-    """The composition of each product, by barcode and nutrient code (see module)."""
+    """
+    The composition of each product, by barcode and nutrient code, per 100 g (see
+    module). It sets `density` on each product from the estimate it has just read.
+    """
     products = list(products)
+    by_barcode = {product.pk: product for product in products}
+    worked_out = _worked_out(products)
+    for barcode, estimate in worked_out.items():
+        # What a cached property is: the value is read once, and it is this one.
+        vars(by_barcode[barcode])["density"] = (
+            None
+            if estimate.density_low is None or estimate.density_high is None
+            else (estimate.density_low, estimate.density_high)
+        )
     composition: dict[str, dict[str, Amount]] = {
         barcode: {
-            code: Amount(
+            row.nutrient_id: Amount(
                 amount=row.amount,
                 low=row.low,
                 high=row.high,
                 coverage=row.coverage_point,
                 declared=False,
             )
-            for code, row in rows.items()
+            for row in estimate.nutrients.all()
         }
-        for barcode, rows in kept_estimates(products).items()
+        for barcode, estimate in worked_out.items()
     }
     label: dict[str, dict[str, Amount]] = {barcode: {} for barcode in composition}
     for barcode, code, amount in ProductNutrient.objects.filter(
         product__in=products
     ).values_list("product_id", "nutrient_id", "amount"):
-        label[barcode][code] = _declared(amount)
+        product = by_barcode[barcode]
+        per_millilitre = product.nutrition_unit == Product.ServingUnit.MILLILITRE.value
+        label[barcode][code] = (
+            _declared_per_mass(amount, product.density)
+            if per_millilitre and product.density is not None
+            else _declared(amount)
+        )
     for barcode, declared in label.items():
         declared.update(_worked_back(declared))
         composition[barcode].update(declared)

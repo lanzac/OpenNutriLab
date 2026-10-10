@@ -172,16 +172,18 @@ def candidate_of(
     energy = composition.get("energy")
     if energy is None or energy.amount <= 0:
         return None
+    # In grams: a quantity in ml weighs what the product's density says when it is
+    # known (Product.grams_of), which the compositions set when they are read.
     serving = (
-        float(product.serving_quantity)
+        float(product.grams_of(product.serving_quantity, product.serving_unit))
         if product.serving_quantity is not None
         else None
     )
     meals = frozenset(limits.meals or KINDS)
     # All of the package, in grams whatever the product's serving, for it to add up.
-    # A package in ml counts as the same grams, as a serving in ml does.
     if limits.use_all and product.package_quantity is not None:
-        whole = (product.package_quantity - eaten_grams).quantize(Decimal("0.01"))
+        package = product.grams_of(product.package_quantity, product.package_unit)
+        whole = (package - eaten_grams).quantize(Decimal("0.01"))
         if whole <= 0:
             # Used up: none is left to put in the day, so it is not a candidate.
             return Candidate(

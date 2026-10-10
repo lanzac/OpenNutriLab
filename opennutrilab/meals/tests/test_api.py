@@ -4,12 +4,14 @@ from typing import Any
 
 import pytest
 from django.test import Client
+from django.utils import timezone
 
 from opennutrilab.meals.models import Meal
 from opennutrilab.meals.models import MealItem
 from opennutrilab.meals.models import Profile
 from opennutrilab.meals.tests.conftest import make_product
 from opennutrilab.meals.tests.conftest import stock
+from opennutrilab.products.models import ProductEstimate
 from opennutrilab.users.models import User
 from opennutrilab.users.tests.factories import UserFactory
 
@@ -228,6 +230,28 @@ def test_a_day_is_set_against_the_needs_of_the_profile(
     assert all(r["status"] == "unknown" for r in day["ratios"] if r["value"] is None)
 
 
+def test_a_package_in_ml_weighs_what_the_density_of_its_product_says(
+    api_client: Client, user: User, catalogue: None
+):
+    oil = make_product(BREAD, serving="12", package="1000", energy="3700")
+    oil.package_unit = "ml"
+    oil.save()
+    stock(user, oil)
+    # What the kept estimate holds of a product whose ingredients have a density.
+    ProductEstimate.objects.create(
+        product=oil,
+        worked_out_at=timezone.now(),
+        density_low=Decimal("0.908"),
+        density_high=Decimal("0.915"),
+    )
+
+    day = add(api_client, "breakfast", BREAD, "1").json()
+
+    item = day["meals"][0]["items"][0]
+    assert item["package"] == {"quantity": "1000.00", "unit": "ml"}
+    assert item["package_grams"] == "911.50"
+
+
 def test_a_product_in_a_meal_comes_with_what_its_package_holds(
     api_client: Client, user: User, catalogue: None
 ):
@@ -245,6 +269,9 @@ def test_a_product_in_a_meal_comes_with_what_its_package_holds(
         "unit": "g",
     }
     assert lunch["meals"][1]["items"][0]["package"] is None
+    # A package in g weighs its quantity.
+    assert breakfast["meals"][0]["items"][0]["package_grams"] == "500.00"
+    assert lunch["meals"][1]["items"][0]["package_grams"] is None
     # The inventory serves it too, for the page's choice of a product.
     served = {
         i["barcode"]: i["package"] for i in api_client.get("/api/v1/inventory/").json()

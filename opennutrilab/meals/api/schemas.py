@@ -110,8 +110,11 @@ class MealItemOut(Schema):
     # None for servings of a product that has no serving any more.
     grams: Decimal | None
     serving: ServingOut | None
-    # What the product's package holds, which an item is a share of.
+    # What the product's package holds, which an item is a share of, and what that
+    # weighs: the same for a package in g, and for one in ml what its density says
+    # (the same number when it is not known), in the grams `grams` is in.
     package: PackageOut | None = None
+    package_grams: Decimal | None = None
     # A food of a table that a suggestion names, and not a product: it has no serving,
     # and its sheet in the table is at `url`.
     generic: bool = False
@@ -340,6 +343,16 @@ def _total(total: Total) -> TotalOut:
     )
 
 
+def _package_grams(item: MealItem | GenericItem) -> Decimal | None:
+    """What the package of the product of an item weighs, in grams, if it has one."""
+    if not isinstance(item, MealItem):
+        return None
+    product = item.product
+    if product.package_quantity is None:
+        return None
+    return product.grams_of(product.package_quantity, product.package_unit)
+
+
 def _meal(meal: MealReport) -> MealOut:
     return MealOut(
         kind=meal.kind,
@@ -358,6 +371,7 @@ def _meal(meal: MealReport) -> MealOut:
                 package=(
                     package_of(item.product) if isinstance(item, MealItem) else None
                 ),
+                package_grams=_package_grams(item),
                 generic=isinstance(item, GenericItem),
                 url=item.food.url if isinstance(item, GenericItem) else "",
             )

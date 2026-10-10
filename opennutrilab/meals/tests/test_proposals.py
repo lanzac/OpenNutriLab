@@ -166,6 +166,53 @@ def test_a_package_in_ml_is_counted_in_as_many_grams(db: None):
     assert found.required_grams == 1000.0  # noqa: PLR2004
 
 
+def with_density(product: Product) -> Product:
+    """What the compositions do when they read a product whose density is known."""
+    vars(product)["density"] = (D("0.908"), D("0.915"))
+    return product
+
+
+def test_a_package_in_ml_weighs_what_the_density_says(db: None):
+    oil = with_density(packaged("1000", unit="ml"))
+
+    found = proposals.candidate_of(
+        oil, {"energy": amount("3700")}, Limits((), None, "", use_all=True)
+    )
+
+    assert found is not None
+    # 1000 ml of 0.9115 g/ml, not 1000 g.
+    assert found.required_grams == 911.5  # noqa: PLR2004
+
+
+def test_a_serving_in_ml_weighs_what_the_density_says(db: None):
+    oil = with_density(
+        Product(
+            barcode=BREAD,
+            name="Oil",
+            serving_quantity=D(14),
+            serving_unit="ml",
+        )
+    )
+
+    found = proposals.candidate_of(oil, {"energy": amount("3700")})
+
+    assert found is not None
+    # 14 ml are 12.76 g: a half serving is half of that, and six servings 76.56 g.
+    assert found.step_grams == pytest.approx(6.38)
+    assert found.max_grams == pytest.approx(76.56)
+
+
+def test_a_serving_in_ml_is_as_many_grams_where_no_density_is_known(db: None):
+    drink = Product(
+        barcode=BREAD, name="Drink", serving_quantity=D(250), serving_unit="ml"
+    )
+
+    found = proposals.candidate_of(drink, {"energy": amount("200")})
+
+    assert found is not None
+    assert found.step_grams == 125.0  # noqa: PLR2004
+
+
 def test_the_whole_package_is_in_the_meals_the_limits_say(db: None):
     found = proposals.candidate_of(
         packaged("500"),

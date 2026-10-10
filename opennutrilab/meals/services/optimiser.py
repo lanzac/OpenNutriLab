@@ -16,7 +16,10 @@ a tenth of one that has none of it. The targets are:
 
 - the needs: every lower and upper end of services.needs, among them the energy,
   held by a weight that outweighs the rest (a day of 1,000 kcal that meets every
-  vitamin is not a day);
+  vitamin is not a day). A need may count for more than the others, by the priority
+  its reference gives it (oleic acid, for one, counts triple, as the user's own targets
+  do: an oil is the cheapest way to it, and costs a day more than the one need of
+  39 that it closes is worth, at 1);
 - the energy of each meal, near its share of the day's (25, 35, 10 and 30 %), with
   a margin of 25 %;
 - the ratios: ANSES' (linoleic over alpha-linolenic acid at most 5, sodium over
@@ -410,7 +413,11 @@ class _Day:
             expression = self.terms(by_nutrient)
             brought = self.brought(by_nutrient)
             is_energy = need.nutrients == ("energy",)
-            weight = self.weights.energy if is_energy else self.weights.need
+            weight = (
+                self.weights.energy
+                if is_energy
+                else self.weights.need * float(need.priority)
+            )
             if need.low is not None and need.low > 0:
                 self.at_least(expression, float(need.low), weight, brought)
             if need.high is not None and need.high > 0:

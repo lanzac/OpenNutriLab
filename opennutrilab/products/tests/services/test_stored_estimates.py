@@ -191,6 +191,82 @@ def test_the_label_gives_what_it_declares_and_the_estimate_the_rest(muesli: Prod
     assert D("14.5") <= vitamin_c.amount <= D("15.5")
 
 
+def an_oil(source: Source, **fields: str) -> Product:
+    """An oil sold by volume, whose label is given per 100 ml: 91 g of fat."""
+    oil = reference(source, "9", fat="99.9", energy="3700")
+    oil.density_low, oil.density_high = D("0.908"), D("0.915")
+    oil.save()
+    product = product_of(BREAD, oil)
+    product.nutrition_unit = "ml"
+    for name, value in fields.items():
+        setattr(product, name, value)
+    product.save()
+    declare(product, fat="91")
+    return product
+
+
+def test_the_density_is_kept_with_the_estimate(source: Source):
+    oil = an_oil(source)
+
+    kept_estimates([oil])
+
+    estimate = ProductEstimate.objects.get(product=oil)
+    assert (estimate.density_low, estimate.density_high) == (D("0.908"), D("0.915"))
+
+
+def test_a_product_with_no_known_density_keeps_none(muesli: Product):
+    kept_estimates([muesli])
+
+    estimate = ProductEstimate.objects.get(product=muesli)
+    assert (estimate.density_low, estimate.density_high) == (None, None)
+
+
+def test_a_label_per_100_ml_is_a_composition_per_100_g_by_the_density(source: Source):
+    oil = an_oil(source)
+
+    fat = compositions([oil])[BREAD]["fat"]
+
+    # 91 g per 100 ml of 0.9115 g/ml is 99.8 g per 100 g; its rounding (90.5 to
+    # 91.5) over the heaviest and the lightest millilitre.
+    assert fat.amount == (D(91) / D("0.9115")).quantize(D("0.000001"))
+    assert fat.low == (D("90.5") / D("0.915")).quantize(D("0.000001"), "ROUND_FLOOR")
+    assert fat.high == (D("91.5") / D("0.908")).quantize(D("0.000001"), "ROUND_CEILING")
+    assert (fat.coverage, fat.declared) == (D(100), True)
+
+
+def test_the_product_knows_its_density_once_the_compositions_are_read(source: Source):
+    oil = an_oil(source)
+
+    compositions([oil])
+
+    assert oil.density == (D("0.908"), D("0.915"))
+    # A millilitre weighs the middle of it.
+    assert oil.grams_of(D(1000), "ml") == D("911.50")
+    assert oil.grams_of(D(1000), "g") == D(1000)
+
+
+def test_a_label_per_100_ml_is_used_as_it_is_when_no_density_is_known(source: Source):
+    product = product_of(BREAD, reference(source, "9", fat="99.9"))
+    product.nutrition_unit = "ml"
+    product.save()
+    declare(product, fat="91")
+
+    fat = compositions([product])[BREAD]["fat"]
+
+    # A millilitre then counts as a gram: 91 g per 100 ml is read as per 100 g.
+    assert (fat.amount, fat.low, fat.high) == (D(91), D("90.5"), D("91.5"))
+    assert product.density is None
+    assert product.grams_of(D(250), "ml") == D(250)
+
+
+def test_a_label_per_100_g_is_not_changed_by_a_density(source: Source):
+    oil = an_oil(source, nutrition_unit="g")
+
+    fat = compositions([oil])[BREAD]["fat"]
+
+    assert (fat.amount, fat.low, fat.high) == (D(91), D("90.5"), D("91.5"))
+
+
 def test_a_product_with_no_ingredient_has_its_label_only(source: Source):
     product = product_of(BREAD)
     ProductNutrient.objects.create(

@@ -117,6 +117,23 @@ def test_oleic_acid_has_the_2011_recommended_share_of_the_energy():
     assert (oleic.energy_share.low, oleic.energy_share.high) == (D(15), D(20))
 
 
+def test_a_need_counts_as_much_as_the_others_unless_its_reference_says_more():
+    needs = needs_for(MAN, D("1.7"))
+
+    assert need(needs, "oleic_acid").priority == D(3)
+    others = {n.priority for n in needs.nutrients if n.nutrients != ("oleic_acid",)}
+    assert others == {D(1)}
+
+
+def test_the_two_ends_of_a_need_keep_the_higher_priority():
+    low = Need(("x",), D(1), None, "rnp", "", "a", "", priority=D(2))
+    high = Need(("x",), None, D(5), "", "lss", "", "b", priority=D(3))
+
+    [merged] = _merged([low, high])
+
+    assert (merged.low, merged.high, merged.priority) == (D(1), D(5), D(3))
+
+
 def test_a_sum_is_called_by_the_name_the_references_give_it(catalogue: None):
     needs = needs_for(MAN, D("1.7"))
     catalogue_by_code = Nutrient.objects.in_bulk()

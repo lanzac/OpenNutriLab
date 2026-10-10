@@ -634,6 +634,43 @@ palmitique", and **put the fatty acids in a category of their own**.
   Chromium (French page, a throwaway user, deleted): six groups, "Acide gras" with
   "2 sur 8 respectés", oleic drawn against 44,2 g – 58,9 g.
 
+### Addendum 6 (2026-10-10): why the olive oil was left out, a priority per need, and a label per 100 ml
+
+The user did not understand why the olive oil was not used to close the omega-9 gap,
+and said it showed the algorithm could be better. Measured on the dev inventory (the
+day missed 4 g of oleic acid, 9 % of that one need), nothing was wrong: 12 g of oil
+closed it, and the day cost 0.13 more, because the oil's price added up: the largest
+part of it is the user's own omega-3:omega-6 target (weight 3: the day is at 0.23
+for 0.9 to 1.1, and the oil has 6.5 % linoleic acid for 0.7 % of alpha-linolenic),
+the energy of the day is already at its +5 % ceiling (110 kcal of oil replace foods
+that carry vitamin B3, iron, copper, folates), and the 0.04 charged for one more
+product. The gain, one need of 39 at weight 1, was 0.09. Three things followed.
+
+- **A priority per need** (`Need.priority`, `"priority"` in the references, 1 if
+  absent; the optimiser weighs a need by `Weights.need x priority`, the energy
+  apart). Oleic acid has **3**, as much as the user's own targets: the user did not
+  know what weight to give it, so it is the lowest that brings the oil into the day
+  on the inventory that prompted the question (at 2 it stays out; at 3 it comes in).
+  It is a choice of the planner and says so in the file's notes.
+- **A label given per 100 ml is read as per 100 g in the meals**, which it was not:
+  the planner took the oil's 91 g of fat and 3,382 kJ per 100 ml for per 100 g, and
+  counted it 8.6 % less caloric than it is. The kept estimate holds the product's
+  **density** (`ProductEstimate.density_low/high`, migration 0026, which marks every
+  estimate stale so that they are worked out again, `Product.density`), and
+  `stored_estimates.compositions` turns the figures of a label per 100 ml into figures
+  per 100 g with it (the amount over the middle of the density, its lowest end over the
+  heaviest millilitre, its highest over the lightest). With no density it is used as it
+  is, which a millilitre counted as a gram makes of it.
+- **A quantity in ml is weighed by the same density** (`Product.grams_of`): a serving
+  in ml (`MealItem.grams`, `candidate_of`) and a package in ml (the whole package, and
+  `MealItemOut.package_grams`, which the page's "14 % of a package" is a share of). It had to be
+  done with the composition: with only the composition converted, a product whose
+  density is added later would have its ml serving counted as grams again, an error of
+  the same size the other way.
+- Not done: only the olive oil has a density (more in the administration or in
+  `reference_links.json`); a preparation has none; the sunflower oil in the inventory is
+  read as it was.
+
 ## After the batch
 
 What the eight steps leave open, for the user to say:

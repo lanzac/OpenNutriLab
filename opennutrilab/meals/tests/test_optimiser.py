@@ -229,6 +229,40 @@ def test_a_need_nothing_can_meet_still_gives_a_day_and_the_cost_says_so():
     assert abs(misses.objective - meets.objective - 1.0) < EPSILON
 
 
+def test_a_need_that_counts_more_costs_more_when_missed():
+    candidates = [OATS]
+    plain = optimise(candidates, needs_of(need(("vitamin_d",), low=15)))
+    heavy = optimise(
+        candidates,
+        needs_of(need(("vitamin_d",), low=15)._replace(priority=D(3))),
+    )
+
+    assert plain.objective is not None
+    assert heavy.objective is not None
+    # Missed whole, a need costs its weight times its priority.
+    assert abs(heavy.objective - plain.objective - 2.0) < EPSILON
+
+
+@pytest.mark.parametrize(("priority", "taken"), [(1, False), (10, True)])
+def test_a_need_that_counts_more_is_met_at_the_price_of_a_need_that_counts_less(
+    *, priority: int, taken: bool
+):
+    # Each 10 g of the lemon bring a fifth of the vitamin C a day needs and twice the
+    # sodium it may have. At 1, the fifth is worth less than the excess; at 10 it is
+    # worth more.
+    salty_lemon = product(
+        "lemon", {"energy": 100, "vitamin_c": 10, "sodium": 10}, max_grams=50
+    )
+    wanted = needs_of(
+        need(("vitamin_c",), low=5)._replace(priority=D(priority)),
+        need(("sodium",), high=0.5),
+    )
+
+    plan = optimise([OATS, salty_lemon], wanted)
+
+    assert ("lemon" in {pick.barcode for pick in plan.picks}) is taken
+
+
 def test_a_product_that_brings_nothing_is_not_used():
     useless = product("water", {"energy": 0})
 

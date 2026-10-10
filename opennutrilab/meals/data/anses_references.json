@@ -22,6 +22,7 @@
     "An upper limit that the opinion gives for an added form only is not a limit on food: magnesium (salts and supplements), nicotinic acid. The one for folic acid applies to folic acid, and the one for vitamin A to retinol.",
     "Zinc: the 2016 report takes the reference for 900 mg/day of phytates, which no table gives the content of.",
     "Sugars: the 2016 limit is on total sugars less lactose; it is compared here with total sugars, lactose included.",
+    "Priority (optional, 1 if absent): how much a miss of the need counts, against the others', in the day the planner proposes. It is a choice of the planner and no reference of ANSES. Oleic acid counts triple, as much as the user's own targets (see optimiser.Weights): it is a share of the energy that one food (an oil) closes, and with the 39 needs at an equal weight the day gave it up for the many small gains of the vitamins. At 2 an oil was still left out of the inventory that prompted this; from 3 it comes in.",
     "Oleic acid (the omega-9 of the foods): the 2011 recommended intake is 15 to 20 % of the energy without alcohol, for an adult at 2000 kcal. The same report gives none for the other monounsaturated acids (omega-7, 22:1 omega-9), and caps trans fatty acids at 2 % of the energy; CIQUAL lists none of them."
   ],
   "references": [
@@ -95,7 +96,8 @@
       "low_kind": "anc",
       "high": "20",
       "high_kind": "anc",
-      "source": "anses-2011"
+      "source": "anses-2011",
+      "priority": "3"
     },
     {
       "nutrients": ["linoleic_acid"],

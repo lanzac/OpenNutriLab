@@ -29,6 +29,7 @@ Products, their ingredients, and the nutrient data behind them.
 import operator
 from collections.abc import Iterable
 from decimal import Decimal
+from functools import cached_property
 from functools import reduce
 from typing import TYPE_CHECKING
 from typing import Any
@@ -187,7 +188,8 @@ class Product(models.Model):
     # A serving as the label gives it ("35.7 g (1 tranche)"), which meals are
     # counted in: its quantity, its unit and what the label calls it. Read from
     # OpenFoodFacts' text (see services.servings) or entered by hand. A serving in
-    # millilitres counts as the same number of grams, the amounts being per 100 g.
+    # millilitres weighs what the density of the product says when it is known, and
+    # counts as the same number of grams when it is not (see grams_of).
     serving_quantity = models.DecimalField(
         max_digits=8,
         decimal_places=2,
@@ -260,6 +262,33 @@ class Product(models.Model):
     @override
     def __str__(self) -> str:
         return self.name.replace("_", " ").title()
+
+    @cached_property
+    def density(self) -> tuple[Decimal, Decimal] | None:
+        """
+        What a millilitre of the product weighs, in g/ml, as (low, high), when its kept
+        estimate says (ProductEstimate): the density of its ingredients, which the
+        estimate is the one to work out. None when it is not known.
+
+        Whatever reads it with the compositions of the products (the meals) reads
+        them first, which sets it from the estimate as worked out then.
+        """
+        kept = getattr(self, "kept_estimate", None)
+        if kept is None or kept.density_low is None or kept.density_high is None:
+            return None
+        return kept.density_low, kept.density_high
+
+    def grams_of(self, quantity: Decimal, unit: str) -> Decimal:
+        """
+        The mass in grams of `quantity` grams or millilitres of the product. A
+        millilitre weighs the middle of its density when that is known, and counts as
+        a gram when it is not (as the table of a label given per 100 ml is then read as
+        per 100 g: see services.stored_estimates.compositions).
+        """
+        density = self.density
+        if unit != self.ServingUnit.MILLILITRE.value or density is None:
+            return quantity
+        return (quantity * (density[0] + density[1]) / 2).quantize(Decimal("0.01"))
 
 
 class ProductNutrient(models.Model):
@@ -347,6 +376,16 @@ class ProductEstimate(models.Model):
     # Something it was worked out from has changed since (see signals): the next
     # reading works it out again.
     stale = models.BooleanField(default=False)
+    # What a millilitre of the product weighs, in g/ml, when the density of every
+    # ingredient is known (services.percentage_estimation.product_density): what a
+    # quantity in ml is turned into grams with, and a label per 100 ml into one per
+    # 100 g, wherever the meals count in grams.
+    density_low = models.DecimalField(
+        max_digits=6, decimal_places=4, null=True, blank=True
+    )
+    density_high = models.DecimalField(
+        max_digits=6, decimal_places=4, null=True, blank=True
+    )
 
     if TYPE_CHECKING:
         nutrients: RelatedManager["EstimatedNutrient"]

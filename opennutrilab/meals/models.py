@@ -204,14 +204,18 @@ class MealItem(models.Model):
     @property
     def grams(self) -> Decimal | None:
         """
-        The mass, in grams: a serving in ml counts as the same number of grams
-        (see Product.serving_quantity). None for servings of a product that has no
-        serving (it had one when the item was made).
+        The mass, in grams: a serving in ml weighs what the product's density says
+        when it is known, else it counts as the same number of grams (see
+        Product.grams_of). None for servings of a product that has no serving (it had
+        one when the item was made).
         """
+        product = self.product
         if self.unit == self.Unit.GRAM:
             return self.quantity
-        serving = self.product.serving_quantity
-        return None if serving is None else self.quantity * serving
+        serving = product.serving_quantity
+        if serving is None:
+            return None
+        return product.grams_of(self.quantity * serving, product.serving_unit)
 
 
 class ItemLimits(models.Model):
