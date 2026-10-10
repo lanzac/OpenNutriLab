@@ -78,24 +78,39 @@ function Ingredients({ rows, labels, languageCode }) {
         : { amount: row.declared, low: row.declared, high: row.declared },
   }));
   // The shares are compared with each other: one track for them all.
-  const max = sharedScaleOf(gauges);
+  // What an ingredient that is a nutrient adds is an amount, not a share: it has a
+  // track of its own, and is left out of the one the shares are compared on.
+  const max = sharedScaleOf(gauges.filter((_, index) => !rows[index].added));
   return (
     <>
       <h3 className="h6 mt-3">{labels.ingredients}</h3>
-      {rows.map((row, index) => (
-        <EstimateGauge
-          key={`${index}-${row.name}`}
-          name={row.name}
-          unit="%"
-          unitInName={false}
-          depth={row.depth}
-          estimated={gauges[index].estimated}
-          declared={gauges[index].declared}
-          max={max}
-          labels={labels}
-          languageCode={languageCode}
-        />
-      ))}
+      {rows.map((row, index) =>
+        row.added ? (
+          <EstimateGauge
+            key={`${index}-${row.name}`}
+            name={`${row.name} (${labels.added})`}
+            unit={row.added_unit}
+            unitInName={false}
+            depth={row.depth}
+            estimated={row.added}
+            labels={labels}
+            languageCode={languageCode}
+          />
+        ) : (
+          <EstimateGauge
+            key={`${index}-${row.name}`}
+            name={row.name}
+            unit="%"
+            unitInName={false}
+            depth={row.depth}
+            estimated={gauges[index].estimated}
+            declared={gauges[index].declared}
+            max={max}
+            labels={labels}
+            languageCode={languageCode}
+          />
+        ),
+      )}
     </>
   );
 }
@@ -196,6 +211,16 @@ export function EstimatePanel({ data, labels, languageCode, tables = [] }) {
     [data.nutrients, density, labelUnit, unit],
   );
 
+  // What an ingredient adds is an amount per 100 g or 100 ml, like the nutrients.
+  const ingredients = useMemo(
+    () =>
+      data.ingredients.map((row) => ({
+        ...row,
+        added: convertRange(row.added, density, ESTIMATE_UNIT, unit),
+      })),
+    [data.ingredients, density, unit],
+  );
+
   useEffect(() => {
     for (const table of tables) table.hidden = gauges;
     return () => {
@@ -271,7 +296,7 @@ export function EstimatePanel({ data, labels, languageCode, tables = [] }) {
           <Legend labels={labels} tolerance={nutrients.some(showsTolerance)} />
           {data.ingredients.length > 0 && (
             <Ingredients
-              rows={data.ingredients}
+              rows={ingredients}
               labels={labels}
               languageCode={languageCode}
             />

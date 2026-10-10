@@ -341,6 +341,7 @@ def product_form_config() -> dict[str, Any]:
                 "legendTolerance": _("Tolerance of the label (European Commission)"),
                 "legendOpen": _("Dashed: no upper end is known."),
                 "ingredients": _("Ingredients"),
+                "added": _("amount added"),
                 "nutrients": _("Nutrients per 100 g"),
                 "nutrientsMl": _("Nutrients per 100 ml"),
                 "per": _("Amounts per"),

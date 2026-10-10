@@ -544,11 +544,10 @@ written.
      which the label's figure for it meets. For the meals the label's figure is
      what counts where it is declared (`stored_estimates.compositions`).
      Four kinds are four columns and four checks to keep in step: at a fifth,
-     one `item` link would replace them. Not done: using the label's figure for the
-     vitamin to say how much was added (declared minus what the others bring); the
-     minerals, which a label also lists ("carbonate de calcium") and would follow
-     the same rule. A bound of 0 to 100 g of the vitamin was refused: it would only
-     turn an "at least" into a maximum that says nothing.
+     one `item` link would replace them. Not done: the minerals, which a label also
+     lists ("carbonate de calcium") and would follow the same rule. A bound of 0 to
+     100 g of the vitamin was refused: it would only turn an "at least" into a
+     maximum that says nothing.
    - On the muesli (the three missing foods added by hand in the source
      "Manual", see step 4), with the label's order: wheat flakes 28.77-31.50
      %, oat flakes 24.43-29.91 %, raisins 1.35-3.54 %, buckwheat 0-1.45 %. Without
@@ -644,6 +643,31 @@ written.
      "the label is above the least the ingredients bring", and it fails only when
      a label declares less than that. For the meals the label's figure is used
      where declared (`stored_estimates.compositions`).
+   - **The label narrows the estimate** (2026-10-10, decided with the user: the
+     declared vitamins were only compared with the estimate, and the label is the
+     reference). For a nutrient the label declares and the ingredients give, when
+     they agree, the estimate of the card is what both allow: the intersection of
+     the ingredients' interval and the label's (its rounding, or its tolerance when
+     the check needed it), with the declared figure as the point
+     (`estimate_validation.narrow_by_label`, flag `narrowed` on
+     `NutrientEstimateOut`). A nutrient only some foods give, which had no highest
+     end, gets one. The ingredients' own interval stays in `check.compared_low` and
+     `compared_high`. Not narrowed: a figure that disagrees (it keeps its warning),
+     one the shares were worked out with (it bounds them already), vitamin A
+     (read two ways, the readings are the point), and a nutrient no ingredient gives
+     (the card shows the label's figure beside "not estimated"). It also applies to
+     energy and any other nutrient outside the seven. Kept estimates and meals are
+     unchanged: they already take the label's figure where it is declared.
+   - **What a vitamin of the list adds** (same day). An ingredient that is a
+     nutrient ("vitamine C") has no composition, so the foods bring the rest and
+     the label declares the total: it adds the declared figure less what they bring,
+     never below nothing (`added_by_label`, `IngredientEstimateOut.added`, drawn
+     as its own gauge "amount added" in the ingredients). Since that ingredient
+     is itself a part of the product with no value for the nutrient, the foods give
+     the nutrient only from below, and the added amount has no lowest end but nothing,
+     and the label's highest end less what the foods bring at the least as its
+     highest. It is a bound, not a measure. Said only when the label agrees with the
+     foods or the foods give nothing of it.
    - **Confidence**, for each estimated nutrient: four parts between 0 and 1 and
      a score that is their product, worked out from the parts as shown. _Coverage_
      is the share of the product whose ingredients give the nutrient. _Quality_ is

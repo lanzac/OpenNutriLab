@@ -1,4 +1,6 @@
 from dataclasses import replace
+from decimal import ROUND_CEILING
+from decimal import ROUND_FLOOR
 from decimal import ROUND_HALF_EVEN
 from decimal import Decimal
 from pathlib import Path
@@ -18,12 +20,15 @@ from opennutrilab.products.models import SourceFoodNutrient
 from opennutrilab.products.services.ciqual_import import ensure_nutrients
 from opennutrilab.products.services.ciqual_import import read_constituents
 from opennutrilab.products.services.derived_nutrients import ensure_derivations
+from opennutrilab.products.services.estimate_validation import Added
 from opennutrilab.products.services.estimate_validation import Check
 from opennutrilab.products.services.estimate_validation import Confidence
 from opennutrilab.products.services.estimate_validation import Verdict
+from opennutrilab.products.services.estimate_validation import added_by_label
 from opennutrilab.products.services.estimate_validation import compare
 from opennutrilab.products.services.estimate_validation import confidence_of
 from opennutrilab.products.services.estimate_validation import mismatches
+from opennutrilab.products.services.estimate_validation import narrow_by_label
 from opennutrilab.products.services.estimate_validation import validate_estimate
 from opennutrilab.products.services.nutrient_estimation import NutrientAmount
 from opennutrilab.products.services.nutrient_estimation import nutrients_of
@@ -327,6 +332,143 @@ def test_what_agrees_or_cannot_be_compared_says_nothing():
     }
 
     assert mismatches(checks, {}, {}) == []
+
+
+# ----------------------------------------------------------------------------
+# The label narrows the estimate
+# ----------------------------------------------------------------------------
+def narrowed_by(
+    declared: str,
+    estimate: NutrientAmount | None,
+    code: str = "vitamin_b1",
+    group: str = "vitamin",
+    **kwargs: Any,
+) -> NutrientAmount | None:
+    nutrients = {} if estimate is None else {code: estimate}
+    check = check_of(declared, estimate, code, group=group, **kwargs)
+    return narrow_by_label(nutrients, {code: check}).get(code)
+
+
+def test_a_label_closes_a_nutrient_that_only_some_ingredients_give():
+    # They bring 0.04 mg at the least, and no highest end is known; the label
+    # says 0.4 mg (0.35 to 0.45).
+    narrowed = narrowed_by("0.4", given("0.04", None))
+
+    assert narrowed == NutrientAmount(D("0.4"), D("0.35"), D("0.45"), WHOLE)
+
+
+def test_the_estimate_keeps_what_the_label_and_the_ingredients_both_allow():
+    narrowed = narrowed_by("0.4", given("0.30", "0.38"))
+
+    # The point is the declared figure, held within what is left of the interval.
+    assert narrowed == NutrientAmount(D("0.38"), D("0.35"), D("0.38"), WHOLE)
+
+
+def test_a_label_that_agrees_only_within_the_tolerance_narrows_to_the_tolerance():
+    # 0.4 mg is 0.35 to 0.45, and 0.21 to 0.65 with the tolerance; they give 0.5-0.6.
+    narrowed = narrowed_by("0.4", given("0.5", "0.6"))
+
+    assert narrowed == NutrientAmount(D("0.5"), D("0.5"), D("0.6"), WHOLE)
+
+
+def test_a_label_that_disagrees_narrows_nothing():
+    assert narrowed_by("0.4", given("0.9", "1.2")) is None
+    assert narrowed_by("2", given("0.1", "0.3")) is None
+
+
+def test_a_nutrient_read_more_than_one_way_is_not_narrowed():
+    estimate = {"vitamin_a": given("15", "15")}
+    check = check_of("15", estimate["vitamin_a"], "vitamin_a", group="vitamin")
+
+    assert narrow_by_label(estimate, {"vitamin_a": check}) == {}
+
+
+def test_a_nutrient_no_ingredient_gives_is_not_narrowed():
+    assert narrowed_by("0.4", None) is None
+
+
+def test_a_figure_the_shares_were_worked_out_with_narrows_nothing():
+    assert narrowed_by("9.4", given("8", "10"), "fat", "macronutrient") is not None
+    assert (
+        narrowed_by(
+            "9.4", given("8", "10"), "fat", "macronutrient", constrained=("fat",)
+        )
+        is None
+    )
+
+
+def test_a_label_per_100_ml_narrows_the_estimate_per_100_g_through_the_density():
+    # 0.4 mg per 100 ml (0.35 to 0.45) of a liquid weighing 1.0 to 1.1 g/ml. The
+    # ingredients give, per 100 ml, what the check was made against.
+    check = check_of("0.4", given("0.04", None), "vitamin_b1", group="vitamin")
+    estimate = {"vitamin_b1": given("0.04", None)}
+
+    narrowed = narrow_by_label(
+        estimate, {"vitamin_b1": check}, density=(D("1.0"), D("1.1"))
+    )["vitamin_b1"]
+
+    assert narrowed.amount == (D("0.4") / D("1.05")).quantize(D("0.000001"))
+    assert narrowed.low == (D("0.35") / D("1.1")).quantize(D("0.000001"), ROUND_FLOOR)
+    assert narrowed.high == (D("0.45") / D("1.0")).quantize(D("0.000001"))
+
+
+def added_by(
+    declared: str,
+    estimate: NutrientAmount | None,
+    code: str = "vitamin_c",
+    group: str = "vitamin",
+) -> Added | None:
+    nutrients = {} if estimate is None else {code: estimate}
+    check = check_of(declared, estimate, code, group=group)
+    return added_by_label(nutrients, {code: check}).get(code)
+
+
+def test_what_the_label_declares_over_what_the_foods_bring_was_added():
+    # 30 mg is 29.5 to 30.5. The foods bring 5 mg at the least and the other
+    # ingredient (the vitamin) is unknown, so nothing says how much is the most.
+    added = added_by("30", given("5", None))
+
+    assert added == Added(D("25"), D("0"), D("25.5"))
+
+
+def test_the_added_amount_may_be_nothing_when_the_foods_bring_what_the_label_says():
+    # 5 mg is 4.5 to 5.5, and the foods bring 4 to 6.
+    added = added_by("5", given("4", "6", "5"))
+
+    assert added == Added(D("0"), D("0"), D("1.5"))
+
+
+def test_when_no_food_gives_the_nutrient_the_label_is_the_most_that_was_added():
+    added = added_by("30", None)
+
+    assert added == Added(D("30"), D("0"), D("30.5"))
+
+
+def test_a_label_that_disagrees_with_the_foods_says_nothing_of_what_was_added():
+    assert added_by("5", given("20", "21")) is None
+    assert added_by("30", given("5", "6")) is None
+
+
+def test_what_a_nutrient_read_more_than_one_way_adds_is_not_said():
+    estimate = {"vitamin_a": given("15", "15")}
+    check = check_of("15", estimate["vitamin_a"], "vitamin_a", group="vitamin")
+
+    assert added_by_label(estimate, {"vitamin_a": check}) == {}
+
+
+def test_a_label_per_100_ml_gives_the_added_amount_per_100_g_through_the_density():
+    check = check_of("30", given("5", None), "vitamin_c", group="vitamin")
+
+    added = added_by_label(
+        {"vitamin_c": given("5", None)},
+        {"vitamin_c": check},
+        density=(D("1.0"), D("1.1")),
+    )["vitamin_c"]
+
+    assert added.amount == (D("30") / D("1.05") - D("5")).quantize(D("0.000001"))
+    assert added.high == (D("30.5") / D("1.0") - D("5")).quantize(
+        D("0.000001"), ROUND_CEILING
+    )
 
 
 # ----------------------------------------------------------------------------

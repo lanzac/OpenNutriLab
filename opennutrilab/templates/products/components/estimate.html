@@ -37,6 +37,9 @@
                         {{ ingredient.estimated.point|figure }}
                         <small>({{ ingredient.estimated|span }})</small>
                       {% endif %}
+                      {% if ingredient.added %}
+                        <small class="d-block">{% translate "amount added" %}: {{ ingredient.added.point|figure }} {{ ingredient.nutrient.unit }} ({{ ingredient.added|span }})</small>
+                      {% endif %}
                     </td>
                   </tr>
                 {% endfor %}

@@ -28,6 +28,16 @@ Two things keep this from being as plain as it sounds:
 A nutrient whose figure on a label follows a convention the law does not fix is
 compared with what all the conventions give together (CONVENTIONS).
 
+**Narrowing.** The label is the reference, so a figure that agrees with the
+ingredients narrows what the product has of the nutrient: the estimate becomes
+the part of its interval that the label's also allows (see narrow_by_label), with
+the declared figure for its point. Where the ingredients give only some of a
+nutrient (a vitamin) that turns an interval with no highest end into a closed one.
+The ingredients' own interval is not lost, it stays in the check. A figure that
+does not agree narrows nothing, and a warning says so; one the shares were worked
+out with narrows nothing either, it already bounds them, and neither does one that
+is read more than one way (vitamin A).
+
 A label given per 100 ml (a liquid) is kept as it is printed, and the estimate,
 which is per 100 g, is set against it per 100 ml through the density of the product
 (see percentage_estimation.product_density). With no density known there is no
@@ -60,6 +70,8 @@ its own: the parts are what to read.
 from collections.abc import Collection
 from collections.abc import Mapping
 from collections.abc import Sequence
+from decimal import ROUND_CEILING
+from decimal import ROUND_FLOOR
 from decimal import ROUND_HALF_EVEN
 from decimal import Decimal
 from typing import NamedTuple
@@ -306,6 +318,126 @@ def _check(  # noqa: PLR0913
         tolerated,
         reading.tolerated,
     )
+
+
+_SIX_PLACES = Decimal(1).scaleb(-6)
+
+
+def _label_per_100_g(
+    check: Check, density: tuple[Decimal, Decimal] | None
+) -> tuple[Decimal, Decimal, Decimal]:
+    """
+    A declared figure as (amount, lowest, highest) per 100 g: the label's rounding,
+    or the tolerance when the check needed it (see Check).
+
+    With a label per 100 ml they come back to 100 g through the density, the lowest
+    end over the heaviest millilitre and the highest over the lightest, so that the
+    interval is wider than the truth, never narrower.
+    """
+    low, high = (
+        check.tolerance_range
+        if check.tolerated and check.tolerance_range is not None
+        else check.declared_range
+    )
+    amount = check.declared
+    if density is not None:
+        least, most = density
+        amount, low, high = amount / ((least + most) / 2), low / most, high / least
+    return amount, low, high
+
+
+def narrow_by_label(
+    nutrients: Mapping[str, NutrientAmount],
+    checks: Mapping[str, Check],
+    density: tuple[Decimal, Decimal] | None = None,
+) -> dict[str, NutrientAmount]:
+    """
+    The nutrients the label's figure narrows, by code, per 100 g as `nutrients` are.
+
+    A nutrient the label declares and the ingredients give, and that agree, is
+    what the ingredients and the label both allow: the intersection of the two
+    intervals, with the declared figure as its point (kept within it). Nothing that
+    disagrees is narrowed, since there is no common ground, nothing the shares were
+    worked out with, which is bounded by it already, and nothing that CONVENTIONS
+    reads more than one way: the label does not say which it follows, and the
+    readings are the point.
+
+    `density` is that of the product when the label is given per 100 ml.
+    """
+    narrowed: dict[str, NutrientAmount] = {}
+    for code, check in checks.items():
+        found = nutrients.get(code)
+        if (
+            found is None
+            or code in CONVENTIONS
+            or check.constrained
+            or check.verdict is not Verdict.AGREES
+        ):
+            continue
+        amount, label_low, label_high = _label_per_100_g(check, density)
+        low = max(found.low, label_low)
+        high = label_high if found.high is None else min(found.high, label_high)
+        if low > high:
+            continue
+        narrowed[code] = NutrientAmount(
+            min(max(amount, low), high).quantize(_SIX_PLACES),
+            low.quantize(_SIX_PLACES, ROUND_FLOOR),
+            high.quantize(_SIX_PLACES, ROUND_CEILING),
+            found.coverage,
+        )
+    return narrowed
+
+
+class Added(NamedTuple):
+    """What a nutrient that is an ingredient adds to 100 g of the product."""
+
+    amount: Decimal
+    low: Decimal
+    high: Decimal
+
+
+def added_by_label(
+    nutrients: Mapping[str, NutrientAmount],
+    checks: Mapping[str, Check],
+    density: tuple[Decimal, Decimal] | None = None,
+) -> dict[str, Added]:
+    """
+    What the label says an ingredient that is a nutrient ("vitamin C") adds, by code.
+
+    The ingredients that are foods bring what `nutrients` say and the label declares
+    the total, so the rest is what was added: the declared figure less what they
+    bring, never below nothing. A nutrient only some of them give has no highest
+    end, so the added amount has no lowest one but nothing; one none gives is
+    taken as bringing nothing at the least. Nothing is said of a figure that
+    disagrees with the ingredients, or of one that CONVENTIONS reads more than one
+    way.
+    """
+    added: dict[str, Added] = {}
+    for code, check in checks.items():
+        if code in CONVENTIONS or check.verdict not in (
+            Verdict.AGREES,
+            Verdict.NOT_ESTIMATED,
+        ):
+            continue
+        amount, label_low, label_high = _label_per_100_g(check, density)
+        others = nutrients.get(code)
+        brought_low = Decimal(0) if others is None else others.low
+        brought_high = None if others is None else others.high
+        brought = Decimal(0) if others is None else others.amount
+        most = label_high - brought_low
+        if most < 0:
+            continue
+        least = (
+            Decimal(0)
+            if brought_high is None
+            else max(Decimal(0), label_low - brought_high)
+        )
+        added[code] = Added(
+            min(max(amount - brought, least), most).quantize(_SIX_PLACES),
+            least.quantize(_SIX_PLACES, ROUND_FLOOR),
+            most.quantize(_SIX_PLACES, ROUND_CEILING),
+        )
+    return added
 
 
 def mismatches(

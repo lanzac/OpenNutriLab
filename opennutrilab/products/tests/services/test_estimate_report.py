@@ -186,6 +186,59 @@ def test_a_declared_nutrient_no_ingredient_gives_is_listed_without_an_estimate(
     assert vitamin.check.verdict == "not_estimated"
 
 
+def test_a_vitamin_on_the_label_narrows_what_only_some_ingredients_give(
+    source: Source,
+):
+    # Only the first food has vitamin C, so the ingredients give it at the least
+    # (the first is at least half of the product, less the rounding of the label's
+    # protein) and no highest end is known.
+    product = product_of(vitamin_c="30", proteins="15")
+    add(product, reference(source, "1", vitamin_c="40", proteins="30"))
+    add(product, reference(source, "2", proteins="0"))
+
+    vitamin = nutrients_of(build_estimate(product))["vitamin_c"]
+
+    assert vitamin.check is not None
+    assert vitamin.check.verdict == "agrees"
+    assert vitamin.check.compared_low == D("19.75")
+    assert vitamin.check.compared_high is None
+    # The label (30, written to the unit: 29.5 to 30.5) is the reference.
+    assert vitamin.narrowed
+    assert vitamin.estimated is not None
+    assert (vitamin.estimated.low, vitamin.estimated.point, vitamin.estimated.high) == (
+        D("29.5"),
+        D("30"),
+        D("30.5"),
+    )
+
+
+def test_a_label_that_disagrees_or_that_the_shares_were_worked_out_with_narrows_nothing(
+    source: Source,
+):
+    product = product_of(vitamin_c="5", proteins="15")
+    add(product, reference(source, "1", vitamin_c="40", proteins="30"))
+    add(product, reference(source, "2", proteins="0"))
+
+    nutrients = nutrients_of(build_estimate(product))
+
+    assert nutrients["vitamin_c"].check.verdict == "declared_below"  # type: ignore[union-attr]
+    assert not nutrients["vitamin_c"].narrowed
+    assert nutrients["vitamin_c"].estimated.low == D("19.75")  # type: ignore[union-attr]
+    assert not nutrients["proteins"].narrowed
+
+
+def test_a_nutrient_the_label_does_not_declare_is_not_narrowed(source: Source):
+    product = product_of(proteins="15")
+    add(product, reference(source, "1", vitamin_c="40", proteins="30"))
+    add(product, reference(source, "2", proteins="0"))
+
+    vitamin = nutrients_of(build_estimate(product))["vitamin_c"]
+
+    assert not vitamin.narrowed
+    assert vitamin.estimated is not None
+    assert vitamin.estimated.high is None
+
+
 def test_a_label_the_ingredients_cannot_give_is_a_warning_with_its_nutrient(
     source: Source,
 ):
@@ -502,7 +555,37 @@ def test_an_ingredient_that_is_a_nutrient_is_served_as_one(source: Source):
     assert ingredient.nutrient.model_dump() == {
         "code": "vitamin_d",
         "name": vitamin_d.name,
+        "unit": "µg",
     }
+    # The label does not declare it: nothing is said of what it adds.
+    assert ingredient.added is None
+
+
+def test_the_label_says_what_an_ingredient_that_is_a_nutrient_adds(source: Source):
+    # The food has 10 mg of vitamin C per 100 g and the label declares 30: the
+    # vitamin C of the list is what makes up the rest.
+    product = product_of(vitamin_c="30", proteins="15")
+    add(product, reference(source, "1", vitamin_c="10", proteins="15"))
+    Ingredient.objects.create(
+        product=product, nutrient=Nutrient.objects.get(code="vitamin_c")
+    )
+
+    estimate = build_estimate(product)
+
+    food, vitamin = estimate.ingredients
+    assert food.added is None
+    assert vitamin.added is not None
+    assert vitamin.added.high is not None
+    assert D(0) <= vitamin.added.low <= vitamin.added.point <= vitamin.added.high
+    # At the most, the label (30.5 at the highest) less what the food brings at the
+    # least, which is the lowest end of the estimate the label was compared with.
+    check = nutrients_of(estimate)["vitamin_c"].check
+    assert check is not None
+    assert check.compared_low is not None
+    assert vitamin.added.high == D("30.5") - check.compared_low
+    assert vitamin.added.low == D(0)
+    assert vitamin.nutrient is not None
+    assert vitamin.nutrient.unit == "mg"
 
 
 def test_the_sources_of_an_additive_are_credited_too(source: Source):

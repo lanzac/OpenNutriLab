@@ -53,6 +53,8 @@ class IngredientNutrientOut(ModelSchema):
     """The nutrient an ingredient is (a vitamin), named in the language served."""
 
     name: str
+    # What an amount of it is given in (see Nutrient.unit).
+    unit: str
 
     class Meta:
         model = Nutrient
@@ -178,8 +180,12 @@ class NutrientEstimateOut(Schema):
     code: str
     name: str
     unit: str
-    # None for a nutrient the label declares and no ingredient gives.
+    # None for a nutrient the label declares and no ingredient gives. When the label's
+    # figure agrees with the ingredients it narrows this to what both allow, and
+    # `narrowed` says so; the ingredients' own range is then `check.compared_low` and
+    # `compared_high`.
     estimated: RangeOut | None = None
+    narrowed: bool = False
     # The share of the product, in percent, whose ingredients give a value.
     coverage: RangeOut | None = None
     confidence: ConfidenceOut | None = None
@@ -200,6 +206,10 @@ class IngredientEstimateOut(Schema):
     # one it is the declared interval, narrowed by what the rest says. None only
     # when the label contradicts itself and nothing could be estimated.
     estimated: RangeOut | None = None
+    # For an ingredient that is a nutrient: what it adds to 100 g of the product, in
+    # the nutrient's unit, when the label declares the nutrient (the declared figure
+    # less what the other ingredients bring).
+    added: RangeOut | None = None
     sub_ingredients: list["IngredientEstimateOut"] = []
 
 

@@ -590,6 +590,7 @@ def test_the_estimate_is_served_with_its_parts(api_client: Client):
         "nutrient",
         "declared",
         "estimated",
+        "added",
         "sub_ingredients",
     }
     assert dates["reference"] is None
@@ -684,7 +685,11 @@ def test_an_ingredient_that_is_a_nutrient_is_served_as_one(
     assert ingredient["reference"] is None
     assert ingredient["preparation"] is None
     assert ingredient["additive"] is None
-    assert ingredient["nutrient"] == {"code": "vitamin_d", "name": "Vitamin D"}
+    assert ingredient["nutrient"] == {
+        "code": "vitamin_d",
+        "name": "Vitamin D",
+        "unit": "µg",
+    }
 
 
 # -----------------------

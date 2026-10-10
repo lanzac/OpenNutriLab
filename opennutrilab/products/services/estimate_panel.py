@@ -63,6 +63,8 @@ def _nutrient(
         "group": str(group),
         "group_label": str(Nutrient.Group(group).label),
         "estimated": _range(found.estimated),
+        # The label's figure agrees with the ingredients, and narrows the estimate.
+        "narrowed": found.narrowed,
         "coverage": None if found.coverage is None else str(found.coverage.point),
         "confidence": (
             None
@@ -104,6 +106,11 @@ def estimate_panel(estimate: EstimateOut) -> dict[str, Any]:
                     None if ingredient.declared is None else str(ingredient.declared)
                 ),
                 "estimated": _range(ingredient.estimated),
+                # What an ingredient that is a nutrient adds, per 100 g, and its unit.
+                "added": _range(ingredient.added),
+                "added_unit": (
+                    None if ingredient.nutrient is None else ingredient.nutrient.unit
+                ),
             }
             for depth, ingredient in walk_ingredients(estimate.ingredients)
         ],

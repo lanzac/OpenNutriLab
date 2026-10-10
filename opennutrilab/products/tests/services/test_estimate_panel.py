@@ -83,15 +83,40 @@ def test_the_ingredients_are_one_list_in_the_order_of_the_label_with_their_depth
             "depth": 0,
             "declared": "20",
             "estimated": {"low": "19", "point": "20", "high": "21"},
+            "added": None,
+            "added_unit": None,
         },
         {
             "name": "cocoa",
             "depth": 1,
             "declared": None,
             "estimated": {"low": "5", "point": "8", "high": "10"},
+            "added": None,
+            "added_unit": None,
         },
-        {"name": "sugar", "depth": 0, "declared": None, "estimated": None},
+        {
+            "name": "sugar",
+            "depth": 0,
+            "declared": None,
+            "estimated": None,
+            "added": None,
+            "added_unit": None,
+        },
     ]
+
+
+def test_an_ingredient_that_is_a_nutrient_comes_with_what_it_adds_and_its_unit():
+    vitamin = IngredientEstimateOut(
+        nutrient=IngredientNutrientOut.model_construct(
+            code="vitamin_c", name="Vit C", unit="mg"
+        ),
+        added=rng("0", "20", "25.5"),
+    )
+
+    (row,) = estimate_panel(estimate_of(ingredients=[vitamin]))["ingredients"]
+
+    assert row["added"] == {"low": "0", "point": "20", "high": "25.5"}
+    assert row["added_unit"] == "mg"
 
 
 def test_an_ingredient_is_named_whatever_kind_it_is():
@@ -111,7 +136,9 @@ def test_an_ingredient_is_named_whatever_kind_it_is():
         )
     )
     nutrient = IngredientEstimateOut(
-        nutrient=IngredientNutrientOut.model_construct(code="vitamin_d", name="Vit D")
+        nutrient=IngredientNutrientOut.model_construct(
+            code="vitamin_d", name="Vit D", unit="µg"
+        )
     )
     nothing = IngredientEstimateOut()
 
@@ -164,6 +191,7 @@ def test_a_nutrient_comes_with_its_group_its_figures_and_the_verdict_on_the_labe
             "group": "mineral",
             "group_label": "Mineral",
             "estimated": {"low": "3", "point": "4", "high": "5"},
+            "narrowed": False,
             "coverage": "95",
             "confidence": {
                 "score": "0.5",

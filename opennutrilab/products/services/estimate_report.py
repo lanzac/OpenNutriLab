@@ -39,7 +39,10 @@ from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import Source
 from opennutrilab.products.services.estimate_validation import CONVENTIONS
+from opennutrilab.products.services.estimate_validation import Added
 from opennutrilab.products.services.estimate_validation import ValidatedEstimate
+from opennutrilab.products.services.estimate_validation import added_by_label
+from opennutrilab.products.services.estimate_validation import narrow_by_label
 from opennutrilab.products.services.estimate_validation import validate_estimate
 from opennutrilab.products.services.nutrient_estimation import NutrientAmount
 from opennutrilab.products.services.percentage_estimation import Interval
@@ -58,6 +61,14 @@ CAVEAT = _(
 def build_estimate(product: Product) -> EstimateOut:
     """The estimate of a stored product, ready to be served."""
     validated = validate_estimate(product)
+    # The density only comes into it for a label given per 100 ml.
+    density = (
+        validated.density
+        if product.nutrition_unit != Product.ServingUnit.GRAM.value
+        else None
+    )
+    narrowed = narrow_by_label(validated.nutrients, validated.checks, density)
+    added = added_by_label(validated.nutrients, validated.checks, density)
     return EstimateOut(
         barcode=product.barcode,
         used_nutrition=validated.percentages.used_nutrition,
@@ -71,8 +82,8 @@ def build_estimate(product: Product) -> EstimateOut:
             )
             for warning in validated.warnings
         ],
-        nutrients=_nutrients(validated),
-        ingredients=_ingredients(product, validated.percentages),
+        nutrients=_nutrients(validated, narrowed),
+        ingredients=_ingredients(product, validated.percentages, added),
         sources=_sources(product),
         caveat=str(CAVEAT),
     )
@@ -85,22 +96,30 @@ def _density(validated: ValidatedEstimate) -> RangeOut | None:
     return RangeOut(low=low, point=(low + high) / 2, high=high)
 
 
-def _nutrients(validated: ValidatedEstimate) -> list[NutrientEstimateOut]:
-    """One entry for each nutrient estimated or declared, in catalogue order."""
+def _nutrients(
+    validated: ValidatedEstimate, narrowed: Mapping[str, NutrientAmount]
+) -> list[NutrientEstimateOut]:
+    """
+    One entry for each nutrient estimated or declared, in catalogue order, the
+    estimate of those the label narrows being the narrowed one.
+    """
     readings = {code for others in CONVENTIONS.values() for code in others}
     shown = (validated.nutrients.keys() | validated.checks.keys()) - readings
     catalogue = Nutrient.objects.in_bulk(validated.nutrients.keys() | shown)
     return [
-        _nutrient(catalogue[code], validated, catalogue)
+        _nutrient(catalogue[code], validated, catalogue, narrowed)
         for code in sorted(shown, key=lambda c: (catalogue[c].display_order, c))
     ]
 
 
 def _nutrient(
-    nutrient: Nutrient, validated: ValidatedEstimate, catalogue: Mapping[str, Nutrient]
+    nutrient: Nutrient,
+    validated: ValidatedEstimate,
+    catalogue: Mapping[str, Nutrient],
+    narrowed: Mapping[str, NutrientAmount],
 ) -> NutrientEstimateOut:
     code = nutrient.code
-    estimated = validated.nutrients.get(code)
+    estimated = narrowed.get(code, validated.nutrients.get(code))
     confidence = validated.confidence.get(code)
     check = validated.checks.get(code)
     return NutrientEstimateOut(
@@ -108,6 +127,7 @@ def _nutrient(
         name=nutrient.name,
         unit=nutrient.unit,
         estimated=None if estimated is None else _amount(estimated),
+        narrowed=code in narrowed,
         coverage=None if estimated is None else _range(estimated.coverage),
         confidence=(
             None
@@ -155,6 +175,14 @@ def _nutrient(
     )
 
 
+def _added(found: Added | None) -> RangeOut | None:
+    return (
+        None
+        if found is None
+        else RangeOut(low=found.low, point=found.amount, high=found.high)
+    )
+
+
 def _amount(amount: NutrientAmount) -> RangeOut:
     return RangeOut(low=amount.low, point=amount.amount, high=amount.high)
 
@@ -164,7 +192,7 @@ def _range(interval: Interval) -> RangeOut:
 
 
 def _ingredients(
-    product: Product, percentages: PercentageEstimate
+    product: Product, percentages: PercentageEstimate, added: Mapping[str, Added]
 ) -> list[IngredientEstimateOut]:
     """The ingredients as the label's tree, with their declared and estimated shares."""
     children: defaultdict[int | None, list[Ingredient]] = defaultdict(list)
@@ -199,6 +227,7 @@ def _ingredients(
             ),
             declared=ingredient.percentage,
             estimated=None if share is None else _range(share),
+            added=_added(added.get(ingredient.nutrient_id or "")),
             sub_ingredients=[build(sub) for sub in children[ingredient.id]],
         )
 

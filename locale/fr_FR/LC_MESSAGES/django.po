@@ -106,6 +106,9 @@ msgstr "Vitamine"
 msgid "Vitamins"
 msgstr "Vitamines"
 
+msgid "amount added"
+msgstr "quantité ajoutée"
+
 msgid "Other"
 msgstr "Autre"
 

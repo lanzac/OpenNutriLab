@@ -14,6 +14,7 @@ const labels = {
   legendLabel: 'Étiquette (valeur et arrondi)',
   legendOpen: 'Pointillé : aucun maximum n’est connu.',
   ingredients: 'Ingrédients',
+  added: 'quantité ajoutée',
   nutrients: 'Nutriments pour 100 g',
   label: 'Étiquette',
   estimate: 'Estimation',
@@ -328,6 +329,41 @@ describe('the estimate as gauges', () => {
       milk.querySelector('.est-name').style.getPropertyValue('--est-depth'),
     ).toBe('1');
     expect(gauge('Poudre de lait').querySelector('.est-band')).toBeNull();
+  });
+});
+
+describe('what an ingredient that is a nutrient adds', () => {
+  const withVitamin = (added = range('0', '20', '25.5')) => ({
+    ...data,
+    ingredients: [
+      ...data.ingredients,
+      {
+        name: 'Vitamine C',
+        depth: 0,
+        declared: null,
+        estimated: range('0', '0.02', '0.1'),
+        added,
+        added_unit: 'mg',
+      },
+    ],
+  });
+
+  it('is an amount on a track of its own, and not a share among the others', () => {
+    mount({ panel: withVitamin() });
+
+    const row = gauge('Vitamine C \\(quantité ajoutée\\)').closest('.est-row');
+    expect(within(row).getByText('20 mg')).toBeInTheDocument();
+    expect(within(row).queryByText('0,02 %')).toBeNull();
+    // The shares keep the track they had: 32 x 1.15 = 36.8 long for all of them.
+    const sugar = gauge('Sucre').querySelector('.est-band');
+    expect(parseFloat(sugar.style.left)).toBeCloseTo((28 / 36.8) * 100);
+  });
+
+  it('is left alone for an ingredient that adds nothing the label says', () => {
+    mount({ panel: withVitamin(null) });
+
+    expect(gauge('Vitamine C').closest('.est-row')).toHaveTextContent('0,02 %');
+    expect(screen.queryByText(/quantité ajoutée/)).toBeNull();
   });
 });
 
