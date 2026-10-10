@@ -41,6 +41,9 @@ services:
     env_file:
       - ./.envs/.local/.django
       - ./.envs/.local/.postgres
+    environment:
+      # Read from the git-ignored .env next to this file; see config/settings/local.py
+      DEV_HOST: ${DEV_HOST:-localhost}
     depends_on:
       - postgres
     ports:
@@ -117,5 +120,8 @@ services:
     # the lockfile is never rewritten. npm ci empties node_modules rather than
     # deleting it, which is what makes it safe on a volume mount point.
     command: sh -c "npm ci && npm run dev -- --host 0.0.0.0"
+    environment:
+      # Same value as the django service; see frontend/vite.config.js
+      DEV_HOST: ${DEV_HOST:-localhost}
     ports:
       - '5173:5173'

@@ -13,8 +13,14 @@ SECRET_KEY = env(
     "DJANGO_SECRET_KEY",
     default="0spshow94j43JYJeXjhflxYwr4IztXSWGMKaLnpFQGejaTWMisX8iaIEQ5agceM3",
 )
+# The name under which a browser reaches this machine: "localhost" on its own,
+# or, to open the site from another machine (a phone on the same Tailscale
+# network, say), the name that machine resolves, set in the .env file next to
+# docker-compose.local.yml. The page tells the browser where to fetch the Vite
+# modules from, so this name is also the one Vite has to be reachable under.
+DEV_HOST = env("DEV_HOST", default="") or "localhost"
 # https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
-ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1"]  # noqa: S104
+ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1", DEV_HOST]  # noqa: S104
 
 # CACHES
 # ------------------------------------------------------------------------------
@@ -78,5 +84,8 @@ INSTALLED_APPS += ["django_extensions"]
 # dev_mode stays False and every {% vite_asset %} demands a production manifest
 # that local development never builds.
 DJANGO_VITE["default"]["dev_mode"] = DEBUG
+# The browser fetches the modules straight from Vite, so "localhost" would be
+# the phone itself when the page is opened from another machine.
+DJANGO_VITE["default"]["dev_server_host"] = DEV_HOST
 # Your stuff...
 # ------------------------------------------------------------------------------
