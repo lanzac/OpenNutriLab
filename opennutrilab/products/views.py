@@ -127,6 +127,37 @@ class ProductListView(LoginRequiredMixin, ListView):
                     "Your inventory is empty. Show all products to add some."
                 ),
                 "inventoryError": _("Your inventory could not be changed."),
+                # Scanning a product with the camera. %(name)s and %(barcode)s
+                # are interpolated client-side.
+                "scanProduct": _("Scan a product"),
+                "scanClose": _("Close the scanner"),
+                "scanCamera": _("Camera"),
+                "scanStarting": _("Starting the camera…"),
+                "scanHint": _(
+                    "Hold the barcode of the product in front of the camera."
+                ),
+                "scanTakePicture": _("Take a picture of the barcode"),
+                "scanNeedsHttps": _(
+                    "The camera can only be used live on a secure page (https). "
+                    "Take a picture of the barcode instead."
+                ),
+                "scanCameraDenied": _(
+                    "The camera is blocked. Allow it for this site in the "
+                    "settings of the browser, or take a picture of the barcode."
+                ),
+                "scanCameraFailed": _(
+                    "The camera could not be started. "
+                    "Take a picture of the barcode instead."
+                ),
+                "scanReaderError": _("The barcode reader could not be loaded."),
+                "scanPictureEmpty": _(
+                    "No barcode was found in the picture. "
+                    "Try again, closer, with the bars in focus."
+                ),
+                "scanAdded": _('"%(name)s" was added to your inventory.'),
+                "scanAlready": _('"%(name)s" is already in your inventory.'),
+                "scanUnknown": _("%(barcode)s is not in the catalogue yet."),
+                "scanCreate": _("Create the product"),
             },
         }
         return context

@@ -135,6 +135,43 @@ class TestProductListView:
         # Intl needs the negotiated language or it falls back to the browser's.
         assert props["languageCode"].startswith("fr")
 
+    def test_context_data_carries_the_labels_of_the_scanner(self, client: Client):
+        """
+        The camera scanner (frontend/src/apps/products/scan/) reads every message
+        it shows from the labels, translated here. A key missing from them would
+        show as an empty line on a phone, so each one the scanner reads is
+        checked, in French, and the figures it fills in client-side must survive.
+        """
+        with translation.override("fr-fr"):
+            response: HttpResponse = client.get(
+                reverse("list_products"), headers={"accept-language": "fr"}
+            )
+
+        labels: dict[str, str] = response.context["product_list_props"]["labels"]
+        assert labels["scanProduct"] == "Scanner un produit"
+        assert labels["scanClose"] == "Fermer le scanner"
+        assert labels["scanTakePicture"] == "Prendre le code-barres en photo"
+        for key in (
+            "scanCamera",
+            "scanStarting",
+            "scanHint",
+            "scanNeedsHttps",
+            "scanCameraDenied",
+            "scanCameraFailed",
+            "scanReaderError",
+            "scanPictureEmpty",
+            "scanCreate",
+        ):
+            assert labels[key], key
+            assert labels[key] != key
+        # Put in client-side, where the name and the barcode are known.
+        assert "%(name)s" in labels["scanAdded"]
+        assert "%(name)s" in labels["scanAlready"]
+        assert "%(barcode)s" in labels["scanUnknown"]
+        # Not left in English: the catalogue has them all.
+        assert "inventaire" in labels["scanAdded"]
+        assert "catalogue" in labels["scanUnknown"]
+
     def test_context_data_carries_the_csrf_token(self, client: Client):
         """
         CSRF_COOKIE_HTTPONLY keeps the token out of document.cookie, so the

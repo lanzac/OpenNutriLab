@@ -995,6 +995,51 @@ msgstr ""
 msgid "Your inventory could not be changed."
 msgstr "Votre inventaire n'a pas pu être modifié."
 
+msgid "Scan a product"
+msgstr "Scanner un produit"
+
+msgid "Close the scanner"
+msgstr "Fermer le scanner"
+
+msgid "Camera"
+msgstr "Caméra"
+
+msgid "Starting the camera…"
+msgstr "Démarrage de la caméra…"
+
+msgid "Hold the barcode of the product in front of the camera."
+msgstr "Placez le code-barres du produit devant la caméra."
+
+msgid "Take a picture of the barcode"
+msgstr "Prendre le code-barres en photo"
+
+msgid "The camera can only be used live on a secure page (https). Take a picture of the barcode instead."
+msgstr "La caméra ne peut servir en direct que sur une page sécurisée (https). Prenez plutôt le code-barres en photo."
+
+msgid "The camera is blocked. Allow it for this site in the settings of the browser, or take a picture of the barcode."
+msgstr "La caméra est bloquée. Autorisez-la pour ce site dans les réglages du navigateur, ou prenez le code-barres en photo."
+
+msgid "The camera could not be started. Take a picture of the barcode instead."
+msgstr "La caméra n'a pas pu démarrer. Prenez plutôt le code-barres en photo."
+
+msgid "The barcode reader could not be loaded."
+msgstr "Le lecteur de codes-barres n'a pas pu être chargé."
+
+msgid "No barcode was found in the picture. Try again, closer, with the bars in focus."
+msgstr "Aucun code-barres n'a été trouvé sur la photo. Réessayez de plus près, les barres bien nettes."
+
+msgid "\"%(name)s\" was added to your inventory."
+msgstr "« %(name)s » a été ajouté à votre inventaire."
+
+msgid "\"%(name)s\" is already in your inventory."
+msgstr "« %(name)s » est déjà dans votre inventaire."
+
+msgid "%(barcode)s is not in the catalogue yet."
+msgstr "Le code %(barcode)s n'est pas encore dans le catalogue."
+
+msgid "Create the product"
+msgstr "Créer le produit"
+
 msgid "Meals"
 msgstr "Repas"
 
