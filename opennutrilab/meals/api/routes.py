@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404
 from ninja import Router
 from ninja.errors import HttpError
 
+from opennutrilab.meals.api.schemas import AllEnabledIn
 from opennutrilab.meals.api.schemas import DayIn
 from opennutrilab.meals.api.schemas import DayOut
 from opennutrilab.meals.api.schemas import ItemChange
@@ -47,18 +48,37 @@ def _own_item(request: HttpRequest, item_id: int) -> MealItem:
     )
 
 
+def _limits_out(barcode: str, found: limits_services.Limits) -> LimitsOut:
+    return LimitsOut(
+        barcode=barcode,
+        meals=list(found.meals),
+        max_quantity=found.max_quantity,
+        max_unit=found.max_unit,
+        use_all=found.use_all,
+        enabled=found.enabled,
+    )
+
+
 @router.get(path="/limits/", response=list[LimitsOut])
 def list_limits(request: HttpRequest) -> list[LimitsOut]:
     """What the user allows of the products of their inventory (see limits)."""
     return [
-        LimitsOut(
-            barcode=barcode,
-            meals=list(found.meals),
-            max_quantity=found.max_quantity,
-            max_unit=found.max_unit,
-            use_all=found.use_all,
-        )
+        _limits_out(barcode, found)
         for barcode, found in limits_services.limits_of(_user(request)).items()
+    ]
+
+
+@router.put(path="/limits/", response=list[LimitsOut])
+def set_all_enabled(request: HttpRequest, data: AllEnabledIn) -> list[LimitsOut]:
+    """
+    Leave every product of the inventory out of the days proposed, or put them all
+    back in. What else was set of each is kept. Answers with the limits that are left.
+    """
+    return [
+        _limits_out(barcode, found)
+        for barcode, found in limits_services.set_all_enabled(
+            _user(request), enabled=data.enabled
+        ).items()
     ]
 
 
@@ -66,8 +86,8 @@ def list_limits(request: HttpRequest) -> list[LimitsOut]:
 def set_limits(request: HttpRequest, barcode: str, data: LimitsIn) -> LimitsOut:
     """
     Set the meals a product of the inventory may be in when a day is proposed, and
-    the most of it a day, or that all of its package is to be used. Allowing every
-    meal with no most clears them.
+    the most of it a day, or that all of its package is to be used, or that it is left
+    out. Allowing every meal with no most, and not leaving it out, clears them.
     """
     product = get_object_or_404(Product, barcode=barcode)
     try:
@@ -78,6 +98,7 @@ def set_limits(request: HttpRequest, barcode: str, data: LimitsIn) -> LimitsOut:
             data.max_quantity,
             data.max_unit,
             use_all=data.use_all,
+            enabled=data.enabled,
         )
     except meal_services.NotInInventoryError as e:
         raise HttpError(422, "The product is not in your inventory.") from e
@@ -87,13 +108,7 @@ def set_limits(request: HttpRequest, barcode: str, data: LimitsIn) -> LimitsOut:
         raise HttpError(
             422, "The product has no total quantity: give it to use it whole."
         ) from e
-    return LimitsOut(
-        barcode=barcode,
-        meals=list(found.meals),
-        max_quantity=found.max_quantity,
-        max_unit=found.max_unit,
-        use_all=found.use_all,
-    )
+    return _limits_out(barcode, found)
 
 
 @router.get(path="/{day}", response=DayOut)

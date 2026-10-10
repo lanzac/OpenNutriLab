@@ -291,7 +291,7 @@ describe('suggesting foods', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Jour suivant' }));
 
     // Once the next day is shown: while it loads, nothing is shown anyway.
-    expect(await screen.findByLabelText('Jour')).toHaveValue('2026-10-10');
+    expect(await screen.findByLabelText('Jour')).toHaveValue('10/10/2026');
     await screen.findByRole('region', { name: 'Déjeuner' });
     expect(
       screen.queryByRole('region', { name: 'Aliments à se procurer' }),

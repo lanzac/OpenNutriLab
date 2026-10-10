@@ -59,6 +59,14 @@ class LimitsIn(Schema):
     max_unit: Literal["serving", "g"] | None = None
     # All of the package in the day, in place of a most.
     use_all: bool = False
+    # False, the product is left out of the days proposed.
+    enabled: bool = True
+
+
+class AllEnabledIn(Schema):
+    """Every product of the inventory left out of the days proposed, or put in."""
+
+    enabled: bool
 
 
 class LimitsOut(Schema):
@@ -67,6 +75,7 @@ class LimitsOut(Schema):
     max_quantity: Decimal | None
     max_unit: str
     use_all: bool
+    enabled: bool
 
 
 class TotalOut(Schema):

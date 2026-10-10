@@ -287,6 +287,35 @@ def test_the_limits_of_a_product_are_kept_in_the_proposal(
     assert sum(item.quantity for item in found) <= 1
 
 
+def test_a_product_left_out_is_not_in_the_proposed_day(
+    user: User, inventory: list[Product]
+):
+    make_profile(user)
+    bars = inventory[2]
+    limits.set_limits(user, bars, [], None, None, enabled=False)
+
+    loaded = proposals.load_inventory(user)
+    proposal = proposals.propose_day(user)
+
+    assert bars.pk not in {candidate.barcode for candidate in loaded.candidates}
+    # It is the user's choice: it is not left aside for what it lacks.
+    assert bars.pk not in {skipped.barcode for skipped in loaded.skipped}
+    assert proposal.items
+    assert bars not in {item.product for item in proposal.items}
+
+
+def test_a_day_cannot_be_made_of_products_that_are_all_left_out(
+    user: User, inventory: list[Product]
+):
+    make_profile(user)
+    limits.set_all_enabled(user, enabled=False)
+
+    proposal = proposals.propose_day(user)
+
+    assert proposal.status == "no_candidates"
+    assert proposal.items == []
+
+
 def test_a_product_asked_for_whole_is_all_in_the_proposed_day(
     user: User, inventory: list[Product]
 ):

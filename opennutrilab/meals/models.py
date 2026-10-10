@@ -203,7 +203,8 @@ class ItemLimits(models.Model):
     """
     What a user allows of a product of their inventory when a day is proposed. A
     product with no row has none: it may be in any meal, up to the default most. A
-    product may also be asked for whole: all of its package, in the day.
+    product may also be asked for whole: all of its package, in the day, or be left
+    out of the proposed days altogether.
     """
 
     inventory_item_id: int
@@ -230,6 +231,9 @@ class ItemLimits(models.Model):
     # The whole package in the day, which is then the most of it as well as the least:
     # for a product to be used up (see the product's package_quantity).
     use_all = models.BooleanField(default=False)
+    # Off, the product is left out of the days proposed, and the rest is kept for when
+    # it is on again.
+    enabled = models.BooleanField(default=True)
 
     class Meta:
         constraints = [

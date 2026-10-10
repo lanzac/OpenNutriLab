@@ -11,7 +11,6 @@ import {
   BREAD,
   DAY_URL,
   MUESLI,
-  TODAY,
   day,
   labels,
   meal,
@@ -251,18 +250,70 @@ describe('MealsApp', () => {
         expect.anything(),
       ),
     );
-    expect(await screen.findByLabelText('Jour')).toHaveValue('2026-10-10');
+    expect(await screen.findByLabelText('Jour')).toHaveValue('10/10/2026');
     expect(today).toBeEnabled();
 
     fireEvent.click(today);
     await waitFor(() =>
-      expect(screen.getByLabelText('Jour')).toHaveValue(TODAY),
+      expect(screen.getByLabelText('Jour')).toHaveValue('09/10/2026'),
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Jour précédent' }));
     await waitFor(() =>
-      expect(screen.getByLabelText('Jour')).toHaveValue('2026-10-08'),
+      expect(screen.getByLabelText('Jour')).toHaveValue('08/10/2026'),
     );
+  });
+
+  it('opens on the day the address names, as when the page is loaded again', async () => {
+    const fetch = stubFetch({
+      [`GET ${DAY_URL}`]: ok(day()),
+      'GET /api/v1/meals/2026-10-12': ok(day({ day: '2026-10-12' })),
+      'GET /api/v1/inventory/': ok([BREAD]),
+    });
+
+    renderApp({ search: '?day=2026-10-12' });
+
+    expect(await screen.findByLabelText('Jour')).toHaveValue('12/10/2026');
+    await screen.findByRole('region', { name: 'Déjeuner' });
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/v1/meals/2026-10-12',
+      expect.anything(),
+    );
+    expect(fetch).not.toHaveBeenCalledWith(DAY_URL, expect.anything());
+    expect(screen.getByRole('button', { name: 'Aujourd’hui' })).toBeEnabled();
+  });
+
+  it('opens on today when the address names no day, or none that exists', async () => {
+    stubFetch({
+      [`GET ${DAY_URL}`]: ok(day()),
+      'GET /api/v1/inventory/': ok([BREAD]),
+    });
+
+    for (const search of ['', '?day=demain', '?day=2026-02-30', '?day=']) {
+      const { unmount } = renderApp({ search });
+      expect(await screen.findByLabelText('Jour')).toHaveValue('09/10/2026');
+      await screen.findByRole('region', { name: 'Déjeuner' });
+      unmount();
+    }
+  });
+
+  it('keeps the day in the address, and takes it out for today', async () => {
+    stubFetch({
+      [`GET ${DAY_URL}`]: ok(day()),
+      'GET /api/v1/meals/2026-10-10': ok(day({ day: '2026-10-10' })),
+      'GET /api/v1/inventory/': ok([BREAD]),
+    });
+    renderApp({ search: '?other=1' });
+    await screen.findByRole('region', { name: 'Déjeuner' });
+    expect(window.location.search).toBe('?other=1');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Jour suivant' }));
+    await waitFor(() =>
+      expect(window.location.search).toBe('?other=1&day=2026-10-10'),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aujourd’hui' }));
+    await waitFor(() => expect(window.location.search).toBe('?other=1'));
   });
 
   it('shows an answer for the day asked for only', async () => {

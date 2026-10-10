@@ -57,11 +57,20 @@ export const labels = {
   useDay: 'Utiliser ce jour',
   confirmReplace: 'Remplacer ce qui est dans ce jour ?',
   limitsTitle: 'Limites pour le jour proposé',
-  limitsHelp: 'Choisissez dans quels repas un produit peut être.',
+  limitsHelp:
+    'Désactivez un produit pour l’écarter du jour proposé, et choisissez les repas où il peut être.',
+  limitsUse: 'Utiliser dans le jour proposé',
+  limitsUseAll: 'Tous les produits',
+  limitsInUse: '%(used)s sur %(total)s utilisés',
+  limitsKeepOneMeal:
+    'Un produit a besoin d’un repas : utilisez l’interrupteur pour l’écarter.',
+  limitsSaving: 'Enregistrement…',
+  uncategorised: 'Non classé',
+  dateHint: 'jj/mm/aaaa',
+  chooseDay: 'Choisir un jour dans un calendrier',
   limitsMeals: 'Repas',
   limitsMost: 'Au plus par jour',
   product: 'Produit',
-  save: 'Enregistrer',
   saved: 'Enregistré',
   suggestFoods: 'Suggérer des aliments',
   suggesting: 'Recherche d’aliments…',
@@ -106,6 +115,8 @@ export const BREAD = {
   name: 'Pain de mie',
   serving: { quantity: '35.70', unit: 'g', name: '1 tranche' },
   package: { quantity: '500.00', unit: 'g' },
+  group_level_1: 'Cereals and potatoes',
+  group_level_2: 'Bread',
   added_at: '2026-10-09T10:00:00Z',
 };
 export const MUESLI = {
@@ -113,7 +124,24 @@ export const MUESLI = {
   name: 'Muesli',
   serving: null,
   package: { quantity: '375.00', unit: 'g' },
+  group_level_1: 'Cereals and potatoes',
+  group_level_2: 'Breakfast cereals',
   added_at: '2026-10-09T10:00:00Z',
+};
+export const COMPOTE = {
+  barcode: '3017620422003',
+  name: 'Compote',
+  serving: { quantity: '100.00', unit: 'g', name: '1 pot' },
+  package: null,
+  group_level_1: 'Fruits and vegetables',
+  group_level_2: 'Fruits',
+  added_at: '2026-10-09T10:00:00Z',
+};
+
+// The food groups in the language served.
+export const GROUP_NAMES = {
+  'Cereals and potatoes': 'Céréales et pommes de terre',
+  'Fruits and vegetables': 'Fruits et légumes',
 };
 
 export const total = (
@@ -204,7 +232,10 @@ export const DAY_URL = `/api/v1/meals/${TODAY}`;
 // as a user would, unless they are about the groups themselves.
 const GROUPS = ['energy', 'macronutrient', 'vitamin', 'mineral', 'ratios'];
 
-export function renderApp({ openGroups = true } = {}) {
+// `search` is what follows the address of the page ("?day=2026-10-12"); each test
+// starts from the page as first loaded unless it says otherwise.
+export function renderApp({ openGroups = true, search = '' } = {}) {
+  window.history.replaceState(null, '', `/meals/${search}`);
   if (openGroups) {
     try {
       window.localStorage.setItem('meals.openGroups', JSON.stringify(GROUPS));
@@ -220,6 +251,7 @@ export function renderApp({ openGroups = true } = {}) {
       today={TODAY}
       needsUrl="/needs/"
       inventoryUrl="/products/"
+      groupNames={GROUP_NAMES}
     />,
   );
 }

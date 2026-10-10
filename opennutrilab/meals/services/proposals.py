@@ -145,7 +145,8 @@ class Inventory(NamedTuple):
 
 def load_inventory(user: User) -> Inventory:
     """
-    The products of the user's inventory, and those of them a day can be made of.
+    The products of the user's inventory, and those of them a day can be made of
+    (not those they leave out).
 
     The estimate of each is worked out first where it never was (about a second
     each), which `refresh_estimates` does ahead of time.
@@ -159,9 +160,11 @@ def load_inventory(user: User) -> Inventory:
     candidates: list[Candidate] = []
     skipped: list[Skipped] = []
     for product in products:
-        found = candidate_of(
-            product, composition[product.pk], limits.get(product.pk, NO_LIMITS)
-        )
+        wanted = limits.get(product.pk, NO_LIMITS)
+        # Left out by the user: not a candidate, and not left aside for lack of energy.
+        if not wanted.enabled:
+            continue
+        found = candidate_of(product, composition[product.pk], wanted)
         if found is None:
             skipped.append(Skipped(product.pk, product.name, NO_ENERGY))
         else:

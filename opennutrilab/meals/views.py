@@ -26,6 +26,7 @@ from opennutrilab.meals.services.needs import Needs
 from opennutrilab.meals.services.needs import daily_needs
 from opennutrilab.meals.services.needs import references
 from opennutrilab.products.models import Nutrient
+from opennutrilab.products.pnns import pnns_group_names
 
 if TYPE_CHECKING:
     from opennutrilab.users.models import User
@@ -172,6 +173,7 @@ class MealsView(LoginRequiredMixin, View):
             "needsUrl": reverse("nutrition_needs"),
             "inventoryUrl": reverse("list_products"),
             "labels": meals_labels(),
+            "groupNames": pnns_group_names(),
         }
         return render(request, self.template_name, {"meals_props": props})
 
@@ -240,13 +242,25 @@ def meals_labels() -> dict[str, str]:
         "confirmReplace": _("Replace what is in this day?"),
         "limitsTitle": _("Limits for the proposed day"),
         "limitsHelp": _(
-            "Choose the meals a product may be in, and the most of it a day. "
-            "With every meal ticked and no most, a product has no limit."
+            "Switch a product off to leave it out of the proposed day, and choose "
+            "the meals it may be in and the most of it a day. With every meal "
+            "ticked and no most, a product has no limit. Changes are saved as you "
+            "make them."
         ),
+        "limitsUse": _("Use in the proposed day"),
+        "limitsUseAll": _("All products"),
+        # %(used)s and %(total)s are put in client-side.
+        "limitsInUse": _("%(used)s of %(total)s in use"),
+        "limitsKeepOneMeal": _(
+            "A product needs a meal: use the switch to leave it out."
+        ),
+        "limitsSaving": _("Saving…"),
+        "uncategorised": _("Uncategorised"),
+        "dateHint": _("mm/dd/yyyy"),
+        "chooseDay": _("Choose a day in a calendar"),
         "limitsMeals": _("Meals"),
         "limitsMost": _("Most a day"),
         "product": _("Product"),
-        "save": _("Save"),
         "saved": _("Saved"),
         "suggestFoods": _("Suggest foods"),
         "suggesting": _("Looking for foods…"),

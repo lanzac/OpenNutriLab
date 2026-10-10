@@ -366,6 +366,9 @@ class InventoryItemOut(Schema):
 
     barcode: str
     name: str
+    # The food groups OpenFoodFacts files it under (see products.pnns).
+    group_level_1: str = ""
+    group_level_2: str = ""
     serving: ServingOut | None = None
     package: PackageOut | None = None
     added_at: datetime
@@ -377,6 +380,14 @@ class InventoryItemOut(Schema):
     @staticmethod
     def resolve_name(obj: InventoryItem) -> str:
         return obj.product.name
+
+    @staticmethod
+    def resolve_group_level_1(obj: InventoryItem) -> str:
+        return obj.product.group_level_1
+
+    @staticmethod
+    def resolve_group_level_2(obj: InventoryItem) -> str:
+        return obj.product.group_level_2
 
     @staticmethod
     def resolve_serving(obj: InventoryItem) -> ServingOut | None:

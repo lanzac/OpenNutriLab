@@ -498,6 +498,43 @@ what is expected, with the ranges the values can be in.
   proposals (the step of 9 packages, ml, no package, the day and the API) and 1 in the
   suggestions; 11 on the folding and 4 on the box in the page, with mutations.
 
+### Addendum 3 (2026-10-10): the limits are saved as they are made, products can be left out
+
+The user found that the limits were **not kept** when every meal of a product was
+unticked (the save button was disabled, and "no meal" means "any meal" to the server,
+so there was no way to leave a product out), that there was one button per row, and
+that the date followed the browser's format rather than the language's.
+
+- **A product can be left out**: `ItemLimits.enabled` (migration 0005, default true).
+  A product left out is no candidate of the optimiser (`load_inventory`), hence none of
+  the suggestions either, and is not "left aside" for lack of energy: it is the user's
+  choice. Its row keeps the meals, the most and "whole package" for when it is back; a
+  row with nothing else set is deleted when the product is back in. `PUT
+/api/v1/meals/limits/` (body `{"enabled": bool}`) leaves every product of the
+  inventory out or puts them all back, in one transaction; `PUT .../limits/{barcode}`
+  takes `enabled` too.
+- **No save button.** A change is saved as it is made, and the page shows
+  "Enregistrement…", then "Enregistré"; a quantity typed is saved when the field is left
+  or after a pause of 0.7 s. The writes go one after the other (`api/client.js`), so
+  that the last change of a product is the last the server hears of, and "Proposer un
+  jour" and "Suggérer des aliments" wait for the writes on their way. When one cannot be
+  saved the page says so and reads the limits again, so that it never shows what the
+  server does not have.
+- **Switches**: one per product, and one for all ("Tous les produits", "3 sur 6
+  utilisés"; from a mixed state it puts them all in). The last meal of a product cannot
+  be unticked (the switch is for that). The products are cut into the food groups of
+  the inventory list (level 1 only; `InventoryItemOut` now gives `group_level_1/2`, the
+  page gets `groupNames`).
+- **Dates** are written as the language writes them ("10/10/2026" in French): a text
+  field read in the order of the language (`formatDay`/`parseDay` in `format.js`,
+  `DayPicker`) with a button for the browser's calendar, since a native date field
+  follows the browser's locale, whatever the language of the page.
+- **The day chosen is kept in the address** (`/meals/?day=2026-10-12`, none for today),
+  so that a page loaded again, or a link, shows the same day.
+- Tests: 9 in the limits and 2 in the proposals (backend), 23 on the limits page, 9 on
+  the day picker, 3 on the address, 7 on the formats (Vitest), mutations checked; seen
+  in Chromium (French page, English browser).
+
 ## After the batch
 
 What the eight steps leave open, for the user to say:

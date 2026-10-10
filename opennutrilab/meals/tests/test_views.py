@@ -158,8 +158,12 @@ def test_the_labels_of_the_meals_page_are_translated_by_the_server(
     assert labels["coverage"] == "Couverture"
     assert labels["proposeDay"] == "Proposer un jour"
     assert labels["useDay"] == "Utiliser ce jour"
+    # The date is written day first, as French does.
+    assert labels["dateHint"] == "jj/mm/aaaa"
+    assert labels["limitsUseAll"] == "Tous les produits"
+    assert props["groupNames"]["Fruits and vegetables"] == "Fruits et légumes"
     assert labels["proposal_time_limit"].startswith("Le temps est écoulé")
-    assert labels["save"] == "Sauvegarder"
+    assert labels["limitsSaving"] == "Enregistrement…"
     assert labels["suggestFoods"] == "Suggérer des aliments"
     assert labels["suggestionsTitle"] == "Aliments à se procurer"
     # The figures are put in by the page, and the text keeps where they go.

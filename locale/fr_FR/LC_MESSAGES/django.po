@@ -1178,8 +1178,26 @@ msgstr "Remplacer ce qui est dans ce jour ?"
 msgid "Limits for the proposed day"
 msgstr "Limites pour le jour proposé"
 
-msgid "Choose the meals a product may be in, and the most of it a day. With every meal ticked and no most, a product has no limit."
-msgstr "Choisissez les repas où un produit peut être, et la quantité maximale par jour. Avec tous les repas cochés et sans maximum, un produit n'a pas de limite."
+msgid "Switch a product off to leave it out of the proposed day, and choose the meals it may be in and the most of it a day. With every meal ticked and no most, a product has no limit. Changes are saved as you make them."
+msgstr "Désactivez un produit pour l'écarter du jour proposé, et choisissez les repas où il peut être et la quantité maximale par jour. Avec tous les repas cochés et sans maximum, un produit n'a pas de limite. Les changements sont enregistrés au fur et à mesure."
+
+msgid "Use in the proposed day"
+msgstr "Utiliser dans le jour proposé"
+
+msgid "%(used)s of %(total)s in use"
+msgstr "%(used)s sur %(total)s utilisés"
+
+msgid "A product needs a meal: use the switch to leave it out."
+msgstr "Un produit a besoin d'un repas : utilisez l'interrupteur pour l'écarter."
+
+msgid "Saving…"
+msgstr "Enregistrement…"
+
+msgid "mm/dd/yyyy"
+msgstr "jj/mm/aaaa"
+
+msgid "Choose a day in a calendar"
+msgstr "Choisir un jour dans un calendrier"
 
 msgid "Most a day"
 msgstr "Au plus par jour"

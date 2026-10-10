@@ -30,6 +30,17 @@ async function request(url, { method = 'GET', body, csrfToken } = {}) {
   return response.json();
 }
 
+// The limits are saved as they are changed. They are written one after the other, so
+// that the last change of a product is the last the server hears of; and a day is not
+// proposed before the limits it should follow are written.
+let writing = Promise.resolve();
+
+const afterWrites = (send) => {
+  const written = writing.then(send);
+  writing = written.catch(() => {});
+  return written;
+};
+
 export const fetchDay = (day) => request(`${MEALS_API_BASE}${day}`);
 
 export const fetchInventory = () => request(INVENTORY_API);
@@ -53,7 +64,9 @@ export const removeItem = (id, csrfToken) =>
 
 // A day proposed from the inventory: nothing is written until it is taken.
 export const proposeDay = (day, csrfToken) =>
-  request(`${MEALS_API_BASE}${day}/propose`, { method: 'POST', csrfToken });
+  writing.then(() =>
+    request(`${MEALS_API_BASE}${day}/propose`, { method: 'POST', csrfToken }),
+  );
 
 // Puts the proposed items in place of the day's meals.
 export const replaceDay = (day, items, csrfToken) =>
@@ -67,13 +80,27 @@ export const replaceDay = (day, items, csrfToken) =>
 export const fetchLimits = () => request(`${MEALS_API_BASE}limits/`);
 
 export const setLimits = (barcode, limits, csrfToken) =>
-  request(`${MEALS_API_BASE}limits/${barcode}`, {
-    method: 'PUT',
-    body: limits,
-    csrfToken,
-  });
+  afterWrites(() =>
+    request(`${MEALS_API_BASE}limits/${barcode}`, {
+      method: 'PUT',
+      body: limits,
+      csrfToken,
+    }),
+  );
+
+// Every product of the inventory left out of the days proposed, or put back in.
+export const setAllEnabled = (enabled, csrfToken) =>
+  afterWrites(() =>
+    request(`${MEALS_API_BASE}limits/`, {
+      method: 'PUT',
+      body: { enabled },
+      csrfToken,
+    }),
+  );
 
 // What to get for the inventory to meet the needs: foods of the CIQUAL table, with
 // the day they make. Nothing is written.
 export const suggestFoods = (day, csrfToken) =>
-  request(`${MEALS_API_BASE}${day}/suggest`, { method: 'POST', csrfToken });
+  writing.then(() =>
+    request(`${MEALS_API_BASE}${day}/suggest`, { method: 'POST', csrfToken }),
+  );

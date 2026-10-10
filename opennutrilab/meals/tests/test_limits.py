@@ -245,6 +245,7 @@ def test_the_limits_are_set_served_and_cleared(api_client: Client, products: Non
         "max_quantity": "2.00",
         "max_unit": "serving",
         "use_all": False,
+        "enabled": True,
     }
     assert api_client.get(API).json() == [response.json()]
 
@@ -287,6 +288,7 @@ def test_the_whole_package_is_set_and_served(api_client: Client, products: None)
         "max_quantity": None,
         "max_unit": "",
         "use_all": True,
+        "enabled": True,
     }
     assert api_client.get(API).json() == [response.json()]
 
@@ -300,3 +302,127 @@ def test_the_whole_package_of_a_product_with_none_is_refused(
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
     assert "total quantity" in response.json()["detail"]
     assert api_client.get(API).json() == []
+
+
+# ----------------------------------------------------------------------------
+# A product left out of the days proposed
+# ----------------------------------------------------------------------------
+@pytest.mark.django_db
+def test_a_product_is_in_use_unless_it_was_left_out(user: User, products: None):
+    bars = InventoryItem.objects.get(user=user, product_id=BARS).product
+
+    assert NO_LIMITS.enabled
+    found = limits.set_limits(user, bars, [], None, None, enabled=False)
+
+    # Left out with nothing else set is still something to keep.
+    assert found == Limits((), None, "", enabled=False)
+    assert limits.limits_of(user) == {BARS: found}
+
+
+@pytest.mark.django_db
+def test_a_product_left_out_keeps_the_rest_for_when_it_is_back(
+    user: User, products: None
+):
+    bars = InventoryItem.objects.get(user=user, product_id=BARS).product
+    limits.set_limits(user, bars, ["snack"], D(2), "serving")
+
+    limits.set_limits(user, bars, ["snack"], D(2), "serving", enabled=False)
+    back = limits.set_limits(user, bars, ["snack"], D(2), "serving")
+
+    assert back == Limits(("snack",), D(2), "serving")
+
+
+@pytest.mark.django_db
+def test_putting_a_product_back_with_nothing_else_set_clears_its_row(
+    user: User, products: None
+):
+    bars = InventoryItem.objects.get(user=user, product_id=BARS).product
+    limits.set_limits(user, bars, [], None, None, enabled=False)
+
+    back = limits.set_limits(user, bars, [], None, None)
+
+    assert back == NO_LIMITS
+    assert not ItemLimits.objects.exists()
+
+
+@pytest.mark.django_db
+def test_leaving_every_product_out_keeps_what_was_set_of_each(
+    user: User, products: None
+):
+    bars = InventoryItem.objects.get(user=user, product_id=BARS).product
+    limits.set_limits(user, bars, ["snack"], D(2), "serving")
+
+    found = limits.set_all_enabled(user, enabled=False)
+
+    assert found == {
+        BARS: Limits(("snack",), D(2), "serving", enabled=False),
+        MUESLI: Limits((), None, "", enabled=False),
+    }
+
+
+@pytest.mark.django_db
+def test_putting_every_product_back_keeps_the_limits_and_drops_the_empty_rows(
+    user: User, products: None
+):
+    bars = InventoryItem.objects.get(user=user, product_id=BARS).product
+    limits.set_limits(user, bars, ["snack"], D(2), "serving")
+    limits.set_all_enabled(user, enabled=False)
+
+    found = limits.set_all_enabled(user, enabled=True)
+
+    assert found == {BARS: Limits(("snack",), D(2), "serving")}
+    assert ItemLimits.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_switching_every_product_is_each_users_own(user: User, products: None):
+    other = UserFactory()
+    stock(other, make_product("3017620422003"))
+
+    limits.set_all_enabled(user, enabled=False)
+
+    assert limits.limits_of(other) == {}
+
+
+@pytest.mark.django_db
+def test_a_product_left_out_is_set_and_served(api_client: Client, products: None):
+    response = put(api_client, BARS, meals=["lunch"], enabled=False)
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {
+        "barcode": BARS,
+        "meals": ["lunch"],
+        "max_quantity": None,
+        "max_unit": "",
+        "use_all": False,
+        "enabled": False,
+    }
+    assert api_client.get(API).json() == [response.json()]
+    # A request that says nothing of it puts the product back.
+    assert put(api_client, BARS, meals=["lunch"]).json()["enabled"] is True
+
+
+@pytest.mark.django_db
+def test_every_product_is_left_out_or_put_back_in_one_request(
+    api_client: Client, products: None
+):
+    off = api_client.put(API, {"enabled": False}, content_type="application/json")
+
+    assert off.status_code == HTTPStatus.OK
+    assert {found["barcode"]: found["enabled"] for found in off.json()} == {
+        BARS: False,
+        MUESLI: False,
+    }
+    assert api_client.get(API).json() == off.json()
+
+    on = api_client.put(API, {"enabled": True}, content_type="application/json")
+
+    assert on.json() == []
+    assert api_client.get(API).json() == []
+
+
+@pytest.mark.django_db
+def test_switching_every_product_needs_a_signed_in_user(client: Client, products: None):
+    response = client.put(API, {"enabled": False}, content_type="application/json")
+
+    assert response.status_code == HTTPStatus.UNAUTHORIZED

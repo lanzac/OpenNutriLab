@@ -656,6 +656,22 @@ def test_the_inventory_is_each_users_own(
 
 
 @pytest.mark.django_db
+def test_the_inventory_gives_the_food_groups_of_its_products(
+    api_client: Client, user: User, products_two: tuple[Product, Product]
+):
+    p1, _ = products_two
+    Product.objects.filter(pk=p1.pk).update(
+        group_level_1="Fruits and vegetables", group_level_2="Fruits"
+    )
+    api_client.put(f"/api/v1/inventory/{p1.barcode}")
+
+    found = api_client.get("/api/v1/inventory/").json()[0]
+
+    assert found["group_level_1"] == "Fruits and vegetables"
+    assert found["group_level_2"] == "Fruits"
+
+
+@pytest.mark.django_db
 def test_putting_a_product_in_twice_or_taking_one_out_twice_changes_nothing(
     api_client: Client, user: User, products_two: tuple[Product, Product]
 ):

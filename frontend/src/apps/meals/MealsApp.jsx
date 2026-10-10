@@ -10,13 +10,28 @@ import {
   replaceDay,
   suggestFoods,
 } from './api/client.js';
+import { DayPicker } from './DayPicker.jsx';
 import { DaySummary } from './DaySummary.jsx';
-import { shiftDay } from './format.js';
+import { readIsoDay, shiftDay } from './format.js';
 import { LimitsEditor } from './LimitsEditor.jsx';
 import { MealCard } from './MealCard.jsx';
 import { ProposalPanel } from './ProposalPanel.jsx';
 import { SuggestionsPanel } from './SuggestionsPanel.jsx';
 import { SummaryModeProvider } from './summaryMode.jsx';
+
+// The day is kept in the address ("?day=2026-10-12"), so that a page loaded again
+// shows the same day, and so does a link to it. Today is the address without it.
+function dayOfAddress(today) {
+  const asked = new URLSearchParams(window.location.search).get('day');
+  return readIsoDay(asked) ?? today;
+}
+
+function keepDayInAddress(day, today) {
+  const address = new URL(window.location.href);
+  if (day === today) address.searchParams.delete('day');
+  else address.searchParams.set('day', day);
+  window.history.replaceState(window.history.state, '', address);
+}
 
 /**
  * The meals of a day, with what each brings and the day against the user's
@@ -24,7 +39,8 @@ import { SummaryModeProvider } from './summaryMode.jsx';
  * (see MealsView): `labels` already translated, so the .po catalogue stays
  * the single source of truth; `csrfToken`, which cannot come from the cookie
  * because CSRF_COOKIE_HTTPONLY hides it from JS; `languageCode`, so figures
- * follow the language Django is serving; and `today`, the server's own date.
+ * follow the language Django is serving; `today`, the server's own date; and
+ * `groupNames`, the names of the food groups in that language.
  *
  * Every figure is the server's: a write answers with the whole day, which
  * replaces the one shown.
@@ -36,8 +52,9 @@ export function MealsApp({
   today,
   needsUrl,
   inventoryUrl,
+  groupNames,
 }) {
-  const [day, setDay] = useState(today);
+  const [day, setDay] = useState(() => dayOfAddress(today));
   const [report, setReport] = useState(null);
   const [inventory, setInventory] = useState(null);
   const [error, setError] = useState(null);
@@ -52,6 +69,7 @@ export function MealsApp({
 
   useEffect(() => {
     current.current = day;
+    keepDayInAddress(day, today);
     let cancelled = false;
     setReport(null);
     setError(null);
@@ -68,7 +86,7 @@ export function MealsApp({
     return () => {
       cancelled = true;
     };
-  }, [day, labels.loadError]);
+  }, [day, today, labels.loadError]);
 
   useEffect(() => {
     let cancelled = false;
@@ -154,12 +172,11 @@ export function MealsApp({
         >
           <i className="fa-solid fa-chevron-left" />
         </button>
-        <input
-          type="date"
-          className="form-control w-auto"
-          aria-label={labels.day}
-          value={day}
-          onChange={(event) => event.target.value && setDay(event.target.value)}
+        <DayPicker
+          day={day}
+          onChange={setDay}
+          labels={labels}
+          languageCode={languageCode}
         />
         <button
           type="button"
@@ -270,6 +287,7 @@ export function MealsApp({
             labels={labels}
             csrfToken={csrfToken}
             languageCode={languageCode}
+            groupNames={groupNames}
           />
         </>
       )}
