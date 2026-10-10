@@ -610,6 +610,62 @@ def test_a_long_text_with_no_separator_is_not_read_as_one_ingredient():
 @pytest.mark.parametrize(
     "text",
     [
+        "Farine - sucre - sel",
+        "Farine \u2013 sucre \u2014 sel",
+        "Farine, sucre - sel",
+        "- farine - sucre - sel",
+        "Farine -\nSucre -\nSel",
+    ],
+)
+def test_a_dash_on_its_own_parts_ingredients_as_a_comma_does(text: str):
+    reading = read_label(text)
+
+    assert [i.name for i in reading.items] == ["farine", "sucre", "sel"]
+    assert reading.warnings == []
+
+
+def test_a_dash_parts_ingredients_in_parentheses_and_leaves_their_percentages():
+    reading = read_label("Chocolat 40 % (cacao - sucre 20 %) - sel")
+
+    assert tree(reading.items) == [
+        ("chocolat", "40", [("cacao", None, []), ("sucre", "20", [])]),
+        ("sel", None, []),
+    ]
+    assert reading.warnings == []
+
+
+def test_a_dash_is_no_part_of_the_places_read():
+    text = "Farine - sucre"
+
+    reading = read_label(text)
+
+    assert [text[start:end] for start, end in reading.used] == ["Farine", "sucre"]
+
+
+def test_a_dash_in_a_word_is_the_word_s():
+    reading = read_label("Oméga-3 - lait demi-écrémé, sirop de glucose-fructose")
+
+    assert [i.name for i in reading.items] == [
+        "oméga-3",
+        "lait demi-écrémé",
+        "sirop de glucose-fructose",
+    ]
+
+
+@pytest.mark.parametrize(
+    "text", ["Farine (gluten - lait), sel", "Farine (UE - USA), sel"]
+)
+def test_a_dash_parts_the_allergens_and_the_origins_of_a_note(text: str):
+    assert tree(parse_label(text)) == [("farine", None, []), ("sel", None, [])]
+
+
+def test_two_dashes_in_a_row_leave_an_empty_place_as_two_commas_do():
+    assert problems("Farine - - sucre") == [Problem.EMPTY_ITEM]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
         "Vitamines (E, PP, B6, B1, B9), oméga-3, colorant (E150d), coenzyme Q10",
         "Farine de blé 57%, émulsifiant : lécithines, poudres à lever (E500)",
         "Sirop de glucose-fructose, maltodextrine, eau, sel, arôme naturel",

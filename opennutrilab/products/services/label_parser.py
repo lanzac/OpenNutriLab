@@ -14,6 +14,9 @@ the ingredients in the parentheses that follow it:
 
     Dattes* 7% (dattes*, farine de riz*)  ->  dattes, 7 %: dattes, farine de riz
 
+Ingredients are parted by commas and semicolons, and by a dash on its own between
+spaces ("farine - sucre - sel"), not by the dash of a word ("oméga-3").
+
 Only what the text says is kept: no name is corrected or guessed. Names come out
 in lower case, without the marks a label adds around them (the asterisk of
 organic ingredients, the capitals of allergens, the word "bio"). The one thing put
@@ -239,7 +242,9 @@ _ALLERGEN_INTRO = re.compile(
     r"^(?:contient|contiennent|contains|allergenes?|allergens?)\b\s*:?\s*"
     r"(?:(?:du|de la|de l'|des|de|d')\s*)?"
 )
-_ALLERGEN_SEPARATOR = re.compile(r"\s*(?:[,;/]|\bet\b|\band\b|\bou\b|\bor\b)\s*")
+_ALLERGEN_SEPARATOR = re.compile(
+    r"\s*(?:[,;/]|(?<=\s)[-\u2013\u2014](?=\s)|\bet\b|\band\b|\bou\b|\bor\b)\s*"
+)
 _NOTE = re.compile(
     r"^\W*(?:bio|biologiques?|organic|origine\b.*|d'origine\b.*|origin\b.*"
     r"|issus?\b.*)\W*$",
@@ -417,7 +422,8 @@ _MARKS = str.maketrans("", "", _MARK_CHARS)
 _BRACKETS = str.maketrans("[]{}", "()()")
 _MAX_DECIMALS = 2
 # What a name is trimmed of: punctuation, dashes, quotes.
-_EDGE = " .,;:-\u2013\u2014'\""
+_DASHES = "-\u2013\u2014"
+_EDGE = f" .,;:{_DASHES}'\""
 
 # Signs of a text that was read badly, or that is not only a list.
 _GARBLE_CHARS = "\ufffd|¦~^@#§\\"
@@ -554,7 +560,12 @@ def _ends_sentence(text: str, index: int) -> bool:
 def _ends_line(text: str, index: int) -> bool:
     before = text[:index].rstrip()
     after = text[index:].lstrip()
-    return bool(after) and before[-1:] not in ",;" and after[0].isupper()
+    return (
+        bool(before)
+        and bool(after)
+        and not _separates(text, len(before) - 1)
+        and after[0].isupper()
+    )
 
 
 def _statement_at(text: str, index: int) -> bool:
@@ -588,7 +599,9 @@ def _parse_list(text: str, at: int, used: list[Span]) -> list[LabelItem]:
 
 
 def _pieces(text: str) -> list[tuple[int, str]]:
-    """The pieces between the commas and semicolons that are not in parentheses."""
+    """
+    The pieces between the separators (see _separates) that are not in parentheses.
+    """
     pieces: list[tuple[int, str]] = []
     depth = 0
     start = 0
@@ -597,7 +610,7 @@ def _pieces(text: str) -> list[tuple[int, str]]:
             depth += 1
         elif char == ")":
             depth = max(0, depth - 1)
-        elif char in ",;" and depth == 0 and not _decimal_comma(text, index):
+        elif depth == 0 and _separates(text, index):
             pieces.append((start, text[start:index]))
             start = index + 1
     pieces.append((start, text[start:]))
@@ -606,6 +619,24 @@ def _pieces(text: str) -> list[tuple[int, str]]:
 
 def _split(text: str) -> list[str]:
     return [piece for _start, piece in _pieces(text)]
+
+
+def _separates(text: str, index: int) -> bool:
+    """
+    Whether the character at `index` parts two ingredients: a semicolon, a comma
+    that is not a decimal one ("7,4 %"), or a dash on its own between white space
+    ("sucre - sel"). A dash inside a word is the word's ("oméga-3", "demi-écrémé").
+    """
+    char = text[index]
+    if char in _DASHES:
+        before = text[index - 1] if index else ""
+        after = text[index + 1] if index + 1 < len(text) else ""
+        return before.isspace() and after.isspace()
+    return char == ";" or (char == "," and not _decimal_comma(text, index))
+
+
+def _has_separator(text: str) -> bool:
+    return any(_separates(text, index) for index in range(len(text)))
 
 
 def _decimal_comma(text: str, index: int) -> bool:
@@ -755,7 +786,7 @@ def _with_code(
     if (
         e_number(name)
         and named is not None
-        and not any(char in inner for char in ",;")
+        and not _has_separator(inner)
         and not any(char.isdigit() for char in inner)
     ):
         used.extend(_name_spans(inner, inner_at, ()))
@@ -766,7 +797,7 @@ def _with_code(
         named is not None
         and vitamin_nutrient(name)
         and vitamin_nutrient(named)
-        and not any(char in inner for char in ",;")
+        and not _has_separator(inner)
     ):
         used.extend(_name_spans(inner, inner_at, ()))
         return LabelItem(name, percentage)
@@ -789,8 +820,8 @@ def _is_allergen_declaration(inner: str) -> bool:
 
 def _is_origin(inner: str) -> bool:
     """Whether the parentheses hold nothing but countries: "(Allemagne)", "(UE)"."""
-    terms = _ALLERGEN_SEPARATOR.split(_folded(inner).replace("-", " "))
-    return all(term in _ORIGINS for term in terms)
+    terms = _ALLERGEN_SEPARATOR.split(_folded(inner))
+    return all(term.replace("-", " ") in _ORIGINS for term in terms)
 
 
 def _without_notes(text: str) -> tuple[str, list[Span]]:
