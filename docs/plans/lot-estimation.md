@@ -629,9 +629,21 @@ written.
      declared vitamin A is compared with the span of both readings, from the lower
      of the two lowest ends to the higher of the two highest, or open at the top if
      either is. A figure between the two readings agrees too: another convention
-     would land there. Nothing declares a vitamin yet outside the admin (the form
-     and the OFF import only know the 8 of the label), so this is tested but not
-     seen on a real product.
+     would land there. A vitamin is declared on the form and read from OFF since
+     2026-10-10 (next point), so this is seen on real products.
+   - **The vitamins of a label** (2026-10-10). The form asks for them, and the
+     OpenFoodFacts lookup fills them, as it does the 8: they are `on_label` with an
+     `off_key` (`services/label_vitamins.py`: A, D, E, K, C, B1, B2, B3 as OFF's
+     `vitamin-pp`, B5, B6, B9, B12; the minerals and biotin, which the catalogue
+     lacks, are not there). They come after the 8, under their own group on the
+     form. The CIQUAL import and the derivations create them that way, and
+     migration 0027 sets those a catalogue already has. A declared vitamin is a
+     check like any other (`compare` reads every declared code), with the
+     tolerance of its group (-35 %, +50 %); none is one of the seven the shares
+     are worked out with. Most foods give only some vitamins, so the check is mostly
+     "the label is above the least the ingredients bring", and it fails only when
+     a label declares less than that. For the meals the label's figure is used
+     where declared (`stored_estimates.compositions`).
    - **Confidence**, for each estimated nutrient: four parts between 0 and 1 and
      a score that is their product, worked out from the parts as shown. _Coverage_
      is the share of the product whose ingredients give the nutrient. _Quality_ is

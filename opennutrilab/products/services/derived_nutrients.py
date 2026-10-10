@@ -49,6 +49,7 @@ from typing import NamedTuple
 
 from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import NutrientComponent
+from opennutrilab.products.services.label_vitamins import label_fields
 
 
 class Term(NamedTuple):
@@ -199,6 +200,7 @@ def _derived_nutrient(code: str) -> Nutrient:
         parent=None
         if new.parent is None
         else Nutrient.objects.filter(code=new.parent).first(),
+        **label_fields(code),
     )
     Nutrient.objects.filter(code__in=new.parts, parent=None).update(parent=nutrient)
     return nutrient

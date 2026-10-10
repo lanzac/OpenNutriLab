@@ -24,6 +24,7 @@ from opennutrilab.products.services.ciqual_import import CiqualError
 from opennutrilab.products.services.ciqual_import import import_ciqual
 from opennutrilab.products.services.ciqual_import import parse_value
 from opennutrilab.products.services.ciqual_import import read_constituents
+from opennutrilab.products.services.label_vitamins import LABEL_VITAMINS
 
 DATA = Path(__file__).parent / "data"
 # The real list of CIQUAL 2025's 74 constituents.
@@ -288,19 +289,31 @@ def test_nutrients_are_added_from_the_file_and_the_label_ones_are_untouched(
     report = import_ciqual(directory)
 
     vitamin_c = Nutrient.objects.get(code="vitamin_c")
+    retinol = Nutrient.objects.get(code="retinol")
     assert (vitamin_c.name_en, vitamin_c.name_fr) == ("Vitamin C", "Vitamine C")
     assert (vitamin_c.unit, vitamin_c.group, vitamin_c.ciqual_code) == (
         "mg",
         "vitamin",
         "55100",
     )
-    assert (vitamin_c.on_label, vitamin_c.off_key) == (False, None)
+    # The vitamins a label declares are made for the label.
+    assert (vitamin_c.on_label, vitamin_c.off_key) == (True, "vitamin-c")
+    assert (retinol.on_label, retinol.off_key) == (False, None)
     assert Nutrient.objects.get(code="vitamin_b12").unit == "µg"
     assert Nutrient.objects.get(code="fructose").parent_id == "sugars"
     assert Nutrient.objects.get(code="epa").parent_id == "polyunsaturated_fat"
     assert {
-        n.code: n.name_fr for n in Nutrient.objects.filter(on_label=True)
+        n.code: n.name_fr for n in Nutrient.objects.filter(code__in=label_names)
     } == label_names
+    # The label has the eight and the vitamins of a label, those made from a
+    # derivation among them (vitamin K).
+    assert {n.code for n in Nutrient.objects.filter(on_label=True)} == {
+        *label_names,
+        *LABEL_VITAMINS,
+    }
+    assert dict(
+        Nutrient.objects.filter(code__in=LABEL_VITAMINS).values_list("code", "off_key")
+    ) == dict(LABEL_VITAMINS)
     # 74 constituents, less the two in kcal and the eight the label already has.
     assert report.nutrients_created == 64  # noqa: PLR2004
     # And vitamin K, the second vitamin A and the omega totals, which no source

@@ -15,7 +15,9 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import HTML
 from crispy_forms.layout import Column
 from crispy_forms.layout import Field
+from crispy_forms.layout import Fieldset
 from crispy_forms.layout import Layout
+from crispy_forms.layout import LayoutObject
 from crispy_forms.layout import Row
 from crispy_forms.layout import Submit
 from django import forms
@@ -248,7 +250,7 @@ class ProductForm(forms.ModelForm):
 
         # 🔹 Get the "nutritional values" layouts (that include fields) that will
         # be send to the form.
-        nutritional_values_fields_layout: list[Field] = [
+        nutritional_values_fields_layout: list[LayoutObject] = [
             Field("nutrition_unit"),
             *self._get_nutritional_values_layout(),
         ]
@@ -448,12 +450,26 @@ class ProductForm(forms.ModelForm):
             self.fields["package_unit"].initial = product.package_unit
         self.fields["nutrition_unit"].initial = product.nutrition_unit
 
-    def _get_nutritional_values_layout(self) -> list[Field]:
-        """Return crispy-forms layout for the declared nutrients, with units."""
-        return [
-            AppendedText(nutrient_field(n.code), n.unit, css_class="plot-input")
-            for n in self.label_nutrients
+    def _get_nutritional_values_layout(self) -> list[LayoutObject]:
+        """
+        Return crispy-forms layout for the declared nutrients, with units: the
+        vitamins come after the others, in a group of their own.
+        """
+
+        def inputs(nutrients: list[Nutrient]) -> list[LayoutObject]:
+            return [
+                AppendedText(nutrient_field(n.code), n.unit, css_class="plot-input")
+                for n in nutrients
+            ]
+
+        vitamins = [
+            n for n in self.label_nutrients if n.group == Nutrient.Group.VITAMIN.value
         ]
+        others = [n for n in self.label_nutrients if n not in vitamins]
+        layout = inputs(others)
+        if vitamins:
+            layout.append(Fieldset(_("Vitamins"), *inputs(vitamins), css_class="mt-4"))
+        return layout
 
     def clean(self) -> dict[str, Any]:
         cleaned: dict[str, Any] = super().clean()

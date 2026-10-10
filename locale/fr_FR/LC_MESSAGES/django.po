@@ -103,6 +103,9 @@ msgstr "Minéral"
 msgid "Vitamin"
 msgstr "Vitamine"
 
+msgid "Vitamins"
+msgstr "Vitamines"
+
 msgid "Other"
 msgstr "Autre"
 

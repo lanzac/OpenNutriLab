@@ -42,6 +42,7 @@ from opennutrilab.products.services.ciqual_constituents import CONSTITUENTS
 from opennutrilab.products.services.ciqual_constituents import NAMES
 from opennutrilab.products.services.ciqual_constituents import SKIPPED
 from opennutrilab.products.services.derived_nutrients import ensure_derivations
+from opennutrilab.products.services.label_vitamins import label_fields
 from opennutrilab.products.services.stored_estimates import mark_stale
 
 # The table is published on recherche.data.gouv.fr; this DOI always leads to the
@@ -367,6 +368,7 @@ def ensure_nutrients(
                 parent_id=mapped.parent,
                 display_order=100 + 10 * order[code],
                 ciqual_code=code,
+                **label_fields(mapped.code),
             )
             created += 1
         elif nutrient.ciqual_code is None:
