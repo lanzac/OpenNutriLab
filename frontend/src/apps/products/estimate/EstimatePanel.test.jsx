@@ -10,36 +10,64 @@ const labels = {
   viewTable: 'Tableau',
   collapseAll: 'Tout replier',
   expandAll: 'Tout déplier',
-  legendEstimate: 'Estimation et sa fourchette',
-  legendLabel: 'Étiquette (valeur et arrondi)',
-  legendOpen: 'Pointillé : aucun maximum n’est connu.',
+  legendLabel: 'Chiffre de l’étiquette',
+  legendEstimate: 'Fourchette estimée',
+  ingredient: 'Ingrédient',
+  nutrient: 'Nutriment',
+  columnEstimate: 'Meilleure estimation',
   ingredients: 'Ingrédients',
   added: 'quantité ajoutée',
   nutrients: 'Nutriments pour 100 g',
-  label: 'Étiquette',
-  estimate: 'Estimation',
-  coverage: 'Couverture',
-  coverageNote: 'La part du produit dont les ingrédients donnent une valeur.',
-  confidence: 'Confiance',
-  agrees: 'Concorde',
-  declaredBelow: 'Étiquette en dessous',
-  declaredAbove: 'Étiquette au-dessus',
-  constrained: 'Utilisé pour l’estimation',
-  notEstimated: 'Non estimé',
-  declaredBelowNote:
-    'L’étiquette déclare moins que les ingrédients au minimum.',
-  declaredAboveNote: 'L’étiquette déclare plus que les ingrédients au maximum.',
-  constrainedNote: 'Concorde par construction.',
-  groupAgree: '%(agree)s sur %(compared)s en accord avec l’étiquette',
-  notCompared: 'Pas comparé à l’étiquette',
-  legendTolerance: 'Tolérance de l’étiquette (Commission européenne)',
-  tolerated: 'Dans la tolérance',
-  toleratedNote: 'Diffère de plus que l’arrondi, mais dans la tolérance.',
   nutrientsMl: 'Nutriments pour 100 ml',
   per: 'Quantités pour',
   unitG: '100 g',
   unitMl: '100 ml',
   density: 'Densité utilisée : %(low)s à %(high)s g/ml',
+  label: 'Étiquette',
+  estimate: 'Estimation',
+  labelAt: 'étiquette %(value)s',
+  rangeOpen: 'au moins %(low)s · pas de borne haute',
+  agrees: 'L’étiquette concorde',
+  declaredBelow: 'Étiquette plus basse que le minimum possible',
+  declaredAbove: 'Étiquette plus haute que le maximum possible',
+  constrained: 'Point de départ du calcul',
+  tolerated: 'Hors fourchette, dans la tolérance de la Commission',
+  notEstimated: 'Non estimé : aucun ingrédient n’en donne',
+  estimateOnly: 'Estimation seule, sans étiquette',
+  toleratedNote: 'Diffère de plus que l’arrondi, mais dans la tolérance.',
+  declaredBelowNote:
+    'L’étiquette déclare moins que les ingrédients au minimum.',
+  declaredAboveNote: 'L’étiquette déclare plus que les ingrédients au maximum.',
+  constrainedNote: 'Concorde par construction.',
+  summaryChecked:
+    'Vérifiés par les ingrédients : %(checked)s sur %(total)s chiffres de l’étiquette.',
+  summaryStart:
+    'Ceux qui ont servi à calculer les parts concordent forcément et ne prouvent rien.',
+  chipChecked: 'Vérifiés : %(n)s',
+  chipStart: 'Points de départ : %(n)s',
+  chipGap: 'Écarts : %(n)s',
+  notCompared: 'Pas comparé à l’étiquette',
+  reliability: 'Fiabilité',
+  reliabilityLow: 'Fiabilité faible',
+  reliabilityMedium: 'Fiabilité moyenne',
+  reliabilityGood: 'Fiabilité bonne',
+  reliabilityIntro: 'Le produit de quatre facteurs :',
+  coverage: 'Couverture',
+  coverageNote: 'La part du produit dont les ingrédients donnent une valeur.',
+  factorQuality: 'Qualité des données',
+  qualityNote: 'La note des aliments (CIQUAL).',
+  factorRecipe: 'Recette bien connue',
+  recipeNote: '1 moins l’incertitude.',
+  factorAgreement: 'Accord des vérifications',
+  agreementNote: 'Un tiret quand aucune ne pouvait échouer.',
+  limiting: 'ce qui la limite',
+  detailShow: 'Voir le détail de %(name)s',
+  detailHide: 'Masquer le détail de %(name)s',
+  detailRounding: 'Écrit avec son arrondi : il vaut de %(low)s à %(high)s.',
+  detailTolerance: 'Tolérance de la Commission : de %(low)s à %(high)s.',
+  detailNoTolerance: 'Aucune tolérance ne s’applique à ce chiffre.',
+  bestGuess: 'au mieux %(point)s',
+  rangeNote: 'L’estimation est une fourchette, pas un chiffre.',
 };
 
 const range = (low, point, high) => ({ low, point, high });
@@ -181,23 +209,57 @@ describe('the estimate as gauges', () => {
     );
   });
 
-  it('says of each group how many of its estimates the label agrees with', () => {
+  it('says once what the ingredients check of the label, and what they do not', () => {
     mount();
 
-    // Carbohydrates agree; the fat is over; the protein agrees by construction and
-    // confirms nothing, and the salt was not estimated.
+    // Carbohydrates agree; the fat and the iron differ; the protein was a starting
+    // point and confirms nothing; the salt and the vitamin have nothing to be set
+    // against: four figures of the label are compared.
+    const summary = document.querySelector('.est-summary');
+    expect(summary).toHaveTextContent(
+      'Vérifiés par les ingrédients : 1 sur 4 chiffres de l’étiquette.',
+    );
+    expect(summary).toHaveTextContent('ne prouvent rien');
+    expect(summary).toHaveTextContent('Vérifiés : 1');
+    expect(summary).toHaveTextContent('Points de départ : 1');
+    expect(summary).toHaveTextContent('Écarts : 2');
+  });
+
+  it('does not say they prove nothing where no figure was a starting point', () => {
+    const { nutrients } = data;
+    mount({
+      panel: {
+        ...data,
+        nutrients: nutrients.filter((found) => found.code === 'carbohydrates'),
+      },
+    });
+
+    const summary = document.querySelector('.est-summary');
+    expect(summary).toHaveTextContent('1 sur 1 chiffres');
+    expect(summary).not.toHaveTextContent('ne prouvent rien');
+  });
+
+  it('says so where no figure of the label is compared', () => {
+    mount({
+      panel: {
+        ...data,
+        nutrients: data.nutrients.filter((found) => found.code === 'vitamin_e'),
+      },
+    });
+
+    expect(document.querySelector('.est-summary')).toBeNull();
+    expect(screen.getAllByText('Pas comparé à l’étiquette')).toHaveLength(2);
+  });
+
+  it('says of each group what the label makes of its estimates', () => {
+    mount();
+
     expect(group('Macronutriment')).toHaveTextContent(
-      '1 sur 2 en accord avec l’étiquette',
+      'Vérifiés : 1 · Points de départ : 1 · Écarts : 1',
     );
-    expect(group('Minéral')).toHaveTextContent(
-      '0 sur 1 en accord avec l’étiquette',
-    );
+    expect(group('Minéral')).toHaveTextContent('Écarts : 1');
     // Nothing of the label to set the vitamin against.
     expect(group('Vitamine')).toHaveTextContent('Pas comparé à l’étiquette');
-    // And the whole of them, above the groups.
-    expect(
-      screen.getByText('1 sur 3 en accord avec l’étiquette'),
-    ).toBeInTheDocument();
   });
 
   it('opens a group to its gauges, and closes it again', () => {
@@ -215,15 +277,23 @@ describe('the estimate as gauges', () => {
     expect(screen.queryByRole('img', { name: /^Glucides/ })).toBeNull();
   });
 
+  it('says what the marks are once, above the rows', () => {
+    mount();
+
+    expect(screen.getAllByText('Chiffre de l’étiquette')).toHaveLength(2);
+    expect(screen.getAllByText('Fourchette estimée')).toHaveLength(2);
+    expect(screen.getByText('Nutriment')).toBeInTheDocument();
+  });
+
   it('says the estimate, its range, the label and the verdict in words', () => {
     mount();
     fireEvent.click(group('Macronutriment'));
 
     expect(gauge('Glucides').getAttribute('aria-label')).toMatch(
-      /Estimation 57 g \(55 – 60\) ; Étiquette 57,5 g ; Concorde$/,
+      /Estimation 57 g \(55 – 60\) ; Étiquette 57,5 g ; L’étiquette concorde$/,
     );
     expect(gauge('Sel').getAttribute('aria-label')).toMatch(
-      /Étiquette 0,107 g ; Non estimé$/,
+      /Étiquette 0,107 g ; Non estimé : aucun ingrédient n’en donne$/,
     );
   });
 
@@ -242,78 +312,80 @@ describe('the estimate as gauges', () => {
     expect(band('Vitamine E')).toHaveClass('est-band--none');
   });
 
-  it('names the verdict under the nutrient, with what it means', () => {
+  it('says in a phrase under the nutrient what the label makes of it', () => {
     mount();
     fireEvent.click(group('Macronutriment'));
+    fireEvent.click(group('Vitamine'));
 
-    const row = (name) => gauge(name).closest('.est-row');
-    expect(within(row('Glucides')).getByText('Concorde')).toBeInTheDocument();
-    const over = within(row('Matières grasses')).getByText(
-      'Étiquette au-dessus',
+    const verdict = (name) =>
+      gauge(name).closest('.est-row').querySelector('.est-verdict');
+    expect(verdict('Glucides')).toHaveTextContent('L’étiquette concorde');
+    expect(verdict('Glucides')).toHaveClass('est-verdict--agrees');
+    expect(verdict('Matières grasses')).toHaveTextContent(
+      'Étiquette plus haute que le maximum possible',
     );
-    expect(over).toHaveAttribute('title', labels.declaredAboveNote);
-    expect(
-      within(row('Protéines')).getByText('Utilisé pour l’estimation'),
-    ).toHaveAttribute('title', labels.constrainedNote);
-    expect(within(row('Sel')).getByText('Non estimé')).toBeInTheDocument();
+    expect(verdict('Matières grasses')).toHaveClass('est-verdict--differs');
+    // A starting point is no verdict of agreement, though it agrees.
+    expect(verdict('Protéines')).toHaveTextContent('Point de départ du calcul');
+    expect(verdict('Protéines')).toHaveClass('est-verdict--used');
+    expect(verdict('Sel')).toHaveTextContent('Non estimé : aucun ingrédient');
+    expect(verdict('Vitamine E')).toHaveTextContent(
+      'Estimation seule, sans étiquette',
+    );
   });
 
-  it('draws the label as a tick, and the rounding it stands for where it can be seen', () => {
+  it('writes the figures where they are drawn: the label above, the range under', () => {
+    mount();
+    fireEvent.click(group('Macronutriment'));
+    fireEvent.click(group('Vitamine'));
+
+    const glucides = gauge('Glucides');
+    expect(glucides.querySelector('.est-text--label')).toHaveTextContent(
+      'étiquette 57,5',
+    );
+    expect(glucides.querySelector('.est-text--range')).toHaveTextContent(
+      '55 – 60',
+    );
+    expect(glucides.querySelector('.est-diamond')).not.toBeNull();
+    // An open range says there is no upper end, and the ingredients' coverage is why.
+    expect(
+      gauge('Vitamine E').querySelector('.est-text--range'),
+    ).toHaveTextContent('au moins 1,2 · pas de borne haute');
+    expect(gauge('Vitamine E').querySelector('.est-band')).toHaveClass(
+      'est-band--open',
+    );
+  });
+
+  it('gives the best estimate as the value of the row', () => {
     mount();
     fireEvent.click(group('Macronutriment'));
 
-    // 57 to 58 of 69: a rounding that is wide enough; 30.9 to 30.9 is not.
-    expect(gauge('Glucides').querySelector('.est-label-tick')).not.toBeNull();
-    expect(gauge('Glucides').querySelector('.est-rounding')).not.toBeNull();
-    expect(gauge('Matières grasses').querySelector('.est-rounding')).toBeNull();
+    expect(
+      within(gauge('Glucides').closest('.est-row')).getByText('≈ 57 g'),
+    ).toBeInTheDocument();
   });
 
-  it('draws a nutrient the label declares and no ingredient gives as its tick alone', () => {
+  it('draws a nutrient the label declares and no ingredient gives as its diamond alone', () => {
     mount();
     fireEvent.click(group('Macronutriment'));
 
     const salt = gauge('Sel');
     expect(salt.querySelector('.est-band')).toBeNull();
-    expect(salt.querySelector('.est-point')).toBeNull();
-    expect(salt.querySelector('.est-label-tick')).not.toBeNull();
+    expect(salt.querySelector('.est-text--range')).toBeNull();
+    expect(salt.querySelector('.est-diamond')).not.toBeNull();
     expect(within(salt.closest('.est-row')).getByText('–')).toBeInTheDocument();
   });
 
-  it('opens the range that has no upper end, and says what is not covered', () => {
-    mount();
-    fireEvent.click(group('Vitamine'));
-
-    const vitamin = gauge('Vitamine E');
-    expect(vitamin.querySelector('.est-band')).toHaveClass('est-band--open');
-    expect(vitamin.getAttribute('aria-label')).toMatch(/\(≥ 1,2\)/);
-    expect(
-      within(vitamin.closest('.est-row')).getByText('Couverture 60 %'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('Pointillé : aucun maximum n’est connu.'),
-    ).toBeInTheDocument();
-  });
-
-  it('gives the confidence as a meter between 0 and 1', () => {
+  it('gives how far to trust an estimate in three dots and in words', () => {
     mount();
     fireEvent.click(group('Macronutriment'));
 
-    const meter = within(gauge('Glucides').closest('.est-row')).getByRole(
-      'meter',
-      {
-        name: 'Confiance',
-      },
-    );
-    expect(meter).toHaveAttribute('aria-valuenow', '0.62');
-    expect(meter.firstChild).toHaveStyle({ width: '62%' });
-    expect(
-      within(meter.closest('.est-row')).getByText('Confiance 0,62'),
-    ).toBeInTheDocument();
-    expect(
-      within(gauge('Matières grasses').closest('.est-row')).queryByRole(
-        'meter',
-      ),
-    ).toBeNull();
+    const row = gauge('Glucides').closest('.est-row');
+    expect(within(row).getByText('Fiabilité bonne')).toBeInTheDocument();
+    expect(row.querySelectorAll('.est-dot--on')).toHaveLength(3);
+    // Where there is no confidence there is no word, and no dots.
+    const fat = gauge('Matières grasses').closest('.est-row');
+    expect(fat.querySelector('.est-dot')).toBeNull();
   });
 
   it('puts the shares of the ingredients on one track, and indents the parts', () => {
@@ -329,6 +401,203 @@ describe('the estimate as gauges', () => {
       milk.querySelector('.est-name').style.getPropertyValue('--est-depth'),
     ).toBe('1');
     expect(gauge('Poudre de lait').querySelector('.est-band')).toBeNull();
+  });
+
+  it('says nothing of the label to the ingredients, which have no verdict, nor detail', () => {
+    mount();
+
+    const sugar = gauge('Sucre').closest('.est-row');
+    expect(sugar.querySelector('.est-verdict')).toBeNull();
+    expect(sugar.querySelector('.est-toggle')).toBeNull();
+    expect(sugar.querySelector('.est-text--label')).toHaveTextContent(
+      'étiquette 30 %',
+    );
+  });
+});
+
+describe('a row opened', () => {
+  const toggle = (name) =>
+    screen.getByRole('button', { name: `Voir le détail de ${name}` });
+
+  it('opens and closes with its button', () => {
+    mount();
+    fireEvent.click(group('Macronutriment'));
+
+    expect(toggle('Glucides')).toHaveAttribute('aria-expanded', 'false');
+    expect(document.querySelector('.est-detail')).toBeNull();
+
+    fireEvent.click(toggle('Glucides'));
+
+    const hide = screen.getByRole('button', {
+      name: 'Masquer le détail de Glucides',
+    });
+    expect(hide).toHaveAttribute('aria-expanded', 'true');
+    expect(document.querySelector('.est-detail')).not.toBeNull();
+
+    fireEvent.click(hide);
+
+    expect(document.querySelector('.est-detail')).toBeNull();
+  });
+
+  it('says what the label is, with its rounding, and what the estimate is', () => {
+    mount();
+    fireEvent.click(group('Macronutriment'));
+
+    fireEvent.click(toggle('Glucides'));
+
+    const detail = document.querySelector('.est-detail');
+    expect(detail).toHaveTextContent('57,5 g');
+    expect(detail).toHaveTextContent(
+      'Écrit avec son arrondi : il vaut de 57 g à 58 g.',
+    );
+    expect(detail).toHaveTextContent('Aucune tolérance ne s’applique');
+    expect(detail).toHaveTextContent('55 – 60 g');
+    expect(detail).toHaveTextContent('au mieux 57 g');
+    expect(detail).toHaveTextContent('L’estimation est une fourchette');
+  });
+
+  it('says what the verdict means in place of the general note', () => {
+    mount();
+    fireEvent.click(group('Macronutriment'));
+
+    fireEvent.click(toggle('Matières grasses'));
+    expect(document.querySelector('.est-detail')).toHaveTextContent(
+      labels.declaredAboveNote,
+    );
+    // A figure that is written exactly has no rounding to say.
+    expect(document.querySelector('.est-detail')).not.toHaveTextContent(
+      'arrondi',
+    );
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Masquer le détail de Matières grasses',
+      }),
+    );
+
+    fireEvent.click(toggle('Protéines'));
+    expect(document.querySelector('.est-detail')).toHaveTextContent(
+      labels.constrainedNote,
+    );
+  });
+
+  it('gives the parts of the confidence, and the one that holds it down', () => {
+    mount();
+    fireEvent.click(group('Macronutriment'));
+
+    fireEvent.click(toggle('Glucides'));
+
+    const detail = document.querySelector('.est-detail');
+    expect(detail).toHaveTextContent('Fiabilité 0,62');
+    const parts = [...detail.querySelectorAll('.est-factors li')];
+    expect(
+      parts.map((part) => part.querySelector('.est-factor-head').textContent),
+    ).toEqual([
+      'Couverture1,00',
+      'Qualité des données · ce qui la limite0,80',
+      'Recette bien connue0,80',
+      'Accord des vérifications–',
+    ]);
+    expect(parts[1]).toHaveClass('est-factor--limiting');
+    expect(
+      parts.filter((part) => part.matches('.est-factor--limiting')),
+    ).toHaveLength(1);
+    expect(parts[1].querySelector('.est-factor-bar > span')).toHaveStyle({
+      width: '80%',
+    });
+  });
+
+  it('has no confidence to give where the estimate has none', () => {
+    mount();
+    fireEvent.click(group('Macronutriment'));
+
+    fireEvent.click(toggle('Matières grasses'));
+
+    expect(document.querySelector('.est-detail')).not.toHaveTextContent(
+      'Fiabilité',
+    );
+  });
+
+  it('has no detail for a figure there is nothing to say of', () => {
+    mount({
+      panel: {
+        ...data,
+        nutrients: [nutrient({ code: 'y', name: 'Rien' })],
+      },
+    });
+    fireEvent.click(group('Macronutriment'));
+
+    expect(screen.queryByRole('button', { name: /Voir le détail/ })).toBeNull();
+  });
+});
+
+describe('the tolerance of the label', () => {
+  const tolerance = { tolerance_low: '9.9', tolerance_high: '16.1' };
+  const withTolerance = {
+    ...data,
+    nutrients: [
+      nutrient({
+        code: 'salt',
+        name: 'Sel',
+        estimated: range('1.1', '1.3', '1.5'),
+        coverage: '100',
+        confidence: confidence('0.5'),
+        declared: declared('1.7', '1.65', '1.75', tolerance),
+        verdict: 'agrees',
+        tolerated: true,
+      }),
+      nutrient({
+        code: 'saturated_fat',
+        name: 'Saturés',
+        estimated: range('13.7', '13.8', '13.9'),
+        coverage: '100',
+        declared: declared('13', '12.5', '13.5', tolerance),
+        verdict: 'agrees',
+        constrained: true,
+        tolerated: true,
+      }),
+    ],
+  };
+
+  it('says the label agrees within it, in the phrase of the verdict', () => {
+    mount({ panel: withTolerance });
+    fireEvent.click(group('Macronutriment'));
+
+    const row = gauge('Sel').closest('.est-row');
+    expect(within(row).getByText(labels.tolerated)).toBeInTheDocument();
+    expect(row.querySelector('.est-verdict')).toHaveClass(
+      'est-verdict--agrees',
+    );
+    expect(gauge('Sel').getAttribute('aria-label')).toMatch(
+      /Hors fourchette, dans la tolérance de la Commission$/,
+    );
+    // The range is not drawn wider for it.
+    expect(gauge('Sel').querySelector('.est-tolerance')).toBeNull();
+  });
+
+  it('gives it in the detail, as the range the label stands for with it', () => {
+    mount({ panel: withTolerance });
+    fireEvent.click(group('Macronutriment'));
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Voir le détail de Sel' }),
+    );
+
+    expect(document.querySelector('.est-detail')).toHaveTextContent(
+      'Tolérance de la Commission : de 9,9 g à 16,1 g.',
+    );
+    expect(document.querySelector('.est-detail')).toHaveTextContent(
+      labels.toleratedNote,
+    );
+  });
+
+  it('leaves a figure the estimate was worked out with a starting point, whatever the tolerance', () => {
+    mount({ panel: withTolerance });
+    fireEvent.click(group('Macronutriment'));
+
+    const row = gauge('Saturés').closest('.est-row');
+    expect(row.querySelector('.est-verdict')).toHaveTextContent(
+      'Point de départ du calcul',
+    );
   });
 });
 
@@ -352,8 +621,8 @@ describe('what an ingredient that is a nutrient adds', () => {
     mount({ panel: withVitamin() });
 
     const row = gauge('Vitamine C \\(quantité ajoutée\\)').closest('.est-row');
-    expect(within(row).getByText('20 mg')).toBeInTheDocument();
-    expect(within(row).queryByText('0,02 %')).toBeNull();
+    expect(within(row).getByText('≈ 20 mg')).toBeInTheDocument();
+    expect(within(row).queryByText('≈ 0,02 %')).toBeNull();
     // The shares keep the track they had: 32 x 1.15 = 36.8 long for all of them.
     const sugar = gauge('Sucre').querySelector('.est-band');
     expect(parseFloat(sugar.style.left)).toBeCloseTo((28 / 36.8) * 100);
@@ -454,89 +723,6 @@ describe('the choice between the gauges and the tables', () => {
   });
 });
 
-describe('the tolerance of the label', () => {
-  const tolerance = { tolerance_low: '9.9', tolerance_high: '16.1' };
-  const withTolerance = {
-    ...data,
-    nutrients: [
-      nutrient({
-        code: 'saturated_fat',
-        name: 'Saturés',
-        estimated: range('13.7', '13.8', '13.9'),
-        coverage: '100',
-        declared: declared('13', '12.5', '13.5', tolerance),
-        verdict: 'agrees',
-        constrained: true,
-        tolerated: true,
-      }),
-      nutrient({
-        code: 'fat',
-        name: 'Matières grasses',
-        estimated: range('20', '25', '28'),
-        coverage: '100',
-        declared: declared('30.9', '30.85', '30.95', {
-          tolerance_low: '24.7',
-          tolerance_high: '37.1',
-        }),
-        verdict: 'declared_above',
-      }),
-      nutrient({
-        code: 'carbohydrates',
-        name: 'Glucides',
-        estimated: range('55', '57', '60'),
-        coverage: '100',
-        declared: declared('57.5', '57', '58', {
-          tolerance_low: '46',
-          tolerance_high: '69',
-        }),
-        verdict: 'agrees',
-      }),
-    ],
-  };
-
-  it('draws a band where the label agrees only within it, or differs despite it', () => {
-    mount({ panel: withTolerance });
-    fireEvent.click(group('Macronutriment'));
-
-    expect(gauge('Saturés').querySelector('.est-tolerance')).not.toBeNull();
-    expect(
-      gauge('Matières grasses').querySelector('.est-tolerance'),
-    ).not.toBeNull();
-    // Agreeing on the rounding alone, it has nothing to add.
-    expect(gauge('Glucides').querySelector('.est-tolerance')).toBeNull();
-  });
-
-  it('says in a badge that the label was read with it', () => {
-    mount({ panel: withTolerance });
-    fireEvent.click(group('Macronutriment'));
-
-    const row = gauge('Saturés').closest('.est-row');
-    expect(within(row).getByText('Dans la tolérance')).toHaveAttribute(
-      'title',
-      labels.toleratedNote,
-    );
-    expect(gauge('Saturés').getAttribute('aria-label')).toMatch(
-      /Dans la tolérance$/,
-    );
-    const plain = gauge('Glucides').closest('.est-row');
-    expect(within(plain).queryByText('Dans la tolérance')).toBeNull();
-  });
-
-  it('explains the band in the legend only when one is drawn', () => {
-    const { unmount } = mount({ panel: withTolerance });
-    expect(
-      screen.getByText('Tolérance de l’étiquette (Commission européenne)'),
-    ).toBeInTheDocument();
-    unmount();
-
-    mount();
-
-    expect(
-      screen.queryByText('Tolérance de l’étiquette (Commission européenne)'),
-    ).toBeNull();
-  });
-});
-
 describe('the choice of the unit, per 100 g or per 100 ml', () => {
   // An oil: a millilitre weighs 0.9 to 0.92 g. Estimated per 100 g, the label as it is
   // printed per 100 ml: 91 g of fat (90.5 to 91.5).
@@ -567,7 +753,7 @@ describe('the choice of the unit, per 100 g or per 100 ml', () => {
     expect(screen.getByText('Nutriments pour 100 ml')).toBeInTheDocument();
     expect(unitButton('100 ml')).toHaveAttribute('aria-pressed', 'true');
     expect(summary()).toMatch(
-      /Estimation 91 g \(90 – 92\) ; Étiquette 91 g ; Concorde$/,
+      /Estimation 91 g \(90 – 92\) ; Étiquette 91 g ; L’étiquette concorde$/,
     );
     expect(
       screen.getByText('Densité utilisée : 0,9 à 0,92 g/ml'),

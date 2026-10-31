@@ -807,10 +807,19 @@ class TestProductEditView:
         config = script_of(page, "product-form-config")["estimatePanel"]
         assert config["languageCode"].startswith("fr")
         assert config["labels"]["viewGauges"] == "Jauges"
-        assert config["labels"]["agrees"] == "Concorde"
-        assert config["labels"]["legendLabel"] == "Étiquette (valeur et arrondi)"
-        assert "%(agree)s" in config["labels"]["groupAgree"]
-        assert "%(compared)s" in config["labels"]["groupAgree"]
+        assert config["labels"]["agrees"] == "L'étiquette concorde"
+        assert config["labels"]["legendLabel"] == "Chiffre de l'étiquette"
+        assert config["labels"]["constrained"] == "Point de départ du calcul"
+        assert config["labels"]["reliabilityLow"] == "Fiabilité faible"
+        # Figures put in client-side, so their places must survive.
+        assert "%(checked)s" in config["labels"]["summaryChecked"]
+        assert "%(total)s" in config["labels"]["summaryChecked"]
+        assert "%(n)s" in config["labels"]["chipChecked"]
+        assert "%(name)s" in config["labels"]["detailShow"]
+        assert "%(value)s" in config["labels"]["labelAt"]
+        # None is left in English: every label has a French entry of its own.
+        assert all(config["labels"].values())
+        assert config["labels"]["ingredient"] == "Ingrédient"
 
     def test_the_page_names_a_preparation_in_the_table_too(self, client: Client):
         product = Product.objects.create(barcode=NUTELLA, name="Nutella")

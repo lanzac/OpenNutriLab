@@ -452,9 +452,6 @@ msgstr ""
 "L'étiquette est donnée pour 100 ml, telle qu'elle est imprimée ; "
 "l'estimation est pour 100 g."
 
-msgid "Tolerance of the label (European Commission)"
-msgstr "Tolérance de l'étiquette (Commission européenne)"
-
 msgid "Nutrients per 100 ml"
 msgstr "Nutriments pour 100 ml"
 
@@ -1156,6 +1153,114 @@ msgstr "Administrateur"
 msgid "Delete from the catalogue…"
 msgstr "Supprimer du catalogue…"
 
+msgid "Label figure"
+msgstr "Chiffre de l'étiquette"
+
+msgid "Estimated range"
+msgstr "Fourchette estimée"
+
+msgid "Best estimate"
+msgstr "Meilleure estimation"
+
+msgid "label %(value)s"
+msgstr "étiquette %(value)s"
+
+msgid "at least %(low)s · no upper end"
+msgstr "au moins %(low)s · pas de borne haute"
+
+msgid "The label agrees"
+msgstr "L'étiquette concorde"
+
+msgid "Label lower than the lowest possible"
+msgstr "Étiquette plus basse que le minimum possible"
+
+msgid "Label higher than the highest possible"
+msgstr "Étiquette plus haute que le maximum possible"
+
+msgid "Starting point of the calculation"
+msgstr "Point de départ du calcul"
+
+msgid "Outside the range, within the tolerance"
+msgstr "Hors fourchette, dans la tolérance de la Commission"
+
+msgid "Not estimated: no ingredient gives it"
+msgstr "Non estimé : aucun ingrédient n'en donne"
+
+msgid "Estimate only, no label"
+msgstr "Estimation seule, sans étiquette"
+
+msgid "Checked by the ingredients: %(checked)s of the %(total)s figures of the label."
+msgstr "Vérifiés par les ingrédients : %(checked)s sur %(total)s chiffres de l'étiquette."
+
+msgid "Those used to work out the shares of the ingredients agree by construction and prove nothing."
+msgstr "Ceux qui ont servi à calculer les parts des ingrédients concordent forcément et ne prouvent rien."
+
+msgid "Checked: %(n)s"
+msgstr "Vérifiés : %(n)s"
+
+msgid "Starting points: %(n)s"
+msgstr "Points de départ : %(n)s"
+
+msgid "Gaps: %(n)s"
+msgstr "Écarts : %(n)s"
+
+msgid "Reliability"
+msgstr "Fiabilité"
+
+msgid "Low reliability"
+msgstr "Fiabilité faible"
+
+msgid "Average reliability"
+msgstr "Fiabilité moyenne"
+
+msgid "Good reliability"
+msgstr "Fiabilité bonne"
+
+msgid "The product of four factors, each between 0 and 1:"
+msgstr "Le produit de quatre facteurs, chacun entre 0 et 1 :"
+
+msgid "Quality of the data"
+msgstr "Qualité des données"
+
+msgid "The grade of the foods the values come from (CIQUAL)."
+msgstr "La note des aliments dont viennent les valeurs (CIQUAL)."
+
+msgid "Recipe well known"
+msgstr "Recette bien connue"
+
+msgid "How well the shares of the ingredients are known: 1 minus the uncertainty."
+msgstr "Dans quelle mesure les parts des ingrédients sont connues : 1 moins l'incertitude."
+
+msgid "Agreement of the checks"
+msgstr "Accord des vérifications"
+
+msgid "The share of the independent checks that agree; a dash where none could have failed."
+msgstr "La part des vérifications indépendantes qui concordent ; un tiret quand aucune ne pouvait échouer."
+
+msgid "what holds it down"
+msgstr "ce qui la limite"
+
+msgid "Show the detail of %(name)s"
+msgstr "Voir le détail de %(name)s"
+
+msgid "Hide the detail of %(name)s"
+msgstr "Masquer le détail de %(name)s"
+
+msgid "Written with its rounding: it stands for %(low)s to %(high)s."
+msgstr "Écrit avec son arrondi : il vaut de %(low)s à %(high)s."
+
+msgid "Tolerance of the European Commission: %(low)s to %(high)s."
+msgstr "Tolérance de la Commission européenne : de %(low)s à %(high)s."
+
+msgid "No tolerance applies to this figure."
+msgstr "Aucune tolérance ne s'applique à ce chiffre."
+
+msgid "best guess %(point)s"
+msgstr "au mieux %(point)s"
+
+msgid "The shares of the ingredients are only roughly known: the estimate is a range, not a figure."
+msgstr "Les parts des ingrédients ne sont connues qu'à peu près : l'estimation est une fourchette, pas un chiffre."
+
 msgid "The product disappears for every user."
 msgstr "Le produit disparaît pour tous les utilisateurs."
 
@@ -1581,19 +1686,10 @@ msgstr "Part de la limite"
 msgid "%(reached)s of %(total)s met"
 msgstr "%(reached)s sur %(total)s respectés"
 
-msgid "Estimate and its range"
-msgstr "Estimation et sa fourchette"
-
-msgid "Label (value and rounding)"
-msgstr "Étiquette (valeur et arrondi)"
-
 msgid "The share of the product whose ingredients give a value."
 msgstr "La part du produit dont les ingrédients donnent une valeur."
 
 #, python-format
-msgid "%(agree)s of %(compared)s agree with the label"
-msgstr "%(agree)s sur %(compared)s en accord avec l'étiquette"
-
 msgid "Not compared with the label"
 msgstr "Pas comparé à l'étiquette"
 

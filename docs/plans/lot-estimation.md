@@ -864,7 +864,7 @@ default) and the **tables** the server writes, kept in the browser
 JavaScript, the gauges are a React panel (`frontend/src/apps/products/estimate/`)
 that hides them while it shows.
 
-- **What a gauge draws.** On a track from zero: the range the estimate can be in as a
+- **What a gauge draws** (the marks below are the first version, see the revision just after). On a track from zero: the range the estimate can be in as a
   band (open, dashed and fading when no upper end is known), its point as a tick, the
   label's value as a taller dark tick and the rounding it is written with as a thin
   line. The band's colour is the verdict of the label against the estimate: green
@@ -872,6 +872,20 @@ that hides them while it shows.
   rules (confirms nothing), blue there is no label to set it against. Beside it: the
   estimate, the label, the confidence (text and a thin bar), and the coverage under
   100 %. Each is a `role="img"` that says all of it in words.
+- **Redone 2026-10-31** (the user found the gauges unclear; mockup approved the same
+  day): a row says what the label makes of the estimate **in a phrase with a sign**
+  ("The label agrees", "Label lower than the lowest possible", "Starting point of the
+  calculation", "Estimate only, no label"), writes **the figures where they are
+  drawn** (the label over its diamond, the range under the band, "at least x · no
+  upper end" for an open one) and puts the best estimate and **how far to trust it**
+  (three dots, under 0.3 low, from 0.6 good: thresholds to adjust, in `layout.js`) on
+  the right. The point tick, the rounding line, the tolerance bracket and the
+  confidence bar are gone from the drawing: **a row opens** to the label's rounding
+  and tolerance, the estimate as a range, and the four parts of the confidence with
+  the one that holds it down. Above the nutrients, one sentence says how many figures
+  of the label the ingredients check, and that the ones the shares were worked out
+  with prove nothing; the head of a group counts them. The marks are said once, above
+  the rows. The ingredients are a name, a range and a label, with no verdict.
 - **The ingredients** are on one track for all of them (a share of 0.5 % beside one of
   30 % is seen to be small), indented by depth; a nutrient has a track of its own.
 - **The nutrients are grouped** as the day's are (energy, macronutrients, vitamins,

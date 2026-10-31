@@ -1,7 +1,8 @@
 // Where the figures of an estimate stand on a gauge. The estimate is a range with a
-// point in it, the label a value with the rounding it is written with, and, where it
-// matters, the tolerance the European Commission allows around it: the gauge draws them
-// on one track from zero, and the page only has to put them where this says.
+// point in it and the label a value: the gauge draws them on one track from zero, and
+// the page only has to put them where this says. The rounding the label is written
+// with and the tolerance the European Commission allows around it are said in words
+// where a row is opened, not drawn.
 
 // Room left above the highest figure, and, where the range has no upper end, past the
 // highest known one, for the open end of it to be seen.
@@ -14,31 +15,14 @@ const finite = (value) =>
   value !== null && value !== undefined && Number.isFinite(Number(value));
 const number = (value) => (finite(value) ? Number(value) : null);
 
-/**
- * Whether a row draws the tolerance of its label: when the label only agrees with the
- * estimate thanks to it, and when it differs although it is allowed. Everywhere else it
- * is wide and says nothing, and would only crowd the track.
- */
-export function showsTolerance({ declared, verdict, tolerated }) {
-  if (!declared) return false;
-  if (!finite(declared.tolerance_low) || !finite(declared.tolerance_high))
-    return false;
-  return (
-    Boolean(tolerated) ||
-    verdict === 'declared_below' ||
-    verdict === 'declared_above'
-  );
-}
-
 /** The highest figure of a row, which its track is made to hold. */
-function topOf({ estimated, declared, showTolerance = false }) {
+function topOf({ estimated, declared }) {
   const figures = [
     estimated && number(estimated.high),
     estimated && number(estimated.point),
     estimated && number(estimated.low),
     declared && number(declared.amount),
     declared && number(declared.high),
-    showTolerance && declared && number(declared.tolerance_high),
   ].filter((value) => typeof value === 'number');
   return figures.length === 0 ? 0 : Math.max(...figures);
 }
@@ -65,14 +49,13 @@ const share = (value, max) => Math.min(Math.max((value / max) * 100, 0), 100);
 /**
  * Where each mark goes, as a share of the track:
  * - `band`, the range of the estimate, open when it has no upper end, and `point`;
- * - `label`, the label's value, `rounding`, the range it stands for once rounded, and
- *   `tolerance`, the one it stands for with the tolerance, when `showTolerance`.
+ * - `label`, where the label's value is.
  * Either is null where there is none. `max` is the end of the track; by default the
  * row's own.
  */
 export function layoutOf(
-  { estimated, declared, showTolerance = false },
-  max = scaleOf({ estimated, declared, showTolerance }),
+  { estimated, declared },
+  max = scaleOf({ estimated, declared }),
 ) {
   let band = null;
   if (estimated) {
@@ -86,27 +69,19 @@ export function layoutOf(
       point: share(Number(estimated.point), max),
     };
   }
-  let label = null;
-  if (declared) {
-    const at = share(Number(declared.amount), max);
-    const from = share(Number(declared.low), max);
-    const to = share(Number(declared.high), max);
-    label = {
-      at,
-      // What the label's rounding covers, when it is wide enough to be seen.
-      rounding: to - from >= LEAST_WIDTH ? { from, to } : null,
-      tolerance: showTolerance ? toleranceOf(declared, max) : null,
-    };
-  }
+  const label = declared ? { at: share(Number(declared.amount), max) } : null;
   return { max, band, label };
 }
 
-function toleranceOf(declared, max) {
-  if (!finite(declared.tolerance_low) || !finite(declared.tolerance_high))
-    return null;
-  const from = share(Number(declared.tolerance_low), max);
-  const to = share(Number(declared.tolerance_high), max);
-  return to - from >= LEAST_WIDTH ? { from, to } : null;
+// A text over or under the track is kept inside it: the nearer an end the mark is, the
+// more the text leans on that end instead of being centred on the mark.
+const NEAR_END = 12;
+
+/** How a text about a mark at `position` (a share of the track) is set: which side it leans on. */
+export function placeOf(position) {
+  if (position <= NEAR_END) return 'start';
+  if (position >= 100 - NEAR_END) return 'end';
+  return 'centre';
 }
 
 /** How many nutrients of each kind of verdict a group holds, for its head. */
@@ -123,4 +98,46 @@ export function countVerdicts(rows) {
     } else counts.none += 1;
   }
   return counts;
+}
+
+// Where the scores of confidence part: under 0.3 is low, from 0.6 good.
+const LOW = 0.3;
+const GOOD = 0.6;
+
+/**
+ * How far to trust an estimate, as a level for a person to read: 1 low, 2 average, 3
+ * good. Null where there is no confidence to read.
+ */
+export function reliabilityOf(confidence) {
+  if (!confidence || !finite(confidence.score)) return null;
+  const score = Number(confidence.score);
+  if (score < LOW) return 1;
+  return score < GOOD ? 2 : 3;
+}
+
+/**
+ * The four parts a confidence is the product of, each between 0 and 1 (the
+ * uncertainty counts as 1 minus it), with the one that holds it down the most: the
+ * lowest, when it is under 1. An agreement of null is no check that could have failed,
+ * which holds nothing down and is not a part to rank.
+ */
+export function factorsOf(confidence) {
+  if (!confidence) return null;
+  const parts = [
+    { key: 'coverage', value: number(confidence.coverage) },
+    { key: 'quality', value: number(confidence.quality) },
+    {
+      key: 'recipe',
+      value: finite(confidence.uncertainty)
+        ? 1 - Number(confidence.uncertainty)
+        : null,
+    },
+    { key: 'agreement', value: number(confidence.agreement) },
+  ];
+  const ranked = parts.filter((part) => part.value !== null && part.value < 1);
+  const lowest = ranked.length
+    ? Math.min(...ranked.map((part) => part.value))
+    : null;
+  const limiting = ranked.find((part) => part.value === lowest)?.key ?? null;
+  return parts.map((part) => ({ ...part, limiting: part.key === limiting }));
 }

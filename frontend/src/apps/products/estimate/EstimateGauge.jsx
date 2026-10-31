@@ -1,16 +1,9 @@
 import './estimate.css';
 
-import { formatNumber } from '../../../shared/format.js';
-import { layoutOf, showsTolerance } from './layout.js';
+import { useId, useState } from 'react';
 
-// How each verdict looks: the colour of the band and of its badge, and the label that
-// says it. A row with no label to be set against has the neutral one.
-const KINDS = {
-  agrees: { badge: 'text-bg-success', text: 'agrees' },
-  differs: { badge: 'text-bg-warning', text: null },
-  used: { badge: 'text-bg-secondary', text: 'constrained' },
-  none: { badge: 'text-bg-light', text: null },
-};
+import { fill, formatNumber } from '../../../shared/format.js';
+import { factorsOf, layoutOf, placeOf, reliabilityOf } from './layout.js';
 
 /** The kind of verdict of a row, which colours it. */
 export function kindOf({ verdict, constrained }) {
@@ -21,26 +14,55 @@ export function kindOf({ verdict, constrained }) {
   return 'none';
 }
 
-function verdictText(verdict, constrained, labels) {
-  if (constrained) return labels.constrained;
-  return (
-    {
-      agrees: labels.agrees,
-      declared_below: labels.declaredBelow,
-      declared_above: labels.declaredAbove,
-      not_estimated: labels.notEstimated,
-    }[verdict] ?? ''
-  );
-}
-
-function verdictNote(verdict, constrained, labels) {
-  if (constrained) return labels.constrainedNote;
-  return (
-    {
-      declared_below: labels.declaredBelowNote,
-      declared_above: labels.declaredAboveNote,
-    }[verdict] ?? undefined
-  );
+/**
+ * What a row says of its label, in words: the kind (which colours the range and the
+ * words), the icon, the text, and what it means, for the detail. A figure the estimate
+ * was worked out with is a starting point and not a check, whatever else is true of it.
+ */
+function verdictOf({ verdict, constrained, tolerated, estimated }, labels) {
+  const kind = kindOf({ verdict, constrained });
+  if (constrained) {
+    return {
+      kind,
+      icon: 'fa-bullseye',
+      text: labels.constrained,
+      note: labels.constrainedNote,
+    };
+  }
+  if (verdict === 'agrees') {
+    return tolerated
+      ? {
+          kind,
+          icon: 'fa-check',
+          text: labels.tolerated,
+          note: labels.toleratedNote,
+        }
+      : { kind, icon: 'fa-check', text: labels.agrees };
+  }
+  if (verdict === 'declared_below') {
+    return {
+      kind,
+      icon: 'fa-caret-down',
+      text: labels.declaredBelow,
+      note: labels.declaredBelowNote,
+    };
+  }
+  if (verdict === 'declared_above') {
+    return {
+      kind,
+      icon: 'fa-caret-up',
+      text: labels.declaredAbove,
+      note: labels.declaredAboveNote,
+    };
+  }
+  if (verdict === 'not_estimated') {
+    return { kind, icon: 'fa-minus', text: labels.notEstimated };
+  }
+  return {
+    kind,
+    icon: 'fa-minus',
+    text: estimated ? labels.estimateOnly : '',
+  };
 }
 
 /** A range as low to high, or "≥ low" when no upper end is known. */
@@ -51,14 +73,33 @@ export function rangeText(estimated, languageCode) {
   return `${low} – ${formatNumber(estimated.high, languageCode)}`;
 }
 
+/** Where a text over or under the track is set: on the mark, or leaning on an end. */
+function placed(at) {
+  const place = placeOf(at);
+  if (place === 'start') return { left: 0 };
+  if (place === 'end') return { right: 0 };
+  return { left: `${at}%`, transform: 'translateX(-50%)' };
+}
+
+const WORDS = ['reliabilityLow', 'reliabilityMedium', 'reliabilityGood'];
+const FACTORS = {
+  coverage: ['coverage', 'coverageNote'],
+  quality: ['factorQuality', 'qualityNote'],
+  recipe: ['factorRecipe', 'recipeNote'],
+  agreement: ['factorAgreement', 'agreementNote'],
+};
+
 /**
- * One figure of the estimate on a gauge: the range it can be in as a band with its
- * point, the label's value as a tick with the rounding it is written with, and the
- * verdict of the one against the other as the colour. The figures are the server's;
- * this only draws them.
+ * One figure of the estimate on a gauge, said in words and drawn: the range it can be
+ * in as a band, the label's value as a diamond, each with its figures written beside
+ * it, the verdict of the one against the other as a phrase (and as the colour of the
+ * band), and how far to trust it as three dots. A row that has a detail opens to the
+ * label's rounding and tolerance and the parts of the confidence. The figures are the
+ * server's; this only draws them.
  *
  * `max` is the end of the track where rows are compared with each other (the shares of
- * a recipe), and the row's own where they are not.
+ * a recipe), and the row's own where they are not. `detailed` is for the nutrients,
+ * which say what the label makes of them; the ingredients are a name and a range.
  */
 export function EstimateGauge({
   name,
@@ -73,134 +114,222 @@ export function EstimateGauge({
   constrained = false,
   tolerated = false,
   confidence = null,
-  coverage = null,
+  detailed = false,
   max,
   labels,
   languageCode,
 }) {
-  const showTolerance = showsTolerance({ declared, verdict, tolerated });
-  const layout = layoutOf({ estimated, declared, showTolerance }, max);
-  const kind = kindOf({ verdict, constrained });
-  const text = verdictText(verdict, constrained, labels);
+  const [open, setOpen] = useState(false);
+  const detailId = useId();
+  const layout = layoutOf({ estimated, declared }, max);
+  const said = verdictOf(
+    { verdict, constrained, tolerated, estimated },
+    labels,
+  );
+  const level = reliabilityOf(confidence);
+  const factors = factorsOf(confidence);
+  const tail = unitInName ? '' : ` ${unit}`;
   const show = (value) => `${formatNumber(value, languageCode)} ${unit}`;
-  const pointText = estimated ? show(estimated.point) : '–';
+  const twoDecimals = (value) =>
+    new Intl.NumberFormat(languageCode, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(value));
+  const pointText = estimated ? `≈ ${show(estimated.point)}` : '–';
   const summary = [
     estimated
-      ? `${labels.estimate} ${pointText} (${rangeText(estimated, languageCode)})`
+      ? `${labels.estimate} ${show(estimated.point)} (${rangeText(estimated, languageCode)})`
       : null,
     declared ? `${labels.label} ${show(declared.amount)}` : null,
-    text || null,
-    tolerated ? labels.tolerated : null,
+    said.text || null,
   ]
     .filter(Boolean)
     .join(' ; ');
-  const shown = coverage === null ? 100 : Math.round(Number(coverage));
+
+  const caption = (() => {
+    if (!layout.band) return null;
+    if (layout.band.open) {
+      return fill(labels.rangeOpen, {
+        low: formatNumber(estimated.low, languageCode) + tail,
+      });
+    }
+    return (
+      `${formatNumber(estimated.low, languageCode)} – ` +
+      `${formatNumber(estimated.high, languageCode)}${tail}`
+    );
+  })();
+  const captionAt = layout.band
+    ? layout.band.open
+      ? layout.band.from
+      : (layout.band.from + layout.band.to) / 2
+    : null;
+  const hasDetail = detailed && Boolean(estimated || declared || confidence);
 
   return (
-    <div className="est-row">
-      <div className="est-name" style={{ '--est-depth': depth }}>
-        {name}
-        {unitInName && unit && (
-          <span className="small text-body-secondary"> ({unit})</span>
+    <div className="est-item">
+      <div className="est-row">
+        <div className="est-name" style={{ '--est-depth': depth }}>
+          {name}
+          {unitInName && unit && (
+            <span className="small text-body-secondary"> {unit}</span>
+          )}
+        </div>
+        {detailed && said.text && (
+          <div className={`est-verdict est-verdict--${said.kind}`}>
+            <i className={`fa-solid ${said.icon}`} aria-hidden="true" />
+            {said.text}
+          </div>
         )}
-        {text && (
-          <span
-            className={`badge ${KINDS[kind].badge} d-table mt-1`}
-            title={verdictNote(verdict, constrained, labels)}
-          >
-            {text}
-          </span>
-        )}
-        {tolerated && (
-          <span
-            className="badge text-bg-info d-table mt-1"
-            title={labels.toleratedNote}
-          >
-            {labels.tolerated}
-          </span>
-        )}
-      </div>
-      <div className="est-gauge" role="img" aria-label={`${name} : ${summary}`}>
-        <div className="est-track">
+        <div
+          className="est-gauge"
+          role="img"
+          aria-label={`${name} : ${summary}`}
+        >
+          {layout.label && (
+            <div
+              className="est-text est-text--label"
+              style={placed(layout.label.at)}
+            >
+              {fill(labels.labelAt, {
+                value: formatNumber(declared.amount, languageCode) + tail,
+              })}
+            </div>
+          )}
+          <div className="est-track" />
           {layout.band && (
-            <>
-              <div
-                className={`est-band est-band--${kind}${
-                  layout.band.open ? ' est-band--open' : ''
-                }`}
-                style={{
-                  left: `${layout.band.from}%`,
-                  width: `${layout.band.to - layout.band.from}%`,
-                }}
-                title={`${labels.estimate} : ${rangeText(estimated, languageCode)}`}
-              />
-              <div
-                className={`est-point est-point--${kind}`}
-                style={{ left: `${layout.band.point}%` }}
-              />
-            </>
-          )}
-          {layout.label?.tolerance && (
             <div
-              className="est-tolerance"
+              className={`est-band est-band--${said.kind}${
+                layout.band.open ? ' est-band--open' : ''
+              }`}
               style={{
-                left: `${layout.label.tolerance.from}%`,
-                width: `${layout.label.tolerance.to - layout.label.tolerance.from}%`,
-              }}
-              title={labels.legendTolerance}
-            />
-          )}
-          {layout.label?.rounding && (
-            <div
-              className="est-rounding"
-              style={{
-                left: `${layout.label.rounding.from}%`,
-                width: `${layout.label.rounding.to - layout.label.rounding.from}%`,
+                left: `${layout.band.from}%`,
+                width: `${layout.band.to - layout.band.from}%`,
               }}
             />
           )}
           {layout.label && (
             <div
-              className="est-label-tick"
+              className="est-diamond"
               style={{ left: `${layout.label.at}%` }}
-              title={`${labels.label} : ${show(declared.amount)}`}
             />
           )}
+          {caption && (
+            <div className="est-text est-text--range" style={placed(captionAt)}>
+              {caption}
+            </div>
+          )}
         </div>
-      </div>
-      <div className="est-value">
-        <strong>{pointText}</strong>
-        {declared && (
-          <small className="d-block text-body-secondary">
-            {labels.label} {show(declared.amount)}
-          </small>
-        )}
-        {confidence && (
-          <>
-            <small className="d-block text-body-secondary">
-              {labels.confidence} {formatNumber(confidence.score, languageCode)}
-            </small>
-            <span
-              className="est-confidence d-block"
-              role="meter"
-              aria-label={labels.confidence}
-              aria-valuemin={0}
-              aria-valuemax={1}
-              aria-valuenow={Number(confidence.score)}
-            >
-              <span style={{ width: `${Number(confidence.score) * 100}%` }} />
+        <div className="est-value">
+          <strong>{pointText}</strong>
+        </div>
+        {detailed && level && (
+          <div className="est-reliability">
+            <span className="est-dots" aria-hidden="true">
+              {[1, 2, 3].map((dot) => (
+                <span
+                  key={dot}
+                  className={`est-dot${dot <= level ? ' est-dot--on' : ''}`}
+                />
+              ))}
             </span>
-          </>
+            {labels[WORDS[level - 1]]}
+          </div>
         )}
-        {shown < 100 && (
-          <small
-            className="d-block text-warning-emphasis"
-            title={labels.coverageNote}
+        {hasDetail && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary est-toggle"
+            aria-expanded={open}
+            aria-controls={detailId}
+            aria-label={fill(open ? labels.detailHide : labels.detailShow, {
+              name,
+            })}
+            onClick={() => setOpen((was) => !was)}
           >
-            {labels.coverage} {shown} %
-          </small>
+            <i
+              className={`fa-solid fa-chevron-${open ? 'up' : 'down'}`}
+              aria-hidden="true"
+            />
+          </button>
         )}
       </div>
+      {hasDetail && open && (
+        <div className="est-detail" id={detailId}>
+          {declared && (
+            <div className="est-detail-part">
+              <h4>{labels.label}</h4>
+              <p className="est-detail-figure">{show(declared.amount)}</p>
+              {Number(declared.low) !== Number(declared.high) && (
+                <p>
+                  {fill(labels.detailRounding, {
+                    low: show(declared.low),
+                    high: show(declared.high),
+                  })}
+                </p>
+              )}
+              <p>
+                {declared.tolerance_low === null ||
+                declared.tolerance_low === undefined
+                  ? labels.detailNoTolerance
+                  : fill(labels.detailTolerance, {
+                      low: show(declared.tolerance_low),
+                      high: show(declared.tolerance_high),
+                    })}
+              </p>
+            </div>
+          )}
+          {estimated && (
+            <div className="est-detail-part">
+              <h4>{labels.estimate}</h4>
+              <p className="est-detail-figure">
+                {rangeText(estimated, languageCode)} {unit}{' '}
+                <small className="fw-normal text-body-secondary">
+                  {fill(labels.bestGuess, { point: show(estimated.point) })}
+                </small>
+              </p>
+              <p>{said.note ?? labels.rangeNote}</p>
+            </div>
+          )}
+          {confidence && (
+            <div className="est-detail-part">
+              <h4>
+                {labels.reliability} {twoDecimals(confidence.score)}
+              </h4>
+              <p>{labels.reliabilityIntro}</p>
+              <ul className="est-factors">
+                {factors.map((factor) => {
+                  const [nameKey, noteKey] = FACTORS[factor.key];
+                  const known = factor.value !== null;
+                  return (
+                    <li
+                      key={factor.key}
+                      className={factor.limiting ? 'est-factor--limiting' : ''}
+                    >
+                      <div className="est-factor-head">
+                        <span>
+                          {labels[nameKey]}
+                          {factor.limiting && ` · ${labels.limiting}`}
+                        </span>
+                        <span>{known ? twoDecimals(factor.value) : '–'}</span>
+                      </div>
+                      <div className="est-factor-bar" aria-hidden="true">
+                        <span
+                          style={{
+                            width: `${known ? factor.value * 100 : 0}%`,
+                          }}
+                        />
+                      </div>
+                      <small className="d-block text-body-secondary">
+                        {labels[noteKey]}
+                      </small>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { fill, formatNumber } from '../../../shared/format.js';
 import { useStoredChoice, useViewState } from '../../../shared/useViewState.js';
 import { convertDeclared, convertRange } from './convert.js';
 import { EstimateGauge } from './EstimateGauge.jsx';
-import { countVerdicts, sharedScaleOf, showsTolerance } from './layout.js';
+import { countVerdicts, sharedScaleOf } from './layout.js';
 
 const MODES = ['gauges', 'table'];
 const KEYS = {
@@ -35,37 +35,74 @@ function groupsOf(nutrients) {
 
 const KINDS = ['agrees', 'differs', 'used', 'none'];
 
-/** What the label says of the estimates of a group of nutrients, in words. */
+/**
+ * What the label says of the estimates of a group of nutrients, in a few words: how
+ * many it checked, how many were the starting point of the calculation, how many differ.
+ */
 function summaryOf(counts, labels) {
-  const compared = counts.agrees + counts.differs;
-  return compared === 0
-    ? labels.notCompared
-    : fill(labels.groupAgree, { agree: counts.agrees, compared });
+  const parts = [
+    [counts.agrees, labels.chipChecked],
+    [counts.used, labels.chipStart],
+    [counts.differs, labels.chipGap],
+  ]
+    .filter(([count]) => count > 0)
+    .map(([count, text]) => fill(text, { n: count }));
+  return parts.length === 0 ? labels.notCompared : parts.join(' · ');
 }
 
-/** The legend of the drawing: said once, small, above the gauges. */
-function Legend({ labels, tolerance }) {
+/**
+ * What the ingredients make of the label, said once above the nutrients: how many of
+ * its figures they check, and that the ones the shares were worked out with check
+ * nothing, which the rows say one by one.
+ */
+function Summary({ counts, labels }) {
+  const total = counts.agrees + counts.used + counts.differs;
+  if (total === 0) {
+    return <p className="small text-body-secondary">{labels.notCompared}</p>;
+  }
   return (
-    <p className="small text-body-secondary d-flex flex-wrap gap-3">
-      <span>
-        <span className="est-swatch est-swatch--band" />
-        {labels.legendEstimate}
-      </span>
-      <span>
-        <span
-          className="est-swatch"
-          style={{ width: '0.15rem', background: 'var(--bs-body-color)' }}
-        />
-        {labels.legendLabel}
-      </span>
-      {tolerance && (
-        <span>
-          <span className="est-swatch est-swatch--tolerance" />
-          {labels.legendTolerance}
+    <div className="est-summary d-flex flex-column gap-2 mb-2">
+      <p className="mb-0">
+        <strong>
+          {fill(labels.summaryChecked, { checked: counts.agrees, total })}
+        </strong>
+        {counts.used > 0 && ` ${labels.summaryStart}`}
+      </p>
+      <div className="est-chips">
+        <span className="est-chip--agrees">
+          <i className="fa-solid fa-check me-2" aria-hidden="true" />
+          {fill(labels.chipChecked, { n: counts.agrees })}
         </span>
-      )}
-      <span>{labels.legendOpen}</span>
-    </p>
+        <span className="est-chip--used">
+          <i className="fa-solid fa-bullseye me-2" aria-hidden="true" />
+          {fill(labels.chipStart, { n: counts.used })}
+        </span>
+        <span className="est-chip--differs">
+          <i className="fa-solid fa-caret-up me-2" aria-hidden="true" />
+          {fill(labels.chipGap, { n: counts.differs })}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** The heads of the columns, with what the marks of the drawing are, said once. */
+function ColumnHeads({ nameLabel, labels }) {
+  return (
+    <div className="est-head">
+      <div className="est-head-name">{nameLabel}</div>
+      <div className="est-head-legend">
+        <span>
+          <span className="est-swatch est-swatch--label" />
+          {labels.legendLabel}
+        </span>
+        <span>
+          <span className="est-swatch est-swatch--band" />
+          {labels.legendEstimate}
+        </span>
+      </div>
+      <div className="est-head-value">{labels.columnEstimate}</div>
+    </div>
   );
 }
 
@@ -84,6 +121,7 @@ function Ingredients({ rows, labels, languageCode }) {
   return (
     <>
       <h3 className="h6 mt-3">{labels.ingredients}</h3>
+      <ColumnHeads nameLabel={labels.ingredient} labels={labels} />
       {rows.map((row, index) =>
         row.added ? (
           <EstimateGauge
@@ -126,7 +164,7 @@ function NutrientGauge({ nutrient, labels, languageCode }) {
       constrained={nutrient.constrained}
       tolerated={nutrient.tolerated}
       confidence={nutrient.confidence}
-      coverage={nutrient.coverage}
+      detailed
       labels={labels}
       languageCode={languageCode}
     />
@@ -139,7 +177,8 @@ function Nutrients({ nutrients, heading, labels, languageCode, view, prefix }) {
   return (
     <>
       <h3 className="h6 mt-4">{heading}</h3>
-      <p className="small text-body-secondary">{summaryOf(all, labels)}</p>
+      <Summary counts={all} labels={labels} />
+      <ColumnHeads nameLabel={labels.nutrient} labels={labels} />
       {groups.map((group) => {
         const isFolded = !view.open.includes(group.key);
         const region = `${prefix}-${group.key}`;
@@ -293,7 +332,6 @@ export function EstimatePanel({ data, labels, languageCode, tables = [] }) {
       )}
       {gauges && (
         <>
-          <Legend labels={labels} tolerance={nutrients.some(showsTolerance)} />
           {data.ingredients.length > 0 && (
             <Ingredients
               rows={ingredients}

@@ -418,10 +418,12 @@ def product_form_config() -> dict[str, Any]:
                 "viewTable": _("Table"),
                 "collapseAll": _("Fold all"),
                 "expandAll": _("Unfold all"),
-                "legendEstimate": _("Estimate and its range"),
-                "legendLabel": _("Label (value and rounding)"),
-                "legendTolerance": _("Tolerance of the label (European Commission)"),
-                "legendOpen": _("Dashed: no upper end is known."),
+                # What the marks of the drawing are, said once above the rows.
+                "legendLabel": _("Label figure"),
+                "legendEstimate": _("Estimated range"),
+                "ingredient": _("Ingredient"),
+                "nutrient": _("Nutrient"),
+                "columnEstimate": _("Best estimate"),
                 "ingredients": _("Ingredients"),
                 "added": _("amount added"),
                 "nutrients": _("Nutrients per 100 g"),
@@ -433,22 +435,23 @@ def product_form_config() -> dict[str, Any]:
                 "density": _("Density used to convert: %(low)s to %(high)s g/ml"),
                 "label": _("Label"),
                 "estimate": _("Estimate"),
-                "coverage": _("Coverage"),
-                "coverageNote": _(
-                    "The share of the product whose ingredients give a value."
-                ),
-                "confidence": _("Confidence"),
-                "agrees": _("Agrees"),
-                "declaredBelow": _("Label below"),
-                "declaredAbove": _("Label above"),
-                "constrained": _("Used for the estimate"),
-                "tolerated": _("Within tolerance"),
+                # Written beside the figures of a gauge. %(value)s and %(low)s are
+                # put in client-side.
+                "labelAt": _("label %(value)s"),
+                "rangeOpen": _("at least %(low)s · no upper end"),
+                # What the label makes of an estimate, in a phrase.
+                "agrees": _("The label agrees"),
+                "declaredBelow": _("Label lower than the lowest possible"),
+                "declaredAbove": _("Label higher than the highest possible"),
+                "constrained": _("Starting point of the calculation"),
+                "tolerated": _("Outside the range, within the tolerance"),
+                "notEstimated": _("Not estimated: no ingredient gives it"),
+                "estimateOnly": _("Estimate only, no label"),
                 "toleratedNote": _(
                     "The label differs from the estimate by more than its rounding, "
                     "but within the tolerance the European Commission allows on a "
                     "label."
                 ),
-                "notEstimated": _("Not estimated"),
                 "declaredBelowNote": _(
                     "The label declares less than the ingredients bring at the least."
                 ),
@@ -461,9 +464,63 @@ def product_form_config() -> dict[str, Any]:
                     "worked out with, so it agrees by construction and confirms "
                     "nothing."
                 ),
-                # %(agree)s and %(compared)s are put in client-side.
-                "groupAgree": _("%(agree)s of %(compared)s agree with the label"),
+                # Said once above the nutrients and at the head of each group.
+                # %(checked)s, %(total)s and %(n)s are put in client-side.
+                "summaryChecked": _(
+                    "Checked by the ingredients: %(checked)s of the %(total)s "
+                    "figures of the label."
+                ),
+                "summaryStart": _(
+                    "Those used to work out the shares of the ingredients agree by "
+                    "construction and prove nothing."
+                ),
+                "chipChecked": _("Checked: %(n)s"),
+                "chipStart": _("Starting points: %(n)s"),
+                "chipGap": _("Gaps: %(n)s"),
                 "notCompared": _("Not compared with the label"),
+                # How far to trust an estimate: three dots, and when a row is opened
+                # the four parts of its confidence. %(name)s, %(low)s, %(high)s and
+                # %(point)s are put in client-side.
+                "reliability": _("Reliability"),
+                "reliabilityLow": _("Low reliability"),
+                "reliabilityMedium": _("Average reliability"),
+                "reliabilityGood": _("Good reliability"),
+                "reliabilityIntro": _(
+                    "The product of four factors, each between 0 and 1:"
+                ),
+                "coverage": _("Coverage"),
+                "coverageNote": _(
+                    "The share of the product whose ingredients give a value."
+                ),
+                "factorQuality": _("Quality of the data"),
+                "qualityNote": _(
+                    "The grade of the foods the values come from (CIQUAL)."
+                ),
+                "factorRecipe": _("Recipe well known"),
+                "recipeNote": _(
+                    "How well the shares of the ingredients are known: 1 minus the "
+                    "uncertainty."
+                ),
+                "factorAgreement": _("Agreement of the checks"),
+                "agreementNote": _(
+                    "The share of the independent checks that agree; a dash where "
+                    "none could have failed."
+                ),
+                "limiting": _("what holds it down"),
+                "detailShow": _("Show the detail of %(name)s"),
+                "detailHide": _("Hide the detail of %(name)s"),
+                "detailRounding": _(
+                    "Written with its rounding: it stands for %(low)s to %(high)s."
+                ),
+                "detailTolerance": _(
+                    "Tolerance of the European Commission: %(low)s to %(high)s."
+                ),
+                "detailNoTolerance": _("No tolerance applies to this figure."),
+                "bestGuess": _("best guess %(point)s"),
+                "rangeNote": _(
+                    "The shares of the ingredients are only roughly known: the "
+                    "estimate is a range, not a figure."
+                ),
             },
         },
     }

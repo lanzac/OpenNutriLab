@@ -1,56 +1,129 @@
 /* The gauges of the estimate of a product (see EstimateGauge.jsx and layout.js).
    Colours are Bootstrap's own variables, so that the dark theme follows. */
 
-.est-row {
+/* The columns of a row, shared with the heads above the rows. */
+.est-row,
+.est-head {
   display: grid;
-  grid-template-columns: minmax(9rem, 26%) minmax(0, 1fr) minmax(6.5rem, 14%);
-  gap: 0.25rem 1rem;
-  align-items: start;
-  padding: 0.45rem 0 0.4rem;
-  border-bottom: 1px solid var(--bs-border-color-translucent);
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr) 9.5rem 2.25rem;
+  gap: 0.1rem 1.25rem;
 }
 
-@media (max-width: 576px) {
-  .est-row {
-    grid-template-columns: 1fr auto;
-  }
-
-  .est-row .est-gauge {
-    grid-column: 1 / -1;
-    order: 3;
-  }
+.est-row {
+  grid-template-areas:
+    'name chart value toggle'
+    'verdict chart reliability toggle';
+  align-items: center;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--bs-border-color-translucent);
 }
 
 .est-name {
+  grid-area: name;
+  align-self: end;
   /* A part of an ingredient is one level in. */
   padding-inline-start: calc(var(--est-depth, 0) * 1rem);
+  font-weight: 600;
   line-height: 1.2;
 }
 
+/* What the label makes of the estimate, as a phrase with its sign. */
+.est-verdict {
+  grid-area: verdict;
+  align-self: start;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+}
+
+.est-verdict--agrees {
+  color: var(--bs-success-text-emphasis);
+}
+
+.est-verdict--differs {
+  color: var(--bs-warning-text-emphasis);
+}
+
+.est-verdict--used,
+.est-verdict--none {
+  color: var(--bs-secondary-color);
+}
+
 .est-value {
+  grid-area: value;
+  align-self: end;
   text-align: end;
   line-height: 1.2;
   white-space: nowrap;
 }
 
+.est-reliability {
+  grid-area: reliability;
+  align-self: start;
+  text-align: end;
+  font-size: 0.75rem;
+  color: var(--bs-secondary-color);
+  white-space: nowrap;
+}
+
+/* How far to trust it, in three dots. */
+.est-dots {
+  display: inline-flex;
+  gap: 3px;
+  margin-inline-end: 0.4rem;
+  vertical-align: middle;
+}
+
+.est-dot {
+  width: 8px;
+  height: 8px;
+  box-sizing: border-box;
+  border: 1px solid var(--bs-secondary-color);
+  border-radius: 50%;
+}
+
+.est-dot--on {
+  border-color: var(--bs-body-color);
+  background: var(--bs-body-color);
+}
+
+.est-toggle {
+  grid-area: toggle;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+}
+
+/* The drawing: a track from zero, the range on it, the label as a diamond, and each
+   figure written where it is. Its parts are placed in pixels, one above the other: the
+   figure of the label over the track, the figures of the range under it. */
 .est-gauge {
-  padding: 0.3rem 0;
+  grid-area: chart;
+  position: relative;
+  height: 60px;
+  margin: 0 0.5rem;
 }
 
 .est-track {
-  position: relative;
-  height: 0.9rem;
-  border-radius: 0.45rem;
+  position: absolute;
+  top: 24px;
+  right: 0;
+  left: 0;
+  height: 10px;
+  border-radius: 5px;
   background: var(--bs-secondary-bg);
 }
 
 /* The range of the estimate; a verdict is its colour. */
 .est-band {
   position: absolute;
-  top: 0;
-  bottom: 0;
+  top: 24px;
+  height: 10px;
+  box-sizing: border-box;
   border: 1px solid var(--est-colour);
-  border-radius: 0.45rem;
+  border-radius: 5px;
   background: color-mix(in srgb, var(--est-colour) 35%, transparent);
 }
 
@@ -67,85 +140,191 @@
   );
 }
 
-.est-band--agrees,
-.est-point--agrees {
+.est-band--agrees {
   --est-colour: var(--bs-success);
 }
 
-.est-band--differs,
-.est-point--differs {
+.est-band--differs {
   --est-colour: var(--bs-warning);
 }
 
 .est-band--used,
-.est-point--used {
-  --est-colour: var(--bs-secondary);
+.est-band--none {
+  --est-colour: var(--bs-secondary-color);
 }
 
-.est-band--none,
-.est-point--none {
-  --est-colour: var(--bs-primary);
-}
-
-/* The point of the estimate in its range. */
-.est-point {
+/* The label's own figure. */
+.est-diamond {
   position: absolute;
-  top: -0.1rem;
-  bottom: -0.1rem;
-  width: 0.2rem;
-  margin-inline-start: -0.1rem;
-  border-radius: 0.1rem;
-  background: var(--est-colour);
-}
-
-/* What the label's figure stands for, once rounded the way labels are. */
-.est-rounding {
-  position: absolute;
-  top: 50%;
-  height: 0.2rem;
-  margin-top: -0.1rem;
+  top: 23px;
+  width: 12px;
+  height: 12px;
+  margin-inline-start: -6px;
+  box-sizing: border-box;
+  border: 2px solid var(--bs-body-bg);
   background: var(--bs-body-color);
-  opacity: 0.55;
+  transform: rotate(45deg);
 }
 
-/* What the label's figure stands for with the tolerance the Commission allows: a faint
-   band with a bracket at each end, behind the rounding. */
-.est-tolerance {
+.est-text {
   position: absolute;
-  top: 50%;
-  height: 0.7rem;
-  margin-top: -0.35rem;
-  border-inline: 2px solid var(--bs-body-color);
-  border-radius: 0.15rem;
-  background: color-mix(in srgb, var(--bs-body-color) 14%, transparent);
-  opacity: 0.7;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
-/* The label's own figure: a tick that goes beyond the track, in the colour of the text. */
-.est-label-tick {
-  position: absolute;
-  top: -0.3rem;
-  bottom: -0.3rem;
-  width: 0.15rem;
-  margin-inline-start: -0.075rem;
-  border-radius: 0.1rem;
-  background: var(--bs-body-color);
+.est-text--label {
+  top: 0;
+  color: var(--bs-body-color);
 }
 
-/* How far to trust the estimate: a thin bar of its confidence between 0 and 1. */
-.est-confidence {
-  width: 100%;
-  height: 0.3rem;
-  margin-top: 0.15rem;
+.est-text--range {
+  top: 42px;
+  color: var(--bs-secondary-color);
+}
+
+/* A row opened: what the label and the estimate come to, and the confidence's parts. */
+.est-detail {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin: 0 0 0.85rem;
+  padding: 1rem 1.25rem;
+  border-radius: 0.625rem;
+  background: var(--bs-tertiary-bg);
+  font-size: 0.8125rem;
+}
+
+.est-detail-part h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bs-secondary-color);
+}
+
+.est-detail-part p {
+  margin: 0 0 0.35rem;
+  color: var(--bs-secondary-color);
+}
+
+.est-detail-part .est-detail-figure {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--bs-body-color);
+}
+
+.est-factors {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.est-factor-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--bs-body-color);
+}
+
+.est-factor-bar {
+  height: 5px;
+  margin-top: 3px;
   overflow: hidden;
-  border-radius: 0.15rem;
+  border-radius: 3px;
   background: var(--bs-secondary-bg);
 }
 
-.est-confidence > span {
+.est-factor-bar > span {
   display: block;
   height: 100%;
+  border-radius: 3px;
   background: var(--bs-secondary-color);
+}
+
+/* The part that holds the confidence down the most. */
+.est-factor--limiting .est-factor-head {
+  color: var(--bs-warning-text-emphasis);
+}
+
+.est-factor--limiting .est-factor-bar > span {
+  background: var(--bs-warning);
+}
+
+/* What the label says of the nutrients, said once above them. */
+.est-summary {
+  padding: 0.9rem 1.1rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.625rem;
+  background: var(--bs-tertiary-bg);
+}
+
+.est-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+  font-size: 0.8125rem;
+}
+
+.est-chip--agrees {
+  color: var(--bs-success-text-emphasis);
+}
+
+.est-chip--differs {
+  color: var(--bs-warning-text-emphasis);
+}
+
+.est-chip--used {
+  color: var(--bs-secondary-color);
+}
+
+/* The heads of the columns, with what the drawing's marks are. */
+.est-head {
+  padding: 0.5rem 0 0.15rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bs-secondary-color);
+}
+
+.est-head-legend {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.1rem;
+  margin: 0 0.5rem;
+}
+
+.est-head-value {
+  grid-column: 3;
+  text-align: end;
+}
+
+.est-swatch {
+  display: inline-block;
+  margin-inline-end: 0.45rem;
+  vertical-align: -0.05rem;
+}
+
+.est-swatch--label {
+  width: 0.5rem;
+  height: 0.5rem;
+  background: var(--bs-body-color);
+  transform: rotate(45deg);
+}
+
+.est-swatch--band {
+  width: 1.1rem;
+  height: 0.5rem;
+  box-sizing: border-box;
+  border: 1px solid var(--bs-secondary-color);
+  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--bs-secondary-color) 28%, transparent);
 }
 
 /* The parts of the bar at the head of a group, by what the label says of the estimate. */
@@ -165,23 +344,47 @@
   background: var(--bs-secondary-bg);
 }
 
-.est-swatch {
-  display: inline-block;
-  width: 0.9rem;
-  height: 0.9rem;
-  margin-inline-end: 0.3rem;
-  vertical-align: -0.15rem;
-  border-radius: 0.2rem;
-}
+/* On a phone a row is read from top to bottom: the name and its estimate, what the label
+   makes of it, then the drawing across the width. */
+@media (max-width: 767.98px) {
+  .est-row {
+    grid-template-columns: minmax(0, 1fr) auto 2.75rem;
+    grid-template-areas:
+      'name value toggle'
+      'verdict reliability reliability'
+      'chart chart chart';
+    gap: 0.25rem 0.5rem;
+    padding: 0.75rem 0 0.4rem;
+  }
 
-.est-swatch--tolerance {
-  height: 0.7rem;
-  border-inline: 2px solid var(--bs-body-color);
-  border-radius: 0.15rem;
-  background: color-mix(in srgb, var(--bs-body-color) 14%, transparent);
-}
+  .est-value {
+    align-self: center;
+  }
 
-.est-swatch--band {
-  border: 1px solid var(--bs-primary);
-  background: color-mix(in srgb, var(--bs-primary) 35%, transparent);
+  .est-toggle {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .est-gauge {
+    margin-top: 0.4rem;
+  }
+
+  .est-detail {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .est-head {
+    display: block;
+  }
+
+  .est-head-name,
+  .est-head-value {
+    display: none;
+  }
+
+  .est-head-legend {
+    margin: 0;
+  }
 }

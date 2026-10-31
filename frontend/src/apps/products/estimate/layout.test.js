@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import {
   countVerdicts,
+  factorsOf,
   layoutOf,
+  placeOf,
+  reliabilityOf,
   scaleOf,
   sharedScaleOf,
-  showsTolerance,
 } from './layout.js';
 
 const estimate = (low, point, high) => ({ low, point, high });
@@ -53,7 +55,7 @@ describe('the marks of a row', () => {
     declared: label('11', '10.5', '11.5'),
   };
 
-  it('puts the range, its point, the label and its rounding on the track', () => {
+  it('puts the range, its point and the label on the track', () => {
     const { max, band, label: mark } = layoutOf(row);
 
     expect(max).toBeCloseTo(13.8);
@@ -62,8 +64,8 @@ describe('the marks of a row', () => {
     expect(band.point).toBeCloseTo((10 / 13.8) * 100);
     expect(band.open).toBe(false);
     expect(mark.at).toBeCloseTo((11 / 13.8) * 100);
-    expect(mark.rounding.from).toBeCloseTo((10.5 / 13.8) * 100);
-    expect(mark.rounding.to).toBeCloseTo((11.5 / 13.8) * 100);
+    // Its rounding is said in words, not drawn.
+    expect(mark.rounding).toBeUndefined();
   });
 
   it('runs an open range to the end of the track', () => {
@@ -90,15 +92,6 @@ describe('the marks of a row', () => {
     });
 
     expect(band.to - band.from).toBeCloseTo(0.8, 5);
-  });
-
-  it('does not draw a rounding too narrow to be seen', () => {
-    const { label: mark } = layoutOf({
-      estimated: estimate('0', '50', '100'),
-      declared: label('50', '50.01', '50.02'),
-    });
-
-    expect(mark.rounding).toBeNull();
   });
 
   it('keeps every mark on the track', () => {
@@ -146,77 +139,101 @@ describe('the verdicts of a group', () => {
   });
 });
 
-describe('the tolerance of the label', () => {
-  const tolerant = {
-    amount: '13',
-    low: '12.5',
-    high: '13.5',
-    tolerance_low: '9.9',
-    tolerance_high: '16.1',
-  };
-
-  it('is drawn when the label only agrees thanks to it, or differs despite it', () => {
-    expect(
-      showsTolerance({
-        declared: tolerant,
-        verdict: 'agrees',
-        tolerated: true,
-      }),
-    ).toBe(true);
-    expect(
-      showsTolerance({ declared: tolerant, verdict: 'declared_below' }),
-    ).toBe(true);
-    expect(
-      showsTolerance({ declared: tolerant, verdict: 'declared_above' }),
-    ).toBe(true);
-  });
-
-  it('is left out where it says nothing', () => {
-    expect(showsTolerance({ declared: tolerant, verdict: 'agrees' })).toBe(
-      false,
-    );
-    expect(
-      showsTolerance({ declared: tolerant, verdict: 'not_estimated' }),
-    ).toBe(false);
-    expect(showsTolerance({ declared: null, verdict: 'declared_below' })).toBe(
-      false,
-    );
-    expect(
-      showsTolerance({
-        declared: { amount: '1', low: '1', high: '1' },
-        verdict: 'declared_below',
-      }),
-    ).toBe(false);
-  });
-
-  it('puts the track where it holds the whole band', () => {
+describe('the room of a track', () => {
+  it('holds the label, and not the tolerance around it, which is said in words', () => {
     const row = {
       estimated: estimate('13.7', '13.8', '13.9'),
-      declared: tolerant,
+      declared: {
+        amount: '13',
+        low: '12.5',
+        high: '13.5',
+        tolerance_low: '9.9',
+        tolerance_high: '16.1',
+      },
     };
 
-    expect(scaleOf({ ...row, showTolerance: false })).toBeCloseTo(13.9 * 1.15);
-    expect(scaleOf({ ...row, showTolerance: true })).toBeCloseTo(16.1 * 1.15);
+    expect(scaleOf(row)).toBeCloseTo(13.9 * 1.15);
+    expect(layoutOf(row).label).toEqual({ at: expect.any(Number) });
+  });
+});
+
+describe('where a text about a mark is set', () => {
+  it('is on the mark, and leans on the end it is near', () => {
+    expect(placeOf(50)).toBe('centre');
+    expect(placeOf(85.9)).toBe('centre');
+    expect(placeOf(12)).toBe('start');
+    expect(placeOf(0)).toBe('start');
+    expect(placeOf(88)).toBe('end');
+    expect(placeOf(100)).toBe('end');
+  });
+});
+
+describe('how far to trust an estimate', () => {
+  const confidence = (score, parts = {}) => ({
+    score,
+    coverage: '1',
+    quality: '0.5',
+    uncertainty: '0.1',
+    agreement: null,
+    ...parts,
   });
 
-  it('is placed as a share of the track, with the rounding inside it', () => {
-    const { label } = layoutOf({
-      estimated: estimate('13.7', '13.8', '13.9'),
-      declared: tolerant,
-      showTolerance: true,
-    });
-
-    expect(label.tolerance.from).toBeLessThan(label.rounding.from);
-    expect(label.tolerance.to).toBeGreaterThan(label.rounding.to);
-    expect(label.tolerance.to).toBeCloseTo((16.1 / (16.1 * 1.15)) * 100);
+  it('is low under 0.3, average under 0.6, good from there', () => {
+    expect(reliabilityOf(confidence('0.21'))).toBe(1);
+    expect(reliabilityOf(confidence('0.29'))).toBe(1);
+    expect(reliabilityOf(confidence('0.3'))).toBe(2);
+    expect(reliabilityOf(confidence('0.59'))).toBe(2);
+    expect(reliabilityOf(confidence('0.6'))).toBe(3);
+    expect(reliabilityOf(confidence('0.73'))).toBe(3);
   });
 
-  it('has no mark where it is not shown', () => {
-    const { label } = layoutOf({
-      estimated: estimate('13.7', '13.8', '13.9'),
-      declared: tolerant,
-    });
+  it('is nothing where there is no confidence', () => {
+    expect(reliabilityOf(null)).toBeNull();
+    expect(factorsOf(null)).toBeNull();
+  });
 
-    expect(label.tolerance).toBeNull();
+  it('gives its four parts, the uncertainty as what is known of the recipe', () => {
+    const factors = factorsOf(
+      confidence('0.21', {
+        coverage: '1',
+        quality: '0.25',
+        uncertainty: '0.16',
+      }),
+    );
+
+    expect(factors.map(({ key }) => key)).toEqual([
+      'coverage',
+      'quality',
+      'recipe',
+      'agreement',
+    ]);
+    expect(factors.map(({ value }) => value)).toEqual([1, 0.25, 0.84, null]);
+  });
+
+  it('says which part holds it down the most', () => {
+    const factors = factorsOf(
+      confidence('0.21', {
+        coverage: '0.9',
+        quality: '0.25',
+        uncertainty: '0.16',
+      }),
+    );
+
+    expect(factors.filter((part) => part.limiting).map((p) => p.key)).toEqual([
+      'quality',
+    ]);
+  });
+
+  it('holds nothing down where every part is whole, or unknown', () => {
+    const whole = factorsOf(
+      confidence('1', { quality: '1', uncertainty: '0', agreement: '1' }),
+    );
+
+    expect(whole.some((part) => part.limiting)).toBe(false);
+    // An agreement of null is no check that could have failed: not a part to rank.
+    const unchecked = factorsOf(confidence('0.5', { agreement: null }));
+    expect(unchecked.find((part) => part.key === 'agreement').limiting).toBe(
+      false,
+    );
   });
 });
