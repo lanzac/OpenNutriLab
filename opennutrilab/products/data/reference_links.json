@@ -563,6 +563,23 @@
     ]
   },
   {
+    "reference": "levure de bière",
+    "foods": [
+      {
+        "source": "ciqual-2025",
+        "code": "11009"
+      },
+      {
+        "source": "ciqual-2025",
+        "code": "11045"
+      }
+    ],
+    "default": {
+      "source": "ciqual-2025",
+      "code": "11009"
+    }
+  },
+  {
     "reference": "maïs",
     "foods": [
       {
