@@ -1,0 +1,24 @@
+{
+  "code": "cooked-grape-must",
+  "name_fr": "Moût de raisin cuit",
+  "name_en": "Cooked grape must",
+  "basis_fr": "Jus de raisin CIQUAL 2016, ramené à 42 % d'eau (densité d'au moins 1,240 à 20 °C, soit 51 % de matière soluble au moins: cahier des charges de l'IGP Aceto Balsamico di Modena)",
+  "basis_en": "Grape juice CIQUAL 2016, brought to 42 % water (density of at least 1.240 at 20 °C, 51 % soluble solids at least: specification of the PGI Aceto Balsamico di Modena)",
+  "proxies": [
+    {
+      "source": "ciqual-2025",
+      "code": "2016"
+    }
+  ],
+  "water": 42,
+  "exclude": [
+    "vitamin_c",
+    "vitamin_b1",
+    "vitamin_b9",
+    "intrinsic_folates",
+    "vitamin_b9_dfe"
+  ],
+  "references": [
+    139
+  ]
+}
