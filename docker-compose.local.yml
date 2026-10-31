@@ -90,6 +90,10 @@ services:
       - translation
     environment:
       LT_LOAD_ONLY: en,fr
+    # A gunicorn worker that hit --max-requests hangs on exit and is SIGABRT'd
+    # 40 minutes later, which dumps core. Nobody reads those dumps.
+    ulimits:
+      core: 0
     volumes:
       - opennutrilab_local_libretranslate_models:/home/libretranslate/.local:rw
     healthcheck:
