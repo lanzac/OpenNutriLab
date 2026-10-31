@@ -1,0 +1,153 @@
+/* The inventory page: a list of products, and beside it the sheet of the one chosen
+   (over the whole page where the screen is narrow). Colours come from Bootstrap's
+   variables, so the page follows the theme the visitor chose. */
+
+.inventory-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.inventory-group-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.inventory-subgroup {
+  padding: 0.5rem 1rem;
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-secondary-color);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.inventory-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
+}
+
+.inventory-row + .inventory-row,
+.inventory-subgroup + .inventory-row {
+  border-top: 1px solid var(--bs-border-color);
+}
+
+.inventory-row:hover {
+  background: var(--bs-tertiary-bg);
+}
+
+.inventory-row.is-selected {
+  background: var(--bs-tertiary-bg);
+  box-shadow: inset 0 0 0 1px var(--bs-primary);
+}
+
+.inventory-row-main {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.inventory-row-stock {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.inventory-row-stock > .text-end {
+  min-width: 7rem;
+}
+
+.inventory-row-add {
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+}
+
+.inventory-row-error {
+  flex: 1 0 100%;
+}
+
+/* On a phone the stock goes under the name, where the eye already is. */
+@media (max-width: 575.98px) {
+  .inventory-row-stock {
+    flex: 1 0 100%;
+    padding-left: calc(56px + 1rem);
+  }
+
+  .inventory-row-stock > .text-end {
+    margin-right: auto;
+    text-align: left !important;
+  }
+
+  .inventory-row-add {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+}
+
+.inventory-panel {
+  padding: 1.5rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.75rem;
+  background: var(--bs-tertiary-bg);
+}
+
+.inventory-panel .stock-step {
+  width: 3rem;
+  height: 3rem;
+  padding: 0;
+}
+
+.inventory-details {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  gap: 0.5rem 0.75rem;
+  margin: 0;
+}
+
+.inventory-details dt {
+  font-weight: 400;
+  color: var(--bs-secondary-color);
+}
+
+.inventory-details dd {
+  margin: 0;
+}
+
+.inventory-panel-empty {
+  padding: 2rem 1.5rem;
+  border: 1px dashed var(--bs-border-color);
+  border-radius: 0.75rem;
+  color: var(--bs-secondary-color);
+  text-align: center;
+}
+
+@media (min-width: 992px) {
+  .inventory-panel {
+    position: sticky;
+    top: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+  }
+}
+
+/* A sheet over the whole page, the way a phone shows the detail of a list. */
+@media (max-width: 991.98px) {
+  .inventory-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 1055;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.75rem 1rem 1.5rem;
+    border: 0;
+    border-radius: 0;
+    background: var(--bs-body-bg);
+  }
+}

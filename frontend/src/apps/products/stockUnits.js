@@ -114,3 +114,90 @@ export function describePackage(product, labels, languageCode) {
     serving: `${number(product.serving.quantity, languageCode)} ${product.serving.unit}`,
   });
 }
+
+/**
+ * The unit a stock starts to be counted in, as the server says it: servings for a
+ * product whose serving is a thing that is counted, else the unit of its package.
+ */
+export function defaultStockUnit(product) {
+  return product.count_noun ? 'serving' : (product.package?.unit ?? 'g');
+}
+
+/**
+ * Where the stock of a product stands, for the list to say it: null when the product
+ * is not in the inventory, `uncounted` when it is there and nobody counted it,
+ * `used-up` at nothing and `counted` otherwise.
+ */
+export function stockStatus(product) {
+  if (!product.in_inventory) return null;
+  const quantity = product.stock?.quantity;
+  if (quantity === null || quantity === undefined) return 'uncounted';
+  return Number(quantity) === 0 ? 'used-up' : 'counted';
+}
+
+/** An amount in a stock unit as it is written: "3 bouteilles", "1 boîte", "270 g". */
+export function describeAmount(product, unit, quantity, labels, languageCode) {
+  const amount = number(quantity, languageCode);
+  if (unit !== 'serving') return `${amount} ${unit}`;
+  const noun = product.count_noun
+    ? plural(product.count_noun, quantity)
+    : labels.stockServings;
+  return `${amount} ${noun}`;
+}
+
+/** The stock of a product in the inventory as it is written: "3 bouteilles". */
+export function describeStock(product, labels, languageCode) {
+  const { quantity, unit } = product.stock;
+  return describeAmount(product, unit, quantity, labels, languageCode);
+}
+
+/**
+ * What adding a package to the stock of a product comes to: the quantity it makes and
+ * the unit it is in, and how much the package holds, written. Null where the package
+ * is not known in the unit the stock is counted in.
+ */
+export function packageAddition(product, labels, languageCode) {
+  const unit = product.stock?.unit ?? defaultStockUnit(product);
+  const content = packageContent(product, unit);
+  if (content === null) return null;
+  const held = Number(product.stock?.quantity ?? 0);
+  return {
+    unit,
+    quantity: cents(held + content),
+    text: describeAmount(product, unit, content, labels, languageCode),
+  };
+}
+
+/**
+ * What a stock comes to in other terms, said in a sentence: its weight where it is
+ * counted by pot, and the share of a package it is where the package is known
+ * ("That is 300 g, 0.25 package."). Empty where there is nothing to add to the
+ * quantity itself.
+ */
+export function describeEquivalent(
+  product,
+  unit,
+  quantity,
+  labels,
+  languageCode,
+) {
+  // Nothing counted, or nothing left: there is nothing to put in other terms.
+  if (quantity === null || quantity === 0) return '';
+  const parts = [];
+  if (unit === 'serving' && product.serving) {
+    const weight = convertStock(quantity, unit, product.serving.unit, product);
+    if (weight !== null) {
+      parts.push(`${number(weight, languageCode)} ${product.serving.unit}`);
+    }
+  }
+  const content = packageContent(product, unit);
+  if (content !== null) {
+    const packages = cents(quantity / content);
+    parts.push(
+      `${number(packages, languageCode)} ${plural(labels.stockPackage, packages)}`,
+    );
+  }
+  return parts.length === 0
+    ? ''
+    : fill(labels.stockEquivalent, { amount: parts.join(', ') });
+}

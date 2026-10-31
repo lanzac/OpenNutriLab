@@ -24,14 +24,17 @@ ZERO = Decimal(0)
 # servings of 35.7 g are 107.1 g, and 107.1 g are 3 servings, not 3.0000001.
 TOLERANCE = Decimal("0.001")
 
-# What a label calls a serving when it is a thing: "1 pot", "1 tranche", "un sachet".
-_ONE = re.compile(r"^\s*(?:1|un|une)\s+(?P<noun>\S.*?)\s*$", re.IGNORECASE)
+# What a label calls a serving, with or without the "one" of a thing: "1 pot", "un
+# sachet", "portion".
+_NAME = re.compile(r"^\s*(?P<one>(?:1|un|une)\s+)?(?P<noun>\S.*?)\s*$", re.IGNORECASE)
 # What it calls it when it is a measure and not a thing to count: "1 portion", "1 cs".
 _MEASURE = re.compile(
     r"^(?:portions?|parts?|rations?|servings?|doses?|cuill\w*|c\.|càs|càc|cs|cc|"
     r"tbsp|tsp|verres?|pincées?|gouttes?)(?:\s|\.|$)",
     re.IGNORECASE,
 )
+# How far a package may be from a whole number of servings, as a share of it.
+_WHOLE = Decimal("0.02")
 
 
 class InvalidStockError(ValueError):
@@ -41,19 +44,46 @@ class InvalidStockError(ValueError):
 def counting_noun(product: Product) -> str | None:
     """
     What the product's serving is called when it is a thing that is counted ("pot",
-    "tranche", "bouteille"), or None: a serving that has no name, or a name that is a
-    measure ("1 portion", "1 cs"), or says several things ("2 biscuits"), is counted
-    in grams.
+    "tranche", "bouteille"), or None: a serving that has no name, or says several
+    things ("2 biscuits"), is counted in grams.
+
+    The label says "1 pot" of a thing. A name that is a measure ("1 portion", "1 cs",
+    "part"), or has no "1" ("pot"), is a thing only where the product says so itself:
+    its name gives how many of them the package holds ("8 portions panées"), which
+    is what keeps a pasta served in "1 portion" of 80 g counted in grams.
     """
     if product.serving_quantity is None:
         return None
-    found = _ONE.match(product.serving_name or "")
+    found = _NAME.match(product.serving_name or "")
     if found is None:
         return None
     noun = found["noun"]
-    if not any(c.isalpha() for c in noun) or _MEASURE.match(noun):
+    if not any(c.isalpha() for c in noun) or noun[0].isdigit():
         return None
-    return noun
+    if found["one"] and not _MEASURE.match(noun):
+        return noun
+    return noun if _counted_in_name(product, noun) else None
+
+
+def _counted_in_name(product: Product, noun: str) -> bool:
+    """
+    Whether the name of the product says how many servings its package holds, in the
+    noun of the serving: "8 portions panées de Colin" for 400 g in servings of 50 g.
+    """
+    package, serving = product.package_quantity, product.serving_quantity
+    if not package or not serving or product.package_unit != product.serving_unit:
+        return False
+    ratio = package / serving
+    whole = round(ratio)
+    if whole < 1 or abs(ratio - whole) > _WHOLE * whole:
+        return False
+    word = re.escape(noun.split()[0])
+    return any(
+        int(found[1]) == whole
+        for found in re.finditer(
+            rf"(?<!\d)(\d+)\s+{word}[sx]?\b", product.name, re.IGNORECASE
+        )
+    )
 
 
 def default_unit(product: Product) -> str:

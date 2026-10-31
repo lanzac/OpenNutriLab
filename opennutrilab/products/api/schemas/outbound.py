@@ -307,6 +307,9 @@ class StockOut(Schema):
 
     quantity: Decimal | None
     unit: str
+    # When the user last counted it (the meals eaten take from it without
+    # moving this date); None when it was never counted.
+    counted_at: datetime | None = None
 
 
 class ProductListItemOut(ModelSchema):
@@ -342,6 +345,7 @@ class ProductListItemOut(ModelSchema):
         return StockOut(
             quantity=getattr(obj, "stock_quantity", None),
             unit=getattr(obj, "stock_unit", "") or default_unit(obj),
+            counted_at=getattr(obj, "stock_counted_at", None),
         )
 
     class Meta:
@@ -486,4 +490,5 @@ class InventoryItemOut(Schema):
         return StockOut(
             quantity=obj.stock_quantity,
             unit=obj.stock_unit or default_unit(obj.product),
+            counted_at=obj.counted_at,
         )

@@ -744,7 +744,12 @@ is really at home, and for the stock to **follow the meals eaten** they declared
   user may have bought it); a serving is a thing only when its name starts with "1"
   and is no measure (the words are in `stock._MEASURE`, to complete when one is
   missed: the select puts it right by hand); a half pot takes a whole pot, so two meals
-  of half a pot each take two.
+  of half a pot each take two. **Revised 2026-10-31**: a measure ("portion", "part") or
+  a name with no "1" ("pot") is a thing too where the product's own name says how many
+  of them the package holds ("8 portions panées de Colin d'Alaska": 400 g in servings
+  of 50 g are 8, and the name says 8 portions), which still keeps a pasta in "1 portion"
+  of 80 g in grams (`stock._counted_in_name`). Typing "portion" as the serving name of
+  such a product had left the stock in grams only.
 - **Not done**: the stock is not shown on the meals page (the list of products to add
   does not say what is left, nor does an item warn that it is more than the stock);
   planned meals of other days do not reserve stock (a day proposed may use what a day

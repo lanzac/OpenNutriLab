@@ -1069,6 +1069,96 @@ msgstr "Le code %(barcode)s n'est pas encore dans le catalogue."
 msgid "Create the product"
 msgstr "Créer le produit"
 
+msgid "Search for a product"
+msgstr "Rechercher un produit"
+
+msgid "Filter by stock"
+msgstr "Filtrer selon le stock"
+
+msgid "All"
+msgstr "Tous"
+
+msgid "In stock"
+msgstr "En stock"
+
+msgid "Products used up"
+msgstr "Épuisés"
+
+msgid "Products not counted"
+msgstr "Non comptés"
+
+msgid "No product matches."
+msgstr "Aucun produit ne correspond."
+
+msgid "Choose a product to see its sheet and count its stock."
+msgstr "Choisissez un produit pour voir sa fiche et compter son stock."
+
+msgid "Product sheet"
+msgstr "Fiche du produit"
+
+msgid "in stock"
+msgstr "en stock"
+
+msgid "Stock not counted"
+msgstr "Stock non compté"
+
+msgid "In my inventory"
+msgstr "Dans mon inventaire"
+
+msgid "Counted on %(date)s"
+msgstr "Compté le %(date)s"
+
+msgid "One less: %(noun)s"
+msgstr "Un de moins : %(noun)s"
+
+msgid "One more: %(noun)s"
+msgstr "Un de plus : %(noun)s"
+
+msgid "package"
+msgstr "paquet"
+
+msgid "That is %(amount)s."
+msgstr "Soit %(amount)s."
+
+msgid "Not counted: nothing limits the meals, and nothing is taken off."
+msgstr "Non compté : rien ne limite les repas, et rien n'est retiré."
+
+msgid "Count in"
+msgstr "Compter en"
+
+msgid "One package · %(package)s"
+msgstr "Un paquet · %(package)s"
+
+msgid "Mark as used up"
+msgstr "Marquer épuisé"
+
+msgid "Meals marked as eaten take from the stock by themselves."
+msgstr "Les repas marqués « mangés » retirent du stock d'eux-mêmes."
+
+msgid "The product"
+msgstr "Le produit"
+
+msgid "Package"
+msgstr "Conditionnement"
+
+msgid "Open the full sheet"
+msgstr "Ouvrir la fiche complète"
+
+msgid "Ingredients, nutrition facts, estimate of the nutrients."
+msgstr "Ingrédients, valeurs nutritionnelles, estimation des nutriments."
+
+msgid "The product stays in the catalogue, and its stock is forgotten."
+msgstr "Le produit reste dans le catalogue, et son stock est oublié."
+
+msgid "Administrator"
+msgstr "Administrateur"
+
+msgid "Delete from the catalogue…"
+msgstr "Supprimer du catalogue…"
+
+msgid "The product disappears for every user."
+msgstr "Le produit disparaît pour tous les utilisateurs."
+
 msgid "Meals"
 msgstr "Repas"
 

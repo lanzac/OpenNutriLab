@@ -2,16 +2,24 @@ import { describe, expect, it } from 'vitest';
 
 import {
   convertStock,
+  defaultStockUnit,
+  describeAmount,
+  describeEquivalent,
   describePackage,
+  describeStock,
+  packageAddition,
   packageContent,
   packageServings,
   plural,
+  stockStatus,
   stockUnitOptions,
 } from './stockUnits.js';
 
 const labels = {
   packageOfServings: '%(count)s %(noun)s de %(serving)s',
   stockServings: 'portions',
+  stockPackage: 'paquet',
+  stockEquivalent: 'Soit %(amount)s.',
 };
 
 const COMPOTE = {
@@ -206,5 +214,145 @@ describe('describePackage', () => {
     expect(
       describePackage({ ...COMPOTE, package: null }, labels, 'fr-fr'),
     ).toBe('');
+  });
+});
+
+describe('defaultStockUnit', () => {
+  it('is the servings for a product counted by a thing, else the unit of the package', () => {
+    expect(defaultStockUnit(COMPOTE)).toBe('serving');
+    expect(defaultStockUnit(PASTA)).toBe('g');
+    expect(
+      defaultStockUnit({
+        count_noun: null,
+        package: { quantity: '1', unit: 'ml' },
+      }),
+    ).toBe('ml');
+    expect(defaultStockUnit({ count_noun: null, package: null })).toBe('g');
+  });
+});
+
+describe('stockStatus', () => {
+  const held = (quantity, unit = 'g') => ({
+    in_inventory: true,
+    stock: { quantity, unit },
+  });
+
+  it('is nothing for a product that is not in the inventory', () => {
+    expect(stockStatus({ in_inventory: false, stock: null })).toBeNull();
+  });
+
+  it('tells a stock not counted from one used up, which is nothing', () => {
+    expect(stockStatus(held(null))).toBe('uncounted');
+    expect(stockStatus({ in_inventory: true })).toBe('uncounted');
+    expect(stockStatus(held('0.00'))).toBe('used-up');
+    expect(stockStatus(held('0.5'))).toBe('counted');
+  });
+});
+
+describe('describeAmount', () => {
+  it('writes things with their noun, in the plural from two', () => {
+    expect(describeAmount(COMPOTE, 'serving', 1, labels, 'fr-fr')).toBe(
+      '1 pot',
+    );
+    expect(describeAmount(COMPOTE, 'serving', 3, labels, 'fr-fr')).toBe(
+      '3 pots',
+    );
+  });
+
+  it('writes a weight with its unit, and servings with no noun as servings', () => {
+    expect(describeAmount(PASTA, 'g', 270, labels, 'fr-fr')).toBe('270 g');
+    expect(describeAmount(PASTA, 'serving', 2, labels, 'fr-fr')).toBe(
+      '2 portions',
+    );
+  });
+});
+
+describe('describeStock', () => {
+  it('writes the stock of a product in the unit it is counted in', () => {
+    const stocked = {
+      ...COMPOTE,
+      stock: { quantity: '3.00', unit: 'serving' },
+    };
+    expect(describeStock(stocked, labels, 'fr-fr')).toBe('3 pots');
+  });
+});
+
+describe('packageAddition', () => {
+  it('adds what a package holds to the stock, in the unit it is counted in', () => {
+    const stocked = {
+      ...COMPOTE,
+      stock: { quantity: '4.00', unit: 'serving' },
+    };
+    expect(packageAddition(stocked, labels, 'fr-fr')).toEqual({
+      unit: 'serving',
+      quantity: 8,
+      text: '4 pots',
+    });
+  });
+
+  it('starts from nothing where the stock is not counted, in the default unit', () => {
+    const addition = packageAddition(
+      { ...PASTA, stock: null },
+      labels,
+      'fr-fr',
+    );
+
+    expect(addition).toMatchObject({ unit: 'g', quantity: 1000 });
+    // The thousands are separated by a space that does not break, which `\s` takes.
+    expect(addition.text).toMatch(/^1\s000 g$/);
+  });
+
+  it('has nothing to add where the package is not known in that unit', () => {
+    expect(
+      packageAddition({ ...PASTA, package: null }, labels, 'fr-fr'),
+    ).toBeNull();
+    expect(
+      packageAddition(
+        { ...PASTA, stock: { quantity: '2', unit: 'ml' } },
+        labels,
+        'fr-fr',
+      ),
+    ).toBeNull();
+  });
+
+  it('adds without float dust', () => {
+    const dust = {
+      ...PASTA,
+      package: { quantity: '0.1', unit: 'g' },
+      stock: { quantity: '0.20', unit: 'g' },
+    };
+    expect(packageAddition(dust, labels, 'fr-fr').quantity).toBe(0.3);
+  });
+});
+
+describe('describeEquivalent', () => {
+  it('gives the weight of pots and the share of a package they make', () => {
+    expect(describeEquivalent(COMPOTE, 'serving', 2, labels, 'fr-fr')).toBe(
+      'Soit 200 g, 0,5 paquet.',
+    );
+    expect(describeEquivalent(COMPOTE, 'serving', 8, labels, 'fr-fr')).toBe(
+      'Soit 800 g, 2 paquets.',
+    );
+  });
+
+  it('gives only the share of a package for a weight', () => {
+    expect(describeEquivalent(PASTA, 'g', 250, labels, 'fr-fr')).toBe(
+      'Soit 0,25 paquet.',
+    );
+  });
+
+  it('says nothing where it has nothing to add, or nothing is counted', () => {
+    expect(
+      describeEquivalent(
+        { ...PASTA, package: null },
+        'g',
+        250,
+        labels,
+        'fr-fr',
+      ),
+    ).toBe('');
+    expect(describeEquivalent(PASTA, 'g', null, labels, 'fr-fr')).toBe('');
+    // A stock used up is nothing in any terms.
+    expect(describeEquivalent(PASTA, 'g', 0, labels, 'fr-fr')).toBe('');
   });
 });

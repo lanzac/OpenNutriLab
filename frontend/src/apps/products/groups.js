@@ -61,3 +61,14 @@ export function groupProducts(products, { names, uncategorised, locale }) {
     }))
     .sort(byName);
 }
+
+/**
+ * Where a product is filed, said as a path: "Boissons › Boissons sucrées", or just the
+ * group where it has no known subgroup; empty for a product that is not classified.
+ */
+export function groupPathOf(product, { names }) {
+  const known = [product.group_level_1, product.group_level_2]
+    .map(keyOf)
+    .filter((key) => key !== UNCLASSIFIED);
+  return known.map((key) => names[key] ?? key).join(' › ');
+}

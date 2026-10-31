@@ -105,32 +105,71 @@ class ProductListView(LoginRequiredMixin, ListView):
             # The words OpenFoodFacts files the products under, in this language.
             "groupNames": pnns_group_names(),
             "labels": {
-                "image": _("Photo"),
                 "barcode": _("Barcode"),
                 "uncategorised": _("Uncategorised"),
-                "productName": _("Product name"),
                 "createdAt": _("Created at"),
-                "actions": _("Actions"),
-                "edit": _("Edit"),
-                "delete": _("Delete"),
-                "editAndDelete": _("Edit and Delete product"),
                 "loading": _("Loading…"),
                 "loadError": _("Failed to load products."),
                 # %(name)s is interpolated client-side with the product name.
                 "confirmDelete": _('Delete "%(name)s"?'),
-                "totalQuantity": _("Total quantity"),
                 # "4 pots of 100 g": what a package holds in servings that are
                 # things. Every %(...)s is put in client-side.
                 "packageOfServings": _("%(count)s %(noun)s of %(serving)s"),
                 # The stock of the inventory. %(package)s is put in client-side.
                 "stock": _("Stock"),
                 "stockUnit": _("Unit of the stock"),
-                "stockPackages": _("Number of packages"),
                 "stockServings": _("servings"),
                 "stockNotCounted": _("Not counted"),
                 "stockUsedUp": _("Used up"),
                 "stockAddPackage": _("Add a package (%(package)s) to the stock"),
                 "stockSaveError": _("The stock could not be saved."),
+                # The line of a product says where its stock stands...
+                "stockInStock": _("in stock"),
+                "stockNotCountedRow": _("Stock not counted"),
+                "inInventory": _("In my inventory"),
+                # ... and its sheet counts it. %(date)s, %(noun)s, %(amount)s and
+                # %(package)s are put in client-side.
+                "stockCountedOn": _("Counted on %(date)s"),
+                "stockRemoveOne": _("One less: %(noun)s"),
+                "stockAddOne": _("One more: %(noun)s"),
+                "stockPackage": _("package"),
+                "stockEquivalent": _("That is %(amount)s."),
+                "stockNotCountedHint": _(
+                    "Not counted: nothing limits the meals, and nothing is taken off."
+                ),
+                "stockCountIn": _("Count in"),
+                "stockOnePackage": _("One package · %(package)s"),
+                "stockMarkUsedUp": _("Mark as used up"),
+                "stockEatenNote": _(
+                    "Meals marked as eaten take from the stock by themselves."
+                ),
+                # Finding a product in the list.
+                "searchProducts": _("Search for a product"),
+                "filterByStock": _("Filter by stock"),
+                "filterAll": _("All"),
+                "filterInStock": _("In stock"),
+                "filterUsedUp": _("Products used up"),
+                "filterNotCounted": _("Products not counted"),
+                "noMatch": _("No product matches."),
+                # The sheet of a product.
+                "inventory": _("Inventory"),
+                "productSheet": _("Product sheet"),
+                "panelEmpty": _(
+                    "Choose a product to see its sheet and count its stock."
+                ),
+                "theProduct": _("The product"),
+                "package": _("Package"),
+                "serving": _("Serving"),
+                "openSheet": _("Open the full sheet"),
+                "openSheetHint": _(
+                    "Ingredients, nutrition facts, estimate of the nutrients."
+                ),
+                "removeFromInventoryHint": _(
+                    "The product stays in the catalogue, and its stock is forgotten."
+                ),
+                "adminZone": _("Administrator"),
+                "deleteFromCatalogue": _("Delete from the catalogue…"),
+                "deleteFromCatalogueHint": _("The product disappears for every user."),
                 "myInventory": _("My inventory"),
                 "allProducts": _("All products"),
                 "addToInventory": _("Add to my inventory"),

@@ -7,6 +7,7 @@ import {
 } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { labels as listLabels, OATS, RICE } from './fixtures.js';
 import { ProductListApp } from './ProductListApp.jsx';
 import { scanLabels } from './scan/labels.js';
 
@@ -20,46 +21,7 @@ vi.mock('./scan/BarcodeScanner.jsx', () => ({
   },
 }));
 
-const labels = {
-  ...scanLabels,
-  image: 'Photo',
-  barcode: 'Code barre',
-  uncategorised: 'Non classé',
-  productName: 'Nom du produit',
-  totalQuantity: 'Quantité totale',
-  createdAt: 'Créé le',
-  actions: 'Actions',
-  edit: 'Éditer',
-  delete: 'Supprimer',
-  editAndDelete: 'Éditer et Supprimer un produit',
-  loading: 'Chargement…',
-  loadError: 'Échec du chargement des produits.',
-  confirmDelete: 'Supprimer « %(name)s » ?',
-  myInventory: 'Mon inventaire',
-  allProducts: 'Tous les produits',
-  addToInventory: 'Ajouter à mon inventaire',
-  removeFromInventory: 'Retirer de mon inventaire',
-  inventoryEmpty:
-    'Votre inventaire est vide. Affichez tous les produits pour en ajouter.',
-};
-
-const RICE = {
-  barcode: '4006381333931',
-  name: 'Rice',
-  image: null,
-  group_level_1: 'Cereals and potatoes',
-  group_level_2: 'Cereals',
-  package: null,
-  created_at: '2026-01-01T00:00:00Z',
-  in_inventory: true,
-};
-
-const OATS = {
-  ...RICE,
-  barcode: '3229820794556',
-  name: 'Oats',
-  in_inventory: false,
-};
+const labels = { ...scanLabels, ...listLabels };
 
 function renderList() {
   const fetchMock = vi.fn().mockImplementation(async (url, options) => ({
@@ -112,9 +74,12 @@ describe('ProductListApp, scanning', () => {
       `/api/v1/inventory/${OATS.barcode}`,
       expect.objectContaining({ method: 'PUT' }),
     );
-    // Taken out again by the list's own button: the scan did not break it.
+    // In the inventory like the others, and not counted yet: the scan did not break it.
     expect(
-      screen.getAllByRole('button', { name: 'Retirer de mon inventaire' }),
-    ).toHaveLength(2);
+      screen
+        .getByRole('button', { name: 'Oats' })
+        .closest('li')
+        .textContent.includes('Stock non compté'),
+    ).toBe(true);
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { groupProducts } from './groups.js';
+import { groupPathOf, groupProducts } from './groups.js';
 
 const options = {
   names: { 'Fish Meat Eggs': 'Viandes, poissons et œufs', Meat: 'Viandes' },
@@ -90,5 +90,29 @@ describe('groupProducts', () => {
 
   it('cuts an empty list into no group', () => {
     expect(groupProducts([], options)).toEqual([]);
+  });
+});
+
+describe('groupPathOf', () => {
+  it('says where a product is filed, from the group to the subgroup', () => {
+    expect(
+      groupPathOf(product('Steak', 'Fish Meat Eggs', 'Meat'), options),
+    ).toBe('Viandes, poissons et œufs › Viandes');
+  });
+
+  it('keeps the words it has no name for, as stored', () => {
+    expect(groupPathOf(product('Tofu', 'Plant based', 'Soy'), options)).toBe(
+      'Plant based › Soy',
+    );
+  });
+
+  it('leaves out what is not known, and says nothing of a product that is not classified', () => {
+    expect(
+      groupPathOf(product('Steak', 'Fish Meat Eggs', 'unknown'), options),
+    ).toBe('Viandes, poissons et œufs');
+    expect(groupPathOf(product('Mystery', '', ''), options)).toBe('');
+    expect(groupPathOf(product('Mystery', 'unknown', undefined), options)).toBe(
+      '',
+    );
   });
 });

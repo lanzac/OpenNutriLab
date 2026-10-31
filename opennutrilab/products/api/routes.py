@@ -59,6 +59,7 @@ def list_products(request: HttpRequest) -> QuerySet[Product]:
             in_inventory=Exists(mine),
             stock_quantity=Subquery(mine.values("stock_quantity")[:1]),
             stock_unit=Subquery(mine.values("stock_unit")[:1]),
+            stock_counted_at=Subquery(mine.values("counted_at")[:1]),
         )
         .order_by("created_at")
     )

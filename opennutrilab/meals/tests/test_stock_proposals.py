@@ -250,10 +250,20 @@ def test_a_meal_marked_eaten_through_the_api_takes_from_the_stock(
     after_undoing = client.get("/api/v1/inventory/").json()
 
     def stock_of(listing: list[dict]) -> dict:
-        return next(i["stock"] for i in listing if i["barcode"] == muesli.pk)
+        stock = next(i["stock"] for i in listing if i["barcode"] == muesli.pk)
+        return {"quantity": stock["quantity"], "unit": stock["unit"]}
 
     assert stock_of(after_eating) == {"quantity": "315.00", "unit": "g"}
     assert stock_of(after_undoing) == {"quantity": "375.00", "unit": "g"}
+
+    def counted_at_of(listing: list[dict]) -> str | None:
+        return next(
+            i["stock"]["counted_at"] for i in listing if i["barcode"] == muesli.pk
+        )
+
+    # A meal takes from the stock without counting it again: the day stays.
+    assert counted_at_of(after_eating) is not None
+    assert counted_at_of(after_eating) == counted_at_of(after_undoing)
 
 
 # ----------------------------------------------------------------------------

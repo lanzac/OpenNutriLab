@@ -112,18 +112,27 @@ class TestProductListView:
 
         props: dict[str, Any] = response.context["product_list_props"]
         labels: dict[str, str] = props["labels"]
-        assert labels["productName"] == "Nom du produit"
         assert labels["createdAt"] == "Créé le"
-        assert labels["totalQuantity"] == "Quantité totale"
-        assert labels["edit"] == "Éditer"
-        assert labels["delete"] == "Supprimer"
         assert labels["loading"] == "Chargement…"
         # The name is interpolated client-side, so the placeholder must survive.
         assert "%(name)s" in labels["confirmDelete"]
         assert labels["myInventory"] == "Mon inventaire"
         assert labels["addToInventory"] == "Ajouter à mon inventaire"
-        assert labels["image"] == "Photo"
         assert labels["barcode"] == "Code barre"
+        # The line of a product, and its sheet.
+        assert labels["stockInStock"] == "en stock"
+        assert labels["stockNotCountedRow"] == "Stock non compté"
+        assert labels["searchProducts"] == "Rechercher un produit"
+        assert labels["filterUsedUp"] == "Épuisés"
+        assert labels["openSheet"] == "Ouvrir la fiche complète"
+        assert labels["deleteFromCatalogue"] == "Supprimer du catalogue…"
+        # Figures put in client-side, so their places must survive.
+        assert "%(date)s" in labels["stockCountedOn"]
+        assert "%(noun)s" in labels["stockAddOne"]
+        assert "%(amount)s" in labels["stockEquivalent"]
+        assert "%(package)s" in labels["stockOnePackage"]
+        # None is left in English: every label has a French entry of its own.
+        assert all(labels.values())
         assert labels["uncategorised"] == "Non classé"
         # The groups are stored as OpenFoodFacts words them, and shown in French.
         group_names: dict[str, str] = props["groupNames"]

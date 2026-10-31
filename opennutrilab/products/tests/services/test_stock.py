@@ -19,11 +19,12 @@ def item_of(  # noqa: PLR0913
     unit: str = "g",
     serving: str | None = None,
     name: str = "",
+    product_name: str = "Muesli",
     barcode: str = "3017620422003",
 ) -> InventoryItem:
     product = Product.objects.create(
         barcode=barcode,
-        name="Muesli",
+        name=product_name,
         package_quantity=None if package is None else D(package),
         package_unit="" if package is None else unit,
         serving_quantity=None if serving is None else D(serving),
@@ -74,6 +75,82 @@ def test_a_serving_is_counted_by_what_the_label_calls_it_when_it_is_a_thing(
     item = item_of(user, serving="100", name=name)
 
     assert stock.counting_noun(item.product) == noun
+
+
+@pytest.mark.parametrize(
+    ("serving_name", "product_name", "noun"),
+    [
+        # The product says how many servings its package holds: 400 g in 8 of 50 g.
+        ("portion", "8 portions panées de Colin d'Alaska", "portion"),
+        ("1 portion", "8 portions panées de Colin d'Alaska", "portion"),
+        ("Portion", "Colin d'Alaska, 8 portions", "Portion"),
+        ("pot", "Compote, 8 pots", "pot"),
+        ("une part", "Tarte aux pommes 8 parts", "part"),
+        # It says another number of them, or none, or says them as something else.
+        ("portion", "6 portions panées de Colin d'Alaska", None),
+        ("portion", "Portions panées de Colin d'Alaska", None),
+        ("portion", "Colin d'Alaska 18 portions", None),
+        ("portion", "8 portionnés de Colin", None),
+        ("portion", "Pâtes", None),
+        # Several things at a time is not one, whatever the name says.
+        ("2 portions", "8 portions panées", None),
+    ],
+)
+def test_a_serving_that_is_a_measure_is_a_thing_where_the_name_of_the_product_says_so(
+    user: User, serving_name: str, product_name: str, noun: str | None
+):
+    item = item_of(
+        user, package="400", serving="50", name=serving_name, product_name=product_name
+    )
+
+    assert stock.counting_noun(item.product) == noun
+
+
+def test_a_name_that_counts_the_servings_needs_a_package_that_is_that_many(user: User):
+    # 450 g in servings of 50 g are 9, not the 8 the name says.
+    item = item_of(
+        user, package="450", serving="50", name="portion", product_name="8 portions"
+    )
+    assert stock.counting_noun(item.product) is None
+
+    # Nor can a package in grams hold servings in ml.
+    item = item_of(
+        user,
+        package="400",
+        serving="50",
+        name="portion",
+        product_name="8 portions",
+        barcode="3229820794556",
+    )
+    item.product.package_unit = "ml"
+    assert stock.counting_noun(item.product) is None
+
+    # Nor a product that has no package to hold them.
+    item = item_of(
+        user,
+        package=None,
+        serving="50",
+        name="portion",
+        product_name="8 portions",
+        barcode="3245412890987",
+    )
+    assert stock.counting_noun(item.product) is None
+
+
+def test_a_stock_is_counted_in_servings_where_the_name_of_the_product_counts_them(
+    user: User,
+):
+    fish = item_of(
+        user,
+        package="400",
+        serving="50",
+        name="portion",
+        product_name="8 portions panées de Colin d'Alaska",
+    )
+
+    assert stock.default_unit(fish.product) == "serving"
+    stock.set_stock(fish, D(5))
+    assert fish.stock_unit == "serving"
 
 
 def test_a_product_with_no_serving_has_nothing_to_count_by(user: User):

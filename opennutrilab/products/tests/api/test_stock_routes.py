@@ -36,6 +36,11 @@ def muesli(user: User) -> Product:
     return product
 
 
+def without_date(stock: Mapping[str, str | None]) -> dict[str, str | None]:
+    """A stock as served, without the date it was counted on (see its own tests)."""
+    return {key: value for key, value in stock.items() if key != "counted_at"}
+
+
 def count(client: Client, product: Product, body: Mapping[str, str | None]):
     return client.put(
         f"{INVENTORY}{product.barcode}/stock", body, content_type="application/json"
@@ -48,9 +53,34 @@ def test_a_stock_is_counted_and_served_with_the_inventory(
     response = count(api_client, muesli, {"quantity": "300"})
 
     assert response.status_code == HTTPStatus.OK
-    assert response.json()["stock"] == {"quantity": "300.00", "unit": "g"}
+    assert without_date(response.json()["stock"]) == {"quantity": "300.00", "unit": "g"}
     [listed] = api_client.get(INVENTORY).json()
-    assert listed["stock"] == {"quantity": "300.00", "unit": "g"}
+    assert without_date(listed["stock"]) == {"quantity": "300.00", "unit": "g"}
+
+
+def test_a_stock_is_served_with_the_day_it_was_counted(
+    api_client: Client, muesli: Product
+):
+    [listed] = api_client.get(INVENTORY).json()
+    assert listed["stock"]["counted_at"] is None
+
+    counted = count(api_client, muesli, {"quantity": "300"}).json()["stock"]
+
+    assert counted["counted_at"] is not None
+    [listed] = api_client.get(INVENTORY).json()
+    assert listed["stock"]["counted_at"] == counted["counted_at"]
+    in_list = {p["barcode"]: p["stock"] for p in api_client.get(PRODUCTS).json()}
+    assert in_list[muesli.barcode]["counted_at"] == counted["counted_at"]
+
+
+def test_the_day_a_stock_was_counted_is_forgotten_when_it_is_not_counted_any_more(
+    api_client: Client, muesli: Product
+):
+    count(api_client, muesli, {"quantity": "300"})
+
+    stock = count(api_client, muesli, {"quantity": None}).json()["stock"]
+
+    assert stock["counted_at"] is None
 
 
 def test_a_stock_not_counted_is_served_with_the_unit_it_would_be_counted_in(
@@ -58,7 +88,7 @@ def test_a_stock_not_counted_is_served_with_the_unit_it_would_be_counted_in(
 ):
     [listed] = api_client.get(INVENTORY).json()
 
-    assert listed["stock"] == {"quantity": None, "unit": "g"}
+    assert without_date(listed["stock"]) == {"quantity": None, "unit": "g"}
 
 
 def test_the_unit_of_a_stock_is_the_one_of_the_package(api_client: Client, user: User):
@@ -68,7 +98,9 @@ def test_the_unit_of_a_stock_is_the_one_of_the_package(api_client: Client, user:
     InventoryItem.objects.create(user=user, product=oil)
 
     assert api_client.get(INVENTORY).json()[0]["stock"]["unit"] == "ml"
-    assert count(api_client, oil, {"quantity": "400"}).json()["stock"] == {
+    assert without_date(
+        count(api_client, oil, {"quantity": "400"}).json()["stock"]
+    ) == {
         "quantity": "400.00",
         "unit": "ml",
     }
@@ -77,7 +109,7 @@ def test_the_unit_of_a_stock_is_the_one_of_the_package(api_client: Client, user:
 def test_a_stock_can_be_counted_in_another_unit(api_client: Client, muesli: Product):
     response = count(api_client, muesli, {"quantity": "2", "unit": "ml"})
 
-    assert response.json()["stock"] == {"quantity": "2.00", "unit": "ml"}
+    assert without_date(response.json()["stock"]) == {"quantity": "2.00", "unit": "ml"}
 
 
 def test_a_stock_used_up_is_counted_as_nothing(api_client: Client, muesli: Product):
@@ -96,7 +128,7 @@ def test_a_null_quantity_says_the_stock_is_not_counted(
 
     response = count(api_client, muesli, {"quantity": None})
 
-    assert response.json()["stock"] == {"quantity": None, "unit": "g"}
+    assert without_date(response.json()["stock"]) == {"quantity": None, "unit": "g"}
     item = InventoryItem.objects.get()
     assert (item.stock_quantity, item.stock_unit, item.counted_at) == (None, "", None)
 
@@ -147,7 +179,7 @@ def test_the_list_of_products_gives_the_stock_of_those_in_the_inventory(
 
     listed = {p["barcode"]: p["stock"] for p in api_client.get(PRODUCTS).json()}
 
-    assert listed[muesli.barcode] == {"quantity": "300.00", "unit": "g"}
+    assert without_date(listed[muesli.barcode]) == {"quantity": "300.00", "unit": "g"}
     # Not in the inventory, so not counted.
     assert listed[other.barcode] is None
 
@@ -188,7 +220,7 @@ def test_a_product_with_pots_is_counted_in_pots_until_told_otherwise(
 ):
     [listed] = api_client.get(INVENTORY).json()
 
-    assert listed["stock"] == {"quantity": None, "unit": "serving"}
+    assert without_date(listed["stock"]) == {"quantity": None, "unit": "serving"}
     assert listed["count_noun"] == "pot"
 
 
@@ -209,7 +241,10 @@ def test_pots_are_counted(api_client: Client, compote: Product):
     response = count(api_client, compote, {"quantity": "4"})
 
     assert response.status_code == HTTPStatus.OK
-    assert response.json()["stock"] == {"quantity": "4.00", "unit": "serving"}
+    assert without_date(response.json()["stock"]) == {
+        "quantity": "4.00",
+        "unit": "serving",
+    }
 
 
 def test_a_product_with_pots_can_be_counted_in_grams(
@@ -217,7 +252,7 @@ def test_a_product_with_pots_can_be_counted_in_grams(
 ):
     response = count(api_client, compote, {"quantity": "250", "unit": "g"})
 
-    assert response.json()["stock"] == {"quantity": "250.00", "unit": "g"}
+    assert without_date(response.json()["stock"]) == {"quantity": "250.00", "unit": "g"}
 
 
 def test_pots_are_not_cut(api_client: Client, compote: Product):
@@ -240,4 +275,4 @@ def test_the_list_of_products_serves_the_serving_and_what_it_is_counted_by(
 
     assert listed["serving"] == {"quantity": "100.00", "unit": "g", "name": "1 pot"}
     assert listed["count_noun"] == "pot"
-    assert listed["stock"] == {"quantity": None, "unit": "serving"}
+    assert without_date(listed["stock"]) == {"quantity": None, "unit": "serving"}
