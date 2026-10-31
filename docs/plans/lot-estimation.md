@@ -43,7 +43,12 @@ nutrients from its ingredients"); this file is the execution plan.
   written. It is never edited, and can be older than the text OFF has now.
   A note in parentheses such as "(origine : Italie)" is ignored wherever it stands
   (2026-10-05), so that the parentheses that do list an ingredient's parts are
-  read whether a note comes before them or not. So is an allergen declaration,
+  read whether a note comes before them or not. So is an origin written without the
+  word (2026-10-09, product 3270160642601, "Pâte cuite 60,5% (Allemagne) [eau,
+  semoule]", where "allemagne" was read as a part and the brackets lost):
+  parentheses that hold nothing but countries from a closed list, in French and
+  English, or "UE" / "hors UE" (`_ORIGINS`; "turkey", "chile" and "chili" are left
+  out as foods). So is an allergen declaration,
   parentheses that hold nothing but allergens ("semoule de blé (gluten)",
   "lécithines (soja)", "(contient lait)"): only the 14 of the regulation, in
   French and English, and only when they are all the parentheses say.
