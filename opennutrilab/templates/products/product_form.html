@@ -6,8 +6,9 @@
 
 {% block content %}
   <div class="container-md my-5">
-    <div class="row justify-content-center">
-      <div class="col-12 col-md-10 col-lg-8">
+    {# As wide as the estimate under it, which has a row of its own below. #}
+    <div class="row">
+      <div class="col-12">
         <div class="card">
           <div class="card-header">
             {% if product %}
