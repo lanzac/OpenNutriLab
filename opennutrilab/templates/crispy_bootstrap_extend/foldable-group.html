@@ -1,0 +1,22 @@
+{% load i18n %}
+
+<div class="foldable-group mb-3" data-fold-group="{{ div.key }}">
+  <h3 class="h6 mb-0">
+    <button type="button"
+            class="group-toggle{% if not div.is_open %} collapsed{% endif %}"
+            data-bs-toggle="collapse"
+            data-bs-target="#{{ div.css_id }}"
+            aria-expanded="{% if div.is_open %}true{% else %}false{% endif %}"
+            aria-controls="{{ div.css_id }}">
+      <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+      <span class="group-toggle-label">{{ div.name }}</span>
+      <span class="group-toggle-summary"
+            data-fold-summary
+            title="{% translate "Values filled in" %}">{{ div.filled }} / {{ div.total }}</span>
+    </button>
+  </h3>
+  <div id="{{ div.css_id }}"
+       class="collapse{% if div.is_open %} show{% endif %}">
+    <div class="pt-2">{{ fields|safe }}</div>
+  </div>
+</div>

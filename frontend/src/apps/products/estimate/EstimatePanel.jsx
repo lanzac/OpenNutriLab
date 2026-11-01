@@ -15,6 +15,9 @@ const KEYS = {
 };
 // The unit the amounts are read in, per 100 g or per 100 ml, kept like the rest.
 const UNIT_KEY = 'products.estimateUnit';
+// Whether the list of the ingredients is open: there can be dozens of them.
+const INGREDIENTS_KEY = 'products.estimateIngredients';
+const INGREDIENTS_STATES = ['open', 'folded'];
 // What an estimate is worked out in (see estimate_validation).
 const ESTIMATE_UNIT = 'g';
 
@@ -106,7 +109,13 @@ function ColumnHeads({ nameLabel, labels }) {
   );
 }
 
-function Ingredients({ rows, labels, languageCode }) {
+function Ingredients({ rows, labels, languageCode, prefix }) {
+  const [state, setState] = useStoredChoice(
+    INGREDIENTS_KEY,
+    INGREDIENTS_STATES,
+  );
+  const isFolded = state === 'folded';
+  const region = `${prefix}-ingredients`;
   const gauges = rows.map((row) => ({
     estimated: row.estimated,
     declared:
@@ -120,35 +129,50 @@ function Ingredients({ rows, labels, languageCode }) {
   const max = sharedScaleOf(gauges.filter((_, index) => !rows[index].added));
   return (
     <>
-      <h3 className="h6 mt-3">{labels.ingredients}</h3>
-      <ColumnHeads nameLabel={labels.ingredient} labels={labels} />
-      {rows.map((row, index) =>
-        row.added ? (
-          <EstimateGauge
-            key={`${index}-${row.name}`}
-            name={`${row.name} (${labels.added})`}
-            unit={row.added_unit}
-            unitInName={false}
-            depth={row.depth}
-            estimated={row.added}
-            labels={labels}
-            languageCode={languageCode}
-          />
-        ) : (
-          <EstimateGauge
-            key={`${index}-${row.name}`}
-            name={row.name}
-            unit="%"
-            unitInName={false}
-            depth={row.depth}
-            estimated={gauges[index].estimated}
-            declared={gauges[index].declared}
-            max={max}
-            labels={labels}
-            languageCode={languageCode}
-          />
-        ),
-      )}
+      <div className="mt-3">
+        <FoldHead
+          id={region}
+          label={labels.ingredients}
+          summary={String(rows.length)}
+          parts={[]}
+          isFolded={isFolded}
+          onToggle={() => setState(isFolded ? 'open' : 'folded')}
+        />
+      </div>
+      <div id={region}>
+        {!isFolded && (
+          <>
+            <ColumnHeads nameLabel={labels.ingredient} labels={labels} />
+            {rows.map((row, index) =>
+              row.added ? (
+                <EstimateGauge
+                  key={`${index}-${row.name}`}
+                  name={`${row.name} (${labels.added})`}
+                  unit={row.added_unit}
+                  unitInName={false}
+                  depth={row.depth}
+                  estimated={row.added}
+                  labels={labels}
+                  languageCode={languageCode}
+                />
+              ) : (
+                <EstimateGauge
+                  key={`${index}-${row.name}`}
+                  name={row.name}
+                  unit="%"
+                  unitInName={false}
+                  depth={row.depth}
+                  estimated={gauges[index].estimated}
+                  declared={gauges[index].declared}
+                  max={max}
+                  labels={labels}
+                  languageCode={languageCode}
+                />
+              ),
+            )}
+          </>
+        )}
+      </div>
     </>
   );
 }
@@ -337,6 +361,7 @@ export function EstimatePanel({ data, labels, languageCode, tables = [] }) {
               rows={ingredients}
               labels={labels}
               languageCode={languageCode}
+              prefix={prefix}
             />
           )}
           {nutrients.length > 0 && (

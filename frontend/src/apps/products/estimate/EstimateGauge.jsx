@@ -99,7 +99,9 @@ const FACTORS = {
  *
  * `max` is the end of the track where rows are compared with each other (the shares of
  * a recipe), and the row's own where they are not. `detailed` is for the nutrients,
- * which say what the label makes of them; the ingredients are a name and a range.
+ * which say what the label makes of them; the ingredients are a name and a range, and
+ * there can be dozens of them: their row is compact, as high as two lines of text, with
+ * the label's figure under the name and the range under the estimate, not on the drawing.
  */
 export function EstimateGauge({
   name,
@@ -164,14 +166,22 @@ export function EstimateGauge({
       : (layout.band.from + layout.band.to) / 2
     : null;
   const hasDetail = detailed && Boolean(estimated || declared || confidence);
+  const compact = !detailed;
 
   return (
     <div className="est-item">
-      <div className="est-row">
+      <div className={`est-row${compact ? ' est-row--compact' : ''}`}>
         <div className="est-name" style={{ '--est-depth': depth }}>
           {name}
           {unitInName && unit && (
             <span className="small text-body-secondary"> {unit}</span>
+          )}
+          {compact && layout.label && (
+            <div className="est-sub est-text--label">
+              {fill(labels.labelAt, {
+                value: formatNumber(declared.amount, languageCode) + tail,
+              })}
+            </div>
           )}
         </div>
         {detailed && said.text && (
@@ -185,7 +195,7 @@ export function EstimateGauge({
           role="img"
           aria-label={`${name} : ${summary}`}
         >
-          {layout.label && (
+          {!compact && layout.label && (
             <div
               className="est-text est-text--label"
               style={placed(layout.label.at)}
@@ -213,7 +223,7 @@ export function EstimateGauge({
               style={{ left: `${layout.label.at}%` }}
             />
           )}
-          {caption && (
+          {!compact && caption && (
             <div className="est-text est-text--range" style={placed(captionAt)}>
               {caption}
             </div>
@@ -221,6 +231,9 @@ export function EstimateGauge({
         </div>
         <div className="est-value">
           <strong>{pointText}</strong>
+          {compact && caption && (
+            <div className="est-sub est-text--range">{caption}</div>
+          )}
         </div>
         {detailed && level && (
           <div className="est-reliability">

@@ -1,5 +1,6 @@
 from crispy_forms.bootstrap import AccordionGroup
 from crispy_forms.bootstrap import LayoutObject
+from crispy_forms.layout import Div
 from django.utils.safestring import SafeText
 
 
@@ -26,3 +27,31 @@ class AccordionGroupExtended(AccordionGroup):
             template=template,
             **kwargs,  # pyright: ignore[reportUnknownArgumentType]
         )
+
+
+class FoldableGroup(Div):
+    """
+    A group of fields under a head that folds it, with how many of them hold a value
+    (see frontend/src/apps/products/form/foldable-groups.js, which keeps that count and
+    the person's choice of open and closed groups).
+    """
+
+    template = "crispy_bootstrap_extend/foldable-group.html"
+
+    def __init__(  # noqa: PLR0913
+        self,
+        name: str,
+        *fields: str | LayoutObject,
+        key: str,
+        css_id: str,
+        is_open: bool,
+        filled: int,
+        total: int,
+        **kwargs,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
+    ):
+        self.name = name
+        self.key = key
+        self.is_open = is_open
+        self.filled = filled
+        self.total = total
+        super().__init__(*fields, css_id=css_id, **kwargs)  # pyright: ignore[reportUnknownArgumentType]

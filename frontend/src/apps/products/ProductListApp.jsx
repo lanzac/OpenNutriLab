@@ -228,7 +228,8 @@ export function ProductListApp({
     labels,
     languageCode,
     placeholderImage,
-    onSelect: select,
+    // The line that is open, chosen again, closes the sheet.
+    onSelect: (barcode) => select(barcode === selected ? null : barcode),
     onToggleInventory: toggleInventory,
     onCountStock: countStock,
   };

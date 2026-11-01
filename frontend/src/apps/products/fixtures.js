@@ -56,6 +56,7 @@ export const labels = {
   package: 'Conditionnement',
   serving: 'Portion',
   openSheet: 'Ouvrir la fiche complète',
+  closeSheet: 'Fermer la fiche',
   openSheetHint:
     'Ingrédients, valeurs nutritionnelles, estimation des nutriments.',
   removeFromInventoryHint:

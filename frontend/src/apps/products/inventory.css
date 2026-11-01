@@ -104,6 +104,27 @@
   padding: 0;
 }
 
+/* The top of the sheet: the way to the whole product, and the way back. */
+.inventory-panel-top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.inventory-panel-open {
+  flex: 1 1 auto;
+}
+
+.inventory-panel-close {
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+}
+
 .inventory-details {
   display: grid;
   grid-template-columns: 9rem 1fr;

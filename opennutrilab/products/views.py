@@ -163,6 +163,7 @@ class ProductListView(LoginRequiredMixin, ListView):
                 "package": _("Package"),
                 "serving": _("Serving"),
                 "openSheet": _("Open the full sheet"),
+                "closeSheet": _("Close the sheet"),
                 "openSheetHint": _(
                     "Ingredients, nutrition facts, estimate of the nutrients."
                 ),
@@ -454,6 +455,7 @@ def product_form_config() -> dict[str, Any]:
         "barcodeActions": {
             "enterBarcode": _("Please enter a barcode."),
         },
+        "barcodeImage": {"label": _("Barcode")},
         "offSearch": {
             "url": reverse("search_off"),
             "minLength": OFF_SEARCH_MIN_LENGTH,

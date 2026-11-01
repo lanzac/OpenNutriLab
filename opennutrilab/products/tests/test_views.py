@@ -24,6 +24,7 @@ from opennutrilab.products.api.openfoodfacts.services import OFFProductNotFoundE
 from opennutrilab.products.api.schemas.inbound import IngredientInput
 from opennutrilab.products.api.schemas.inbound import ProductCreate
 from opennutrilab.products.forms import ProductForm
+from opennutrilab.products.forms import nutrient_field
 from opennutrilab.products.models import Additive
 from opennutrilab.products.models import Ingredient
 from opennutrilab.products.models import IngredientTaxon
@@ -1142,6 +1143,101 @@ class TestOpenFoodFactsLinks:
         assert "noopener" in link
         assert "Voir sur OpenFoodFacts" in page
         assert 'id="off-search-input"' not in page
+
+
+def fold_group(page: str, key: str) -> str:
+    """The html of a group of nutrients of the form, from its head to what follows."""
+    start = page.index(f'data-fold-group="{key}"')
+    ends = [
+        page.find(after, start + 1) for after in ("data-fold-group=", "accordion-item")
+    ]
+    return page[start : min([e for e in ends if e != -1], default=len(page))]
+
+
+@pytest.mark.django_db
+class TestNutrientGroupsOfTheForm:
+    @pytest.fixture(autouse=True)
+    def _vitamins(self) -> None:
+        """The catalogue of a test has no vitamin on the label: two are put there."""
+        for code, name in (("vitamin_c", "Vitamin C"), ("vitamin_d", "Vitamin D")):
+            Nutrient.objects.create(
+                code=code,
+                name_en=name,
+                name_fr=name,
+                unit="mg",
+                group="vitamin",
+                on_label=True,
+            )
+
+    def test_the_nutrients_are_in_groups_that_fold(self, client: Client):
+        with translation.override("fr-fr"):
+            response: HttpResponse = client.get(
+                reverse("create_product"), headers={"accept-language": "fr"}
+            )
+
+        page = response.content.decode()
+        keys = re.findall(r'data-fold-group="(\w+)"', page)
+        # The order of the meals page; a group the label has nothing in is not there.
+        assert keys == ["energy", "macronutrient", "other", "vitamin"]
+        assert "Macronutriment" in fold_group(page, "macronutrient")
+        # A part of another nutrient is with it, not in a group of its own.
+        macro = fold_group(page, "macronutrient")
+        assert "dont acides gras saturés" in macro
+        assert "dont sucres" in macro
+        assert 'data-bs-toggle="collapse"' in macro
+
+    def test_the_main_groups_are_open_and_the_others_open_when_filled(
+        self, client: Client
+    ):
+        page = client.get(reverse("create_product")).content.decode()
+
+        assert "collapse show" in fold_group(page, "macronutrient")
+        assert "collapse show" not in fold_group(page, "vitamin")
+        assert "0 / 2" in fold_group(page, "vitamin")
+
+        product = Product.objects.create(barcode="3229820794556", name="Muesli")
+        ProductNutrient.objects.create(
+            product=product,
+            nutrient=Nutrient.objects.get(code="vitamin_c"),
+            amount=12,
+        )
+        page = client.get(reverse("edit_product", args=[product.pk])).content.decode()
+
+        assert "collapse show" in fold_group(page, "vitamin")
+        assert "1 / 2" in fold_group(page, "vitamin")
+
+    def test_a_group_with_a_figure_to_put_right_is_open(self, client: Client):
+        response: HttpResponse = client.post(
+            reverse("create_product"),
+            {
+                "barcode": "3229820794556",
+                "name": "Muesli",
+                nutrient_field("vitamin_c"): "-1",
+            },
+        )
+
+        page = response.content.decode()
+        assert "is-invalid" in fold_group(page, "vitamin")
+        assert "collapse show" in fold_group(page, "vitamin")
+
+
+@pytest.mark.django_db
+class TestBarcodeImage:
+    def test_the_page_of_a_product_shows_its_barcode(self, client: Client):
+        product = Product.objects.create(barcode="3229820794556", name="Muesli")
+
+        page = client.get(reverse("edit_product", args=[product.pk])).content.decode()
+
+        assert '<div id="barcode-image" data-code="3229820794556">' in page
+        config = client.get(reverse("edit_product", args=[product.pk])).context[
+            "product_form_config"
+        ]
+        assert config["barcodeImage"]["label"]
+
+    def test_a_product_not_made_yet_has_none(self, client: Client):
+        page = client.get(reverse("create_product")).content.decode()
+
+        assert 'id="barcode-image"' not in page
 
 
 @pytest.mark.django_db

@@ -15,7 +15,6 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import HTML
 from crispy_forms.layout import Column
 from crispy_forms.layout import Field
-from crispy_forms.layout import Fieldset
 from crispy_forms.layout import Layout
 from crispy_forms.layout import LayoutObject
 from crispy_forms.layout import Row
@@ -29,6 +28,7 @@ from pydantic import TypeAdapter
 from pydantic import ValidationError
 
 from opennutrilab.crispy_bootstrap_extended.layouts import AccordionGroupExtended
+from opennutrilab.crispy_bootstrap_extended.layouts import FoldableGroup
 from opennutrilab.products.api.openfoodfacts.services import off_product_url
 from opennutrilab.products.api.schemas.inbound import IngredientInput
 from opennutrilab.products.api.schemas.inbound import Place
@@ -58,6 +58,19 @@ def plain_newlines(text: str) -> str:
 def nutrient_field(code: str) -> str:
     """The form field holding the declared amount of nutrient `code`."""
     return f"nutrient_{code}"
+
+
+# The groups of the label's nutrients, in the order the form shows them; the first two
+# are open when the page is first shown.
+NUTRIENT_GROUP_ORDER = [
+    Nutrient.Group.ENERGY.value,
+    Nutrient.Group.MACRONUTRIENT.value,
+    Nutrient.Group.FATTY_ACID.value,
+    Nutrient.Group.MINERAL.value,
+    Nutrient.Group.OTHER.value,
+    Nutrient.Group.VITAMIN.value,
+]
+OPEN_NUTRIENT_GROUPS = frozenset(NUTRIENT_GROUP_ORDER[:2])
 
 
 def label_wording(nutrient: Nutrient) -> str:
@@ -270,7 +283,21 @@ class ProductForm(forms.ModelForm):
                 if self.is_edit
                 else [HTML("{% include 'products/components/off_search.html' %}")]
             ),
-            Row(barcode_field),
+            # Its picture beside it, where the product is shown in full.
+            Row(
+                Column(barcode_field, css_class="col-md-8"),
+                Column(
+                    HTML(
+                        format_html(
+                            '<div id="barcode-image" data-code="{}"></div>',
+                            self.instance.barcode,
+                        )
+                    ),
+                    css_class="col-md-4 d-flex align-items-center justify-content-center",  # noqa: E501
+                ),
+            )
+            if self.is_edit
+            else Row(barcode_field),
             Row(
                 Column(
                     Field("name", css_class="col-md-8"),
@@ -471,23 +498,47 @@ class ProductForm(forms.ModelForm):
 
     def _get_nutritional_values_layout(self) -> list[LayoutObject]:
         """
-        Return crispy-forms layout for the declared nutrients, with units: the
-        vitamins come after the others, in a group of their own.
+        Return crispy-forms layout for the declared nutrients, with units: in groups
+        that fold, as the day's needs are on the meals page. A part of another
+        nutrient ("of which sugars") is with it.
         """
+        by_code = {n.code: n for n in self.label_nutrients}
 
-        def inputs(nutrients: list[Nutrient]) -> list[LayoutObject]:
-            return [
-                AppendedText(nutrient_field(n.code), n.unit, css_class="plot-input")
-                for n in nutrients
-            ]
+        def group_of(nutrient: Nutrient) -> str:
+            while nutrient.parent_id in by_code:
+                nutrient = by_code[nutrient.parent_id]
+            return nutrient.group
 
-        vitamins = [
-            n for n in self.label_nutrients if n.group == Nutrient.Group.VITAMIN.value
-        ]
-        others = [n for n in self.label_nutrients if n not in vitamins]
-        layout = inputs(others)
-        if vitamins:
-            layout.append(Fieldset(_("Vitamins"), *inputs(vitamins), css_class="mt-4"))
+        groups: dict[str, list[Nutrient]] = {}
+        for nutrient in self.label_nutrients:
+            groups.setdefault(group_of(nutrient), []).append(nutrient)
+
+        layout: list[LayoutObject] = []
+        for group in NUTRIENT_GROUP_ORDER:
+            nutrients = groups.get(group)
+            if not nutrients:
+                continue
+            fields = [nutrient_field(n.code) for n in nutrients]
+            filled = sum(self[f].value() not in (None, "") for f in fields)
+            has_errors = any(self[f].errors for f in fields)
+            layout.append(
+                FoldableGroup(
+                    Nutrient.Group(group).label,
+                    *(
+                        AppendedText(
+                            nutrient_field(n.code), n.unit, css_class="plot-input"
+                        )
+                        for n in nutrients
+                    ),
+                    key=group,
+                    css_id=f"nutrients-{group}",
+                    # The main ones are open to be filled in, the others when there is
+                    # something in them to see, or to put right.
+                    is_open=group in OPEN_NUTRIENT_GROUPS or bool(filled) or has_errors,
+                    filled=filled,
+                    total=len(nutrients),
+                )
+            )
         return layout
 
     def clean(self) -> dict[str, Any]:

@@ -183,6 +183,38 @@
   color: var(--bs-secondary-color);
 }
 
+/* An ingredient's row: a name, a track and a figure, as high as two lines of text (the
+   label's figure under the name, the range under the estimate), for there can be dozens. */
+.est-row--compact {
+  grid-template-areas: 'name chart value toggle';
+  padding: 0.4rem 0;
+}
+
+.est-row--compact .est-name,
+.est-row--compact .est-value {
+  align-self: center;
+}
+
+.est-row--compact .est-gauge {
+  height: 22px;
+}
+
+.est-row--compact .est-track,
+.est-row--compact .est-band {
+  top: 6px;
+}
+
+.est-row--compact .est-diamond {
+  top: 5px;
+}
+
+.est-sub {
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.25;
+  color: var(--bs-secondary-color);
+}
+
 /* A row opened: what the label and the estimate come to, and the confidence's parts. */
 .est-detail {
   display: grid;
@@ -359,6 +391,18 @@
 
   .est-value {
     align-self: center;
+  }
+
+  .est-row--compact {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'name value'
+      'chart chart';
+    padding: 0.5rem 0 0.25rem;
+  }
+
+  .est-row--compact .est-gauge {
+    margin-top: 0.1rem;
   }
 
   .est-toggle {

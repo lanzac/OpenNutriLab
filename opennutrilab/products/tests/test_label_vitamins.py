@@ -2,10 +2,10 @@ import importlib
 from decimal import Decimal
 
 import pytest
-from crispy_forms.layout import Fieldset
 from django.apps import apps
 from django.utils import translation
 
+from opennutrilab.crispy_bootstrap_extended.layouts import FoldableGroup
 from opennutrilab.products.api.openfoodfacts.services import declared_nutrients_from_off
 from opennutrilab.products.forms import ProductForm
 from opennutrilab.products.forms import nutrient_field
@@ -121,31 +121,35 @@ def test_the_vitamins_of_an_openfoodfacts_product_are_read_in_the_catalogue_unit
 
 
 @pytest.mark.usefixtures("vitamins")
-def test_the_form_asks_for_the_vitamins_after_the_other_nutrients_in_a_group():
+def test_the_form_asks_for_the_vitamins_in_a_group_after_the_other_nutrients():
     with translation.override("fr-fr"):
         form = ProductForm()
         layout = form._get_nutritional_values_layout()  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
-        legend = str(layout[-1].legend)  # pyright: ignore[reportAttributeAccessIssue, reportUnknownArgumentType, reportUnknownMemberType]
+        names = {group.key: str(group.name) for group in layout}  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType, reportUnknownArgumentType]
 
-    others, group = layout[:-1], layout[-1]
-    assert [item.fields[0] for item in others] == [  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
+    assert all(isinstance(group, FoldableGroup) for group in layout)
+    fields = {
+        group.key: [item.fields[0] for item in group.fields]  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
+        for group in layout
+    }
+    # The vitamins come last, as a group of their own.
+    assert list(fields) == ["energy", "macronutrient", "other", "vitamin"]
+    assert names["vitamin"] == "Vitamine"
+    assert fields["vitamin"] == [nutrient_field(code) for code in VITAMINS]
+    # A part of a nutrient is with it, in the order of the label's table.
+    assert fields["macronutrient"] == [
         nutrient_field(code)
         for code in (
-            "energy",
             "fat",
             "saturated_fat",
             "carbohydrates",
             "sugars",
             "fiber",
             "proteins",
-            "salt",
         )
     ]
-    assert isinstance(group, Fieldset)
-    assert legend == "Vitamines"
-    assert [item.fields[0] for item in group.fields] == [  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
-        nutrient_field(code) for code in VITAMINS
-    ]
+    assert fields["energy"] == [nutrient_field("energy")]
+    assert fields["other"] == [nutrient_field("salt")]
 
 
 @pytest.mark.django_db
@@ -154,7 +158,7 @@ def test_without_the_vitamins_the_form_has_no_group_for_them():
 
     layout = form._get_nutritional_values_layout()  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
 
-    assert not any(isinstance(item, Fieldset) for item in layout)
+    assert not any(group.key == "vitamin" for group in layout)  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
 
 
 @pytest.mark.usefixtures("vitamins")

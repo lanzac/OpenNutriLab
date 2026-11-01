@@ -22,6 +22,12 @@
   font-size: 0.75rem;
 }
 
+/* A head that is not drawn by React (a form's, folded by Bootstrap) has the one chevron,
+   turned to the side where its group is closed. */
+.group-toggle[aria-expanded='false'] .fa-chevron-down {
+  transform: rotate(-90deg);
+}
+
 .group-toggle-label {
   font-weight: 600;
 }

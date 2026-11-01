@@ -372,6 +372,58 @@ describe('ProductListApp, the sheet of a product', () => {
     expect(screen.queryByRole('complementary')).toBeNull();
   });
 
+  it('closes the sheet when the line that is open is chosen again', async () => {
+    stubFetch({ [PRODUCTS_URL]: [RICE, MUESLI] });
+    renderList();
+    await screen.findByRole('button', { name: 'Rice' });
+
+    click('Rice');
+    expect(sheet()).toBeInTheDocument();
+    expect(window.location.search).toContain('product=');
+
+    click('Rice');
+    expect(screen.queryByRole('complementary')).toBeNull();
+    expect(window.location.search).toBe('');
+
+    // Another line moves the sheet to it, and does not close it.
+    click('Rice');
+    click('Muesli');
+    expect(
+      within(sheet()).getByRole('heading', { level: 2, name: 'Muesli' }),
+    ).toBeInTheDocument();
+  });
+
+  it('closes with a button of its own beside the list', async () => {
+    stubFetch({ [PRODUCTS_URL]: [RICE] });
+    renderList();
+    await screen.findByRole('button', { name: 'Rice' });
+
+    click('Rice');
+    fireEvent.click(
+      within(sheet()).getByRole('button', { name: 'Fermer la fiche' }),
+    );
+
+    expect(screen.queryByRole('complementary')).toBeNull();
+    expect(window.location.search).toBe('');
+  });
+
+  it('puts the way to the whole product at the top of the sheet', async () => {
+    stubFetch({ [PRODUCTS_URL]: [RICE] });
+    renderList();
+    await screen.findByRole('button', { name: 'Rice' });
+
+    click('Rice');
+
+    const panel = within(sheet());
+    const link = panel.getByRole('link', { name: /Ouvrir la fiche complète/ });
+    expect(link).toHaveAttribute('href', `/products/${RICE.barcode}/edit/`);
+    // Before the name, the stock and the barcode.
+    const after = (element) =>
+      link.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(after(panel.getByRole('heading', { level: 2 }))).toBeTruthy();
+    expect(after(panel.getByRole('img', { name: /Code barre/ }))).toBeTruthy();
+  });
+
   it('forgets the product of an address that the list does not show', async () => {
     window.history.replaceState(null, '', '/?product=0000000000000');
     stubFetch({ [PRODUCTS_URL]: [RICE] });

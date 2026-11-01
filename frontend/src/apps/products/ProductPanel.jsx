@@ -74,14 +74,38 @@ export function ProductPanel({
         if (event.key === 'Escape') onClose();
       }}
     >
-      <button
-        type="button"
-        className="btn btn-link px-0 mb-2 d-lg-none"
-        onClick={onClose}
-      >
-        <i className="fa-solid fa-chevron-left me-2" aria-hidden="true" />
-        {labels.inventory}
-      </button>
+      {/* What leads out of the sheet is at its top: the whole sheet of the product,
+          and the way back (a button of its own on a phone, where the sheet is the
+          page; a cross beside the list, where it is a column). */}
+      <div className="inventory-panel-top">
+        <button
+          type="button"
+          className="btn btn-link px-0 d-lg-none"
+          onClick={onClose}
+        >
+          <i className="fa-solid fa-chevron-left me-2" aria-hidden="true" />
+          {labels.inventory}
+        </button>
+        <a
+          className="btn btn-primary inventory-panel-open"
+          href={productEditUrl(product.barcode)}
+        >
+          {labels.openSheet}
+          <i className="fa-solid fa-arrow-right ms-2" aria-hidden="true" />
+        </a>
+        <button
+          type="button"
+          className="btn btn-outline-secondary d-none d-lg-inline-flex inventory-panel-close"
+          aria-label={labels.closeSheet}
+          title={labels.closeSheet}
+          onClick={onClose}
+        >
+          <i className="fa-solid fa-xmark" aria-hidden="true" />
+        </button>
+      </div>
+      <div className="small text-body-secondary mb-4">
+        {labels.openSheetHint}
+      </div>
 
       <div className="d-flex flex-column gap-4">
         <div className="d-flex gap-3 align-items-start">
@@ -155,16 +179,6 @@ export function ProductPanel({
               label={labels.barcode}
               width={BARCODE_WIDTH}
             />
-          </div>
-        </section>
-
-        <section className="border-top pt-4 d-flex flex-column gap-2">
-          <a className="btn btn-primary" href={productEditUrl(product.barcode)}>
-            {labels.openSheet}
-            <i className="fa-solid fa-arrow-right ms-2" aria-hidden="true" />
-          </a>
-          <div className="small text-body-secondary text-center">
-            {labels.openSheetHint}
           </div>
         </section>
 

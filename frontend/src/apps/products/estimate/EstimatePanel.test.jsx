@@ -415,6 +415,63 @@ describe('the estimate as gauges', () => {
   });
 });
 
+describe('the ingredients', () => {
+  it('are rows as high as two lines: the label under the name, the range under the estimate', () => {
+    mount();
+
+    const sugar = gauge('Sucre').closest('.est-row');
+    expect(sugar).toHaveClass('est-row--compact');
+    expect(sugar.querySelector('.est-name .est-text--label')).toHaveTextContent(
+      'étiquette 30 %',
+    );
+    expect(
+      sugar.querySelector('.est-value .est-text--range'),
+    ).toHaveTextContent('28 – 32 %');
+    // The drawing is the track, the band and the diamond: no figure on it.
+    expect(sugar.querySelector('.est-gauge .est-text--label')).toBeNull();
+    expect(sugar.querySelector('.est-gauge .est-text--range')).toBeNull();
+    expect(sugar.querySelector('.est-diamond')).not.toBeNull();
+    // The figure of the nutrients is on the drawing, as it was.
+    fireEvent.click(group('Macronutriment'));
+    expect(gauge('Glucides').closest('.est-row')).not.toHaveClass(
+      'est-row--compact',
+    );
+  });
+
+  it('have no figure of the label under the name where there is none', () => {
+    mount();
+
+    const hazelnuts = gauge('Noisettes').closest('.est-row');
+    expect(hazelnuts.querySelector('.est-name .est-text--label')).toBeNull();
+    expect(hazelnuts.querySelector('.est-diamond')).toBeNull();
+  });
+
+  it('fold away under their head, which counts them, and stay so', () => {
+    const first = mount();
+    const head = screen.getByRole('button', { name: /Ingrédients/ });
+    expect(head).toHaveAttribute('aria-expanded', 'true');
+    expect(head).toHaveTextContent(String(data.ingredients.length));
+
+    fireEvent.click(head);
+
+    expect(head).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('img', { name: /^Sucre/ })).toBeNull();
+    // The nutrients are not the ingredients': they are still there to open.
+    expect(group('Macronutriment')).toBeInTheDocument();
+
+    first.unmount();
+    mount();
+    expect(screen.getByRole('button', { name: /Ingrédients/ })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    expect(screen.queryByRole('img', { name: /^Sucre/ })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /Ingrédients/ }));
+    expect(gauge('Sucre')).toBeInTheDocument();
+  });
+});
+
 describe('a row opened', () => {
   const toggle = (name) =>
     screen.getByRole('button', { name: `Voir le détail de ${name}` });

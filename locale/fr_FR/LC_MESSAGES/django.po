@@ -1891,6 +1891,12 @@ msgstr "OpenFoodFacts n'a aucun produit pour cette recherche."
 msgid "OpenFoodFacts could not be reached. Try again in a moment."
 msgstr "OpenFoodFacts est injoignable. Réessayez dans un instant."
 
+msgid "Close the sheet"
+msgstr "Fermer la fiche"
+
+msgid "Values filled in"
+msgstr "Valeurs renseignées"
+
 #~ msgid "Fat"
 #~ msgstr "Matières grasses"
 
