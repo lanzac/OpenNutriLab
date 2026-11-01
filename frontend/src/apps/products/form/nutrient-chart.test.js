@@ -156,4 +156,55 @@ describe('sliceValues', () => {
 
     expect(values.at(-1)).toBe(0);
   });
+
+  it('draws a whole as big as the parts inside it when rounding makes them more', () => {
+    const slices = buildSlices({
+      slices: [
+        { code: 'fat', field: 'nutrient_fat', parent: null, label: 'Fat' },
+        {
+          code: 'saturated_fat',
+          field: 'nutrient_saturated_fat',
+          parent: 'fat',
+          label: 'Saturates',
+        },
+        {
+          code: 'monounsaturated_fat',
+          field: 'nutrient_monounsaturated_fat',
+          parent: 'fat',
+          label: 'Mono',
+        },
+        {
+          code: 'polyunsaturated_fat',
+          field: 'nutrient_polyunsaturated_fat',
+          parent: 'fat',
+          label: 'Poly',
+        },
+      ],
+      others: 'Others',
+    });
+
+    const values = sliceValues(
+      slices,
+      read({
+        nutrient_fat: '9.3',
+        nutrient_saturated_fat: '1.6',
+        nutrient_monounsaturated_fat: '5.4',
+        nutrient_polyunsaturated_fat: '2.4',
+      }),
+    );
+
+    // 9.4 g of fat, the sum of its parts, and so 90.6 g of the rest.
+    expect(values[0]).toBeCloseTo(9.4);
+    expect(values.slice(1, 4)).toEqual([1.6, 5.4, 2.4]);
+    expect(values[4]).toBeCloseTo(90.6);
+  });
+
+  it('keeps the amount of a whole that its parts do not reach', () => {
+    const values = sliceValues(
+      slices,
+      read({ nutrient_fat: '10', nutrient_saturated_fat: '3' }),
+    );
+
+    expect(values.slice(0, 2)).toEqual([10, 3]);
+  });
 });

@@ -32,14 +32,15 @@ and those that did not hold are not here:
   gives for none of the foods that give their parts; niacin equivalents, which
   need tryptophan; energy, which CIQUAL gives.
 
-The omega-3 and omega-6 fatty acids are sums of another kind (SUMS): totals of a
-product's own amounts, not of each food's, so that a food lacking one of the parts
-still counts for the others (see nutrient_estimation). Derived food by food, a
-missing part gives no total, and in CIQUAL 2025 that is most foods: of 2,983, only
-1,584 give ALA, EPA and DHA, and 1,423 give LA and AA (counted 2026-10-09). Among
-the others are camelina oil (no EPA, DHA or AA) and chia seed (no AA), the richest
-in ALA after linseed, which would bring no omega-3 at all. CIQUAL has no DPA, GLA
-or SDA, so both totals are somewhat under the truth.
+The omega-3 and omega-6 fatty acids, and the EPA + DHA that a label gives, are sums
+of another kind (SUMS): totals of a product's own amounts, not of each food's, so
+that a food lacking one of the parts still counts for the others (see
+nutrient_estimation). Derived food by food, a missing part gives no total, and in
+CIQUAL 2025 that is most foods: of 2,983, only 1,584 give ALA, EPA and DHA, and
+1,423 give LA and AA (counted 2026-10-09). Among the others are camelina oil (no
+EPA, DHA or AA) and chia seed (no AA), the richest in ALA after linseed, which would
+bring no omega-3 at all. CIQUAL has no DPA, GLA or SDA, so both totals are somewhat
+under the truth.
 """
 
 from collections.abc import Iterable
@@ -49,7 +50,7 @@ from typing import NamedTuple
 
 from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import NutrientComponent
-from opennutrilab.products.services.label_vitamins import label_fields
+from opennutrilab.products.services.label_nutrients import label_fields
 
 
 class Term(NamedTuple):
@@ -128,6 +129,15 @@ CREATED: dict[str, NewNutrient] = {
         display_order=546,
         parent="polyunsaturated_fat",
     ),
+    # The sum a claim asks for ("EPA + DHA"), after DHA (590).
+    "epa_dha": NewNutrient(
+        "EPA + DHA",
+        "EPA + DHA",
+        Nutrient.Unit.GRAM,
+        Nutrient.Group.FATTY_ACID,
+        display_order=591,
+        parent="omega_3",
+    ),
 }
 
 # Totals of a product's amounts (see the module): the parts are added up where the
@@ -135,6 +145,7 @@ CREATED: dict[str, NewNutrient] = {
 SUMS: dict[str, tuple[str, ...]] = {
     "omega_6": ("linoleic_acid", "arachidonic_acid"),
     "omega_3": ("alpha_linolenic_acid", "epa", "dha"),
+    "epa_dha": ("epa", "dha"),
 }
 
 

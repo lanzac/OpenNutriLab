@@ -81,6 +81,10 @@ export function buildPlotData(slices) {
 /**
  * Slice values, in `slices` order, for the amounts currently typed in.
  *
+ * A whole is drawn at least as big as the parts inside it: a label's rounding makes
+ * 1.6 + 5.4 + 2.4 g of fats come to more than the 9.3 g of fat, and the sunburst
+ * cannot be drawn when the parts of a slice add up to more than the slice.
+ *
  * @param {(field: string) => string | undefined} readField Returns the raw
  *   value of the form input with that name.
  */
@@ -94,14 +98,24 @@ export function sliceValues(slices, readField) {
     }
   }
 
+  const drawn = {};
+  const drawnAmount = (slice) => {
+    if (!(slice.code in drawn)) {
+      const parts = slices.filter((s) => s.field && s.parent === slice.code);
+      const inside = parts.reduce((sum, part) => sum + drawnAmount(part), 0);
+      drawn[slice.code] = Math.max(amounts[slice.code], inside);
+    }
+    return drawn[slice.code];
+  };
+
   // Children are part of their parent (saturates are fat), so only the
   // top-level slices count towards the 100 g.
   const used = slices
     .filter((s) => s.field && !s.parent)
-    .reduce((sum, s) => sum + amounts[s.code], 0);
+    .reduce((sum, s) => sum + drawnAmount(s), 0);
 
   return slices.map((s) =>
-    s.field ? amounts[s.code] : Math.max(TOTAL_GRAMS - used, 0),
+    s.field ? drawnAmount(s) : Math.max(TOTAL_GRAMS - used, 0),
   );
 }
 

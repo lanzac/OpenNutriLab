@@ -415,6 +415,95 @@ def test_a_note_in_parentheses_is_not_an_ingredient():
     ]
 
 
+@pytest.mark.parametrize(
+    ("text", "names"),
+    [
+        (
+            "Caséinate de calcium (issue du lait), sel",
+            ["caséinate de calcium", "sel"],
+        ),
+        (
+            "Caséinate de calcium (issu du lait), sel",
+            ["caséinate de calcium", "sel"],
+        ),
+        ("Protéines (issues du lait), sel", ["protéines", "sel"]),
+        ("Protéines (Issus de plantes), sel", ["protéines", "sel"]),
+        (
+            "Caséinate de calcium (provenant du lait), sel",
+            ["caséinate de calcium", "sel"],
+        ),
+        ("Calcium caseinate (derived from milk), salt", ["calcium caseinate", "salt"]),
+    ],
+)
+def test_where_an_ingredient_comes_from_is_a_note_and_not_a_part(
+    text: str, names: list[str]
+):
+    items = parse_label(text)
+
+    assert [item.name for item in items] == names
+    assert all(not item.parts for item in items)
+
+
+@pytest.mark.parametrize(
+    ("text", "name"),
+    [
+        ("Eau, arôme (lait), sucre", "arôme (lait)"),
+        ("Eau, Arômes (LAIT), sucre", "arômes (lait)"),
+        ("Eau, arômes naturels (lait, soja), sucre", "arômes naturels (lait, soja)"),
+        ("Eau, arôme (contient du lait), sucre", "arôme (lait)"),
+        ("Water, natural flavouring (milk), sugar", "natural flavouring (milk)"),
+    ],
+)
+def test_the_allergen_of_a_flavouring_is_in_its_name(text: str, name: str):
+    items = parse_label(text)
+
+    assert [item.name for item in items][1] == name
+    assert not items[1].parts
+
+
+def test_the_percentage_of_a_flavouring_with_its_allergen_is_kept():
+    [item] = parse_label("Arôme 1 % (lait)")
+
+    assert (item.name, item.percentage) == ("arôme (lait)", Decimal(1))
+
+
+def test_the_allergen_of_a_flavouring_is_read_with_the_name():
+    text = "Eau, arôme (lait), sucre"
+
+    reading = read_label(text)
+
+    assert [text[a:b] for a, b in reading.used] == ["Eau", "arôme (lait)", "sucre"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # Named by what they are made of, or by the allergen already: a note.
+        "Eau, lécithines (soja), sucre",
+        "Eau, semoule de blé (gluten), sucre",
+        "Eau, protéines (lait), sucre",
+    ],
+)
+def test_the_allergen_of_what_is_not_a_flavouring_stays_a_note(text: str):
+    items = parse_label(text)
+
+    assert [item.name for item in items][1] in {
+        "lécithines",
+        "semoule de blé",
+        "protéines",
+    }
+    assert not items[1].parts
+
+
+def test_what_else_a_flavouring_holds_is_still_its_parts():
+    [flavouring] = parse_label("Arôme (vanille)")
+
+    assert (flavouring.name, [part.name for part in flavouring.parts]) == (
+        "arôme",
+        ["vanille"],
+    )
+
+
 def test_dont_introduces_what_is_in_an_ingredient():
     text = "Glucides (dont sucres 5 %), sel"
 

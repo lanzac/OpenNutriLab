@@ -247,7 +247,7 @@ _ALLERGEN_SEPARATOR = re.compile(
 )
 _NOTE = re.compile(
     r"^\W*(?:bio|biologiques?|organic|origine\b.*|d'origine\b.*|origin\b.*"
-    r"|issus?\b.*)\W*$",
+    r"|issu(?:e|es|s)?\b.*|provenant\b.*|derived from\b.*)\W*$",
     re.IGNORECASE,
 )
 # The countries a label gives as the origin of an ingredient without saying "origine":
@@ -290,6 +290,16 @@ _ORIGINS = frozenset(
         "paraguay", "cuba", "costa rica", "guatemala", "honduras",
     }
 )  # fmt: skip
+# A flavouring, folded (see _folded), whatever the word: "arôme", "arômes naturels",
+# "natural flavouring", "flavors". Of all the ingredients, its name tells the least
+# of what it is made of, so an allergen after it ("arôme (lait)") says what kind of
+# flavouring it is, and stays in its name (see _flavoured).
+_FLAVOURING = re.compile(
+    r"(?:(?:natural|artificial) )?(?:aromes?|aromas?|flavou?rings?|flavou?rs?)"
+    r"(?: (?:naturels?|artificiels?))?"
+)
+# What an allergen declaration may start with, once read: "contient du lait".
+_ARTICLE = re.compile(r"^(?:du|de la|de l'|des|de|d')\s*", re.IGNORECASE)
 # Words that introduce what follows rather than name it: "(dont sucre 5 %)".
 _INTRO = re.compile(
     r"^(?:dont|including|of which|davon|di cui|de los cuales"
@@ -717,6 +727,10 @@ def _parse_items(raw: str, at: int, used: list[Span]) -> list[LabelItem]:
         return []
     percentage = _percentage_read(head, at, tail, tail_at, used)
     used.extend(_name_spans(head, at, notes))
+    if (flavoured := _flavoured(name, inner)) is not None:
+        # "arôme (lait)": the allergen is in the name, read with it.
+        used.append((inner_at - 1, min(tail_at, at + len(text))))
+        return [LabelItem(flavoured, percentage)]
     return [_with_code(name, percentage, inner, inner_at, used)]
 
 
@@ -824,6 +838,26 @@ def _is_origin(inner: str) -> bool:
     return all(term.replace("-", " ") in _ORIGINS for term in terms)
 
 
+def _is_flavouring(name: str | None) -> bool:
+    """Whether a name is a flavouring: "arôme", "arômes naturels", "flavouring"."""
+    return name is not None and _FLAVOURING.fullmatch(_folded(name)) is not None
+
+
+def _flavoured(name: str, inner: str) -> str | None:
+    """
+    The name of a flavouring that its parentheses say the allergen of: "arôme (lait)".
+    None when it is no flavouring, or they say something else.
+
+    A flavouring is not the same ingredient as the one of no word, and the allergen
+    is what tells them apart. The others (lécithines (soja)) are named by their
+    allergen already, or by what they are made of: it stays a note.
+    """
+    if not _is_flavouring(name) or not _is_allergen_declaration(inner):
+        return None
+    allergens = _ARTICLE.sub("", _name(inner) or "")
+    return f"{name} ({allergens})" if allergens else None
+
+
 def _without_notes(text: str) -> tuple[str, list[Span]]:
     """
     `text` without its notes in parentheses ("(origine : Italie)", "(bio)"), its
@@ -844,7 +878,10 @@ def _without_notes(text: str) -> tuple[str, list[Span]]:
         is_note = (
             _NOTE.match(inner) is not None
             or _is_origin(inner)
-            or _is_allergen_declaration(inner)
+            or (
+                _is_allergen_declaration(inner)
+                and _flavoured(_name(text[index:open_at]) or "", inner) is None
+            )
         )
         end = min(close_at + 1, len(text))
         kept.append(text[index:open_at])

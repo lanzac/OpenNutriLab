@@ -21,6 +21,8 @@ from opennutrilab.products.services.label_parser import LabelItem
 from opennutrilab.products.services.label_parser import LabelWarning
 from opennutrilab.products.services.label_parser import Span
 from opennutrilab.products.services.label_parser import read_label
+from opennutrilab.products.services.packages import read_package
+from opennutrilab.products.services.servings import read_serving
 
 
 class OFFError(Exception):
@@ -258,15 +260,29 @@ def declared_nutrients_from_off(nutriments: dict[str, Any]) -> dict[str, Decimal
     return values
 
 
-def nutrition_unit_from_off(per: str | None) -> str:
+def nutrition_unit_from_off(
+    per: str | None, quantity: str | None = None, serving_size: str | None = None
+) -> str:
     """
     What the nutrition table of an OpenFoodFacts product is given per 100 of: "ml"
-    when it says "100ml", else "g".
+    when it says "100ml", or when the product is a liquid and says nothing of the
+    kind, else "g".
 
     OpenFoodFacts keeps a table per 100 ml under the same `_100g` keys, with the
     values as the label prints them, so the unit has to be read from here. A table
     per serving is already worked out per 100 by OpenFoodFacts and is read as it is.
+
+    Most liquids are said to be "100g" all the same, OpenFoodFacts having no
+    other choice for them, while the label is per 100 ml (a drink of "4 x 200 ml"):
+    what the product is sold by tells. The package is read first, then the serving;
+    a text that is not read (see services.packages, services.servings) tells nothing.
     """
     if (per or "").replace(" ", "").lower() == "100ml":
         return Product.ServingUnit.MILLILITRE.value
+    package = read_package(quantity)
+    if package is not None:
+        return package.unit
+    serving = read_serving(serving_size)
+    if serving is not None:
+        return serving.unit
     return Product.ServingUnit.GRAM.value

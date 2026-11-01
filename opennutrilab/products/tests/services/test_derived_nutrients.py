@@ -266,7 +266,32 @@ def test_the_omega_totals_are_created_under_the_polyunsaturated_fatty_acids(
     assert linoleic.parent_id == "polyunsaturated_fat"
 
 
+def test_epa_plus_dha_is_a_total_of_the_amounts_of_a_product_that_a_label_may_declare(
+    catalogue: None,
+):
+    ensure_derivations()
+    epa_dha = Nutrient.objects.get(code="epa_dha")
+
+    assert SUMS["epa_dha"] == ("epa", "dha")
+    assert (epa_dha.unit, epa_dha.group, epa_dha.parent_id) == (
+        "g",
+        "fatty_acid",
+        "omega_3",
+    )
+    assert (epa_dha.name_en, epa_dha.name_fr) == ("EPA + DHA", "EPA + DHA")
+    # No source gives a total, and OpenFoodFacts has no key for it.
+    assert (epa_dha.on_label, epa_dha.off_key, epa_dha.ciqual_code) == (
+        True,
+        None,
+        None,
+    )
+    assert "epa_dha" not in {n.code for n in derived_nutrients()}
+    assert Nutrient.objects.get(code="dha").display_order < epa_dha.display_order
+
+
 def test_a_part_of_a_total_that_does_not_exist_is_refused(catalogue: None):
+    # EPA + DHA is part of the omega-3, and goes first.
+    Nutrient.objects.filter(code="epa_dha").delete()
     Nutrient.objects.filter(code="omega_3").delete()
     Nutrient.objects.filter(code="epa").delete()
 

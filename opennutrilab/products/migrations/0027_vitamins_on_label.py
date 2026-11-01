@@ -1,7 +1,7 @@
 from django.db import migrations
 
 # The vitamins a label declares, with their OpenFoodFacts key (see
-# services.label_vitamins). Copied here so that this migration does not change
+# services.label_nutrients). Copied here so that this migration does not change
 # when that module does. A catalogue that has none of them yet is left as it is:
 # the CIQUAL import creates them on the label.
 LABEL_VITAMINS = {

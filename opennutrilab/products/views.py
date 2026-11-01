@@ -419,6 +419,27 @@ def estimate_for_page(product: Product) -> EstimateOut | None:
         return None
 
 
+# The nutrients the chart draws, in grams. A part has to lie inside the nutrient it is
+# part of and not overlap its sisters, or the sunburst cannot be drawn: the added
+# sugars may hold the lactose, and the omega-3 holds ALA, EPA and DHA, which are
+# listed too. So only the parts of the label's table are drawn.
+CHART_NUTRIENTS = frozenset(
+    {
+        "fat",
+        "saturated_fat",
+        "monounsaturated_fat",
+        "polyunsaturated_fat",
+        "carbohydrates",
+        "sugars",
+        "starch",
+        "polyols",
+        "fiber",
+        "proteins",
+        "salt",
+    }
+)
+
+
 def product_form_config() -> dict[str, Any]:
     """
     What the vanilla-JS parts of the product form need from the server.
@@ -437,7 +458,7 @@ def product_form_config() -> dict[str, Any]:
             "reference": _("Reference status"),
         },
         "nutrientChart": {
-            # One slice per declared mass nutrient, straight from the
+            # One slice per nutrient of CHART_NUTRIENTS, straight from the
             # catalogue: parents and children are linked by code, so the
             # chart's structure does not depend on the displayed language.
             "slices": [
@@ -447,7 +468,9 @@ def product_form_config() -> dict[str, Any]:
                     "parent": n.parent_id,
                     "label": label_wording(n),
                 }
-                for n in Nutrient.objects.filter(on_label=True, unit=Nutrient.Unit.GRAM)
+                for n in Nutrient.objects.filter(
+                    on_label=True, code__in=CHART_NUTRIENTS
+                )
             ],
             # The chart's own remainder slice, with no nutrient behind it.
             "others": _("Others"),
@@ -699,10 +722,12 @@ def initial_from_off(request: HttpRequest, barcode: str) -> dict[str, Any] | Non
         "group_level_2": fetched.group_level_2 or "",
     }
     # Values from the label, converted to each nutrient's unit, and what the table
-    # is given per: kept as it is printed, per 100 ml for a liquid that says so.
+    # is given per: kept as it is printed, per 100 ml for a liquid.
     for code, amount in declared_nutrients_from_off(fetched.nutriments).items():
         initial[nutrient_field(code)] = plain_amount(amount)
-    initial["nutrition_unit"] = nutrition_unit_from_off(fetched.nutrition_data_per)
+    initial["nutrition_unit"] = nutrition_unit_from_off(
+        fetched.nutrition_data_per, fetched.quantity, fetched.serving_size
+    )
     try:
         initial["off_image_url"] = validate_off_image_url(fetched.image_url)
     except ValueError:

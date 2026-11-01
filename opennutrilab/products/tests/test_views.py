@@ -363,6 +363,34 @@ class TestProductCreateView:
         assert list(response.context["messages"]) == []
 
     @patch("opennutrilab.products.views.fetch_from_off")
+    def test_lookup_gives_a_drink_a_table_per_100_ml_though_openfoodfacts_says_100g(
+        self, mock_fetch_from_off: MagicMock, client: Client
+    ):
+        mock_fetch_from_off.return_value = off_product(
+            nutrition_data_per="100g", quantity="4 x 200 ml", serving_size="200 ml"
+        )
+
+        response: HttpResponse = client.get(
+            reverse("create_product"), {"barcode": NUTELLA}
+        )
+
+        assert response.context["form"]["nutrition_unit"].value() == "ml"
+
+    @patch("opennutrilab.products.views.fetch_from_off")
+    def test_lookup_keeps_a_table_per_100_g_for_what_is_sold_by_weight(
+        self, mock_fetch_from_off: MagicMock, client: Client
+    ):
+        mock_fetch_from_off.return_value = off_product(
+            nutrition_data_per="100g", quantity="400 g", serving_size="30 g"
+        )
+
+        response: HttpResponse = client.get(
+            reverse("create_product"), {"barcode": NUTELLA}
+        )
+
+        assert response.context["form"]["nutrition_unit"].value() == "g"
+
+    @patch("opennutrilab.products.views.fetch_from_off")
     def test_a_serving_that_is_not_read_is_said_and_left_empty(
         self, mock_fetch_from_off: MagicMock, client: Client
     ):

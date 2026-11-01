@@ -10,11 +10,12 @@ reference_services).
 Only what is certain is here, a closed list as the countries and the allergens of
 label_parser are: the vitamin as "vitamine B6" / "vitamin B6" / "vit. B6" (the letter
 and the digits being the nutrient's), and the forms a label names it by
-("chlorhydrate de pyridoxine", "cholécalciférol"). A name not in it is no vitamin
-as far as this goes: it makes a reference to review as any name does. The forms
-that are additives with an E number (ascorbic acid, riboflavin) are in it too, so
-that "acide ascorbique (vitamine C)" is read as one substance; an additive of that
-name is found before the nutrient is.
+("chlorhydrate de pyridoxine", "cholécalciférol"). Biotin and beta-carotene, which a
+label adds as it does a vitamin, are in it too. A name not in it is no vitamin as far
+as this goes: it makes a reference to review as any name does. The forms that are
+additives with an E number (ascorbic acid, riboflavin) are in it too, so that "acide
+ascorbique (vitamine C)" is read as one substance; an additive of that name is found
+before the nutrient is.
 
 The module needs nothing of Django, so that the reading of a label can use it.
 """
@@ -32,6 +33,10 @@ LETTERS: dict[str, str] = {
     "pp": "vitamin_b3",
     "b5": "vitamin_b5",
     "b6": "vitamin_b6",
+    # Biotin is B7 in the nomenclature, B8 in France, and H in the old one.
+    "b7": "biotin",
+    "b8": "biotin",
+    "h": "biotin",
     "b9": "vitamin_b9",
     "b12": "vitamin_b12",
     "c": "vitamin_c",
@@ -77,6 +82,11 @@ FORMS: dict[str, str] = {
     "chlorhydrate de pyridoxine": "vitamin_b6",
     "hydrochlorure de pyridoxine": "vitamin_b6",
     "pyridoxine hydrochloride": "vitamin_b6",
+    # Biotin
+    "biotine": "biotin",
+    "biotin": "biotin",
+    "d-biotine": "biotin",
+    "d-biotin": "biotin",
     # B9
     "folate": "vitamin_b9",
     "folates": "vitamin_b9",
@@ -106,6 +116,15 @@ FORMS: dict[str, str] = {
     "acetate de retinyle": "vitamin_a",
     "retinyl palmitate": "vitamin_a",
     "retinyl acetate": "vitamin_a",
+    # Provitamin A, which a label adds as a vitamin does: with the "b" for beta, the
+    # Greek letter, or a space for the hyphen.
+    "beta-carotene": "beta_carotene",
+    "beta carotene": "beta_carotene",
+    "betacarotene": "beta_carotene",
+    "b-carotene": "beta_carotene",
+    "b carotene": "beta_carotene",
+    "\u03b2-carotene": "beta_carotene",
+    "\u03b2 carotene": "beta_carotene",
     # E
     "acetate de tocopheryle": "vitamin_e",
     "acetate de d-alpha-tocopheryle": "vitamin_e",
@@ -118,8 +137,11 @@ _NAMED = re.compile(r"^(?:vitamine|vitamin|vit)(?:\.\s*|\s+)([a-z]{1,2}\d{0,2})$
 
 
 def _folded(name: str) -> str:
-    """Lower case, no accents, single spaces: "Cholécalciférol" is "cholecalciferol"."""
-    text = unicodedata.normalize("NFD", name.casefold())
+    """
+    Lower case, no accents, single spaces: "Cholécalciférol" is "cholecalciferol". The
+    subscript digits of "B₁₂" are plain ones, as a label may use either.
+    """
+    text = unicodedata.normalize("NFKD", name.casefold())
     text = "".join(char for char in text if unicodedata.category(char) != "Mn")
     return " ".join(text.split())
 

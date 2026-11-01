@@ -434,6 +434,33 @@ def test_a_table_per_100_ml_is_read_as_such(per: str | None, unit: str):
     assert nutrition_unit_from_off(per) == unit
 
 
+@pytest.mark.parametrize(
+    ("per", "quantity", "serving_size", "unit"),
+    [
+        # A drink OpenFoodFacts says is per 100 g: it is sold by volume.
+        ("100g", "4 x 200 ml", "200 ml", "ml"),
+        ("100g", "1 l", None, "ml"),
+        ("100g", "75 cl", "", "ml"),
+        ("serving", "6 x 33 cl", "33 cl", "ml"),
+        # Its serving, when the package says nothing that is read.
+        ("100g", None, "250 ml", "ml"),
+        ("100g", "about 1 litre", "250 ml", "ml"),
+        # Sold by weight: the package decides over a serving in volume.
+        ("100g", "500 g", "250 ml", "g"),
+        ("100g", "4 x 125 g", None, "g"),
+        ("100g", None, "30 g", "g"),
+        ("100g", None, None, "g"),
+        # What the table says it is per stays.
+        ("100ml", "500 g", "30 g", "ml"),
+        (None, "1 l", None, "ml"),
+    ],
+)
+def test_a_liquid_sold_by_volume_has_a_table_per_100_ml(
+    per: str | None, quantity: str | None, serving_size: str | None, unit: str
+):
+    assert nutrition_unit_from_off(per, quantity, serving_size) == unit
+
+
 def test_the_schema_reads_what_the_table_is_given_per():
     payload = {"code": "3270190008262", "nutrition_data_per": "100ml"}
 

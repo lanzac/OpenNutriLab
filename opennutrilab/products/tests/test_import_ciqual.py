@@ -24,7 +24,8 @@ from opennutrilab.products.services.ciqual_import import CiqualError
 from opennutrilab.products.services.ciqual_import import import_ciqual
 from opennutrilab.products.services.ciqual_import import parse_value
 from opennutrilab.products.services.ciqual_import import read_constituents
-from opennutrilab.products.services.label_vitamins import LABEL_VITAMINS
+from opennutrilab.products.services.label_nutrients import LABEL_NUTRIENTS
+from opennutrilab.products.services.label_nutrients import LABEL_ONLY
 
 DATA = Path(__file__).parent / "data"
 # The real list of CIQUAL 2025's 74 constituents.
@@ -305,22 +306,30 @@ def test_nutrients_are_added_from_the_file_and_the_label_ones_are_untouched(
     assert {
         n.code: n.name_fr for n in Nutrient.objects.filter(code__in=label_names)
     } == label_names
-    # The label has the eight and the vitamins of a label, those made from a
-    # derivation among them (vitamin K).
+    # The label has the eight and what a label may declare, those made from a
+    # derivation (vitamin K, omega-3, EPA + DHA) or by the label alone (biotin) among
+    # them.
     assert {n.code for n in Nutrient.objects.filter(on_label=True)} == {
         *label_names,
-        *LABEL_VITAMINS,
+        *LABEL_NUTRIENTS,
     }
     assert dict(
-        Nutrient.objects.filter(code__in=LABEL_VITAMINS).values_list("code", "off_key")
-    ) == dict(LABEL_VITAMINS)
+        Nutrient.objects.filter(code__in=LABEL_NUTRIENTS).values_list("code", "off_key")
+    ) == dict(LABEL_NUTRIENTS)
     # 74 constituents, less the two in kcal and the eight the label already has.
     assert report.nutrients_created == 64  # noqa: PLR2004
-    # And vitamin K, the second vitamin A and the omega totals, which no source
-    # gives and the derivations create.
+    # And vitamin K, the second vitamin A, the omega totals and EPA + DHA, which no
+    # source gives and the derivations create, with what only a label gives.
     assert set(
         Nutrient.objects.filter(ciqual_code__isnull=True).values_list("code", flat=True)
-    ) == {"vitamin_k", "vitamin_a_sixth", "omega_3", "omega_6"}
+    ) == {
+        "vitamin_k",
+        "vitamin_a_sixth",
+        "omega_3",
+        "omega_6",
+        "epa_dha",
+        *LABEL_ONLY,
+    }
 
 
 @pytest.mark.django_db
@@ -505,7 +514,7 @@ def test_the_fatty_acids_are_imported_in_their_group_under_plain_names(
     assert Nutrient.objects.get(code="dha").name_fr == "DHA"
     assert set(
         Nutrient.objects.filter(group="fatty_acid").values_list("code", flat=True)
-    ) == {*NAMES, "saturated_fat", "omega_3", "omega_6"}
+    ) == {*NAMES, "saturated_fat", "omega_3", "omega_6", "epa_dha", "trans_fat"}
     assert Nutrient.objects.get(code="fat").group == "macronutrient"
 
 
@@ -542,7 +551,7 @@ def test_the_command_imports_a_directory_and_reports(directory: Path, capsys: An
     out = capsys.readouterr().out
     assert "3 foods (3 left out)" in out
     assert "7 values" in out
-    assert "64 nutrients added, 7 derived" in out
+    assert "64 nutrients added, 8 derived" in out
 
 
 @pytest.mark.django_db

@@ -42,7 +42,8 @@ from opennutrilab.products.services.ciqual_constituents import CONSTITUENTS
 from opennutrilab.products.services.ciqual_constituents import NAMES
 from opennutrilab.products.services.ciqual_constituents import SKIPPED
 from opennutrilab.products.services.derived_nutrients import ensure_derivations
-from opennutrilab.products.services.label_vitamins import label_fields
+from opennutrilab.products.services.label_nutrients import ensure_label_only
+from opennutrilab.products.services.label_nutrients import label_fields
 from opennutrilab.products.services.stored_estimates import mark_stale
 
 # The table is published on recherche.data.gouv.fr; this DOI always leads to the
@@ -396,6 +397,7 @@ def import_ciqual(
     with transaction.atomic():
         nutrients, created = ensure_nutrients(constituents)
         derived = ensure_derivations()
+        ensure_label_only()
         source, _created = Source.objects.update_or_create(
             code=f"ciqual-{files.released.year}",
             defaults={

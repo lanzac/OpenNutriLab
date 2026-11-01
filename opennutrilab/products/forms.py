@@ -1,4 +1,5 @@
 import json
+from collections.abc import Iterator
 from decimal import Decimal
 from typing import TYPE_CHECKING
 from typing import Any
@@ -71,6 +72,32 @@ NUTRIENT_GROUP_ORDER = [
     Nutrient.Group.VITAMIN.value,
 ]
 OPEN_NUTRIENT_GROUPS = frozenset(NUTRIENT_GROUP_ORDER[:2])
+# The fats the label's table lists right under "fat": they are with it, in its group,
+# though the catalogue puts them among the fatty acids. The other fatty acids (oleic,
+# omega-3, EPA...) are in that group, which folds.
+FATS_UNDER_FAT = frozenset(
+    {"saturated_fat", "monounsaturated_fat", "polyunsaturated_fat", "trans_fat"}
+)
+
+
+def in_table_order(nutrients: list[Nutrient]) -> list[Nutrient]:
+    """
+    `nutrients`, in the order of the catalogue, with each part right after the
+    nutrient it is part of, as a label's table lists them: fat, saturates,
+    carbohydrates, sugars, lactose. A part whose whole is not among them is on its own.
+    """
+    codes = {n.code for n in nutrients}
+    parts: dict[str | None, list[Nutrient]] = {}
+    for nutrient in nutrients:
+        parent = nutrient.parent_id if nutrient.parent_id in codes else None
+        parts.setdefault(parent, []).append(nutrient)
+
+    def listed(nutrient: Nutrient) -> Iterator[Nutrient]:
+        yield nutrient
+        for part in parts.get(nutrient.code, []):
+            yield from listed(part)
+
+    return [n for whole in parts.get(None, []) for n in listed(whole)]
 
 
 def label_wording(nutrient: Nutrient) -> str:
@@ -82,7 +109,11 @@ def label_wording(nutrient: Nutrient) -> str:
     if nutrient.parent_id is None:
         return nutrient.name
     name = nutrient.name
-    return _("of which %(name)s") % {"name": name[:1].lower() + name[1:]}
+    # In the middle of a sentence, but an acronym stays as it is: "dont EPA".
+    first_word = name.split(maxsplit=1)[0]
+    if not (len(first_word) > 1 and first_word.isupper()):
+        name = name[:1].lower() + name[1:]
+    return _("of which %(name)s") % {"name": name}
 
 
 class ProductForm(forms.ModelForm):
@@ -500,13 +531,13 @@ class ProductForm(forms.ModelForm):
         """
         Return crispy-forms layout for the declared nutrients, with units: in groups
         that fold, as the day's needs are on the meals page. A part of another
-        nutrient ("of which sugars") is with it.
+        nutrient ("of which sugars") is with it, in the order of the label's table.
         """
         by_code = {n.code: n for n in self.label_nutrients}
 
         def group_of(nutrient: Nutrient) -> str:
-            while nutrient.parent_id in by_code:
-                nutrient = by_code[nutrient.parent_id]
+            if nutrient.code in FATS_UNDER_FAT and nutrient.parent_id in by_code:
+                return by_code[nutrient.parent_id].group
             return nutrient.group
 
         groups: dict[str, list[Nutrient]] = {}
@@ -515,7 +546,7 @@ class ProductForm(forms.ModelForm):
 
         layout: list[LayoutObject] = []
         for group in NUTRIENT_GROUP_ORDER:
-            nutrients = groups.get(group)
+            nutrients = in_table_order(groups.get(group, []))
             if not nutrients:
                 continue
             fields = [nutrient_field(n.code) for n in nutrients]

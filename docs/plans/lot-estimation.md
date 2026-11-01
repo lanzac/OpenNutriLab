@@ -637,10 +637,10 @@ written.
      2026-10-10 (next point), so this is seen on real products.
    - **The vitamins of a label** (2026-10-10). The form asks for them, and the
      OpenFoodFacts lookup fills them, as it does the 8: they are `on_label` with an
-     `off_key` (`services/label_vitamins.py`: A, D, E, K, C, B1, B2, B3 as OFF's
-     `vitamin-pp`, B5, B6, B9, B12; the minerals and biotin, which the catalogue
-     lacks, are not there). They come after the 8, under their own group on the
-     form. The CIQUAL import and the derivations create them that way, and
+     `off_key` (`services/label_nutrients.py`: A, D, E, K, C, B1, B2, B3 as OFF's
+     `vitamin-pp`, B5, B6, B9, B12; the minerals and biotin came on 2026-11-01, see
+     the point after the next one). They come after the 8, under their own group on
+     the form. The CIQUAL import and the derivations create them that way, and
      migration 0027 sets those a catalogue already has. A declared vitamin is a
      check like any other (`compare` reads every declared code), with the
      tolerance of its group (-35 %, +50 %); none is one of the seven the shares
@@ -648,6 +648,23 @@ written.
      "the label is above the least the ingredients bring", and it fails only when
      a label declares less than that. For the meals the label's figure is used
      where declared (`stored_estimates.compositions`).
+   - **More nutrients on the label** (2026-11-01, asked by the user on a drink,
+     4051895056838: "all the nutritional information OpenFoodFacts has, in the right
+     group"). `services/label_nutrients.py` (`LABEL_MORE`, migration 0029) puts on the
+     label: the minerals of annex XIII and sodium, biotin and beta-carotene, mono- and
+     polyunsaturates, trans fats, omega-3 and omega-6, ALA, LA, oleic acid, AA, EPA,
+     DHA and EPA + DHA (a sum like the omega totals, `SUMS`), lactose, added sugars,
+     starch, polyols and cholesterol. What no CIQUAL food gives (added sugars, trans
+     fat, fluoride, chromium, molybdenum, biotin) is made by `ensure_label_only`
+     (the CIQUAL import) or by the migration on a catalogue that has the import. The
+     form lists the fats of the label's table under fat and the other fatty acids in
+     their own group, each part after its whole; the chart draws only the table's
+     nutrients (`CHART_NUTRIENTS`) and a whole is never drawn smaller than its parts.
+     Left out on purpose: the sugars one by one, the fatty acids no claim asks for
+     (butyric to stearic), the other forms of a vitamin, and what the catalogue has
+     no word for (caffeine, taurine, amino acids). A drink sold by volume gets a table
+     per 100 ml though OpenFoodFacts says "100g" (`nutrition_unit_from_off` reads the
+     package, then the serving).
    - **The label narrows the estimate** (2026-10-10, decided with the user: the
      declared vitamins were only compared with the estimate, and the label is the
      reference). For a nutrient the label declares and the ingredients give, when
