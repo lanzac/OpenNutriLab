@@ -128,11 +128,15 @@
   text-align: center;
 }
 
+/* Beside the list the sheet follows the page, so that it is in view wherever the product
+   chosen is. It stops where the list does, and the page goes on under it for a button
+   and a margin: the sheet is that much shorter than the screen, or its top would be
+   pushed out of view at the end of the page. */
 @media (min-width: 992px) {
   .inventory-panel {
     position: sticky;
     top: 1rem;
-    max-height: calc(100vh - 2rem);
+    max-height: calc(100vh - 1rem - 5.5rem);
     overflow-y: auto;
   }
 }

@@ -319,7 +319,8 @@ export function ProductListApp({
           {labels.inventoryError}
         </p>
       )}
-      <div className="row g-4 align-items-start">
+      {/* The columns are as tall as the list, so that the sheet can stay in view. */}
+      <div className="row g-4">
         <div className="col-lg-7 col-xl-8">
           {groups.length === 0 ? (
             <p>
