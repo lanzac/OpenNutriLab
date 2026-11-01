@@ -5,6 +5,7 @@ from django.db.models import Model
 from django.db.models.signals import m2m_changed
 from django.db.models.signals import post_delete
 from django.db.models.signals import post_save
+from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 
 from .models import Additive
@@ -18,6 +19,8 @@ from .models import ProductNutrient
 from .models import ReferenceIngredient
 from .models import SourceFood
 from .models import SourceFoodNutrient
+from .services.label_leftovers import discard_leftovers
+from .services.label_leftovers import used_by
 from .services.stored_estimates import mark_stale
 
 
@@ -26,6 +29,23 @@ def delete_product_image(instance: Product, **kwargs):  # pyright: ignore[report
     """Delete image file from storage when Product instance is deleted."""
     if instance.image:
         instance.image.delete(save=False)
+
+
+@receiver(pre_delete, sender=Product)
+def remember_what_a_product_used(instance: Product, **kwargs: Any) -> None:  # pyright: ignore[reportUnusedParameter]
+    """Before its ingredients go with it: what they were."""
+    instance.used_before_delete = used_by(instance)  # pyright: ignore[reportAttributeAccessIssue]
+
+
+@receiver(post_delete, sender=Product)
+def discard_what_only_a_product_used(instance: Product, **kwargs: Any) -> None:  # pyright: ignore[reportUnusedParameter]
+    """
+    What a reading of its label made, and nothing else uses, goes with the product
+    (see services.label_leftovers).
+    """
+    used = getattr(instance, "used_before_delete", None)
+    if used is not None:
+        discard_leftovers(used)
 
 
 # ----------------------------------------------------------------------------

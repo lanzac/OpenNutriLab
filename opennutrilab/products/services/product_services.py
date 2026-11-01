@@ -42,6 +42,8 @@ from opennutrilab.products.models import Preparation
 from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductNutrient
 from opennutrilab.products.models import ReferenceIngredient
+from opennutrilab.products.services.label_leftovers import discard_leftovers
+from opennutrilab.products.services.label_leftovers import used_by
 from opennutrilab.products.services.label_parser import LabelWarning
 from opennutrilab.products.services.preparation_services import (
     make_preparations_of_listed_parts,
@@ -270,9 +272,12 @@ def _replace_ingredients(product: Product, items: list[IngredientInput]) -> None
     reference_services). One whose parts the label lists is a preparation,
     whichever it was found to be (see preparation_services).
     Nothing of the old tree needs carrying over: the name finds the same one
-    again. A preparation takes the parts the label lists for it as its children,
-    as any ingredient does.
+    again, and what only the old tree used, and a reading made, goes (see
+    label_leftovers). A preparation takes the parts the label lists for it as its
+    children, as any ingredient does.
     """
+    # What the old ingredients were, to be looked at again once they are gone.
+    before = used_by(product)
     references, new = resolve_references_and_new(items)
     linked = make_preparations_of_listed_parts(items, references)
     # After the preparations are made, so that a reference whose parts the label
@@ -288,6 +293,9 @@ def _replace_ingredients(product: Product, items: list[IngredientInput]) -> None
     )
     product.ingredients.all().delete()
     _create_ingredients(product, items, parent=None, linked=linked)
+    # A reading that was wrong, replaced by a right one, leaves what it made and
+    # nothing uses any more: it does not stay among the references to review.
+    discard_leftovers(before)
 
 
 def _create_ingredients(

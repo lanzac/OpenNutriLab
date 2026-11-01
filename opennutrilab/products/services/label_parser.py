@@ -125,6 +125,10 @@ class Problem(TextChoices):
         "other_text",
         _("Text that does not belong to a list of ingredients: %(detail)s"),
     )
+    RUN_ON = (
+        "run_on",
+        _("A full stop with no space before the next sentence: %(detail)s"),
+    )
     LONG_NAME = "long_name", _("An ingredient that is a whole sentence: %(detail)s")
     SHORT_NAME = "short_name", _("An ingredient of one or two letters: %(detail)s")
     EMPTY_ITEM = "empty_item", _("An empty place between two commas.")
@@ -186,6 +190,10 @@ _STATEMENT = re.compile(
     re.IGNORECASE,
 )
 _TAG = re.compile(r"</?[a-zA-Z][^>]*>")
+# Two sentences with no space between them: "acide ascorbique.Dans le cas d'une...".
+# A word, a full stop, and the capital of the next word: no ingredient is written so,
+# and what follows is no ingredient, whatever the list makes of it.
+_RUN_ON = re.compile(r"[a-zà-ÿœ]{2}\.[A-ZÀ-ÝŒ][a-zà-ÿœ]{2}")
 
 # "31 %", "1,4%", "min. 31 %": the number is what counts.
 _PERCENT = re.compile(
@@ -1053,6 +1061,10 @@ def _warnings(part: str, written: str, items: list[LabelItem]) -> list[LabelWarn
     found += _garbled(part)
     if (other := _OTHER_TEXT.search(part)) is not None:
         found.append(LabelWarning(Problem.OTHER_TEXT, other.group(0)))
+    if (run_on := _RUN_ON.search(part)) is not None:
+        found.append(
+            LabelWarning(Problem.RUN_ON, _around(part, run_on.start()).strip(_EDGE))
+        )
     found += _odd_names(items)
     if len(items) == 1 and not items[0].parts and len(part) > _NOT_A_LIST_LENGTH:
         found.append(LabelWarning(Problem.NOT_A_LIST))

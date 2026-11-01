@@ -504,6 +504,39 @@ def test_what_else_a_flavouring_holds_is_still_its_parts():
     )
 
 
+# A bakery's label (3276551080656): the list runs into the sentence after it, and what
+# was read of it made ingredients of "le personnel manipule les".
+BAKERY = (
+    "Baguette Farine de BLE, eau, sel, levure, émulsifiant : mono - et diglycérides "
+    "d'acides gras, agent de traitement de la farine : acide-ascorbique."
+    "Dans le cas d'une fabrication en magasin, le personnel manipule les "
+    "allergènes suivants : GLUTEN - OEUF."
+)
+
+
+def test_two_sentences_with_no_space_between_them_stop_the_reading():
+    reading = read_label(BAKERY)
+
+    assert reading.items == []
+    assert Problem.RUN_ON in [w.problem for w in reading.warnings]
+
+
+def test_the_stop_says_where_the_sentences_meet():
+    [warning] = [w for w in read_label(BAKERY).warnings if w.problem == Problem.RUN_ON]
+
+    assert "ascorbique.Dans" in warning.detail
+    with translation.override("fr"):
+        assert warning.message().startswith("Un point sans espace avant la phrase")
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["Sucre, sel. Peut contenir du lait.", "Farine (blé), eau.", "Sucre 12.5 %, sel"],
+)
+def test_a_full_stop_followed_by_a_space_or_a_number_is_no_run_on(text: str):
+    assert Problem.RUN_ON not in [w.problem for w in read_label(text).warnings]
+
+
 def test_dont_introduces_what_is_in_an_ingredient():
     text = "Glucides (dont sucres 5 %), sel"
 

@@ -2080,6 +2080,10 @@ msgid "Text that does not belong to a list of ingredients: %(detail)s"
 msgstr "Texte qui n'appartient pas à une liste d'ingrédients : %(detail)s"
 
 #, python-format
+msgid "A full stop with no space before the next sentence: %(detail)s"
+msgstr "Un point sans espace avant la phrase suivante : %(detail)s"
+
+#, python-format
 msgid "An ingredient that is a whole sentence: %(detail)s"
 msgstr "Un ingrédient qui est une phrase entière : %(detail)s"
 
