@@ -18,6 +18,7 @@ from django.utils import translation
 from PIL import Image
 
 from opennutrilab.products.api.openfoodfacts.schemas import OFFProductSchema
+from opennutrilab.products.api.openfoodfacts.schemas import OFFSearchHitSchema
 from opennutrilab.products.api.openfoodfacts.services import OFFError
 from opennutrilab.products.api.openfoodfacts.services import OFFProductNotFoundError
 from opennutrilab.products.api.schemas.inbound import IngredientInput
@@ -1031,6 +1032,143 @@ def test_the_list_offers_delete_to_staff_only(client: Client):
 
     client.force_login(UserFactory(is_staff=True))
     assert client.get(url).context["product_list_props"]["canDelete"] is True
+
+
+@pytest.mark.django_db
+class TestSearchOffView:
+    URL = reverse("search_off")
+
+    @patch("opennutrilab.products.views.search_off")
+    def test_lists_what_openfoodfacts_finds(
+        self, mock_search: MagicMock, client: Client
+    ):
+        mock_search.return_value = [
+            OFFSearchHitSchema.model_validate(
+                {
+                    "code": "3700966568466",
+                    "product_name": "Colin d'Alaska pané",
+                    "brands": ["Cap océan", "Marque"],
+                    "quantity": "500 g",
+                    "image_small_url": "https://images.openfoodfacts.org/a.jpg",
+                }
+            ),
+            OFFSearchHitSchema.model_validate({"code": "3229820794556"}),
+        ]
+
+        response: HttpResponse = client.get(self.URL, {"q": " colin "})
+
+        assert response.status_code == HTTPStatus.OK
+        mock_search.assert_called_once_with("colin")
+        assert response.json() == {
+            "results": [
+                {
+                    "barcode": "3700966568466",
+                    "name": "Colin d'Alaska pané",
+                    "brands": "Cap océan, Marque",
+                    "quantity": "500 g",
+                    "image": "https://images.openfoodfacts.org/a.jpg",
+                },
+                {
+                    "barcode": "3229820794556",
+                    "name": "",
+                    "brands": "",
+                    "quantity": "",
+                    "image": "",
+                },
+            ]
+        }
+
+    @patch("opennutrilab.products.views.search_off")
+    def test_a_text_too_short_does_not_ask_openfoodfacts(
+        self, mock_search: MagicMock, client: Client
+    ):
+        response: HttpResponse = client.get(self.URL, {"q": "co "})
+
+        assert response.json() == {"results": []}
+        mock_search.assert_not_called()
+
+    @patch("opennutrilab.products.views.search_off")
+    def test_openfoodfacts_down_is_a_bad_gateway(
+        self, mock_search: MagicMock, client: Client
+    ):
+        mock_search.side_effect = OFFError("down")
+
+        response: HttpResponse = client.get(self.URL, {"q": "colin"})
+
+        assert response.status_code == HTTPStatus.BAD_GATEWAY
+        assert response.json() == {"error": "unavailable"}
+
+    def test_is_for_signed_in_users(self):
+        response: HttpResponse = Client().get(self.URL, {"q": "colin"})
+
+        assert response.status_code == HTTPStatus.FORBIDDEN
+
+
+@pytest.mark.django_db
+class TestOpenFoodFactsLinks:
+    def test_a_new_product_can_be_searched_on_openfoodfacts(self, client: Client):
+        with translation.override("fr-fr"):
+            response: HttpResponse = client.get(
+                reverse("create_product"), headers={"accept-language": "fr"}
+            )
+
+        page = response.content.decode()
+        assert 'id="off-search-input"' in page
+        assert "Chercher sur OpenFoodFacts" in page
+        # No link to the page of a product that is not one yet.
+        assert 'id="open-off-product"' not in page
+        config = response.context["product_form_config"]["offSearch"]
+        assert config["url"] == reverse("search_off")
+        assert config["minLength"] == 3  # noqa: PLR2004
+        assert config["placeholderImage"].endswith(".png")
+        assert config["labels"]["error"].startswith("OpenFoodFacts est injoignable")
+
+    def test_a_product_can_be_seen_on_openfoodfacts(self, client: Client):
+        product = Product.objects.create(barcode="3229820794556", name="Muesli")
+
+        with translation.override("fr-fr"):
+            response: HttpResponse = client.get(
+                reverse("edit_product", args=[product.pk]),
+                headers={"accept-language": "fr"},
+            )
+
+        page = response.content.decode()
+        match = re.search(r'<a [^>]*id="open-off-product"[^>]*>', page)
+        assert match, "no link to OpenFoodFacts"
+        link = match.group(0)
+        assert 'href="https://world.openfoodfacts.org/product/3229820794556"' in link
+        # Beside the page being edited, not in place of it.
+        assert 'target="_blank"' in link
+        assert "noopener" in link
+        assert "Voir sur OpenFoodFacts" in page
+        assert 'id="off-search-input"' not in page
+
+
+@pytest.mark.django_db
+class TestProductListHeader:
+    def test_the_button_that_creates_a_product_is_at_the_top(self, client: Client):
+        with translation.override("fr-fr"):
+            response: HttpResponse = client.get(
+                reverse("list_products"), headers={"accept-language": "fr"}
+            )
+
+        page = response.content.decode()
+        button = page.index(reverse("create_product"))
+        # Above the list, not under it where it was hard to find.
+        assert button < page.index('id="product-list-root"')
+        assert "Créer un produit" in page
+        # "Add" is what a product of the catalogue is to the inventory.
+        assert "Ajouter un nouveau produit" not in page
+
+    def test_the_list_can_fold_all_its_groups(self, client: Client):
+        with translation.override("fr-fr"):
+            response: HttpResponse = client.get(
+                reverse("list_products"), headers={"accept-language": "fr"}
+            )
+
+        labels = response.context["product_list_props"]["labels"]
+        assert labels["foldAll"] == "Tout replier"
+        assert labels["unfoldAll"] == "Tout déplier"
 
 
 @pytest.mark.django_db

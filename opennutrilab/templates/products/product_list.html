@@ -7,7 +7,16 @@
   {% translate "Inventory" %}
 {% endblock title %}
 {% block content %}
-  <h1 class="page-title">{% translate "Inventory" %}</h1>
+  <div class="page-header">
+    <h1 class="mb-0">{% translate "Inventory" %}</h1>
+    {# At the top, where it is found; "Create", since "Add" is what a product of the #}
+    {# catalogue is to the inventory. #}
+    <a class="btn btn-primary"
+       href="{% url 'create_product' %}"
+       title="{% translate "For a product the catalogue does not have yet: it is looked up on OpenFoodFacts or entered by hand." %}">
+      <i class="fa-solid fa-circle-plus" aria-hidden="true"></i> {% translate "Create a product" %}
+    </a>
+  </div>
   <div class="content-container">
     {# Rendered by React (frontend/src/apps/products/ProductListApp.jsx), #}
     {# fetching live from /api/v1/products/. Labels, the CSRF token and #}
@@ -16,16 +25,16 @@
     {# token cannot be read client-side. #}
     {{ product_list_props|json_script:"product-list-props" }}
     <div id="product-list-root"></div>
-    <div class="d-grid gap-2 col-6 mx-auto">
-      <a class="btn btn-primary"
-         href="{% url 'create_product' %}"
-         role="button">{% translate "Add a new product" %}</a>
-    </div>
   </div>
   {% vite_asset 'src/apps/products/list-entry.jsx' %}
   <style>
-    .page-title {
-      margin: 30px;
+    .page-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin: 30px 30px 0;
     }
 
     .content-container {

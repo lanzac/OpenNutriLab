@@ -13,6 +13,8 @@ export const labels = {
   confirmDelete: 'Supprimer « %(name)s » ?',
   myInventory: 'Mon inventaire',
   allProducts: 'Tous les produits',
+  foldAll: 'Tout replier',
+  unfoldAll: 'Tout déplier',
   addToInventory: 'Ajouter à mon inventaire',
   removeFromInventory: 'Retirer de mon inventaire',
   inventoryEmpty:

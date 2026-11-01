@@ -5,12 +5,16 @@ from http import HTTPStatus
 from typing import Any
 
 import requests
+from django.core.exceptions import ValidationError as DjangoValidationError
 from pydantic import ValidationError
 
 from opennutrilab.products.api.openfoodfacts.schemas import OFFProductAPIResponseSchema
 from opennutrilab.products.api.openfoodfacts.schemas import OFFProductSchema
+from opennutrilab.products.api.openfoodfacts.schemas import OFFSearchHitSchema
 from opennutrilab.products.api.openfoodfacts.schemas import StatusEnum
 from opennutrilab.products.api.schemas.inbound import IngredientInput
+from opennutrilab.products.api.schemas.inbound import validate_off_image_url
+from opennutrilab.products.fields import validate_ean13
 from opennutrilab.products.models import Nutrient
 from opennutrilab.products.models import Product
 from opennutrilab.products.services.label_parser import LabelItem
@@ -120,6 +124,65 @@ def fetch_from_off(
         raise OFFProductNotFoundError(msg)
 
     return product
+
+
+OFF_SEARCH_URL = "https://search.openfoodfacts.org/search"
+# What a search of OpenFoodFacts is asked for, and how many of its products are kept.
+OFF_SEARCH_FIELDS = "code,product_name,brands,quantity,image_small_url"
+OFF_SEARCH_KEPT = 10
+
+
+def off_product_url(barcode: str) -> str:
+    """The page of a product on the OpenFoodFacts site."""
+    return f"https://world.openfoodfacts.org/product/{barcode}"
+
+
+def search_off(text: str) -> list[OFFSearchHitSchema]:
+    """
+    The products of OpenFoodFacts that a text (a name, a brand) finds, best first.
+
+    Only those that can become a product here are kept: a barcode that is not a valid
+    EAN-13 is refused by the form, so offering it would lead nowhere. Raises
+    OFFError when OpenFoodFacts cannot be reached or does not make sense.
+    """
+    try:
+        response = requests.get(
+            OFF_SEARCH_URL,
+            params={
+                "q": text,
+                # More than are kept, since some are left out below.
+                "page_size": 2 * OFF_SEARCH_KEPT,
+                "fields": OFF_SEARCH_FIELDS,
+            },
+            timeout=15,
+            headers=OFF_HEADERS,
+        )
+    except requests.RequestException as e:
+        msg = f"External API unreachable: {e}"
+        raise OFFError(msg) from e
+
+    if response.status_code != HTTPStatus.OK:
+        msg = f"External API returned an error: {response.status_code}"
+        raise OFFError(msg)
+
+    try:
+        hits = [OFFSearchHitSchema.model_validate(h) for h in response.json()["hits"]]
+    except (ValueError, KeyError, TypeError) as e:
+        msg = f"Invalid search response received from external API: {e}"
+        raise OFFError(msg) from e
+
+    kept: list[OFFSearchHitSchema] = []
+    for hit in hits:
+        try:
+            validate_ean13(hit.barcode)
+            hit.image_url = validate_off_image_url(hit.image_url)
+        except DjangoValidationError:
+            continue
+        except ValueError:
+            # A picture that is not OpenFoodFacts' own is not shown; the product is.
+            hit.image_url = None
+        kept.append(hit)
+    return kept[:OFF_SEARCH_KEPT]
 
 
 def ingredient_inputs_from_label(

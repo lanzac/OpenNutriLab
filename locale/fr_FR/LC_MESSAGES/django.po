@@ -1856,6 +1856,41 @@ msgstr "Légumes"
 msgid "Waters and flavored waters"
 msgstr "Eaux et eaux aromatisées"
 
+msgid "Create a product"
+msgstr "Créer un produit"
+
+msgid ""
+"For a product the catalogue does not have yet: it is looked up on "
+"OpenFoodFacts or entered by hand."
+msgstr ""
+"Pour un produit que le catalogue n'a pas encore : il est cherché sur "
+"OpenFoodFacts ou saisi à la main."
+
+msgid "Search OpenFoodFacts"
+msgstr "Chercher sur OpenFoodFacts"
+
+msgid "Name or brand of the product"
+msgstr "Nom ou marque du produit"
+
+msgid ""
+"Choose a result to fill in the form with it. You can also enter a "
+"barcode below."
+msgstr ""
+"Choisissez un résultat pour remplir le formulaire avec lui. Vous pouvez "
+"aussi saisir un code-barres ci-dessous."
+
+msgid "View on OpenFoodFacts"
+msgstr "Voir sur OpenFoodFacts"
+
+msgid "Searching OpenFoodFacts…"
+msgstr "Recherche sur OpenFoodFacts…"
+
+msgid "OpenFoodFacts has no product for this search."
+msgstr "OpenFoodFacts n'a aucun produit pour cette recherche."
+
+msgid "OpenFoodFacts could not be reached. Try again in a moment."
+msgstr "OpenFoodFacts est injoignable. Réessayez dans un instant."
+
 #~ msgid "Fat"
 #~ msgstr "Matières grasses"
 

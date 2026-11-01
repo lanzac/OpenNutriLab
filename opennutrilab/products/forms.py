@@ -23,11 +23,13 @@ from crispy_forms.layout import Submit
 from django import forms
 from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from pydantic import TypeAdapter
 from pydantic import ValidationError
 
 from opennutrilab.crispy_bootstrap_extended.layouts import AccordionGroupExtended
+from opennutrilab.products.api.openfoodfacts.services import off_product_url
 from opennutrilab.products.api.schemas.inbound import IngredientInput
 from opennutrilab.products.api.schemas.inbound import Place
 from opennutrilab.products.api.schemas.inbound import ProductCreate
@@ -262,6 +264,12 @@ class ProductForm(forms.ModelForm):
         # FormHelper layout configuration
         # --------------------------------------------------------------------
         self.helper.layout = Layout(
+            # A new product is found by its name on OpenFoodFacts, or by its barcode.
+            *(
+                []
+                if self.is_edit
+                else [HTML("{% include 'products/components/off_search.html' %}")]
+            ),
             Row(barcode_field),
             Row(
                 Column(
@@ -407,6 +415,16 @@ class ProductForm(forms.ModelForm):
                 css_class="btn btn-outline-secondary",
                 type="button",
                 id="reset-product-data",
+            ),
+            HTML(
+                format_html(
+                    '<a class="btn btn-outline-secondary" id="open-off-product" '
+                    'href="{}" target="_blank" rel="noopener noreferrer">'
+                    '<i class="fa-solid fa-arrow-up-right-from-square" '
+                    'aria-hidden="true"></i> {}</a>',
+                    off_product_url(self.instance.barcode),
+                    _("View on OpenFoodFacts"),
+                )
             ),
         )
 

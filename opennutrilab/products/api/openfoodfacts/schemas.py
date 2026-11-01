@@ -47,6 +47,19 @@ class OFFProductSchema(Schema):
     group_level_2: str | None = Field(default=None, validation_alias="pnns_groups_2")
 
 
+class OFFSearchHitSchema(Schema):
+    """A product as a search of OpenFoodFacts lists it: enough to tell it apart."""
+
+    model_config = ConfigDict(populate_by_name=True, extra="ignore")
+
+    barcode: str = Field(validation_alias="code")
+    name: str | None = Field(default=None, validation_alias="product_name")
+    brands: list[str] = Field(default_factory=list)
+    # What the package holds, as typed from the packaging ("500 g").
+    quantity: str | None = None
+    image_url: str | None = Field(default=None, validation_alias="image_small_url")
+
+
 # ---- ENUMS ----
 
 

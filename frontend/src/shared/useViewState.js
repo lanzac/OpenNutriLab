@@ -53,6 +53,21 @@ export function useStoredChoice(key, choices) {
 }
 
 /**
+ * A set of keys kept under `key` of the browser's storage: the groups of a list that
+ * are folded away, say.
+ */
+export function useStoredSet(key) {
+  const [keys, setKeysState] = useState(() => new Set(storedOpen(key)));
+
+  const setKeys = (next) => {
+    setKeysState(next);
+    write(key, JSON.stringify([...next]));
+  };
+
+  return [keys, setKeys];
+}
+
+/**
  * The view chosen (the first of `modes` at first) and the groups that are open, kept
  * under `modeKey` and `openKey` of the browser's storage.
  */

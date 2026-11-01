@@ -2,13 +2,14 @@
 // opennutrilab/templates/products/product_form.html).
 //
 // Vanilla DOM code driving the server-rendered (crispy-forms) form: the
-// barcode buttons, the macronutrient chart and the ingredients tree; and, on the
-// estimate, the gauges (React, see estimate/).
+// barcode buttons, the search of OpenFoodFacts, the macronutrient chart and the
+// ingredients tree; and, on the estimate, the gauges (React, see estimate/).
 import { initEstimatePanel } from './estimate/index.jsx';
 import { initBarcodeActions } from './form/barcode-actions.js';
 import { initIngredientsTable } from './form/ingredients-table.js';
 import { initIngredientsText } from './form/ingredients-text.js';
 import { initNutrientChart } from './form/nutrient-chart.js';
+import { initOffSearch } from './form/off-search.js';
 import { initPlotlyTheme } from './form/plotly-theme.js';
 
 // Modules are deferred, so the document may already be parsed.
@@ -29,6 +30,7 @@ ready(() => {
   );
 
   initBarcodeActions(config.barcodeActions);
+  initOffSearch(config.offSearch);
   initPlotlyTheme();
   initNutrientChart(config.nutrientChart);
   const ingredients = initIngredientsTable(config.ingredientsTable);

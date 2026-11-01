@@ -1,0 +1,25 @@
+{% load i18n %}
+
+{# Filled by frontend/src/apps/products/form/off-search.js. #}
+<div id="off-search" class="mb-4">
+  <label for="off-search-input" class="form-label">{% translate "Search OpenFoodFacts" %}</label>
+  <div class="input-group">
+    <span class="input-group-text"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i></span>
+    {# No name: what is typed here is not part of the product. #}
+    <input type="search"
+           id="off-search-input"
+           class="form-control"
+           autocomplete="off"
+           placeholder="{% translate "Name or brand of the product" %}"
+           aria-describedby="off-search-hint" />
+  </div>
+  <div id="off-search-hint" class="form-text">
+    {% translate "Choose a result to fill in the form with it. You can also enter a barcode below." %}
+  </div>
+  <div id="off-search-status"
+       class="small text-body-secondary mt-2"
+       role="status"
+       aria-live="polite"></div>
+  <ul id="off-search-results" class="list-group mt-2">
+  </ul>
+</div>

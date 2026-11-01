@@ -15,6 +15,7 @@ from django.http import HttpResponseRedirect
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from django.templatetags.static import static
+from django.urls import reverse
 from django.urls import reverse_lazy
 from django.utils.translation import get_language
 from django.utils.translation import gettext as _
@@ -32,6 +33,7 @@ from .api.openfoodfacts.services import fetch_from_off
 from .api.openfoodfacts.services import ingredient_inputs_from_label
 from .api.openfoodfacts.services import nutrition_unit_from_off
 from .api.openfoodfacts.services import read_inputs_from_label
+from .api.openfoodfacts.services import search_off
 from .api.schemas.inbound import IngredientInput
 from .api.schemas.inbound import ReadLabelIn
 from .api.schemas.inbound import validate_off_image_url
@@ -172,6 +174,8 @@ class ProductListView(LoginRequiredMixin, ListView):
                 "deleteFromCatalogueHint": _("The product disappears for every user."),
                 "myInventory": _("My inventory"),
                 "allProducts": _("All products"),
+                "foldAll": _("Fold all"),
+                "unfoldAll": _("Unfold all"),
                 "addToInventory": _("Add to my inventory"),
                 "removeFromInventory": _("Take out of my inventory"),
                 "inventoryEmpty": _(
@@ -339,6 +343,47 @@ class ReadLabelView(LoginRequiredMixin, View):
         )
 
 
+# A search shorter than this finds too many products to be of use.
+OFF_SEARCH_MIN_LENGTH = 3
+
+
+class SearchOffView(LoginRequiredMixin, View):
+    """
+    The products of OpenFoodFacts a text finds, for the page that creates a product.
+
+    OpenFoodFacts is asked from here and not from the browser: it wants an application
+    named in the request, and the answer is cut down to what the page lists. Choosing
+    a product is the page's: it loads the product by its barcode, as if typed.
+    """
+
+    raise_exception = True
+    http_method_names = ["get"]
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        text = request.GET.get("q", "").strip()
+        if len(text) < OFF_SEARCH_MIN_LENGTH:
+            return JsonResponse({"results": []})
+        try:
+            hits = search_off(text)
+        except OFFError:
+            logger.warning("OpenFoodFacts search failed for %r", text, exc_info=True)
+            return JsonResponse({"error": "unavailable"}, status=502)
+        return JsonResponse(
+            {
+                "results": [
+                    {
+                        "barcode": hit.barcode,
+                        "name": hit.name or "",
+                        "brands": ", ".join(hit.brands),
+                        "quantity": hit.quantity or "",
+                        "image": hit.image_url or "",
+                    }
+                    for hit in hits
+                ]
+            }
+        )
+
+
 class ProductDeleteView(UserPassesTestMixin, DeleteView):
     model = Product
     success_url = reverse_lazy("list_products")
@@ -408,6 +453,19 @@ def product_form_config() -> dict[str, Any]:
         },
         "barcodeActions": {
             "enterBarcode": _("Please enter a barcode."),
+        },
+        "offSearch": {
+            "url": reverse("search_off"),
+            "minLength": OFF_SEARCH_MIN_LENGTH,
+            # What a product with no photo is shown with, as in the inventory.
+            "placeholderImage": static("images/milk-carton-svgrepo-com.png"),
+            "labels": {
+                "searching": _("Searching OpenFoodFacts…"),
+                "none": _("OpenFoodFacts has no product for this search."),
+                "error": _(
+                    "OpenFoodFacts could not be reached. Try again in a moment."
+                ),
+            },
         },
         "estimatePanel": {
             # Intl formats the figures in the language served.

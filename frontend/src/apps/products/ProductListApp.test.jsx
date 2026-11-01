@@ -801,4 +801,87 @@ describe('ProductListApp, the groups', () => {
     expect(head).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('button', { name: 'Rice' })).toBeInTheDocument();
   });
+
+  describe('folding them all', () => {
+    const SALMON = {
+      ...RICE,
+      barcode: '3000000000017',
+      name: 'Salmon',
+      group_level_1: 'Fish Meat Eggs',
+      group_level_2: 'unknown',
+    };
+
+    it('folds every group with one button, and opens them again', async () => {
+      stubFetch({ [PRODUCTS_URL]: [RICE, SALMON] });
+      renderList();
+      await screen.findByRole('button', { name: 'Rice' });
+
+      click('Tout replier');
+
+      expect(screen.queryByRole('button', { name: 'Rice' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Salmon' })).toBeNull();
+      for (const name of [
+        /Céréales et pommes de terre/,
+        /Viandes, poissons et œufs/,
+      ]) {
+        expect(screen.getByRole('button', { name })).toHaveAttribute(
+          'aria-expanded',
+          'false',
+        );
+      }
+
+      click('Tout déplier');
+
+      expect(screen.getByRole('button', { name: 'Rice' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Salmon' }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Tout replier' }),
+      ).toBeVisible();
+    });
+
+    it('says what it will do from the groups that are folded', async () => {
+      stubFetch({ [PRODUCTS_URL]: [RICE, SALMON] });
+      renderList();
+      await screen.findByRole('button', { name: 'Rice' });
+
+      // One group folded by hand: the button still folds, since not all are.
+      fireEvent.click(
+        screen.getByRole('button', { name: /Céréales et pommes de terre/ }),
+      );
+      expect(
+        screen.getByRole('button', { name: 'Tout replier' }),
+      ).toBeVisible();
+
+      // The other one too: now it is the way back.
+      fireEvent.click(
+        screen.getByRole('button', { name: /Viandes, poissons et œufs/ }),
+      );
+      expect(
+        screen.getByRole('button', { name: 'Tout déplier' }),
+      ).toBeVisible();
+    });
+
+    it('keeps the groups folded from one visit to the next', async () => {
+      stubFetch({ [PRODUCTS_URL]: [RICE, SALMON] });
+      const first = renderList();
+      await screen.findByRole('button', { name: 'Rice' });
+      click('Tout replier');
+      first.unmount();
+
+      renderList();
+      await screen.findByRole('button', { name: 'Tout déplier' });
+
+      expect(screen.queryByRole('button', { name: 'Rice' })).toBeNull();
+    });
+
+    it('is not offered where there is one group only', async () => {
+      stubFetch({ [PRODUCTS_URL]: [RICE, { ...OATS, in_inventory: true }] });
+      renderList();
+      await screen.findByRole('button', { name: 'Rice' });
+
+      expect(screen.queryByRole('button', { name: 'Tout replier' })).toBeNull();
+    });
+  });
 });

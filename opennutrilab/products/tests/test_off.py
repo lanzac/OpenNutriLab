@@ -18,6 +18,8 @@ from opennutrilab.products.api.openfoodfacts.services import (
     ingredient_inputs_from_label,
 )
 from opennutrilab.products.api.openfoodfacts.services import nutrition_unit_from_off
+from opennutrilab.products.api.openfoodfacts.services import off_product_url
+from opennutrilab.products.api.openfoodfacts.services import search_off
 from opennutrilab.products.models import Nutrient
 
 # A product recorded from OpenFoodFacts (API v2: the envelope differs from
@@ -585,3 +587,129 @@ def test_fetch_from_off_identifies_the_client():
 
     headers = mock_get.call_args.kwargs["headers"]
     assert "OpenNutriLab" in headers["User-Agent"]
+
+
+# ---- search by name ----
+
+HIT = {
+    "code": "3700966568466",
+    "product_name": "Colin d'Alaska pané",
+    "brands": ["Cap océan"],
+    "quantity": "500 g",
+    "image_small_url": "https://images.openfoodfacts.org/images/products/370/096/656/8466/front_en.3.200.jpg",
+}
+
+
+def search_response(hits: list[dict[str, Any]], status_code: int = 200) -> MagicMock:
+    response = MagicMock()
+    response.status_code = status_code
+    response.json.return_value = {"hits": hits}
+    return response
+
+
+def test_search_off_lists_what_a_name_finds():
+    with patch(
+        "opennutrilab.products.api.openfoodfacts.services.requests.get",
+        return_value=search_response([HIT]),
+    ) as get:
+        hits = search_off("colin pané")
+
+    assert get.call_args.kwargs["params"]["q"] == "colin pané"
+    # OFF turns away a client that does not say who it is.
+    assert "OpenNutriLab" in get.call_args.kwargs["headers"]["User-Agent"]
+    assert [h.barcode for h in hits] == ["3700966568466"]
+    assert hits[0].name == "Colin d'Alaska pané"
+    assert hits[0].brands == ["Cap océan"]
+    assert hits[0].quantity == "500 g"
+    assert hits[0].image_url == HIT["image_small_url"]
+
+
+def test_search_off_leaves_out_what_cannot_become_a_product():
+    """A barcode the form refuses (not an EAN-13) would lead to a dead end."""
+    short = {**HIT, "code": "12345678"}
+    bad_checksum = {**HIT, "code": "3700966568467"}
+    with patch(
+        "opennutrilab.products.api.openfoodfacts.services.requests.get",
+        return_value=search_response([short, bad_checksum, HIT]),
+    ):
+        hits = search_off("colin")
+
+    assert [h.barcode for h in hits] == ["3700966568466"]
+
+
+def test_search_off_shows_no_picture_that_is_not_openfoodfacts_own():
+    elsewhere = {**HIT, "image_small_url": "https://example.com/a.jpg"}
+    with patch(
+        "opennutrilab.products.api.openfoodfacts.services.requests.get",
+        return_value=search_response([elsewhere]),
+    ):
+        hits = search_off("colin")
+
+    assert hits[0].barcode == "3700966568466"
+    assert hits[0].image_url is None
+
+
+def test_search_off_keeps_a_product_that_has_only_a_barcode():
+    with patch(
+        "opennutrilab.products.api.openfoodfacts.services.requests.get",
+        return_value=search_response([{"code": "3700966568466"}]),
+    ):
+        hits = search_off("colin")
+
+    assert hits[0].name is None
+    assert hits[0].brands == []
+
+
+def ean13(body: str) -> str:
+    """The 12 digits given, with the check digit an EAN-13 ends with."""
+    total = sum(int(d) * (3 if n % 2 else 1) for n, d in enumerate(body))
+    return body + str((10 - total % 10) % 10)
+
+
+def test_search_off_keeps_the_best_ten():
+    found = [{**HIT, "code": ean13(f"370096656{n:03d}")} for n in range(15)]
+    with patch(
+        "opennutrilab.products.api.openfoodfacts.services.requests.get",
+        return_value=search_response(found),
+    ):
+        hits = search_off("colin")
+
+    assert [h.barcode for h in hits] == [h["code"] for h in found[:10]]
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        search_response([], status_code=500),
+        MagicMock(status_code=200, **{"json.side_effect": ValueError("not json")}),
+        MagicMock(status_code=200, **{"json.return_value": {"unexpected": []}}),
+    ],
+    ids=["upstream error", "not json", "no hits"],
+)
+def test_search_off_says_when_openfoodfacts_does_not_make_sense(response: MagicMock):
+    with (
+        patch(
+            "opennutrilab.products.api.openfoodfacts.services.requests.get",
+            return_value=response,
+        ),
+        pytest.raises(OFFError),
+    ):
+        search_off("colin")
+
+
+def test_search_off_says_when_openfoodfacts_cannot_be_reached():
+    with (
+        patch(
+            "opennutrilab.products.api.openfoodfacts.services.requests.get",
+            side_effect=RequestException("down"),
+        ),
+        pytest.raises(OFFError),
+    ):
+        search_off("colin")
+
+
+def test_the_page_of_a_product_on_openfoodfacts():
+    assert (
+        off_product_url("3700966568466")
+        == "https://world.openfoodfacts.org/product/3700966568466"
+    )

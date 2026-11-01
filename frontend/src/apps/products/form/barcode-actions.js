@@ -2,7 +2,7 @@
 // with a query parameter the create and edit views read server-side
 // (?barcode= and ?reset=1).
 
-function reloadWith(param, value) {
+export function reloadWith(param, value) {
   const url = new URL(window.location.href);
   url.searchParams.set(param, value);
   window.location.href = url.toString();

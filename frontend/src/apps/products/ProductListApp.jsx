@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { useStoredChoice } from '../../shared/useViewState.js';
+import { useStoredChoice, useStoredSet } from '../../shared/useViewState.js';
 import { fetchProducts, setInInventory, setStock } from './api/client.js';
 import { groupPathOf, groupProducts } from './groups.js';
 import './inventory.css';
@@ -78,8 +78,8 @@ export function ProductListApp({
   const [query, setQuery] = useState('');
   // The barcode of the product whose sheet is open.
   const [selected, setSelected] = useState(readSelectedBarcode);
-  // The groups the user has folded away, by key.
-  const [folded, setFolded] = useState(() => new Set());
+  // The groups the user has folded away, by key, kept from one visit to the next.
+  const [folded, setFolded] = useStoredSet('products.foldedGroups');
   // Whether the camera that scans products into the inventory is open.
   const [scanning, setScanning] = useState(false);
 
@@ -210,12 +210,18 @@ export function ProductListApp({
       patchProduct(product.barcode, { stock: item.stock }),
     );
 
-  const toggleFolded = (key) =>
-    setFolded((current) => {
-      const next = new Set(current);
-      if (!next.delete(key)) next.add(key);
-      return next;
-    });
+  const toggleFolded = (key) => {
+    const next = new Set(folded);
+    if (!next.delete(key)) next.add(key);
+    setFolded(next);
+  };
+
+  // One button for every group: it folds them all, or, when they all are, opens them.
+  const allFolded = groups.length > 0 && groups.every((g) => folded.has(g.key));
+  const toggleAllFolded = () =>
+    setFolded(
+      allFolded ? new Set() : new Set([...folded, ...groups.map((g) => g.key)]),
+    );
 
   const rowProps = {
     view,
@@ -329,45 +335,62 @@ export function ProductListApp({
                 : labels.noMatch}
             </p>
           ) : (
-            <div className="inventory-groups">
-              {groups.map((group) => {
-                const open = !folded.has(group.key);
-                return (
-                  <section key={group.key || 'unclassified'}>
-                    <h2 className="h6 mb-2">
-                      <button
-                        type="button"
-                        className="btn btn-link p-0 d-flex align-items-center gap-2 w-100 text-start text-body-secondary text-decoration-none text-uppercase fw-semibold small"
-                        aria-expanded={open}
-                        onClick={() => toggleFolded(group.key)}
-                      >
-                        <i
-                          className={`fa-solid fa-chevron-${open ? 'down' : 'right'} small`}
-                          aria-hidden="true"
-                        />
-                        {group.name}
-                        <span className="badge rounded-pill text-bg-secondary">
-                          {group.count}
-                        </span>
-                      </button>
-                    </h2>
-                    {open && (
-                      <ul className="inventory-group-list">
-                        {group.subgroups.map((subgroup) => (
-                          <SubgroupRows
-                            key={subgroup.key || 'unclassified'}
-                            subgroup={subgroup}
-                            titled={group.titled}
-                            selected={selected}
-                            rowProps={rowProps}
+            <>
+              {groups.length > 1 && (
+                <div className="d-flex justify-content-end mb-2">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={toggleAllFolded}
+                  >
+                    <i
+                      className={`fa-solid fa-angles-${allFolded ? 'down' : 'up'}`}
+                      aria-hidden="true"
+                    />{' '}
+                    {allFolded ? labels.unfoldAll : labels.foldAll}
+                  </button>
+                </div>
+              )}
+              <div className="inventory-groups">
+                {groups.map((group) => {
+                  const open = !folded.has(group.key);
+                  return (
+                    <section key={group.key || 'unclassified'}>
+                      <h2 className="h6 mb-2">
+                        <button
+                          type="button"
+                          className="btn btn-link p-0 d-flex align-items-center gap-2 w-100 text-start text-body-secondary text-decoration-none text-uppercase fw-semibold small"
+                          aria-expanded={open}
+                          onClick={() => toggleFolded(group.key)}
+                        >
+                          <i
+                            className={`fa-solid fa-chevron-${open ? 'down' : 'right'} small`}
+                            aria-hidden="true"
                           />
-                        ))}
-                      </ul>
-                    )}
-                  </section>
-                );
-              })}
-            </div>
+                          {group.name}
+                          <span className="badge rounded-pill text-bg-secondary">
+                            {group.count}
+                          </span>
+                        </button>
+                      </h2>
+                      {open && (
+                        <ul className="inventory-group-list">
+                          {group.subgroups.map((subgroup) => (
+                            <SubgroupRows
+                              key={subgroup.key || 'unclassified'}
+                              subgroup={subgroup}
+                              titled={group.titled}
+                              selected={selected}
+                              rowProps={rowProps}
+                            />
+                          ))}
+                        </ul>
+                      )}
+                    </section>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
         <div className="col-lg-5 col-xl-4">

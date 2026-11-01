@@ -1,0 +1,39 @@
+/* The products OpenFoodFacts finds for a name, on the page that creates a product. */
+
+/* Ten products are a long list: it scrolls, and the form stays within reach. */
+#off-search-results {
+  max-height: 22rem;
+  overflow-y: auto;
+  list-style: none;
+}
+
+#off-search-results .list-group-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: start;
+}
+
+.off-hit-image {
+  flex: none;
+  width: 3rem;
+  height: 3rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.375rem;
+  background: var(--bs-body-bg);
+  object-fit: contain;
+}
+
+.off-hit-text {
+  min-width: 0;
+}
+
+.off-hit-name {
+  font-weight: 600;
+  color: var(--bs-body-color);
+}
+
+.off-hit-detail {
+  font-size: 0.8125rem;
+  color: var(--bs-secondary-color);
+}
