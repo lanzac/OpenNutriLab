@@ -1,0 +1,40 @@
+{
+  "code": "copper-sulfate",
+  "name_fr": "Sulfate de cuivre",
+  "name_en": "Copper sulfate",
+  "basis_fr": "formule chimique CuSO4·nH2O, n de 0 à 5 (masses atomiques IUPAC): un sel minéral sans matière organique, teneur en minéraux laissée inconnue",
+  "basis_en": "chemical formula CuSO4·nH2O, n from 0 to 5 (IUPAC atomic masses): an inorganic salt with no organic matter, mineral content left unknown",
+  "nutrients": {
+    "water": {
+      "min": 0,
+      "max": 36.1
+    },
+    "ash": {
+      "min": 63.9,
+      "max": 100
+    },
+    "fat": {
+      "min": 0,
+      "max": 0
+    },
+    "carbohydrates": {
+      "min": 0,
+      "max": 0
+    },
+    "proteins": {
+      "min": 0,
+      "max": 0
+    },
+    "fiber": {
+      "min": 0,
+      "max": 0
+    },
+    "energy": {
+      "min": 0,
+      "max": 0
+    }
+  },
+  "references": [
+    "sulfate de cuivre"
+  ]
+}

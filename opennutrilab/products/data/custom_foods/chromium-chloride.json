@@ -1,0 +1,40 @@
+{
+  "code": "chromium-chloride",
+  "name_fr": "Chlorure de chrome",
+  "name_en": "Chromium chloride",
+  "basis_fr": "formule chimique CrCl3·nH2O, n de 0 à 6 (masses atomiques IUPAC): un sel minéral sans matière organique, teneur en minéraux laissée inconnue",
+  "basis_en": "chemical formula CrCl3·nH2O, n from 0 to 6 (IUPAC atomic masses): an inorganic salt with no organic matter, mineral content left unknown",
+  "nutrients": {
+    "water": {
+      "min": 0,
+      "max": 40.6
+    },
+    "ash": {
+      "min": 59.4,
+      "max": 100
+    },
+    "fat": {
+      "min": 0,
+      "max": 0
+    },
+    "carbohydrates": {
+      "min": 0,
+      "max": 0
+    },
+    "proteins": {
+      "min": 0,
+      "max": 0
+    },
+    "fiber": {
+      "min": 0,
+      "max": 0
+    },
+    "energy": {
+      "min": 0,
+      "max": 0
+    }
+  },
+  "references": [
+    "chlorure de chrome"
+  ]
+}

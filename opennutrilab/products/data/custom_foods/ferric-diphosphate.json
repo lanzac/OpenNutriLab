@@ -1,0 +1,40 @@
+{
+  "code": "ferric-diphosphate",
+  "name_fr": "Diphosphate ferrique",
+  "name_en": "Ferric diphosphate",
+  "basis_fr": "pyrophosphate ferrique Fe4(P2O7)3·xH2O: un sel minéral sans matière organique, teneur en minéraux laissée inconnue (eau jusqu'à 20 %, fer 24 à 26 % selon la fiche FCC)",
+  "basis_en": "ferric pyrophosphate Fe4(P2O7)3·xH2O: an inorganic salt with no organic matter, mineral content left unknown (water up to 20 %, iron 24 to 26 % on the FCC data sheet)",
+  "nutrients": {
+    "water": {
+      "min": 0,
+      "max": 20
+    },
+    "ash": {
+      "min": 80,
+      "max": 100
+    },
+    "fat": {
+      "min": 0,
+      "max": 0
+    },
+    "carbohydrates": {
+      "min": 0,
+      "max": 0
+    },
+    "proteins": {
+      "min": 0,
+      "max": 0
+    },
+    "fiber": {
+      "min": 0,
+      "max": 0
+    },
+    "energy": {
+      "min": 0,
+      "max": 0
+    }
+  },
+  "references": [
+    "diphosphate ferrique"
+  ]
+}

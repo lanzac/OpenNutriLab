@@ -1,0 +1,40 @@
+{
+  "code": "potassium-iodide",
+  "name_fr": "Iodure de potassium",
+  "name_en": "Potassium iodide",
+  "basis_fr": "formule chimique KI (masses atomiques IUPAC): un sel minéral sans matière organique, teneur en minéraux laissée inconnue",
+  "basis_en": "chemical formula KI (IUPAC atomic masses): an inorganic salt with no organic matter, mineral content left unknown",
+  "nutrients": {
+    "water": {
+      "min": 0,
+      "max": 0.5
+    },
+    "ash": {
+      "min": 99,
+      "max": 100
+    },
+    "fat": {
+      "min": 0,
+      "max": 0
+    },
+    "carbohydrates": {
+      "min": 0,
+      "max": 0
+    },
+    "proteins": {
+      "min": 0,
+      "max": 0
+    },
+    "fiber": {
+      "min": 0,
+      "max": 0
+    },
+    "energy": {
+      "min": 0,
+      "max": 0
+    }
+  },
+  "references": [
+    "iodure de potassium"
+  ]
+}
