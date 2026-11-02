@@ -1,0 +1,25 @@
+{
+  "code": "lemon-juice-concentrate",
+  "name_fr": "Jus de citron concentré",
+  "name_en": "Concentrated lemon juice",
+  "basis_fr": "Jus de citron pur jus CIQUAL 2028 à 55 % d'eau (concentré 400 g/L: Brix 43 à 60, fiches Parchem, Florida Bulk Sales; aseptisé 30 à 45, Oregon Fruit), marge 30 %",
+  "basis_en": "Lemon juice CIQUAL 2028 at 55 % water (400 g/L concentrate: Brix 43 to 60, Parchem, Florida Bulk Sales data sheets; aseptic 30 to 45, Oregon Fruit), 30 % margin",
+  "proxies": [
+    {
+      "source": "ciqual-2025",
+      "code": "2028"
+    }
+  ],
+  "water": 55,
+  "margin": 0.3,
+  "exclude": [
+    "vitamin_c",
+    "vitamin_b1",
+    "vitamin_b9",
+    "intrinsic_folates",
+    "vitamin_b9_dfe"
+  ],
+  "references": [
+    "concentré de jus de citron"
+  ]
+}

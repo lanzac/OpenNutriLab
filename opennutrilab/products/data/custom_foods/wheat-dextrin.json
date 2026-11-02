@@ -1,0 +1,48 @@
+{
+  "code": "wheat-dextrin",
+  "name_fr": "Dextrine de blé",
+  "name_en": "Wheat dextrin",
+  "basis_fr": "gamme Nutriose de Roquette (FB 10: 70 % de fibres et 10 % de sucres; jusqu'à 85 % de fibres, brevet US 9131710), eau 10 % au plus",
+  "basis_en": "Roquette Nutriose range (FB 10: 70 % fibre and 10 % sugars; up to 85 % fibre, US patent 9131710), water 10 % at most",
+  "nutrients": {
+    "water": {
+      "min": 0,
+      "max": 10
+    },
+    "fiber": {
+      "min": 63,
+      "max": 88
+    },
+    "carbohydrates": {
+      "min": 0,
+      "max": 37
+    },
+    "sugars": {
+      "min": 0,
+      "max": 12
+    },
+    "fat": {
+      "min": 0,
+      "max": 1
+    },
+    "saturated_fat": {
+      "min": 0,
+      "max": 1
+    },
+    "proteins": {
+      "min": 0,
+      "max": 0.5
+    },
+    "ash": {
+      "min": 0,
+      "max": 0.5
+    },
+    "energy": {
+      "min": 504,
+      "max": 1133
+    }
+  },
+  "references": [
+    "dextrine de blé"
+  ]
+}

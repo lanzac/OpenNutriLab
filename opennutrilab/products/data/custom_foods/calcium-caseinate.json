@@ -1,0 +1,56 @@
+{
+  "code": "calcium-caseinate",
+  "name_fr": "Caséinate de calcium",
+  "name_en": "Calcium caseinate",
+  "basis_fr": "fiches Ornua, The Milky Way, ExportersIndia (protéines 88 % au moins, calcium 1,25 ± 0,25 %) et norme britannique des caséines (eau 8 %, lipides 2 %, lactose 1 % au plus)",
+  "basis_en": "Ornua, The Milky Way, ExportersIndia data sheets (protein 88 % at least, calcium 1.25 ± 0.25 %) and the UK caseins standard (water 8 %, fat 2 %, lactose 1 % at most)",
+  "nutrients": {
+    "water": {
+      "min": 0,
+      "max": 8
+    },
+    "proteins": {
+      "min": 80,
+      "max": 95
+    },
+    "fat": {
+      "min": 0,
+      "max": 2
+    },
+    "saturated_fat": {
+      "min": 0,
+      "max": 2
+    },
+    "carbohydrates": {
+      "min": 0,
+      "max": 1
+    },
+    "sugars": {
+      "min": 0,
+      "max": 1
+    },
+    "lactose": {
+      "min": 0,
+      "max": 1
+    },
+    "fiber": {
+      "min": 0,
+      "max": 0.5
+    },
+    "ash": {
+      "min": 0,
+      "max": 7
+    },
+    "calcium": {
+      "min": 1000,
+      "max": 1500
+    },
+    "energy": {
+      "min": 1360,
+      "max": 1710
+    }
+  },
+  "references": [
+    "caséinate de calcium"
+  ]
+}

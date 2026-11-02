@@ -1,0 +1,48 @@
+{
+  "code": "maltodextrin",
+  "name_fr": "Maltodextrine",
+  "name_en": "Maltodextrin",
+  "basis_fr": "21 CFR 184.1444 (DE < 20) et fiches Ingredion, ADM, Roquette, Glucochem: eau 7 %, cendres 1,5 %, protéines 1,5 %, lipides 1 % au plus",
+  "basis_en": "21 CFR 184.1444 (DE < 20) and Ingredion, ADM, Roquette, Glucochem data sheets: water 7 %, ash 1.5 %, protein 1.5 %, fat 1 % at most",
+  "nutrients": {
+    "water": {
+      "min": 0,
+      "max": 7
+    },
+    "carbohydrates": {
+      "min": 89,
+      "max": 100
+    },
+    "sugars": {
+      "min": 0,
+      "max": 38.5
+    },
+    "fat": {
+      "min": 0,
+      "max": 1
+    },
+    "saturated_fat": {
+      "min": 0,
+      "max": 1
+    },
+    "proteins": {
+      "min": 0,
+      "max": 1.5
+    },
+    "fiber": {
+      "min": 0,
+      "max": 1
+    },
+    "ash": {
+      "min": 0,
+      "max": 1.5
+    },
+    "energy": {
+      "min": 1510,
+      "max": 1710
+    }
+  },
+  "references": [
+    "maltodextrine"
+  ]
+}

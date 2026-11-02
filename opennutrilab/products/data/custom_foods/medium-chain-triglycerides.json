@@ -1,0 +1,52 @@
+{
+  "code": "medium-chain-triglycerides",
+  "name_fr": "Triglycérides à chaîne moyenne",
+  "name_en": "Medium-chain triglycerides",
+  "basis_fr": "monographie Ph. Eur./USP-NF: acides caprylique 50-80 % et caprique 20-50 %, autres 7 % au plus; 92-93 % de la masse en acides gras (formule)",
+  "basis_en": "Ph. Eur./USP-NF monograph: caprylic acid 50-80 % and capric acid 20-50 %, others 7 % at most; 92-93 % of the mass as fatty acids (formula)",
+  "nutrients": {
+    "fat": {
+      "min": 99,
+      "max": 100
+    },
+    "saturated_fat": {
+      "min": 90,
+      "max": 94
+    },
+    "caprylic_acid": {
+      "min": 45,
+      "max": 75
+    },
+    "capric_acid": {
+      "min": 18,
+      "max": 47
+    },
+    "water": {
+      "min": 0,
+      "max": 0.5
+    },
+    "carbohydrates": {
+      "min": 0,
+      "max": 0.5
+    },
+    "proteins": {
+      "min": 0,
+      "max": 0.5
+    },
+    "fiber": {
+      "min": 0,
+      "max": 0.5
+    },
+    "ash": {
+      "min": 0,
+      "max": 0.1
+    },
+    "energy": {
+      "min": 3400,
+      "max": 3700
+    }
+  },
+  "references": [
+    "triglycérides à chaîne moyenne"
+  ]
+}

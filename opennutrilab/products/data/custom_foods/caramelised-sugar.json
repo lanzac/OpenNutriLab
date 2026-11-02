@@ -1,0 +1,48 @@
+{
+  "code": "caramelised-sugar",
+  "name_fr": "Sucre caramélisé",
+  "name_en": "Caramelised sugar",
+  "basis_fr": "sucre blanc CIQUAL 31016 caramélisé: glucides, eau 20 % au plus, part de sucres inconnue",
+  "basis_en": "caramelised white sugar CIQUAL 31016: carbohydrates, water 20 % at most, sugars share unknown",
+  "nutrients": {
+    "water": {
+      "min": 0,
+      "max": 20
+    },
+    "carbohydrates": {
+      "min": 70,
+      "max": 100
+    },
+    "sugars": {
+      "min": 0,
+      "max": 100
+    },
+    "fat": {
+      "min": 0,
+      "max": 0.5
+    },
+    "saturated_fat": {
+      "min": 0,
+      "max": 0.5
+    },
+    "proteins": {
+      "min": 0,
+      "max": 0.5
+    },
+    "fiber": {
+      "min": 0,
+      "max": 1
+    },
+    "ash": {
+      "min": 0,
+      "max": 1
+    },
+    "energy": {
+      "min": 1190,
+      "max": 1710
+    }
+  },
+  "references": [
+    "sucre caramélisé"
+  ]
+}

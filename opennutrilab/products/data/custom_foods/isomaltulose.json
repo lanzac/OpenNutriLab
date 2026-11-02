@@ -1,0 +1,48 @@
+{
+  "code": "isomaltulose",
+  "name_fr": "Isomaltulose",
+  "name_en": "Isomaltulose",
+  "basis_fr": "fiches Palatinose de Niutang, HSF Biotech, Greenjeeva: 98 % d'isomaltulose hors eau, cendres 0,1 % au plus, eau jusqu'à 6 % (monohydrate)",
+  "basis_en": "Palatinose data sheets from Niutang, HSF Biotech, Greenjeeva: isomaltulose 98 % excluding water, ash 0.1 % at most, water up to 6 % (monohydrate)",
+  "nutrients": {
+    "water": {
+      "min": 0,
+      "max": 6
+    },
+    "carbohydrates": {
+      "min": 92,
+      "max": 100
+    },
+    "sugars": {
+      "min": 92,
+      "max": 100
+    },
+    "fat": {
+      "min": 0,
+      "max": 0.5
+    },
+    "saturated_fat": {
+      "min": 0,
+      "max": 0.5
+    },
+    "proteins": {
+      "min": 0,
+      "max": 0.5
+    },
+    "fiber": {
+      "min": 0,
+      "max": 0.5
+    },
+    "ash": {
+      "min": 0,
+      "max": 0.1
+    },
+    "energy": {
+      "min": 1560,
+      "max": 1710
+    }
+  },
+  "references": [
+    "isomaltulose"
+  ]
+}
