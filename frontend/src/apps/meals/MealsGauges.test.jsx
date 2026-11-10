@@ -7,6 +7,8 @@ import {
   MUESLI,
   need,
   ok,
+  openItem,
+  openPicker,
   ratio,
   renderApp,
   stubFetch,
@@ -279,16 +281,16 @@ describe('the total quantity of a product', () => {
       name: 'Petit-déjeuner',
     });
 
-    // 71.4 g of a package of 500 g.
+    // 71.4 g of a package of 500 g, where the item opens.
+    await openItem('Pain de mie', within(breakfast));
     expect(
       within(breakfast).getByText(/14\s%\sd’un paquet de 500 g/),
     ).toBeInTheDocument();
-    const choice = within(breakfast).getByLabelText(
-      'Ajouter un produit – Petit-déjeuner',
-    );
+    // What a package holds, with the product in the window.
+    const dialog = await openPicker('Petit-déjeuner');
     expect(
-      within(choice).getByRole('option', { name: 'Muesli (375 g)' }),
-    ).toBeInTheDocument();
+      within(dialog).getByRole('button', { name: /^Muesli/ }),
+    ).toHaveTextContent('375 g');
   });
 
   it('is a share of what the package weighs, which a density gives for a volume', async () => {
@@ -311,6 +313,7 @@ describe('the total quantity of a product', () => {
     });
 
     // 91.15 of 911.5, a tenth, where 1000 would have made it 9 %.
+    await openItem('Pain de mie', within(breakfast));
     expect(
       within(breakfast).getByText(/10\s%\sd’un paquet de 1\s?000 ml/),
     ).toBeInTheDocument();
@@ -343,13 +346,12 @@ describe('the total quantity of a product', () => {
       name: 'Petit-déjeuner',
     });
 
+    await openItem('Pain de mie', within(breakfast));
     expect(within(breakfast).queryByText(/d’un paquet/)).toBeNull();
-    const choice = within(breakfast).getByLabelText(
-      'Ajouter un produit – Petit-déjeuner',
-    );
+    const dialog = await openPicker('Petit-déjeuner');
     expect(
-      within(choice).getByRole('option', { name: 'Muesli' }),
-    ).toBeInTheDocument();
+      within(dialog).getByRole('button', { name: /^Muesli/ }),
+    ).toHaveTextContent(/^Muesli$/);
   });
 });
 

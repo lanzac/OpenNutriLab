@@ -327,7 +327,9 @@ describe('the limits of the products', () => {
       fireEvent.click(within(limits).getByLabelText(use('Pain de mie')));
       await waitFor(() => expect(written(fetch)).toHaveLength(1));
 
-      fireEvent.click(screen.getByRole('button', { name: /Proposer un jour/ }));
+      fireEvent.click(
+        screen.getByRole('button', { name: /Compléter ma journée/ }),
+      );
       await new Promise((resolve) => setTimeout(resolve, 20));
       const proposed = () =>
         fetch.mock.calls.filter(([url]) => url.endsWith('/propose'));

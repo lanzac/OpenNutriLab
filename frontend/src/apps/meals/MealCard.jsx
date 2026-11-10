@@ -1,16 +1,19 @@
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 
 import {
+  describeServing,
   fill,
   formatAmount,
   formatInterval,
   formatPercent,
   formatServings,
   quantityStep,
-  servingName,
 } from './format.js';
+import { Photo } from './Photo.jsx';
+import { ProductPicker } from './ProductPicker.jsx';
 
-// What a meal shows of what it brings: the rest is in the day's table.
+// What a meal shows of what it brings, when its nutrition is opened: the rest is in
+// the day's table.
 const SHOWN = [
   'energy',
   'proteins',
@@ -53,16 +56,27 @@ function PackageShare({ item, labels, languageCode }) {
 function unitOptions(serving, labels, languageCode) {
   const options = [{ value: 'g', label: 'g' }];
   if (serving) {
-    const mass = `${new Intl.NumberFormat(languageCode).format(Number(serving.quantity))} ${serving.unit}`;
     options.unshift({
       value: 'serving',
-      label: `${servingName(serving, labels)} (${mass})`,
+      label: describeServing(serving, labels, languageCode),
     });
   }
   return options;
 }
 
-function ItemRow({ item, labels, languageCode, onChange, onRemove }) {
+/** How much of a product an item is, in a few words: "1 tranche · 35.7 g", "100 g". */
+function quantityPhrase(item, labels, languageCode) {
+  if (item.unit !== 'serving') {
+    return formatAmount(item.quantity, 'g', languageCode);
+  }
+  const servings = formatServings(item.quantity, item.serving, labels);
+  return item.grams === null
+    ? servings
+    : `${servings} · ${formatAmount(item.grams, 'g', languageCode)}`;
+}
+
+/** The fields that change an item: how much, in which unit, and taking it out. */
+function ItemEditor({ item, labels, languageCode, onChange, onRemove, id }) {
   const [quantity, setQuantity] = useState(String(Number(item.quantity)));
   const options = unitOptions(item.serving, labels, languageCode);
 
@@ -72,19 +86,8 @@ function ItemRow({ item, labels, languageCode, onChange, onRemove }) {
   };
 
   return (
-    <li className="list-group-item">
-      <div className="d-flex justify-content-between align-items-start gap-2">
-        <span>{item.name}</span>
-        <button
-          type="button"
-          className="btn btn-sm btn-outline-danger"
-          aria-label={`${labels.remove} – ${item.name}`}
-          onClick={() => onRemove(item.id)}
-        >
-          <i className="fa-regular fa-trash-can" />
-        </button>
-      </div>
-      <div className="d-flex flex-wrap align-items-center gap-2 mt-1">
+    <div id={id} className="mt-2 ps-5">
+      <div className="d-flex flex-wrap align-items-center gap-2">
         {/* The arrows count from `min` by `step`: from a `min` of 0.01 they landed on 1.01, 2.01... */}
         <input
           type="number"
@@ -120,137 +123,171 @@ function ItemRow({ item, labels, languageCode, onChange, onRemove }) {
             </option>
           ))}
         </select>
-        <small className="text-body-secondary">
-          {item.grams === null
-            ? labels.noMass
-            : formatAmount(item.grams, 'g', languageCode)}
-        </small>
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-danger ms-auto"
+          aria-label={`${labels.remove} – ${item.name}`}
+          onClick={() => onRemove(item.id)}
+        >
+          <i className="fa-regular fa-trash-can" aria-hidden="true" />{' '}
+          {labels.remove}
+        </button>
       </div>
+      {item.grams === null && (
+        <small className="d-block text-body-secondary">{labels.noMass}</small>
+      )}
       <PackageShare item={item} labels={labels} languageCode={languageCode} />
+    </div>
+  );
+}
+
+/**
+ * One item of a meal, said in a line: its photo, its name and how much. The line
+ * opens the fields that change it, so that a meal reads as a list and is not a form.
+ */
+function ItemRow({
+  item,
+  labels,
+  languageCode,
+  placeholderImage,
+  onChange,
+  onRemove,
+}) {
+  const [open, setOpen] = useState(false);
+  const panel = useId();
+
+  return (
+    <li className="list-group-item">
+      <button
+        type="button"
+        className="meal-item-head"
+        aria-expanded={open}
+        aria-controls={panel}
+        title={labels.editQuantity}
+        onClick={() => setOpen(!open)}
+      >
+        <Photo src={item.image} placeholderImage={placeholderImage} />
+        <span className="meal-item-name">
+          <span className="d-block">{item.name}</span>
+          <small className="d-block text-body-secondary">
+            {quantityPhrase(item, labels, languageCode)}
+          </small>
+        </span>
+        <i
+          className={`fa-solid ${open ? 'fa-chevron-up' : 'fa-chevron-down'} small text-body-secondary`}
+          aria-hidden="true"
+        />
+      </button>
+      {open && (
+        // Remounted when the item changes, so that the field shows what is saved.
+        <ItemEditor
+          key={`${item.quantity}-${item.unit}`}
+          id={panel}
+          item={item}
+          labels={labels}
+          languageCode={languageCode}
+          onChange={onChange}
+          onRemove={onRemove}
+        />
+      )}
     </li>
   );
 }
 
 /** An item as a proposed day shows it: what and how much, with nothing to change. */
-function ReadOnlyRow({ item, labels, languageCode }) {
-  const serving =
-    item.unit === 'serving'
-      ? formatServings(item.quantity, item.serving, labels)
-      : `${Number(item.quantity)} g`;
+function ReadOnlyRow({ item, labels, languageCode, placeholderImage }) {
   return (
-    <li className="list-group-item d-flex justify-content-between gap-2">
-      <span>
-        {item.name}
-        {item.generic && (
-          <>
-            {' '}
-            <a
-              className="badge text-bg-info text-decoration-none"
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {labels.suggestedFood}
-            </a>
-          </>
-        )}
-        <PackageShare item={item} labels={labels} languageCode={languageCode} />
-      </span>
-      <span className="text-nowrap text-body-secondary">
-        {serving}
-        {item.unit === 'serving' && item.grams !== null && (
-          <> ({formatAmount(item.grams, 'g', languageCode)})</>
-        )}
-      </span>
+    <li className="list-group-item">
+      <div className="d-flex align-items-center gap-3">
+        <Photo src={item.image} placeholderImage={placeholderImage} />
+        <span className="meal-item-name">
+          <span className="d-block">
+            {item.name}
+            {item.generic && (
+              <>
+                {' '}
+                <a
+                  className="badge text-bg-info text-decoration-none"
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {labels.suggestedFood}
+                </a>
+              </>
+            )}
+          </span>
+          <small className="d-block text-body-secondary">
+            {quantityPhrase(item, labels, languageCode)}
+          </small>
+          <PackageShare
+            item={item}
+            labels={labels}
+            languageCode={languageCode}
+          />
+        </span>
+      </div>
     </li>
   );
 }
 
-function AddRow({ meal, inventory, labels, languageCode, onAdd }) {
-  const [barcode, setBarcode] = useState('');
-  const [quantity, setQuantity] = useState('1');
-  const [unit, setUnit] = useState('serving');
+/**
+ * Where a product is added to the meal: a button that opens the window in which the
+ * inventory is looked through (see ProductPicker).
+ */
+function AddRow({
+  meal,
+  inventory,
+  labels,
+  languageCode,
+  groupNames,
+  placeholderImage,
+  onAdd,
+}) {
+  const [picking, setPicking] = useState(false);
+  const opener = useRef(null);
 
-  const inMeal = new Set(meal.items.map((item) => item.barcode));
-  const available = inventory.filter((product) => !inMeal.has(product.barcode));
-  const chosen = available.find((product) => product.barcode === barcode);
-  const options = unitOptions(chosen?.serving, labels, languageCode);
-
-  const choose = (value) => {
-    const product = available.find((p) => p.barcode === value);
-    setBarcode(value);
-    // A product with a serving is counted in servings, the others in grams.
-    setUnit(product?.serving ? 'serving' : 'g');
-    setQuantity(product?.serving ? '1' : '100');
-  };
-
-  if (available.length === 0) return null;
+  if (inventory.length === 0) return null;
 
   return (
     <li className="list-group-item">
-      <select
-        className="form-select form-select-sm"
+      <button
+        ref={opener}
+        type="button"
+        className="btn btn-sm btn-outline-primary"
         aria-label={`${labels.addProduct} – ${meal.label}`}
-        value={barcode}
-        onChange={(event) => choose(event.target.value)}
+        aria-haspopup="dialog"
+        onClick={() => setPicking(true)}
       >
-        <option value="">{labels.chooseProduct}</option>
-        {available.map((product) => (
-          <option key={product.barcode} value={product.barcode}>
-            {product.package
-              ? `${product.name} (${packageText(product.package, languageCode)})`
-              : product.name}
-          </option>
-        ))}
-      </select>
-      {chosen && (
-        <div className="d-flex flex-wrap align-items-center gap-2 mt-2">
-          <input
-            type="number"
-            min="0"
-            step={quantityStep(unit)}
-            className="form-control form-control-sm"
-            style={{ width: '6rem' }}
-            aria-label={`${labels.quantity} – ${meal.label}`}
-            value={quantity}
-            onChange={(event) => setQuantity(event.target.value)}
-          />
-          <select
-            className="form-select form-select-sm"
-            style={{ width: 'auto' }}
-            aria-label={`${labels.unit} – ${meal.label}`}
-            value={unit}
-            onChange={(event) => setUnit(event.target.value)}
-          >
-            {options.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="btn btn-sm btn-primary"
-            disabled={!(Number(quantity) > 0)}
-            onClick={() => {
-              onAdd(meal.kind, { barcode, quantity: Number(quantity), unit });
-              setBarcode('');
-            }}
-          >
-            {labels.add}
-          </button>
-        </div>
+        <i className="fa-solid fa-plus" aria-hidden="true" />{' '}
+        {labels.addProduct}
+      </button>
+      {picking && (
+        <ProductPicker
+          meal={meal}
+          inventory={inventory}
+          labels={labels}
+          languageCode={languageCode}
+          groupNames={groupNames}
+          placeholderImage={placeholderImage}
+          onAdd={onAdd}
+          onClose={() => {
+            setPicking(false);
+            // The page is where it was.
+            opener.current?.focus();
+          }}
+        />
       )}
     </li>
   );
 }
 
 /**
- * Whether the meal is behind the user. Editable, a switch; in a day that is only
- * shown, a badge: "Eaten" for a meal that is, "To add" for what is there to be eaten.
+ * Whether the meal is behind the user. Editable, a button that says what it does and,
+ * pressed, that it is done; in a day that is only shown, a badge: "Eaten" for a meal
+ * that is, "To add" for what is there to be eaten.
  */
 function EatenMark({ meal, labels, readOnly, onEat }) {
-  const id = useId();
   if (readOnly) {
     if (meal.eaten) {
       return <span className="badge text-bg-success">{labels.eaten}</span>;
@@ -260,40 +297,103 @@ function EatenMark({ meal, labels, readOnly, onEat }) {
     ) : null;
   }
   return (
-    <div className="form-check form-switch mb-0">
-      <input
-        id={id}
-        type="checkbox"
-        role="switch"
-        className="form-check-input"
-        checked={meal.eaten}
-        aria-label={`${labels.eaten} – ${meal.label}`}
-        onChange={(event) => onEat(meal.kind, event.target.checked)}
-      />
-      <label className="form-check-label" htmlFor={id}>
-        {labels.eaten}
-      </label>
+    <button
+      type="button"
+      className={`btn btn-sm ${meal.eaten ? 'btn-success' : 'btn-outline-secondary'}`}
+      aria-pressed={meal.eaten}
+      aria-label={`${meal.eaten ? labels.eaten : labels.markEaten} – ${meal.label}`}
+      title={meal.eaten ? labels.eatenTitle : labels.markEatenTitle}
+      onClick={() => onEat(meal.kind, !meal.eaten)}
+    >
+      <i
+        className={`${meal.eaten ? 'fa-solid' : 'fa-regular'} fa-circle-check`}
+        aria-hidden="true"
+      />{' '}
+      {meal.eaten ? labels.eaten : labels.markEaten}
+    </button>
+  );
+}
+
+/** The figures a meal brings, opened from a line under it. */
+function MealDetails({
+  meal,
+  nutrients,
+  labels,
+  languageCode,
+  open,
+  onToggle,
+}) {
+  const shown = SHOWN.filter((code) => meal.totals[code]);
+  const id = useId();
+  if (shown.length === 0) return null;
+  return (
+    <div className="card-footer small">
+      <button
+        type="button"
+        className="btn btn-link btn-sm p-0 text-decoration-none"
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={onToggle}
+      >
+        <i
+          className={`fa-solid ${open ? 'fa-chevron-down' : 'fa-chevron-right'} me-1`}
+          aria-hidden="true"
+        />
+        {labels.mealDetails}
+      </button>
+      {open && (
+        <dl id={id} className="row mb-0 mt-2">
+          {shown.map((code) => {
+            const total = meal.totals[code];
+            const { name, unit } = nutrients[code];
+            return (
+              <div key={code} className="col-6 d-flex justify-content-between">
+                <dt className="fw-normal">{name}</dt>
+                <dd
+                  className="mb-0"
+                  title={`${formatInterval(total.low, total.high, unit, languageCode)} · ${labels.coverage} ${Math.round(Number(total.coverage))} %`}
+                >
+                  {formatAmount(total.amount, unit, languageCode)}
+                </dd>
+              </div>
+            );
+          })}
+        </dl>
+      )}
     </div>
   );
 }
 
+/**
+ * A meal: its name, what it brings in energy, whether it is eaten, its items as a
+ * list that opens where one is to be changed, and the nutrition behind a line.
+ *
+ * `fold` says whether the nutrition is open and how to toggle it, when the page keeps
+ * that from one visit to the next; without it the card keeps it for itself.
+ */
 export function MealCard({
   meal,
   nutrients,
   inventory,
   labels,
   languageCode,
+  groupNames,
+  placeholderImage,
+  fold,
   onAdd,
   onChange,
   onRemove,
   onEat,
   readOnly = false,
 }) {
-  const shown = SHOWN.filter((code) => meal.totals[code]);
+  const [ownOpen, setOwnOpen] = useState(false);
+  const detailsOpen = fold ? fold.open : ownOpen;
+  const toggleDetails = fold ? fold.toggle : () => setOwnOpen(!ownOpen);
+  const energy = meal.totals.energy;
 
   return (
     <section
-      className={`card h-100${meal.eaten ? ' border-success' : ''}`}
+      className={`card${meal.eaten ? ' border-success' : ''}`}
       aria-label={meal.label}
     >
       <div
@@ -301,7 +401,14 @@ export function MealCard({
           meal.eaten ? ' bg-success-subtle' : ''
         }`}
       >
-        <span className="fw-semibold">{meal.label}</span>
+        <span>
+          <span className="fw-semibold">{meal.label}</span>
+          {energy && meal.items.length > 0 && (
+            <span className="ms-2 text-body-secondary">
+              {formatAmount(energy.amount, nutrients.energy.unit, languageCode)}
+            </span>
+          )}
+        </span>
         <EatenMark
           meal={meal}
           labels={labels}
@@ -322,13 +429,15 @@ export function MealCard({
               item={item}
               labels={labels}
               languageCode={languageCode}
+              placeholderImage={placeholderImage}
             />
           ) : (
             <ItemRow
-              key={`${item.id}-${item.quantity}-${item.unit}`}
+              key={item.id}
               item={item}
               labels={labels}
               languageCode={languageCode}
+              placeholderImage={placeholderImage}
               onChange={onChange}
               onRemove={onRemove}
             />
@@ -340,34 +449,20 @@ export function MealCard({
             inventory={inventory}
             labels={labels}
             languageCode={languageCode}
+            groupNames={groupNames}
+            placeholderImage={placeholderImage}
             onAdd={onAdd}
           />
         )}
       </ul>
-      {shown.length > 0 && (
-        <div className="card-footer small">
-          <dl className="row mb-0">
-            {shown.map((code) => {
-              const total = meal.totals[code];
-              const { name, unit } = nutrients[code];
-              return (
-                <div
-                  key={code}
-                  className="col-6 d-flex justify-content-between"
-                >
-                  <dt className="fw-normal">{name}</dt>
-                  <dd
-                    className="mb-0"
-                    title={`${formatInterval(total.low, total.high, unit, languageCode)} · ${labels.coverage} ${Math.round(Number(total.coverage))} %`}
-                  >
-                    {formatAmount(total.amount, unit, languageCode)}
-                  </dd>
-                </div>
-              );
-            })}
-          </dl>
-        </div>
-      )}
+      <MealDetails
+        meal={meal}
+        nutrients={nutrients}
+        labels={labels}
+        languageCode={languageCode}
+        open={detailsOpen}
+        onToggle={toggleDetails}
+      />
     </section>
   );
 }

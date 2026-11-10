@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { vi } from 'vitest';
 
 import { MealsApp } from './MealsApp.jsx';
@@ -27,8 +27,24 @@ export const labels = {
   emptyMealEaten: 'Rien mangé à ce repas.',
   eaten: 'Mangé',
   toAdd: 'À ajouter',
+  markEaten: 'Marquer comme mangé',
+  eatenTitle:
+    'Compté dans la journée et retiré de votre stock. Cliquer pour annuler.',
+  markEatenTitle: 'Compter ce repas comme mangé.',
   eatenHelp:
-    'Marquez les repas mangés : un jour proposé les garde et n’ajoute que le nécessaire.',
+    'Marquez les repas déjà mangés, puis « Compléter ma journée » remplit les autres.',
+  mealDetails: 'Nutrition de ce repas',
+  editQuantity: 'Changer la quantité',
+  close: 'Fermer',
+  foodGroups: 'Groupes d’aliments',
+  closeSearch: 'Terminé',
+  searchProduct: 'Rechercher un produit',
+  searchPlaceholder: 'Chercher par nom',
+  allGroups: 'Tous',
+  noProductFound: 'Aucun produit ne correspond.',
+  inThisMeal: 'Dans ce repas',
+  usedUp: 'Épuisé',
+  addToMeal: 'Ajouter à : %(meal)s',
   noProfile: 'Renseignez votre profil.',
   myNeeds: 'Mes besoins',
   emptyDay: 'Mettez des produits dans un repas.',
@@ -48,7 +64,9 @@ export const labels = {
   above: 'Au-dessus',
   unknown: 'Inconnu',
   uncertain: 'Pas certain',
-  proposeDay: 'Proposer un jour',
+  proposeDay: 'Compléter ma journée',
+  proposeDayTitle:
+    'Choisit dans votre inventaire ce qu’il faut aux repas pas encore mangés.',
   proposing: 'Recherche du meilleur jour…',
   proposeError: 'Aucun jour n’a pu être proposé.',
   proposeNeedsProfile: 'Renseignez votre profil.',
@@ -66,7 +84,7 @@ export const labels = {
   skipped: 'Laissés de côté, sans valeur d’énergie :',
   skipped_no_energy: 'Laissés de côté, sans valeur d’énergie :',
   skipped_out_of_stock: 'Laissés de côté, épuisés :',
-  useDay: 'Utiliser ce jour',
+  useDay: 'Utiliser ces repas',
   confirmReplace: 'Remplacer ce qui est dans les repas pas encore mangés ?',
   limitsTitle: 'Limites pour le jour proposé',
   limitsHelp:
@@ -84,7 +102,8 @@ export const labels = {
   limitsMost: 'Au plus par jour',
   product: 'Produit',
   saved: 'Enregistré',
-  suggestFoods: 'Suggérer des aliments',
+  suggestFoods: 'Quoi acheter ?',
+  suggestFoodsTitle: 'Les aliments qui manquent à votre inventaire.',
   suggesting: 'Recherche d’aliments…',
   suggestError: 'Aucun aliment n’a pu être suggéré.',
   suggestionsTitle: 'Aliments à se procurer',
@@ -268,9 +287,45 @@ export function renderApp({ openGroups = true, search = '' } = {}) {
       needsUrl="/needs/"
       inventoryUrl="/products/"
       groupNames={GROUP_NAMES}
+      placeholderImage="/static/placeholder.png"
     />,
   );
 }
+
+/**
+ * Opens the fields of an item of a meal, which are folded away until its line is
+ * clicked, and gives the line.
+ */
+export async function openItem(name, scope = screen) {
+  const line = await scope.findByRole('button', {
+    name: new RegExp(`^${name}`),
+  });
+  if (line.getAttribute('aria-expanded') !== 'true') fireEvent.click(line);
+  return line;
+}
+
+/** Opens the window where a product is chosen for a meal, and gives it. */
+export async function openPicker(mealLabel) {
+  fireEvent.click(
+    screen.getByRole('button', { name: `Ajouter un produit – ${mealLabel}` }),
+  );
+  return screen.findByRole('dialog');
+}
+
+/** Puts a product in a meal by the window, which stays open, and gives it. */
+export async function addFromPicker(mealLabel, name) {
+  const dialog = await openPicker(mealLabel);
+  fireEvent.click(
+    within(dialog).getByRole('button', { name: new RegExp(`^${name}`) }),
+  );
+  return dialog;
+}
+
+/** The button that marks a meal as eaten, whichever way it stands. */
+export const eatenButton = (mealLabel) =>
+  screen.getByRole('button', {
+    name: new RegExp(`^(Mangé|Marquer comme mangé) – ${mealLabel}$`),
+  });
 
 export const need = (overrides) => ({
   name: 'Fibres',

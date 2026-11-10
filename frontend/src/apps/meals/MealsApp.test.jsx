@@ -12,11 +12,15 @@ import {
   COMPOTE,
   DAY_URL,
   MUESLI,
+  addFromPicker,
+  breadItem,
   day,
   labels,
   meal,
   need,
   ok,
+  openItem,
+  openPicker,
   ratio,
   renderApp,
   stubFetch,
@@ -48,7 +52,7 @@ describe('MealsApp', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows what a meal holds and what it brings, the energy in kcal', async () => {
+  it('says a meal in a line, with its energy, and keeps the fields and the nutrition folded', async () => {
     stubFetch({
       [`GET ${DAY_URL}`]: ok(withBread()),
       'GET /api/v1/inventory/': ok([BREAD]),
@@ -58,22 +62,58 @@ describe('MealsApp', () => {
     const breakfast = await screen.findByRole('region', {
       name: 'Petit-déjeuner',
     });
-    expect(within(breakfast).getByText('Pain de mie')).toBeInTheDocument();
+    // The item as a phrase, and the energy of the meal in its head: 3766.68 kJ is 900 kcal.
+    const line = within(breakfast).getByRole('button', {
+      name: /^Pain de mie/,
+    });
+    expect(line).toHaveTextContent('2 × 1 tranche · 71,4 g');
+    expect(line).toHaveAttribute('aria-expanded', 'false');
+    expect(within(breakfast).getByText('900 kcal')).toBeInTheDocument();
+    // Nothing to change and no table until they are asked for.
+    expect(
+      within(breakfast).queryByLabelText('Quantité – Pain de mie'),
+    ).toBeNull();
+    expect(within(breakfast).queryByText('7,85 g')).toBeNull();
+
+    // The line opens the fields.
+    fireEvent.click(line);
     expect(
       within(breakfast).getByLabelText('Quantité – Pain de mie'),
     ).toHaveValue(2);
-    expect(within(breakfast).getByText('71,4 g')).toBeInTheDocument();
-    // 3766.68 kJ is 900 kcal.
-    expect(within(breakfast).getByText('900 kcal')).toBeInTheDocument();
+    fireEvent.click(line);
+    expect(
+      within(breakfast).queryByLabelText('Quantité – Pain de mie'),
+    ).toBeNull();
+  });
+
+  it('opens the nutrition of a meal, with the interval and the coverage on a figure, and keeps it open', async () => {
+    stubFetch({
+      [`GET ${DAY_URL}`]: ok(withBread()),
+      'GET /api/v1/inventory/': ok([BREAD]),
+    });
+    const { unmount } = renderApp();
+    const breakfast = await screen.findByRole('region', {
+      name: 'Petit-déjeuner',
+    });
+
+    fireEvent.click(
+      within(breakfast).getByRole('button', { name: 'Nutrition de ce repas' }),
+    );
     expect(within(breakfast).getByText('7,85 g')).toBeInTheDocument();
-    // The interval and the coverage are on the figure.
-    expect(within(breakfast).getByText('900 kcal')).toHaveAttribute(
+    // The energy is twice on the card: in its head, and in its table, where it has the range.
+    expect(within(breakfast).getAllByText('900 kcal')[1]).toHaveAttribute(
       'title',
       expect.stringContaining('884 – 908'),
     );
+
+    // Seen again, it is as it was left.
+    unmount();
+    renderApp();
+    const again = await screen.findByRole('region', { name: 'Petit-déjeuner' });
+    expect(within(again).getByText('7,85 g')).toBeInTheDocument();
   });
 
-  it('puts a product in a meal with the CSRF token, and shows the day it answers with', async () => {
+  it('puts a product in a meal by the window, with the CSRF token, one serving to begin with', async () => {
     const fetch = stubFetch({
       [`GET ${DAY_URL}`]: ok(day()),
       'GET /api/v1/inventory/': ok([BREAD, MUESLI]),
@@ -84,86 +124,167 @@ describe('MealsApp', () => {
       name: 'Petit-déjeuner',
     });
 
-    fireEvent.change(
-      within(breakfast).getByLabelText('Ajouter un produit – Petit-déjeuner'),
-      { target: { value: BREAD.barcode } },
-    );
-    // A product with a serving is counted in servings, one serving to begin with.
-    expect(
-      within(breakfast).getByLabelText('Unité – Petit-déjeuner'),
-    ).toHaveValue('serving');
-    fireEvent.change(
-      within(breakfast).getByLabelText('Quantité – Petit-déjeuner'),
-      {
-        target: { value: '2' },
-      },
-    );
-    fireEvent.click(within(breakfast).getByRole('button', { name: 'Ajouter' }));
+    await addFromPicker('Petit-déjeuner', 'Pain de mie');
 
-    // The row of the item: the name is also an option of the lists.
+    // The product is in the meal, and the window stays for the next one.
     expect(
-      await within(breakfast).findByLabelText('Quantité – Pain de mie'),
+      await within(breakfast).findByRole('button', { name: /^Pain de mie/ }),
     ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
     const [, options] = fetch.mock.calls.find(([, o]) => o?.method === 'POST');
     expect(JSON.parse(options.body)).toEqual({
       barcode: BREAD.barcode,
-      quantity: 2,
+      quantity: 1,
       unit: 'serving',
     });
     expect(options.headers['X-CSRFToken']).toBe('test-csrf-token');
   });
 
-  it('counts a product with no serving in grams', async () => {
-    stubFetch({
+  it('counts a product with no serving in 100 g to begin with', async () => {
+    const fetch = stubFetch({
       [`GET ${DAY_URL}`]: ok(day()),
       'GET /api/v1/inventory/': ok([MUESLI]),
+      [`POST ${DAY_URL}/lunch/items`]: ok(day()),
     });
     renderApp();
-    const lunch = await screen.findByRole('region', { name: 'Déjeuner' });
+    await screen.findByRole('region', { name: 'Déjeuner' });
 
-    fireEvent.change(
-      within(lunch).getByLabelText('Ajouter un produit – Déjeuner'),
-      {
-        target: { value: MUESLI.barcode },
-      },
-    );
+    await addFromPicker('Déjeuner', 'Muesli');
 
-    expect(within(lunch).getByLabelText('Unité – Déjeuner')).toHaveValue('g');
-    expect(within(lunch).getByLabelText('Quantité – Déjeuner')).toHaveValue(
-      100,
+    await waitFor(() =>
+      expect(fetch.mock.calls.some(([, o]) => o?.method === 'POST')).toBe(true),
     );
-    // No serving to choose.
-    expect(within(lunch).queryByRole('option', { name: /portion/ })).toBeNull();
+    const [, options] = fetch.mock.calls.find(([, o]) => o?.method === 'POST');
+    expect(JSON.parse(options.body)).toEqual({
+      barcode: MUESLI.barcode,
+      quantity: 100,
+      unit: 'g',
+    });
   });
 
-  it('does not offer a product already in the meal', async () => {
+  it('shows in the window what a product is, and marks what is already in the meal', async () => {
     stubFetch({
       [`GET ${DAY_URL}`]: ok(withBread()),
       'GET /api/v1/inventory/': ok([BREAD, MUESLI]),
     });
     renderApp();
-    const breakfast = await screen.findByRole('region', {
-      name: 'Petit-déjeuner',
-    });
-    const lunch = screen.getByRole('region', { name: 'Déjeuner' });
+    await screen.findByRole('region', { name: 'Petit-déjeuner' });
 
-    const offered = (card, name) =>
-      within(within(card).getByLabelText(name))
-        .getAllByRole('option')
-        .map((o) => o.textContent);
-    // Each with what its package holds.
-    expect(offered(breakfast, 'Ajouter un produit – Petit-déjeuner')).toEqual([
-      'Choisir un produit…',
-      'Muesli (375 g)',
-    ]);
-    expect(offered(lunch, 'Ajouter un produit – Déjeuner')).toEqual([
-      'Choisir un produit…',
-      'Pain de mie (500 g)',
-      'Muesli (375 g)',
-    ]);
+    const dialog = await openPicker('Petit-déjeuner');
+
+    expect(dialog).toHaveAccessibleName('Ajouter à : Petit-déjeuner');
+    // Its serving and what its package holds, under the name.
+    const bread = within(dialog).getByRole('button', { name: /^Pain de mie/ });
+    expect(bread).toHaveTextContent('1 tranche (35,7 g) · 500 g');
+    expect(bread).toBeDisabled();
+    expect(bread).toHaveTextContent('Dans ce repas');
+    const muesli = within(dialog).getByRole('button', { name: /^Muesli/ });
+    expect(muesli).toHaveTextContent('375 g');
+    expect(muesli).toBeEnabled();
   });
 
-  it("names a product's serving as its label does, in a meal and when adding", async () => {
+  it('sorts the products of the window by food group, and filters them by group or by what is typed', async () => {
+    stubFetch({
+      [`GET ${DAY_URL}`]: ok(day()),
+      'GET /api/v1/inventory/': ok([BREAD, COMPOTE, MUESLI]),
+    });
+    renderApp();
+    await screen.findByRole('region', { name: 'Déjeuner' });
+    const dialog = await openPicker('Déjeuner');
+    const names = () =>
+      within(dialog)
+        .getAllByRole('button', { name: /^(Pain|Muesli|Compote)/ })
+        .map((b) => b.textContent.split(/\d/)[0].trim());
+
+    // The groups, in the language served, with their products by name.
+    // Each is a filter and, while all are shown, a title over its products.
+    expect(
+      within(dialog).getAllByText('Céréales et pommes de terre'),
+    ).toHaveLength(2);
+    expect(within(dialog).getAllByText('Fruits et légumes')).toHaveLength(2);
+    expect(names()).toEqual(['Muesli', 'Pain de mie', 'Compote']);
+
+    // A group.
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: /^Fruits et légumes/ }),
+    );
+    expect(names()).toEqual(['Compote']);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Tous' }));
+    expect(names()).toHaveLength(3);
+
+    // A word, found without regard to accents or capitals.
+    fireEvent.change(within(dialog).getByLabelText('Rechercher un produit'), {
+      target: { value: 'MUES' },
+    });
+    expect(names()).toEqual(['Muesli']);
+    fireEvent.change(within(dialog).getByLabelText('Rechercher un produit'), {
+      target: { value: 'zzz' },
+    });
+    expect(
+      within(dialog).getByText('Aucun produit ne correspond.'),
+    ).toBeVisible();
+  });
+
+  it('shows the photo of a product, and a placeholder for one with none', async () => {
+    stubFetch({
+      [`GET ${DAY_URL}`]: ok(day()),
+      'GET /api/v1/inventory/': ok([
+        { ...BREAD, image: '/media/bread.jpg' },
+        MUESLI,
+      ]),
+    });
+    renderApp();
+    await screen.findByRole('region', { name: 'Déjeuner' });
+    const dialog = await openPicker('Déjeuner');
+
+    const photoOf = (name) =>
+      within(
+        within(dialog).getByRole('button', { name: new RegExp(`^${name}`) }),
+      )
+        .getByRole('presentation')
+        .getAttribute('src');
+    expect(photoOf('Pain de mie')).toBe('/media/bread.jpg');
+    expect(photoOf('Muesli')).toBe('/static/placeholder.png');
+  });
+
+  it('closes the window with its button, with Escape and with a click beside it', async () => {
+    stubFetch({
+      [`GET ${DAY_URL}`]: ok(day()),
+      'GET /api/v1/inventory/': ok([BREAD]),
+    });
+    renderApp();
+    await screen.findByRole('region', { name: 'Déjeuner' });
+
+    const dialog = await openPicker('Déjeuner');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Terminé' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    fireEvent.keyDown(await openPicker('Déjeuner'), { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    const again = await openPicker('Déjeuner');
+    fireEvent.mouseDown(again.parentElement);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    // The page is where it was.
+    expect(
+      screen.getByRole('button', { name: 'Ajouter un produit – Déjeuner' }),
+    ).toHaveFocus();
+  });
+
+  it('offers no way to add where the inventory is empty', async () => {
+    stubFetch({
+      [`GET ${DAY_URL}`]: ok(day()),
+      'GET /api/v1/inventory/': ok([]),
+    });
+    renderApp();
+    await screen.findByRole('region', { name: 'Déjeuner' });
+
+    expect(
+      screen.queryByRole('button', { name: /Ajouter un produit/ }),
+    ).toBeNull();
+  });
+
+  it("names a product's serving as its label does, in a meal and in the window", async () => {
     const unnamed = {
       ...MUESLI,
       barcode: '3229820794557',
@@ -178,28 +299,23 @@ describe('MealsApp', () => {
     const breakfast = await screen.findByRole('region', {
       name: 'Petit-déjeuner',
     });
-    const lunch = screen.getByRole('region', { name: 'Déjeuner' });
-    const unitsOf = (card, label) =>
-      within(within(card).getByLabelText(label))
-        .getAllByRole('option')
-        .map((o) => o.textContent);
+    await openItem('Pain de mie', within(breakfast));
 
     // The item of the meal: the name of the label, with what it weighs.
-    expect(unitsOf(breakfast, 'Unité – Pain de mie')).toEqual([
-      '1 tranche (35,7 g)',
-      'g',
-    ]);
+    expect(
+      within(within(breakfast).getByLabelText('Unité – Pain de mie'))
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['1 tranche (35,7 g)', 'g']);
 
-    // The product being added, named or not.
-    const choose = (barcode) =>
-      fireEvent.change(
-        within(lunch).getByLabelText('Ajouter un produit – Déjeuner'),
-        { target: { value: barcode } },
-      );
-    choose(COMPOTE.barcode);
-    expect(unitsOf(lunch, 'Unité – Déjeuner')).toEqual(['1 pot (100 g)', 'g']);
-    choose(unnamed.barcode);
-    expect(unitsOf(lunch, 'Unité – Déjeuner')).toEqual(['portion (30 g)', 'g']);
+    // The products being added, named or not.
+    const dialog = await openPicker('Déjeuner');
+    expect(
+      within(dialog).getByRole('button', { name: /^Compote/ }),
+    ).toHaveTextContent('1 pot (100 g)');
+    expect(
+      within(dialog).getByRole('button', { name: /^Barre/ }),
+    ).toHaveTextContent('portion (30 g)');
   });
 
   it('changes a quantity when the field is left, and not when it did not change', async () => {
@@ -209,6 +325,7 @@ describe('MealsApp', () => {
       'PATCH /api/v1/meals/items/7': ok(withBread()),
     });
     renderApp();
+    await openItem('Pain de mie');
     const field = await screen.findByLabelText('Quantité – Pain de mie');
 
     fireEvent.blur(field);
@@ -227,24 +344,68 @@ describe('MealsApp', () => {
     expect(options.headers['X-CSRFToken']).toBe('test-csrf-token');
   });
 
-  it('moves a quantity by half a serving or ten grams with the arrows, from a round number', async () => {
+  it('keeps the fields of an item open when its quantity has been changed', async () => {
     stubFetch({
       [`GET ${DAY_URL}`]: ok(withBread()),
+      'GET /api/v1/inventory/': ok([BREAD]),
+      'PATCH /api/v1/meals/items/7': ok(
+        withBread({
+          meals: [
+            meal('breakfast', 'Petit-déjeuner', [
+              { ...breadItem, quantity: '3.00' },
+            ]),
+          ],
+        }),
+      ),
+    });
+    renderApp();
+    await openItem('Pain de mie');
+    const field = await screen.findByLabelText('Quantité – Pain de mie');
+
+    fireEvent.change(field, { target: { value: '3' } });
+    fireEvent.blur(field);
+
+    // The day it answers with shows 3, and the fields are still there to change again.
+    await waitFor(() =>
+      expect(screen.getByLabelText('Quantité – Pain de mie')).toHaveValue(3),
+    );
+    expect(
+      screen.getByRole('button', { name: /^Pain de mie/ }),
+    ).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('moves a quantity by half a serving or ten grams with the arrows, from a round number', async () => {
+    const muesliItem = {
+      ...breadItem,
+      id: 8,
+      barcode: MUESLI.barcode,
+      name: 'Muesli',
+      quantity: '100.00',
+      unit: 'g',
+      serving: null,
+    };
+    stubFetch({
+      [`GET ${DAY_URL}`]: ok(
+        withBread({
+          meals: [
+            meal('breakfast', 'Petit-déjeuner', [breadItem]),
+            meal('lunch', 'Déjeuner', [muesliItem]),
+          ],
+        }),
+      ),
       'GET /api/v1/inventory/': ok([BREAD, MUESLI]),
     });
     renderApp();
-    const field = await screen.findByLabelText('Quantité – Pain de mie');
-    // The arrows count from `min` by `step`: from 0.01 they landed on 1.01, 2.01...
-    expect(field).toHaveAttribute('min', '0');
-    expect(field).toHaveAttribute('step', '0.5');
+    await openItem('Pain de mie');
+    await openItem('Muesli');
 
-    const add = screen.getByLabelText('Ajouter un produit – Déjeuner');
-    fireEvent.change(add, { target: { value: BREAD.barcode } });
-    const lunch = screen.getByLabelText('Quantité – Déjeuner');
-    expect(lunch).toHaveAttribute('min', '0');
-    expect(lunch).toHaveAttribute('step', '0.5');
-    fireEvent.change(add, { target: { value: MUESLI.barcode } });
-    expect(lunch).toHaveAttribute('step', '10');
+    // The arrows count from `min` by `step`: from 0.01 they landed on 1.01, 2.01...
+    const servings = await screen.findByLabelText('Quantité – Pain de mie');
+    expect(servings).toHaveAttribute('min', '0');
+    expect(servings).toHaveAttribute('step', '0.5');
+    const grams = screen.getByLabelText('Quantité – Muesli');
+    expect(grams).toHaveAttribute('min', '0');
+    expect(grams).toHaveAttribute('step', '10');
   });
 
   it('keeps any value typed in a quantity, whatever the arrows move it by', async () => {
@@ -254,6 +415,7 @@ describe('MealsApp', () => {
       'PATCH /api/v1/meals/items/7': ok(withBread()),
     });
     renderApp();
+    await openItem('Pain de mie');
     const field = await screen.findByLabelText('Quantité – Pain de mie');
 
     fireEvent.change(field, { target: { value: '0.33' } });
@@ -277,6 +439,7 @@ describe('MealsApp', () => {
       'GET /api/v1/inventory/': ok([BREAD]),
     });
     renderApp();
+    await openItem('Pain de mie');
     const field = await screen.findByLabelText('Quantité – Pain de mie');
 
     fireEvent.change(field, { target: { value: '0' } });
@@ -293,8 +456,11 @@ describe('MealsApp', () => {
       'PATCH /api/v1/meals/items/7': ok(withBread()),
     });
     renderApp();
+    await openItem('Pain de mie');
 
-    fireEvent.change(await screen.findByLabelText('Unité – Pain de mie'), {
+    // The limits below have a unit for the product too.
+    const breakfast = screen.getByRole('region', { name: 'Petit-déjeuner' });
+    fireEvent.change(within(breakfast).getByLabelText('Unité – Pain de mie'), {
       target: { value: 'g' },
     });
 
@@ -314,6 +480,7 @@ describe('MealsApp', () => {
       'DELETE /api/v1/meals/items/7': ok(day()),
     });
     renderApp();
+    await openItem('Pain de mie');
 
     fireEvent.click(
       await screen.findByRole('button', {
@@ -489,6 +656,7 @@ describe('MealsApp', () => {
       'DELETE /api/v1/meals/items/7': { ok: false, status: 403 },
     });
     renderApp();
+    await openItem('Pain de mie');
 
     fireEvent.click(
       await screen.findByRole('button', {

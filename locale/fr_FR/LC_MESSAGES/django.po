@@ -1479,8 +1479,8 @@ msgstr "Mangé"
 msgid "To add"
 msgstr "À ajouter"
 
-msgid "Mark the meals you have eaten: a proposed day counts what they brought, keeps them as they are, and only adds what the rest of the day needs."
-msgstr "Marquez les repas que vous avez mangés : un jour proposé compte ce qu'ils ont apporté, les garde tels quels et n'ajoute que ce dont le reste de la journée a besoin."
+msgid "Mark the meals you have eaten, then “Fill in my day” completes the others with the products of your inventory."
+msgstr "Marquez les repas déjà mangés, puis « Compléter ma journée » remplit les autres avec les produits de votre inventaire."
 
 msgid "Already eaten: a day proposed keeps this meal and works out what to add."
 msgstr "Déjà mangé : un jour proposé garde ce repas et cherche ce qu'il faut ajouter."
@@ -1521,8 +1521,11 @@ msgstr "Inconnu"
 msgid "Not certain: the range of the total, or what the food does not cover, could change it."
 msgstr "Pas certain : la fourchette du total, ou ce que les aliments ne couvrent pas, pourrait le changer."
 
-msgid "Propose a day"
-msgstr "Proposer un jour"
+msgid "Fill in my day"
+msgstr "Compléter ma journée"
+
+msgid "Picks, from your inventory, what the meals not yet eaten need to cover your needs for the day."
+msgstr "Choisit dans votre inventaire ce qu'il faut aux repas pas encore mangés pour couvrir vos besoins de la journée."
 
 msgid "Looking for the best day…"
 msgstr "Recherche du meilleur jour…"
@@ -1567,8 +1570,8 @@ msgstr "Laissés de côté, sans valeur d'énergie :"
 msgid "Left aside, used up:"
 msgstr "Laissés de côté, épuisés :"
 
-msgid "Use this day"
-msgstr "Utiliser ce jour"
+msgid "Use these meals"
+msgstr "Utiliser ces repas"
 
 msgid "Replace what is in the meals not yet eaten?"
 msgstr "Remplacer ce qui est dans les repas pas encore mangés ?"
@@ -1606,8 +1609,11 @@ msgstr "Produit"
 msgid "Saved"
 msgstr "Enregistré"
 
-msgid "Suggest foods"
-msgstr "Suggérer des aliments"
+msgid "What to buy?"
+msgstr "Quoi acheter ?"
+
+msgid "Foods your inventory lacks to cover your needs for the day."
+msgstr "Les aliments qui manquent à votre inventaire pour couvrir vos besoins de la journée."
 
 msgid "Looking for foods…"
 msgstr "Recherche d'aliments…"
@@ -2229,3 +2235,34 @@ msgstr "Envoyé à OpenFoodFacts."
 
 msgid "OpenFoodFacts already has this list."
 msgstr "OpenFoodFacts a déjà cette liste."
+
+msgid "Mark as eaten"
+msgstr "Marquer comme mangé"
+
+msgid "Counted in the day and taken out of your stock; a proposed day leaves it as it is. Click to undo."
+msgstr "Compté dans la journée et retiré de votre stock ; un jour proposé n'y touche pas. Cliquer pour annuler."
+
+msgid "Count this meal as eaten: it comes out of your stock, and a proposed day leaves it as it is."
+msgstr "Compter ce repas comme mangé : il sort de votre stock, et un jour proposé n'y touche pas."
+
+msgid "Nutrition of this meal"
+msgstr "Nutrition de ce repas"
+
+msgid "Change the quantity"
+msgstr "Changer la quantité"
+
+msgid "Done"
+msgstr "Terminé"
+
+msgid "Search by name"
+msgstr "Chercher par nom"
+
+msgid "In this meal"
+msgstr "Dans ce repas"
+
+#, python-format
+msgid "Add to %(meal)s"
+msgstr "Ajouter à : %(meal)s"
+
+msgid "Food groups"
+msgstr "Groupes d'aliments"

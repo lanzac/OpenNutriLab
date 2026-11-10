@@ -1,0 +1,154 @@
+/* The window in which a product is chosen for a meal: over the page, a column of
+   its own on a phone. Colours come from Bootstrap's variables, so it follows the
+   theme the visitor chose. */
+
+.picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1055;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 50%);
+}
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  width: min(40rem, 100%);
+  max-height: min(46rem, 100%);
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.picker-top {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+/* The groups wrap where there is room, so that none is out of sight; on a phone they
+   scroll along one line, so that the list keeps the screen. */
+.picker-groups {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0 -1rem;
+  padding: 0 1rem 0.25rem;
+  overflow-x: auto;
+}
+
+.picker-groups .btn {
+  flex: 0 0 auto;
+}
+
+@media (min-width: 576px) {
+  .picker-groups {
+    flex-wrap: wrap;
+    margin: 0;
+    padding: 0;
+    overflow-x: visible;
+  }
+}
+
+.picker-list {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+}
+
+.picker-group-title {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.35rem 1rem;
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-secondary-color);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.picker-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  border: 0;
+  border-top: 1px solid var(--bs-border-color);
+  background: transparent;
+  color: inherit;
+  text-align: start;
+}
+
+.picker-group-title + ul > li:first-child .picker-row {
+  border-top: 0;
+}
+
+.picker-row:hover:not(:disabled),
+.picker-row:focus-visible {
+  background: var(--bs-tertiary-bg);
+}
+
+.picker-row:disabled {
+  color: var(--bs-secondary-color);
+}
+
+.picker-row-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.picker-row-end {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.picker-bottom {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--bs-border-color);
+}
+
+@media (max-width: 575.98px) {
+  .picker-backdrop {
+    padding: 0;
+  }
+
+  .picker {
+    width: 100%;
+    max-height: 100%;
+    height: 100%;
+    border-radius: 0;
+    border: 0;
+  }
+}
+
+/* An item of a meal: its photo, its name and how much, on a line that opens the
+   fields to change it. */
+.meal-item-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+}
+
+.meal-item-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}

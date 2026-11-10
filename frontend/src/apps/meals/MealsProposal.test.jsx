@@ -62,7 +62,7 @@ describe('proposing a day', () => {
     renderApp();
 
     const button = await screen.findByRole('button', {
-      name: /Proposer un jour/,
+      name: /Compléter ma journée/,
     });
 
     expect(button).toBeDisabled();
@@ -78,7 +78,7 @@ describe('proposing a day', () => {
     renderApp();
 
     fireEvent.click(
-      await screen.findByRole('button', { name: /Proposer un jour/ }),
+      await screen.findByRole('button', { name: /Compléter ma journée/ }),
     );
 
     const panel = await screen.findByRole('region', { name: 'Jour proposé' });
@@ -89,7 +89,7 @@ describe('proposing a day', () => {
     expect(within(panel).getByText('Pain de mie')).toBeInTheDocument();
     // The serving as the label names it.
     expect(
-      within(panel).getByText('2 × 1 tranche (71,4 g)'),
+      within(panel).getByText('2 × 1 tranche · 71,4 g'),
     ).toBeInTheDocument();
     expect(within(panel).queryByRole('spinbutton')).toBeNull();
     expect(within(panel).queryByRole('button', { name: /Retirer/ })).toBeNull();
@@ -121,7 +121,7 @@ describe('proposing a day', () => {
     renderApp();
 
     fireEvent.click(
-      await screen.findByRole('button', { name: /Proposer un jour/ }),
+      await screen.findByRole('button', { name: /Compléter ma journée/ }),
     );
 
     const looking = await screen.findByRole('button', {
@@ -135,7 +135,7 @@ describe('proposing a day', () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: /Proposer un jour/ }),
+      screen.getByRole('button', { name: /Compléter ma journée/ }),
     ).toBeEnabled();
   });
 
@@ -156,7 +156,7 @@ describe('proposing a day', () => {
     renderApp();
 
     fireEvent.click(
-      await screen.findByRole('button', { name: /Proposer un jour/ }),
+      await screen.findByRole('button', { name: /Compléter ma journée/ }),
     );
 
     const panel = await screen.findByRole('region', { name: 'Jour proposé' });
@@ -167,7 +167,7 @@ describe('proposing a day', () => {
       within(panel).getByText(/Laissés de côté, sans valeur d’énergie.*Muesli/),
     ).toBeInTheDocument();
     expect(
-      within(panel).queryByRole('button', { name: 'Utiliser ce jour' }),
+      within(panel).queryByRole('button', { name: 'Utiliser ces repas' }),
     ).toBeNull();
   });
 
@@ -188,7 +188,7 @@ describe('proposing a day', () => {
     renderApp();
 
     fireEvent.click(
-      await screen.findByRole('button', { name: /Proposer un jour/ }),
+      await screen.findByRole('button', { name: /Compléter ma journée/ }),
     );
 
     const panel = await screen.findByRole('region', { name: 'Jour proposé' });
@@ -211,17 +211,17 @@ describe('proposing a day', () => {
     vi.stubGlobal('confirm', confirm);
     renderApp();
     fireEvent.click(
-      await screen.findByRole('button', { name: /Proposer un jour/ }),
+      await screen.findByRole('button', { name: /Compléter ma journée/ }),
     );
     const panel = await screen.findByRole('region', { name: 'Jour proposé' });
 
     fireEvent.click(
-      within(panel).getByRole('button', { name: 'Utiliser ce jour' }),
+      within(panel).getByRole('button', { name: 'Utiliser ces repas' }),
     );
 
     // The day shown is now the saved one, with rows to change, and the proposal is gone.
     expect(
-      await screen.findByLabelText('Quantité – Pain de mie'),
+      await screen.findByRole('button', { name: /^Pain de mie/ }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Jour proposé' })).toBeNull();
     const [, options] = fetch.mock.calls.find(([, o]) => o?.method === 'PUT');
@@ -250,12 +250,12 @@ describe('proposing a day', () => {
     vi.stubGlobal('confirm', confirm);
     renderApp();
     fireEvent.click(
-      await screen.findByRole('button', { name: /Proposer un jour/ }),
+      await screen.findByRole('button', { name: /Compléter ma journée/ }),
     );
     const panel = await screen.findByRole('region', { name: 'Jour proposé' });
 
     fireEvent.click(
-      within(panel).getByRole('button', { name: 'Utiliser ce jour' }),
+      within(panel).getByRole('button', { name: 'Utiliser ces repas' }),
     );
 
     expect(confirm).toHaveBeenCalledWith(
@@ -275,7 +275,7 @@ describe('proposing a day', () => {
     });
     renderApp();
     fireEvent.click(
-      await screen.findByRole('button', { name: /Proposer un jour/ }),
+      await screen.findByRole('button', { name: /Compléter ma journée/ }),
     );
     const panel = await screen.findByRole('region', { name: 'Jour proposé' });
 
@@ -297,7 +297,7 @@ describe('proposing a day', () => {
     renderApp();
 
     fireEvent.click(
-      await screen.findByRole('button', { name: /Proposer un jour/ }),
+      await screen.findByRole('button', { name: /Compléter ma journée/ }),
     );
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -317,7 +317,7 @@ describe('proposing a day', () => {
     });
     renderApp();
     fireEvent.click(
-      await screen.findByRole('button', { name: /Proposer un jour/ }),
+      await screen.findByRole('button', { name: /Compléter ma journée/ }),
     );
     await screen.findByRole('region', { name: 'Jour proposé' });
 

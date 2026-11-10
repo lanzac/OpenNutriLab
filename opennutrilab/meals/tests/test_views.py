@@ -156,15 +156,18 @@ def test_the_labels_of_the_meals_page_are_translated_by_the_server(
     # Nothing is left in English.
     assert all(isinstance(value, str) and value for value in labels.values())
     assert labels["coverage"] == "Couverture"
-    assert labels["proposeDay"] == "Proposer un jour"
-    assert labels["useDay"] == "Utiliser ce jour"
+    assert labels["proposeDay"] == "Compléter ma journée"
+    assert labels["suggestFoods"] == "Quoi acheter ?"
+    assert labels["useDay"] == "Utiliser ces repas"
+    assert labels["markEaten"] == "Marquer comme mangé"
+    assert labels["addToMeal"] == "Ajouter à : %(meal)s"
+    assert props["placeholderImage"].endswith(".png")
     # The date is written day first, as French does.
     assert labels["dateHint"] == "jj/mm/aaaa"
     assert labels["limitsUseAll"] == "Tous les produits"
     assert props["groupNames"]["Fruits and vegetables"] == "Fruits et légumes"
     assert labels["proposal_time_limit"].startswith("Le temps est écoulé")
     assert labels["limitsSaving"] == "Enregistrement…"
-    assert labels["suggestFoods"] == "Suggérer des aliments"
     assert labels["suggestionsTitle"] == "Aliments à se procurer"
     # The figures are put in by the page, and the text keeps where they go.
     assert "%(after)s" in labels["suggestion_optimal"]

@@ -14,6 +14,7 @@ export function ProposalPanel({
   labels,
   languageCode,
   needsUrl,
+  placeholderImage,
   busy,
   onUse,
   onClose,
@@ -60,6 +61,7 @@ export function ProposalPanel({
               labels={labels}
               languageCode={languageCode}
               needsUrl={needsUrl}
+              placeholderImage={placeholderImage}
             />
             <div className="d-flex gap-2 mt-3">
               <button

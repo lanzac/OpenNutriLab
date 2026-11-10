@@ -11,6 +11,7 @@ from django.http import HttpResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import redirect
 from django.shortcuts import render
+from django.templatetags.static import static
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import get_language
@@ -176,6 +177,7 @@ class MealsView(LoginRequiredMixin, View):
             "inventoryUrl": reverse("list_products"),
             "labels": meals_labels(),
             "groupNames": pnns_group_names(),
+            "placeholderImage": static("images/milk-carton-svgrepo-com.png"),
         }
         return render(request, self.template_name, {"meals_props": props})
 
@@ -205,10 +207,32 @@ def meals_labels() -> dict[str, str]:
         "emptyMealEaten": _("Nothing eaten at this meal."),
         "eaten": _("Eaten"),
         "toAdd": _("To add"),
-        "eatenHelp": _(
-            "Mark the meals you have eaten: a proposed day counts what they brought, "
-            "keeps them as they are, and only adds what the rest of the day needs."
+        "markEaten": _("Mark as eaten"),
+        "eatenTitle": _(
+            "Counted in the day and taken out of your stock; a proposed day leaves "
+            "it as it is. Click to undo."
         ),
+        "markEatenTitle": _(
+            "Count this meal as eaten: it comes out of your stock, and a proposed "
+            "day leaves it as it is."
+        ),
+        "eatenHelp": _(
+            "Mark the meals you have eaten, then “Fill in my day” completes the "
+            "others with the products of your inventory."
+        ),
+        "mealDetails": _("Nutrition of this meal"),
+        "editQuantity": _("Change the quantity"),
+        "close": _("Close"),
+        "foodGroups": _("Food groups"),
+        "closeSearch": _("Done"),
+        "searchProduct": _("Search for a product"),
+        "searchPlaceholder": _("Search by name"),
+        "allGroups": _("All"),
+        "noProductFound": _("No product matches."),
+        "inThisMeal": _("In this meal"),
+        "usedUp": _("Used up"),
+        # %(meal)s is put in client-side.
+        "addToMeal": _("Add to %(meal)s"),
         "noProfile": _("Fill in your profile to set the day against your needs."),
         "myNeeds": _("My needs"),
         "emptyDay": _("Put products in a meal to see what the day brings."),
@@ -234,7 +258,11 @@ def meals_labels() -> dict[str, str]:
             "Not certain: the range of the total, or what the food does not "
             "cover, could change it."
         ),
-        "proposeDay": _("Propose a day"),
+        "proposeDay": _("Fill in my day"),
+        "proposeDayTitle": _(
+            "Picks, from your inventory, what the meals not yet eaten need to "
+            "cover your needs for the day."
+        ),
         "proposing": _("Looking for the best day…"),
         "proposeError": _("No day could be proposed."),
         "proposeNeedsProfile": _("Fill in your profile to propose a day."),
@@ -257,7 +285,7 @@ def meals_labels() -> dict[str, str]:
         "skipped": _("Left aside, with no energy value:"),
         "skipped_no_energy": _("Left aside, with no energy value:"),
         "skipped_out_of_stock": _("Left aside, used up:"),
-        "useDay": _("Use this day"),
+        "useDay": _("Use these meals"),
         "confirmReplace": _("Replace what is in the meals not yet eaten?"),
         "limitsTitle": _("Limits for the proposed day"),
         "limitsHelp": _(
@@ -281,7 +309,10 @@ def meals_labels() -> dict[str, str]:
         "limitsMost": _("Most a day"),
         "product": _("Product"),
         "saved": _("Saved"),
-        "suggestFoods": _("Suggest foods"),
+        "suggestFoods": _("What to buy?"),
+        "suggestFoodsTitle": _(
+            "Foods your inventory lacks to cover your needs for the day."
+        ),
         "suggesting": _("Looking for foods…"),
         "suggestError": _("No food could be suggested."),
         "suggestionsTitle": _("Foods to get"),

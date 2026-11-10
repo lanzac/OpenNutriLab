@@ -11,6 +11,7 @@ from opennutrilab.meals.models import MealItem
 from opennutrilab.meals.models import Profile
 from opennutrilab.meals.tests.conftest import make_product
 from opennutrilab.meals.tests.conftest import stock
+from opennutrilab.products.models import Product
 from opennutrilab.products.models import ProductEstimate
 from opennutrilab.users.models import User
 from opennutrilab.users.tests.factories import UserFactory
@@ -277,3 +278,23 @@ def test_a_product_in_a_meal_comes_with_what_its_package_holds(
         i["barcode"]: i["package"] for i in api_client.get("/api/v1/inventory/").json()
     }
     assert served == {BREAD: {"quantity": "500.00", "unit": "g"}, MUESLI: None}
+
+
+def test_a_product_in_a_meal_comes_with_its_photo(
+    api_client: Client, user: User, catalogue: None
+):
+    stock(
+        user,
+        make_product(BREAD, serving="35.7", energy="1233"),
+        make_product(MUESLI, energy="1532"),
+    )
+    Product.objects.filter(pk=BREAD).update(image="images/products/bread.jpg")
+
+    breakfast = add(api_client, "breakfast", BREAD, "2").json()
+    lunch = add(api_client, "lunch", MUESLI, "60", "g").json()
+
+    assert breakfast["meals"][0]["items"][0]["image"].endswith(
+        "/images/products/bread.jpg"
+    )
+    # No photo: the page puts its placeholder.
+    assert lunch["meals"][1]["items"][0]["image"] is None

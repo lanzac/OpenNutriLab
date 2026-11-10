@@ -17,6 +17,12 @@ export const quantityStep = (unit) => (unit === 'serving' ? 0.5 : 10);
 /** What a product calls its serving: the name its label gives ("1 tranche"), else "serving". */
 export const servingName = (serving, labels) => serving?.name || labels.serving;
 
+/** A serving as the units list names it, with the mass it stands for: "1 tranche (35.7 g)". */
+export function describeServing(serving, labels, languageCode) {
+  const mass = `${new Intl.NumberFormat(languageCode).format(Number(serving.quantity))} ${serving.unit}`;
+  return `${servingName(serving, labels)} (${mass})`;
+}
+
 /**
  * A number of servings as a proposed day writes it: "2 × 1 tranche" for a product
  * whose label names its serving, "2 serving" for the others.

@@ -58,6 +58,7 @@ export function SuggestionsPanel({
   labels,
   languageCode,
   needsUrl,
+  placeholderImage,
   onClose,
 }) {
   const { status, foods, day } = suggestions;
@@ -105,6 +106,7 @@ export function SuggestionsPanel({
                 labels={labels}
                 languageCode={languageCode}
                 needsUrl={needsUrl}
+                placeholderImage={placeholderImage}
               />
             </details>
           </>

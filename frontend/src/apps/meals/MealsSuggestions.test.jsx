@@ -90,7 +90,7 @@ describe('suggesting foods', () => {
     renderApp();
 
     const button = await screen.findByRole('button', {
-      name: /Suggérer des aliments/,
+      name: /Quoi acheter/,
     });
 
     expect(button).toBeDisabled();
@@ -106,7 +106,7 @@ describe('suggesting foods', () => {
     renderApp();
 
     fireEvent.click(
-      await screen.findByRole('button', { name: /Suggérer des aliments/ }),
+      await screen.findByRole('button', { name: /Quoi acheter/ }),
     );
 
     const panel = await screen.findByRole('region', {
@@ -156,7 +156,7 @@ describe('suggesting foods', () => {
     });
     renderApp();
     fireEvent.click(
-      await screen.findByRole('button', { name: /Suggérer des aliments/ }),
+      await screen.findByRole('button', { name: /Quoi acheter/ }),
     );
     const panel = await screen.findByRole('region', {
       name: 'Aliments à se procurer',
@@ -194,7 +194,7 @@ describe('suggesting foods', () => {
     renderApp();
 
     fireEvent.click(
-      await screen.findByRole('button', { name: /Suggérer des aliments/ }),
+      await screen.findByRole('button', { name: /Quoi acheter/ }),
     );
 
     const looking = await screen.findByRole('button', {
@@ -205,9 +205,7 @@ describe('suggesting foods', () => {
     expect(
       await screen.findByRole('region', { name: 'Aliments à se procurer' }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: /Suggérer des aliments/ }),
-    ).toBeEnabled();
+    expect(screen.getByRole('button', { name: /Quoi acheter/ })).toBeEnabled();
   });
 
   it.each([
@@ -226,7 +224,7 @@ describe('suggesting foods', () => {
       renderApp();
 
       fireEvent.click(
-        await screen.findByRole('button', { name: /Suggérer des aliments/ }),
+        await screen.findByRole('button', { name: /Quoi acheter/ }),
       );
 
       const panel = await screen.findByRole('region', {
@@ -250,7 +248,7 @@ describe('suggesting foods', () => {
     renderApp();
 
     fireEvent.click(
-      await screen.findByRole('button', { name: /Suggérer des aliments/ }),
+      await screen.findByRole('button', { name: /Quoi acheter/ }),
     );
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -273,7 +271,7 @@ describe('suggesting foods', () => {
     });
     renderApp();
     fireEvent.click(
-      await screen.findByRole('button', { name: /Suggérer des aliments/ }),
+      await screen.findByRole('button', { name: /Quoi acheter/ }),
     );
     const panel = await screen.findByRole('region', {
       name: 'Aliments à se procurer',
@@ -284,9 +282,7 @@ describe('suggesting foods', () => {
       screen.queryByRole('region', { name: 'Aliments à se procurer' }),
     ).toBeNull();
 
-    fireEvent.click(
-      screen.getByRole('button', { name: /Suggérer des aliments/ }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: /Quoi acheter/ }));
     await screen.findByRole('region', { name: 'Aliments à se procurer' });
     fireEvent.click(screen.getByRole('button', { name: 'Jour suivant' }));
 

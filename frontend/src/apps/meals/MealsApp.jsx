@@ -11,6 +11,7 @@ import {
   setMealEaten,
   suggestFoods,
 } from './api/client.js';
+import { useStoredSet } from '../../shared/useViewState.js';
 import { DayPicker } from './DayPicker.jsx';
 import { DaySummary } from './DaySummary.jsx';
 import { readIsoDay, shiftDay } from './format.js';
@@ -54,6 +55,7 @@ export function MealsApp({
   needsUrl,
   inventoryUrl,
   groupNames,
+  placeholderImage,
 }) {
   const [day, setDay] = useState(() => dayOfAddress(today));
   const [report, setReport] = useState(null);
@@ -67,6 +69,13 @@ export function MealsApp({
   const [suggesting, setSuggesting] = useState(false);
   // The day asked for last: an answer for another is not shown.
   const current = useRef(day);
+  // The meals whose nutrition is open, kept from one visit to the next.
+  const [detailsOpen, setDetailsOpen] = useStoredSet('meals.mealDetails');
+  const toggleDetails = (kind) => {
+    const next = new Set(detailsOpen);
+    if (!next.delete(kind)) next.add(kind);
+    setDetailsOpen(next);
+  };
 
   useEffect(() => {
     current.current = day;
@@ -239,7 +248,9 @@ export function MealsApp({
           className="btn btn-primary ms-lg-auto"
           disabled={!canPropose}
           title={
-            report?.needs === null ? labels.proposeNeedsProfile : undefined
+            report?.needs === null
+              ? labels.proposeNeedsProfile
+              : labels.proposeDayTitle
           }
           onClick={propose}
         >
@@ -251,7 +262,9 @@ export function MealsApp({
           className="btn btn-outline-primary"
           disabled={!canSuggest}
           title={
-            report?.needs === null ? labels.proposeNeedsProfile : undefined
+            report?.needs === null
+              ? labels.proposeNeedsProfile
+              : labels.suggestFoodsTitle
           }
           onClick={suggest}
         >
@@ -284,6 +297,7 @@ export function MealsApp({
               labels={labels}
               languageCode={languageCode}
               needsUrl={needsUrl}
+              placeholderImage={placeholderImage}
               onClose={() => setSuggestions(null)}
             />
           )}
@@ -293,11 +307,12 @@ export function MealsApp({
               labels={labels}
               languageCode={languageCode}
               needsUrl={needsUrl}
+              placeholderImage={placeholderImage}
               onUse={useProposal}
               onClose={() => setProposal(null)}
             />
           )}
-          <div className="row g-3">
+          <div className="row g-3 align-items-start">
             {report.meals.map((meal) => (
               <div key={meal.kind} className="col-lg-6">
                 <MealCard
@@ -306,6 +321,12 @@ export function MealsApp({
                   inventory={inventory}
                   labels={labels}
                   languageCode={languageCode}
+                  groupNames={groupNames}
+                  placeholderImage={placeholderImage}
+                  fold={{
+                    open: detailsOpen.has(meal.kind),
+                    toggle: () => toggleDetails(meal.kind),
+                  }}
                   onAdd={(kind, item) =>
                     save(
                       () => addItem(day, kind, item, csrfToken),

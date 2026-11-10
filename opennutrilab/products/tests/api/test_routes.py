@@ -737,6 +737,25 @@ def test_the_inventory_gives_the_food_groups_of_its_products(
 
 
 @pytest.mark.django_db
+def test_the_inventory_gives_the_photo_of_its_products(
+    api_client: Client, user: User, products_two: tuple[Product, Product]
+):
+    p1, p2 = products_two
+    Product.objects.filter(pk=p1.pk).update(image="images/products/3229820794556.jpg")
+    api_client.put(f"/api/v1/inventory/{p1.barcode}")
+    api_client.put(f"/api/v1/inventory/{p2.barcode}")
+
+    served = {
+        i["barcode"]: i["image"] for i in api_client.get("/api/v1/inventory/").json()
+    }
+
+    assert served[p1.barcode] == Product.objects.get(pk=p1.pk).image.url
+    assert served[p1.barcode].endswith("/images/products/3229820794556.jpg")
+    # A product with no photo has none: the page puts its placeholder.
+    assert served[p2.barcode] is None
+
+
+@pytest.mark.django_db
 def test_putting_a_product_in_twice_or_taking_one_out_twice_changes_nothing(
     api_client: Client, user: User, products_two: tuple[Product, Product]
 ):

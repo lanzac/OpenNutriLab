@@ -105,6 +105,8 @@ class MealItemOut(Schema):
     id: int | None
     barcode: str
     name: str
+    # The product's photo, when it has one.
+    image: str | None = None
     quantity: Decimal
     unit: str
     # None for servings of a product that has no serving any more.
@@ -362,6 +364,11 @@ def _meal(meal: MealReport) -> MealOut:
                 id=item.id,
                 barcode=item.product_id,
                 name=item.product.name,
+                image=(
+                    item.product.image.url
+                    if isinstance(item, MealItem) and item.product.image
+                    else None
+                ),
                 quantity=item.quantity,
                 unit=item.unit,
                 grams=item.grams,

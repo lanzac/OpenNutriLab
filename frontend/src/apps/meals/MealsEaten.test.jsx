@@ -7,9 +7,11 @@ import {
   MUESLI,
   breadItem,
   day,
+  eatenButton,
   meal,
   need,
   ok,
+  openItem,
   ratio,
   renderApp,
   stubFetch,
@@ -62,7 +64,8 @@ const lunchEaten = () => {
   return found;
 };
 
-const switchOf = (label) => screen.getByRole('switch', { name: label });
+// The button of a meal, whichever way it stands: "Mangé – Déjeuner" names the meal.
+const switchOf = (label) => eatenButton(label.split(' – ')[1]);
 
 describe('marking a meal as eaten', () => {
   it('has a switch on each meal, on for the meals that are eaten', async () => {
@@ -74,12 +77,20 @@ describe('marking a meal as eaten', () => {
 
     await screen.findByRole('region', { name: 'Petit-déjeuner' });
 
-    expect(switchOf('Mangé – Petit-déjeuner')).toBeChecked();
+    expect(switchOf('Mangé – Petit-déjeuner')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
     for (const name of ['Déjeuner', 'Collation', 'Dîner']) {
-      expect(switchOf(`Mangé – ${name}`)).not.toBeChecked();
+      expect(switchOf(`Mangé – ${name}`)).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      );
     }
     // The help says what it is for.
-    expect(screen.getByText(/Marquez les repas mangés/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Marquez les repas déjà mangés/),
+    ).toBeInTheDocument();
   });
 
   it('shows a meal that is eaten apart from the others', async () => {
@@ -109,7 +120,12 @@ describe('marking a meal as eaten', () => {
 
     fireEvent.click(switchOf('Mangé – Déjeuner'));
 
-    await waitFor(() => expect(switchOf('Mangé – Déjeuner')).toBeChecked());
+    await waitFor(() =>
+      expect(switchOf('Mangé – Déjeuner')).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      ),
+    );
     expect(screen.getByRole('region', { name: 'Déjeuner' })).toHaveClass(
       'border-success',
     );
@@ -134,12 +150,20 @@ describe('marking a meal as eaten', () => {
     fireEvent.click(switchOf('Mangé – Déjeuner'));
 
     // Asked, and not answered yet: the meal is shown eaten all the same.
-    expect(switchOf('Mangé – Déjeuner')).toBeChecked();
+    expect(switchOf('Mangé – Déjeuner')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
     expect(screen.getByRole('region', { name: 'Déjeuner' })).toHaveClass(
       'border-success',
     );
     answer(ok(lunchEaten()));
-    await waitFor(() => expect(switchOf('Mangé – Déjeuner')).toBeChecked());
+    await waitFor(() =>
+      expect(switchOf('Mangé – Déjeuner')).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      ),
+    );
   });
 
   it('marks a meal as not eaten again', async () => {
@@ -154,7 +178,10 @@ describe('marking a meal as eaten', () => {
     fireEvent.click(switchOf('Mangé – Petit-déjeuner'));
 
     await waitFor(() =>
-      expect(switchOf('Mangé – Petit-déjeuner')).not.toBeChecked(),
+      expect(switchOf('Mangé – Petit-déjeuner')).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      ),
     );
     const [, options] = fetch.mock.calls.find(([, o]) => o?.method === 'PATCH');
     expect(JSON.parse(options.body)).toEqual({ eaten: false });
@@ -198,7 +225,10 @@ describe('marking a meal as eaten', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Le changement n’a pas pu être enregistré.',
     );
-    expect(switchOf('Mangé – Déjeuner')).not.toBeChecked();
+    expect(switchOf('Mangé – Déjeuner')).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
   });
 });
 
@@ -242,7 +272,7 @@ async function openProposal(found = partlyEaten(), body = proposal()) {
   });
   renderApp();
   fireEvent.click(
-    await screen.findByRole('button', { name: /Proposer un jour/ }),
+    await screen.findByRole('button', { name: /Compléter ma journée/ }),
   );
   const panel = await screen.findByRole('region', { name: 'Jour proposé' });
   return { fetch, panel };
@@ -264,7 +294,11 @@ describe('a day proposed on top of the meals eaten', () => {
     expect(within(lunch).getByText('Pain de mie')).toBeInTheDocument();
     // A meal with nothing in it has no badge, and nothing can be changed here.
     expect(within(snack).queryByText('À ajouter')).toBeNull();
-    expect(within(panel).queryByRole('switch')).toBeNull();
+    expect(
+      within(panel).queryByRole('button', {
+        name: /^(Mangé|Marquer comme mangé)/,
+      }),
+    ).toBeNull();
     expect(within(panel).queryByRole('spinbutton')).toBeNull();
   });
 
@@ -284,7 +318,7 @@ describe('a day proposed on top of the meals eaten', () => {
     const { fetch, panel } = await openProposal(onlyEaten);
 
     fireEvent.click(
-      within(panel).getByRole('button', { name: 'Utiliser ce jour' }),
+      within(panel).getByRole('button', { name: 'Utiliser ces repas' }),
     );
 
     await waitFor(() =>
@@ -300,7 +334,7 @@ describe('a day proposed on top of the meals eaten', () => {
     const { fetch, panel } = await openProposal();
 
     fireEvent.click(
-      within(panel).getByRole('button', { name: 'Utiliser ce jour' }),
+      within(panel).getByRole('button', { name: 'Utiliser ces repas' }),
     );
 
     // The lunch of bread is not eaten: it is what goes.
@@ -318,7 +352,10 @@ describe('a day proposed on top of the meals eaten', () => {
     await waitFor(() =>
       expect(screen.queryByRole('region', { name: 'Jour proposé' })).toBeNull(),
     );
-    expect(switchOf('Mangé – Déjeuner')).toBeChecked();
+    expect(switchOf('Mangé – Déjeuner')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 
   it('is out of date once a meal that is eaten is changed, and not for a meal that is not', async () => {
@@ -341,6 +378,7 @@ describe('a day proposed on top of the meals eaten', () => {
     });
 
     // The bread is in the lunch, which is not eaten: the proposal is for the same day.
+    await openItem('Pain de mie', within(onPage('Déjeuner')));
     const bread = within(onPage('Déjeuner')).getByLabelText(
       'Quantité – Pain de mie',
     );
@@ -356,6 +394,7 @@ describe('a day proposed on top of the meals eaten', () => {
     ).toBeInTheDocument();
 
     // The muesli is in the breakfast, which is eaten: the proposal counted it.
+    await openItem('Muesli', within(onPage('Petit-déjeuner')));
     const input = within(onPage('Petit-déjeuner')).getByLabelText(
       'Quantité – Muesli',
     );
@@ -379,7 +418,7 @@ describe('a day proposed on top of the meals eaten', () => {
       ),
     ).toBeInTheDocument();
     expect(
-      within(panel).queryByRole('button', { name: 'Utiliser ce jour' }),
+      within(panel).queryByRole('button', { name: 'Utiliser ces repas' }),
     ).toBeNull();
   });
 
@@ -417,7 +456,7 @@ describe('foods suggested on top of the meals eaten', () => {
     renderApp();
 
     fireEvent.click(
-      await screen.findByRole('button', { name: /Suggérer des aliments/ }),
+      await screen.findByRole('button', { name: /Quoi acheter/ }),
     );
 
     expect(
@@ -443,7 +482,7 @@ describe('foods suggested on top of the meals eaten', () => {
     });
     renderApp();
     fireEvent.click(
-      await screen.findByRole('button', { name: /Suggérer des aliments/ }),
+      await screen.findByRole('button', { name: /Quoi acheter/ }),
     );
     await screen.findByRole('region', { name: 'Aliments à se procurer' });
 

@@ -763,6 +763,51 @@ is really at home, and for the stock to **follow the meals eaten** they declared
   checked on both sides; seen in Chromium (a throwaway user: count, reload, packages,
   pots, unit switch, +package, used up, a meal eaten and not eaten again).
 
+### Addendum 8 (2026-11-02): the meals page, clearer and lighter
+
+Asked by the user: "Propose a day" does not say what it does; "Eaten" is not clear
+either (perhaps something like "lock"); the page is heavy (buttons for the quantities,
+a small nutrition table in every meal); and choosing a product in a long list is hard:
+no photo, no category, one has to find it by eye. Built the same day (not committed).
+
+- **The words.** "Proposer un jour" is **"Compléter ma journée"** ("Fill in my day":
+  that is what it does, it fills the meals that are not eaten from the inventory) and
+  "Suggérer des aliments" is **"Quoi acheter ?"** ("What to buy?"), with a `title` on
+  each and one line under the buttons that says how they go together. "Utiliser ce
+  jour" is "Utiliser ces repas".
+- **Eaten is a button with a verb**, not a switch: "Marquer comme mangé" while the meal
+  is not eaten, a green "Mangé" (`aria-pressed`) once it is, with a title that says
+  what it does (counted in the day, taken out of the stock, left as it is by a proposed
+  day; click to undo). **Not "lock"**: locking is only one of its effects, and the word
+  would hide that the stock goes down. The meal stays editable once eaten (a forgotten
+  yoghurt is added without undoing it).
+- **A meal is a list, not a form.** Each item is one line: photo, name, and under it
+  how much ("1 tranche · 35,7 g"); the line opens the quantity, the unit, the share of
+  the package and a labelled "Retirer du repas" (the fields are the same as before).
+  The head of the card carries the energy of the meal. The small nutrition table is
+  behind a line "Nutrition de ce repas", closed at first; which are open is kept in
+  `localStorage` (`meals.mealDetails`, via `useStoredSet`).
+- **Choosing a product** is a window (`ProductPicker`, `role="dialog"`, Escape and a
+  click beside it close it, focus goes back to the button): a search that ignores
+  accents and capitals, the food groups as filters (wrapping on a screen, one scrolling
+  line on a phone) and as titles of the list, each product with its photo, its serving
+  and its package, those already in the meal marked, those used up badged. A click puts
+  the product in the meal (one serving, or 100 g when it has none: change it in the
+  line afterwards) and the window **stays open**, so that a meal is made up in one go.
+  No more `<select>` + quantity + "Add".
+- **Data**: `InventoryItemOut.image` and `MealItemOut.image` (a URL or null; the page
+  puts the same placeholder as the inventory, also when a photo fails to load), the
+  `placeholderImage` prop of the page, a dozen labels.
+- **Not done**: the limits of the proposed day are still a block at the bottom of the
+  page, far from the button that uses them; the stock left of a product is not shown in
+  the window (only "used up"); the nutrition of a proposed day's meals is folded the
+  same way, without keeping it.
+- Tests: 8 Vitest tests rewritten or added for the window (groups, search, photo,
+  closing, focus), the fields that open, the details kept, the eaten button; 3 pytest
+  (photo of the inventory and of an item, translated labels). 534 Vitest, 382 pytest on
+  meals and the products API. Seen in Chromium on a copy of the inventory (throwaway
+  user, deleted): desktop, 390 px wide, the window, an opened line, a proposed day.
+
 ## After the batch
 
 What the eight steps leave open, for the user to say:
