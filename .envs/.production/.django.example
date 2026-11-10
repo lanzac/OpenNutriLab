@@ -62,6 +62,15 @@ EMAIL_USE_TLS=True
 # TRANSLATION_URL=http://libretranslate:5000
 # TRANSLATION_API_KEY=
 
+# OpenFoodFacts account (optional)
+# ------------------------------------------------------------------------------
+# Lets staff send a corrected ingredient list from a product's page to the
+# OpenFoodFacts database, which is public and shows this account as the author (see
+# docs/deployment.md). Left empty, the product page offers no such button. Give the
+# account's user name, not its email address.
+# OFF_USER_ID=
+# OFF_PASSWORD=
+
 # Media
 # ------------------------------------------------------------------------------
 # Matches the volume mounted in docker-compose.production.yml.

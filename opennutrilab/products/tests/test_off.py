@@ -1,5 +1,6 @@
 # Test OpenFoodFacts related functionalities
 import json
+from contextlib import AbstractContextManager
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -7,6 +8,7 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 
 import pytest
+from pytest_django.fixtures import SettingsWrapper
 from requests import RequestException
 
 from opennutrilab.products.api.openfoodfacts.schemas import OFFProductSchema
@@ -20,6 +22,9 @@ from opennutrilab.products.api.openfoodfacts.services import (
 from opennutrilab.products.api.openfoodfacts.services import nutrition_unit_from_off
 from opennutrilab.products.api.openfoodfacts.services import off_product_url
 from opennutrilab.products.api.openfoodfacts.services import search_off
+from opennutrilab.products.api.openfoodfacts.services import (
+    send_ingredients_text_to_off,
+)
 from opennutrilab.products.models import Nutrient
 
 # A product recorded from OpenFoodFacts (API v2: the envelope differs from
@@ -740,3 +745,119 @@ def test_the_page_of_a_product_on_openfoodfacts():
         off_product_url("3700966568466")
         == "https://world.openfoodfacts.org/product/3700966568466"
     )
+
+
+# ---- sending a corrected list ----
+
+ACCOUNT = {
+    "OFF_USER_ID": "opennutrilab",
+    "OFF_PASSWORD": "secret",
+    "OFF_WRITE_URL": "https://world.openfoodfacts.net/cgi/product_jqm2.pl",
+}
+SERVICES = "opennutrilab.products.api.openfoodfacts.services"
+
+
+def off_has(text: str | None) -> AbstractContextManager[Any]:
+    """OpenFoodFacts answering a lookup of the product, with this list."""
+    return patch(
+        f"{SERVICES}.fetch_from_off",
+        return_value=OFFProductSchema(
+            barcode="3229820794556", name="Muesli", ingredients_text=text
+        ),
+    )
+
+
+def saved(body: Any = None, status_code: int = 200) -> MagicMock:
+    response = MagicMock()
+    response.status_code = status_code
+    response.json.return_value = (
+        {"status": 1, "status_verbose": "fields saved"} if body is None else body
+    )
+    return response
+
+
+class TestSendIngredientsText:
+    @pytest.fixture(autouse=True)
+    def _account(self, settings: SettingsWrapper) -> None:  # pyright: ignore[reportUnusedFunction]
+        for name, value in ACCOUNT.items():
+            setattr(settings, name, value)
+
+    def test_the_list_is_sent_for_the_language_it_is_in_signed_with_the_account(self):
+        with (
+            off_has("Old list"),
+            patch(f"{SERVICES}.requests.post", return_value=saved()) as post,
+        ):
+            sent = send_ingredients_text_to_off("3229820794556", " New list. ", "FR")
+
+        assert sent is True
+        assert post.call_args.args == (ACCOUNT["OFF_WRITE_URL"],)
+        data = post.call_args.kwargs["data"]
+        assert data["code"] == "3229820794556"
+        assert data["user_id"] == "opennutrilab"
+        assert data["password"] == "secret"  # noqa: S105
+        assert data["ingredients_text_fr"] == "New list."
+        assert "OpenNutriLab" in post.call_args.kwargs["headers"]["User-Agent"]
+
+    def test_nothing_is_sent_when_openfoodfacts_already_has_the_list(self):
+        with off_has("Same list."), patch(f"{SERVICES}.requests.post") as post:
+            sent = send_ingredients_text_to_off("3229820794556", "Same list.", "fr")
+
+        assert sent is False
+        post.assert_not_called()
+
+    def test_a_product_openfoodfacts_does_not_have_is_not_created(self):
+        with (
+            patch(
+                f"{SERVICES}.fetch_from_off",
+                side_effect=OFFProductNotFoundError("not found"),
+            ),
+            patch(f"{SERVICES}.requests.post") as post,
+            pytest.raises(OFFProductNotFoundError),
+        ):
+            send_ingredients_text_to_off("3229820794556", "A list.", "fr")
+
+        post.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("text", "language"),
+        [("A list.", "fr-fr"), ("A list.", ""), ("A list.", "../etc"), ("  ", "fr")],
+    )
+    def test_a_language_that_is_not_one_and_an_empty_list_are_refused(
+        self, text: str, language: str
+    ):
+        with patch(f"{SERVICES}.requests.post") as post, pytest.raises(OFFError):
+            send_ingredients_text_to_off("3229820794556", text, language)
+
+        post.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "answer",
+        [
+            saved({"status": 0, "status_verbose": "no permission"}),
+            saved(["not", "an", "object"]),
+            saved(status_code=500),
+        ],
+    )
+    def test_an_answer_that_is_not_a_success_raises(self, answer: MagicMock):
+        with (
+            off_has("Old list"),
+            patch(f"{SERVICES}.requests.post", return_value=answer),
+            pytest.raises(OFFError),
+        ):
+            send_ingredients_text_to_off("3229820794556", "New list.", "fr")
+
+    def test_an_unreachable_openfoodfacts_raises(self):
+        with (
+            off_has("Old list"),
+            patch(f"{SERVICES}.requests.post", side_effect=RequestException("down")),
+            pytest.raises(OFFError),
+        ):
+            send_ingredients_text_to_off("3229820794556", "New list.", "fr")
+
+    def test_without_an_account_nothing_is_sent(self, settings: SettingsWrapper):
+        settings.OFF_USER_ID = ""
+        settings.OFF_PASSWORD = ""
+        with patch(f"{SERVICES}.requests.post") as post, pytest.raises(OFFError):
+            send_ingredients_text_to_off("3229820794556", "New list.", "fr")
+
+        post.assert_not_called()

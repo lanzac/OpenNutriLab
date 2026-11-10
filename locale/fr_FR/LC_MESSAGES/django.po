@@ -76,11 +76,11 @@ msgstr "Sauvegarder"
 msgid "Cancel"
 msgstr "Annuler"
 
-msgid "Fetch data"
-msgstr "Récupérer les données"
+msgid "Load from OpenFoodFacts"
+msgstr "Charger depuis OpenFoodFacts"
 
-msgid "Reset data"
-msgstr "Réinitialiser les données"
+msgid "Compare with OpenFoodFacts"
+msgstr "Comparer avec OpenFoodFacts"
 
 msgid ""
 "The data fetched from OpenFoodFacts could not be used. Please fetch it again."
@@ -536,19 +536,26 @@ msgid "OpenFoodFacts has no ingredient list for this product."
 msgstr "OpenFoodFacts n'a pas de liste d'ingrédients pour ce produit."
 
 msgid ""
-"Saved with the product: the text its ingredients were read from. Use \"Reset "
-"data\" to load the current one from OpenFoodFacts."
+"Saved with the product: the text its ingredients were read from. Use "
+"\"Compare with OpenFoodFacts\" to see the current one there."
 msgstr ""
 "Enregistré avec le produit : le texte dont ses ingrédients ont été lus. "
-"Utilisez « Réinitialiser les données » pour charger le texte actuel depuis "
-"OpenFoodFacts."
+"Utilisez « Comparer avec OpenFoodFacts » pour voir celui qui y est "
+"aujourd'hui."
 
 msgid ""
-"No text was saved for this product. Use \"Reset data\" to load it from "
+"No text was saved for this product. Write it here, or use \"Compare with "
+"OpenFoodFacts\" to load it."
+msgstr ""
+"Aucun texte n'a été enregistré pour ce produit. Écrivez-le ici, ou utilisez "
+"« Comparer avec OpenFoodFacts » pour le charger."
+
+msgid ""
+"No list yet. Write it as the label prints it, or load the product from "
 "OpenFoodFacts."
 msgstr ""
-"Aucun texte n'a été enregistré pour ce produit. Utilisez « Réinitialiser les "
-"données » pour le charger depuis OpenFoodFacts."
+"Pas encore de liste. Écrivez-la comme l'étiquette l'imprime, ou chargez le "
+"produit depuis OpenFoodFacts."
 
 msgid "The ingredient list as the label prints it."
 msgstr "La liste d'ingrédients telle que l'étiquette l'imprime."
@@ -568,12 +575,23 @@ msgstr "Remettre la sélection"
 msgid "Put everything back"
 msgstr "Tout remettre"
 
+msgid "Correct the text"
+msgstr "Corriger le texte"
+
+msgid "Read this text"
+msgstr "Lire ce texte"
+
+msgid "Send this list to OpenFoodFacts"
+msgstr "Envoyer cette liste à OpenFoodFacts"
+
 msgid ""
 "Highlighted: read as ingredients. Struck through: left out by you. Select a "
-"part of the text to leave it out of the reading, or to put it back."
+"part of the text to leave it out of the reading, or to put it back. Correct "
+"the text itself when the label was typed wrongly."
 msgstr ""
 "Surligné : lu comme ingrédients. Barré : écarté par vous. Sélectionnez un "
-"passage du texte pour l'écarter de la lecture, ou pour le remettre."
+"passage du texte pour l'écarter de la lecture, ou pour le remettre. Corrigez "
+"le texte lui-même quand l'étiquette a été mal saisie."
 
 msgid "Reading…"
 msgstr "Lecture…"
@@ -2102,8 +2120,8 @@ msgid "The percentages add up to more than 100: %(detail)s"
 msgstr "Les pourcentages totalisent plus de 100 : %(detail)s"
 
 #, python-format
-msgid "The ingredient list OpenFoodFacts has for barcode %(barcode)s looks badly read, so no ingredient was imported: %(problems)s Correct the text on OpenFoodFacts (https://world.openfoodfacts.org/product/%(barcode)s), then load the product again."
-msgstr "La liste d'ingrédients qu'OpenFoodFacts a pour le code-barres %(barcode)s semble mal lue, donc aucun ingrédient n'a été importé : %(problems)s Corrigez le texte sur OpenFoodFacts (https://world.openfoodfacts.org/product/%(barcode)s), puis rechargez le produit."
+msgid "The ingredient list OpenFoodFacts has for barcode %(barcode)s looks badly read, so no ingredient was imported: %(problems)s Correct the text here, or on OpenFoodFacts (https://world.openfoodfacts.org/product/%(barcode)s) and load the product again."
+msgstr "La liste d'ingrédients qu'OpenFoodFacts a pour le code-barres %(barcode)s semble mal lue, donc aucun ingrédient n'a été importé : %(problems)s Corrigez le texte ici, ou sur OpenFoodFacts (https://world.openfoodfacts.org/product/%(barcode)s), puis rechargez le produit."
 
 msgid "Composition"
 msgstr "Composition"
@@ -2149,3 +2167,65 @@ msgstr "Aliments"
 
 #~ msgid "No data found"
 #~ msgstr "Aucune donnée"
+
+#, python-format
+msgid "OpenFoodFacts has no product for barcode %(barcode)s: add it there first."
+msgstr "OpenFoodFacts n'a pas de produit pour le code-barres %(barcode)s : ajoutez-le d'abord là-bas."
+
+msgid "OpenFoodFacts did not take the list. Try again later."
+msgstr "OpenFoodFacts n'a pas pris la liste. Réessayez plus tard."
+
+msgid "Asking OpenFoodFacts…"
+msgstr "Interrogation d'OpenFoodFacts…"
+
+#, python-format
+msgid "Values taken from OpenFoodFacts: %(count)s."
+msgstr "Valeurs prises sur OpenFoodFacts : %(count)s."
+
+msgid "The form has what OpenFoodFacts has."
+msgstr "Le formulaire a ce qu'a OpenFoodFacts."
+
+msgid "OpenFoodFacts has other values than the form. Choose which ones to take; the others stay as they are."
+msgstr "OpenFoodFacts a d'autres valeurs que le formulaire. Choisissez lesquelles prendre ; les autres restent telles qu'elles sont."
+
+msgid "Select all"
+msgstr "Tout sélectionner"
+
+msgid "In the form"
+msgstr "Dans le formulaire"
+
+msgid "On OpenFoodFacts"
+msgstr "Sur OpenFoodFacts"
+
+msgid "(nothing)"
+msgstr "(rien)"
+
+msgid "Take the selection"
+msgstr "Prendre la sélection"
+
+msgid "Keep the form as it is"
+msgstr "Garder le formulaire tel quel"
+
+msgid "Ingredient list"
+msgstr "Liste d'ingrédients"
+
+msgid "Food group"
+msgstr "Groupe d'aliments"
+
+msgid "Food sub-group"
+msgstr "Sous-groupe d'aliments"
+
+msgid "Corrected here. The corrected list is saved with the product when you save; OpenFoodFacts is not changed."
+msgstr "Corrigée ici. La liste corrigée est enregistrée avec le produit à la sauvegarde ; OpenFoodFacts n'est pas modifié."
+
+msgid "Send this ingredient list to OpenFoodFacts? It will change their public database, under this site's account."
+msgstr "Envoyer cette liste d'ingrédients à OpenFoodFacts ? Cela modifiera leur base publique, sous le compte de ce site."
+
+msgid "Sending to OpenFoodFacts…"
+msgstr "Envoi à OpenFoodFacts…"
+
+msgid "Sent to OpenFoodFacts."
+msgstr "Envoyé à OpenFoodFacts."
+
+msgid "OpenFoodFacts already has this list."
+msgstr "OpenFoodFacts a déjà cette liste."

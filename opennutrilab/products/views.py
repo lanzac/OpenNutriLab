@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 from decimal import Decimal
 from typing import TYPE_CHECKING
 from typing import Any
@@ -9,6 +10,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db.models import prefetch_related_objects
+from django.http import Http404
 from django.http import HttpRequest
 from django.http import HttpResponse
 from django.http import HttpResponseRedirect
@@ -30,12 +32,14 @@ from .api.openfoodfacts.services import OFFError
 from .api.openfoodfacts.services import OFFProductNotFoundError
 from .api.openfoodfacts.services import declared_nutrients_from_off
 from .api.openfoodfacts.services import fetch_from_off
-from .api.openfoodfacts.services import ingredient_inputs_from_label
 from .api.openfoodfacts.services import nutrition_unit_from_off
+from .api.openfoodfacts.services import off_write_configured
 from .api.openfoodfacts.services import read_inputs_from_label
 from .api.openfoodfacts.services import search_off
+from .api.openfoodfacts.services import send_ingredients_text_to_off
 from .api.schemas.inbound import IngredientInput
 from .api.schemas.inbound import ReadLabelIn
+from .api.schemas.inbound import SendLabelIn
 from .api.schemas.inbound import validate_off_image_url
 from .api.schemas.outbound import EstimateOut
 from .forms import INGREDIENTS_JSON
@@ -242,7 +246,9 @@ class ProductFormViewMixin:
             super().get_context_data(**kwargs),  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
         )
         form = cast("ProductForm", context["form"])
-        context["product_form_config"] = product_form_config()
+        context["product_form_config"] = product_form_config(
+            can_send_to_off=self.request.user.is_staff and off_write_configured()
+        )
         context["ingredient_rows"] = ingredient_rows_for(form)
         return context
 
@@ -292,23 +298,6 @@ class ProductEditView(LoginRequiredMixin, ProductFormViewMixin, UpdateView):
                 context["estimate_panel"] = estimate_panel(context["estimate"])
         return context
 
-    def get_form(
-        self,
-        data=None,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
-        files=None,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]
-        **kwargs: Any,  # https://adamj.eu/tech/2021/05/11/python-type-hints-args-and-kwargs/
-    ) -> ProductForm:
-        initial: dict[str, Any] = {}
-        product: Product = kwargs["instance"]
-        if self.request.method == "GET" and self.request.GET.get("reset") == "1":
-            # On failure the form keeps the stored values; the notice says why.
-            initial = initial_from_off(self.request, product.barcode) or {}
-            # The barcode is the stored primary key, whatever OFF spelled it as.
-            initial.pop("barcode", None)
-            if initial:
-                initial["off_barcode"] = product.barcode
-        return ProductForm(data=data, files=files, initial=initial, **kwargs)
-
 
 class ReadLabelView(LoginRequiredMixin, View):
     """
@@ -342,6 +331,103 @@ class ReadLabelView(LoginRequiredMixin, View):
                 ],
             }
         )
+
+
+class OffLookupView(LoginRequiredMixin, View):
+    """
+    What OpenFoodFacts has for a barcode, for the product page to compare with its form.
+
+    The page does not reload: it sets what comes back against what is in the form, and
+    the person chooses what to take (see frontend/.../form/off-lookup.js). So this
+    answers with the values apart from one another, not as a form to show: the fields
+    by name, the photo, and the label (its text, the ingredients read from it).
+    """
+
+    raise_exception = True
+    http_method_names = ["get"]
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        barcode = request.GET.get("barcode", "").strip()
+        if not barcode:
+            return JsonResponse({"error": "invalid"}, status=400)
+        try:
+            found = lookup_from_off(barcode)
+        except OFFError as e:
+            status = 404 if isinstance(e, OFFProductNotFoundError) else 502
+            return JsonResponse(
+                {"error": off_failure_notice(barcode, e)}, status=status
+            )
+        initial = found.initial
+        return JsonResponse(
+            {
+                "fields": {
+                    name: value
+                    for name, value in initial.items()
+                    if not name.startswith("off_")
+                    and name not in {"ingredients_ignored", "ingredients_lc"}
+                },
+                "image": initial["off_image_url"],
+                "label": {
+                    "barcode": initial["off_barcode"],
+                    "text": initial["off_ingredients_text"],
+                    "language": initial["ingredients_lc"],
+                    "ingredients": initial["off_ingredients"],
+                    "rows": ingredient_rows_from_inputs(found.ingredients),
+                    "used": found.used,
+                },
+                "notices": found.notices,
+            }
+        )
+
+
+class SendLabelView(UserPassesTestMixin, View):
+    """
+    A corrected ingredient list sent to OpenFoodFacts, which is public.
+
+    Staff only, and only when an OpenFoodFacts account is configured (see OFF_USER_ID):
+    without one the page offers nothing to send with, and this is not there.
+    """
+
+    raise_exception = True
+    http_method_names = ["post"]
+
+    def test_func(self) -> bool:
+        return self.request.user.is_staff
+
+    def post(self, request: HttpRequest) -> HttpResponse:
+        if not off_write_configured():
+            raise Http404
+        try:
+            data = SendLabelIn.model_validate_json(request.body)
+        except ValidationError:
+            return JsonResponse({"error": "invalid"}, status=400)
+        try:
+            sent = send_ingredients_text_to_off(data.barcode, data.text, data.language)
+        except OFFProductNotFoundError:
+            return JsonResponse(
+                {
+                    "error": _(
+                        "OpenFoodFacts has no product for barcode %(barcode)s: add it "
+                        "there first."
+                    )
+                    % {"barcode": data.barcode}
+                },
+                status=404,
+            )
+        except OFFError as e:
+            logger.warning(
+                "Sending the list of %s to OpenFoodFacts failed: %s", data.barcode, e
+            )
+            return JsonResponse(
+                {"error": _("OpenFoodFacts did not take the list. Try again later.")},
+                status=502,
+            )
+        logger.info(
+            "%s sent the ingredient list of %s to OpenFoodFacts",
+            request.user,
+            data.barcode,
+        )
+        return JsonResponse({"sent": sent})
 
 
 # A search shorter than this finds too many products to be of use.
@@ -440,7 +526,7 @@ CHART_NUTRIENTS = frozenset(
 )
 
 
-def product_form_config() -> dict[str, Any]:
+def product_form_config(*, can_send_to_off: bool = False) -> dict[str, Any]:
     """
     What the vanilla-JS parts of the product form need from the server.
 
@@ -475,8 +561,53 @@ def product_form_config() -> dict[str, Any]:
             # The chart's own remainder slice, with no nutrient behind it.
             "others": _("Others"),
         },
-        "barcodeActions": {
-            "enterBarcode": _("Please enter a barcode."),
+        "offLookup": {
+            "url": reverse("lookup_off"),
+            "labels": {
+                "enterBarcode": _("Please enter a barcode."),
+                "asking": _("Asking OpenFoodFacts…"),
+                "failed": _(
+                    "OpenFoodFacts could not be reached. Try again in a moment."
+                ),
+                "taken": _("Values taken from OpenFoodFacts: %(count)s."),
+                "same": _("The form has what OpenFoodFacts has."),
+                "title": _(
+                    "OpenFoodFacts has other values than the form. Choose "
+                    "which ones to take; the others stay as they are."
+                ),
+                "selectAll": _("Select all"),
+                "inForm": _("In the form"),
+                "onOff": _("On OpenFoodFacts"),
+                "nothing": _("(nothing)"),
+                "apply": _("Take the selection"),
+                "cancel": _("Keep the form as it is"),
+                "ingredientList": _("Ingredient list"),
+                "photo": _("Photo"),
+                "groups": _("Food group"),
+                "subgroups": _("Food sub-group"),
+            },
+        },
+        "ingredientsText": {
+            "canSend": can_send_to_off,
+            "sendUrl": reverse("send_label"),
+            # The language a list typed here is taken to be in, when none is known.
+            "defaultLanguage": (get_language() or "en").split("-")[0],
+            "labels": {
+                "edited": _(
+                    "Corrected here. The corrected list is saved with the product "
+                    "when you save; OpenFoodFacts is not changed."
+                ),
+                "confirmSend": _(
+                    "Send this ingredient list to OpenFoodFacts? It will change "
+                    "their public database, under this site's account."
+                ),
+                "sending": _("Sending to OpenFoodFacts…"),
+                "sent": _("Sent to OpenFoodFacts."),
+                "alreadyThere": _("OpenFoodFacts already has this list."),
+                "sendFailed": _(
+                    "OpenFoodFacts did not take the list. Try again later."
+                ),
+            },
         },
         "barcodeImage": {"label": _("Barcode")},
         "offSearch": {
@@ -609,9 +740,9 @@ def product_form_config() -> dict[str, Any]:
     }
 
 
-def report_off_failure(request: HttpRequest, barcode: str, error: OFFError) -> None:
+def off_failure_notice(barcode: str, error: OFFError) -> str:
     """
-    Log a failed OpenFoodFacts lookup and tell the user what to do next.
+    Log a failed OpenFoodFacts lookup and say what to do next.
 
     The exception message carries the upstream detail, which is useful in the
     log but too noisy for a page banner, so only the cause is shown.
@@ -628,62 +759,51 @@ def report_off_failure(request: HttpRequest, barcode: str, error: OFFError) -> N
             "OpenFoodFacts could not be reached for barcode %(barcode)s. "
             "Please try again, or fill in the details by hand."
         )
-    messages.warning(request, text % {"barcode": barcode})
+    return text % {"barcode": barcode}
 
 
-def report_label_warnings(
-    request: HttpRequest, barcode: str, warnings: list[LabelWarning]
-) -> None:
+def label_notices(barcode: str, warnings: list[LabelWarning]) -> list[str]:
     """
-    Tell the user what looks wrong in the ingredient list OpenFoodFacts has.
+    What looks wrong in the ingredient list OpenFoodFacts has, to tell the user.
 
     When the text looks badly read nothing was imported, and the one thing to
-    do is correct it on OpenFoodFacts and load the product again.
+    do is correct the text, here or on OpenFoodFacts.
     """
+    notices: list[str] = []
     stopping = [w for w in warnings if w.stops_reading]
     if stopping:
-        messages.warning(
-            request,
+        notices.append(
             _(
                 "The ingredient list OpenFoodFacts has for barcode %(barcode)s "
                 "looks badly read, so no ingredient was imported: %(problems)s "
-                "Correct the text on OpenFoodFacts "
-                "(https://world.openfoodfacts.org/product/%(barcode)s), "
-                "then load the product again."
+                "Correct the text here, or on OpenFoodFacts "
+                "(https://world.openfoodfacts.org/product/%(barcode)s) "
+                "and load the product again."
             )
             % {
                 "barcode": barcode,
                 "problems": " ".join(f"{w.message()}." for w in stopping),
-            },
+            }
         )
-    for warning in warnings:
-        if not warning.stops_reading:
-            messages.warning(request, warning.message())
+    notices.extend(w.message() for w in warnings if not w.stops_reading)
+    return notices
 
 
-def report_unread_package(request: HttpRequest, barcode: str, text: str) -> None:
+def unread_package_notice(barcode: str, text: str) -> str:
     """Tell the user the quantity OpenFoodFacts gives could not be read."""
-    messages.warning(
-        request,
-        _(
-            'OpenFoodFacts gives the quantity of barcode %(barcode)s as "%(text)s", '
-            "which could not be read. Enter what the package holds by hand."
-        )
-        % {"barcode": barcode, "text": text.strip()},
-    )
+    return _(
+        'OpenFoodFacts gives the quantity of barcode %(barcode)s as "%(text)s", '
+        "which could not be read. Enter what the package holds by hand."
+    ) % {"barcode": barcode, "text": text.strip()}
 
 
-def report_unread_serving(request: HttpRequest, barcode: str, text: str) -> None:
+def unread_serving_notice(barcode: str, text: str) -> str:
     """Tell the user the serving OpenFoodFacts gives could not be read."""
-    messages.warning(
-        request,
-        _(
-            'OpenFoodFacts gives the serving of barcode %(barcode)s as "%(text)s", '
-            "which could not be read. Enter it by hand to count this product in "
-            "servings."
-        )
-        % {"barcode": barcode, "text": text.strip()},
-    )
+    return _(
+        'OpenFoodFacts gives the serving of barcode %(barcode)s as "%(text)s", '
+        "which could not be read. Enter it by hand to count this product in "
+        "servings."
+    ) % {"barcode": barcode, "text": text.strip()}
 
 
 def report_image_fetch_failure(request: HttpRequest, barcode: str) -> None:
@@ -701,18 +821,28 @@ def report_image_fetch_failure(request: HttpRequest, barcode: str) -> None:
     messages.warning(request, text % {"barcode": barcode})
 
 
-def initial_from_off(request: HttpRequest, barcode: str) -> dict[str, Any] | None:
-    """
-    Form initial data from an OpenFoodFacts lookup, or None if it failed.
+@dataclass(frozen=True)
+class OffLookup:
+    """What OpenFoodFacts has for a barcode, as the product page takes it."""
 
-    Besides the visible fields, it fills the hidden off_* fields that carry the
-    photo URL and the ingredient tree to the POST that saves them.
+    # Form initial data: the visible fields, and the hidden off_* ones that carry the
+    # photo URL and the ingredient tree to the POST that saves them.
+    initial: dict[str, Any]
+    # The ingredients read from the label's text, and the places of it they came from.
+    ingredients: list[IngredientInput]
+    used: tuple[tuple[int, int], ...]
+    # What the user should be told about it.
+    notices: list[str]
+
+
+def lookup_from_off(barcode: str) -> OffLookup:
     """
-    try:
-        fetched = fetch_from_off(query_barcode=barcode)
-    except OFFError as e:
-        report_off_failure(request, barcode=barcode, error=e)
-        return None
+    The product OpenFoodFacts has for `barcode`, as form initial data.
+
+    Raises OFFError when there is none or it could not be asked.
+    """
+    fetched = fetch_from_off(query_barcode=barcode)
+    notices: list[str] = []
 
     initial: dict[str, Any] = {
         "barcode": fetched.barcode,
@@ -735,31 +865,51 @@ def initial_from_off(request: HttpRequest, barcode: str) -> dict[str, Any] | Non
         initial["off_image_url"] = None
     initial["off_barcode"] = fetched.barcode
     # The ingredients are read from the label's text, and nothing else.
-    ingredients, warnings = ingredient_inputs_from_label(
+    ingredients, warnings, used = read_inputs_from_label(
         fetched.ingredients_text, fetched.ingredients_lc
     )
-    report_label_warnings(request, fetched.barcode, warnings)
+    notices.extend(label_notices(fetched.barcode, warnings))
     initial["off_ingredients"] = INGREDIENTS_JSON.dump_json(ingredients).decode()
     initial["off_ingredients_text"] = fetched.ingredients_text or ""
     # Nothing is ignored in a text that is new.
     initial["ingredients_ignored"] = "[]"
     initial["ingredients_lc"] = (fetched.ingredients_lc or "").strip().lower()[:10]
     # From its text too. With none, or one that is not read, the form keeps what
-    # it had: nothing on a new product, the stored serving on a reset.
+    # it had: nothing on a new product, the stored serving on a comparison.
     serving = read_serving(fetched.serving_size)
     if serving is not None:
         initial["serving_quantity"] = plain_amount(serving.quantity)
         initial["serving_unit"] = serving.unit
         initial["serving_name"] = serving.name
     elif (fetched.serving_size or "").strip():
-        report_unread_serving(request, fetched.barcode, fetched.serving_size or "")
+        notices.append(
+            unread_serving_notice(fetched.barcode, fetched.serving_size or "")
+        )
     package = read_package(fetched.quantity)
     if package is not None:
         initial["package_quantity"] = plain_amount(package.quantity)
         initial["package_unit"] = package.unit
     elif (fetched.quantity or "").strip():
-        report_unread_package(request, fetched.barcode, fetched.quantity or "")
-    return initial
+        notices.append(unread_package_notice(fetched.barcode, fetched.quantity or ""))
+    return OffLookup(
+        initial=initial, ingredients=ingredients, used=tuple(used), notices=notices
+    )
+
+
+def initial_from_off(request: HttpRequest, barcode: str) -> dict[str, Any] | None:
+    """
+    Form initial data from an OpenFoodFacts lookup, or None if it failed.
+
+    What the user should know about it is told as notices on the page.
+    """
+    try:
+        found = lookup_from_off(barcode)
+    except OFFError as e:
+        messages.warning(request, off_failure_notice(barcode, e))
+        return None
+    for notice in found.notices:
+        messages.warning(request, notice)
+    return found.initial
 
 
 def ingredient_rows_for(form: ProductForm) -> list[dict[str, Any]]:

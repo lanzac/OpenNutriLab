@@ -84,6 +84,14 @@ class ReadLabelIn(Schema):
     ignored: list[Place] = Field(default=[], max_length=500)
 
 
+class SendLabelIn(Schema):
+    """A product's corrected ingredient list, to send to OpenFoodFacts."""
+
+    barcode: str = Field(min_length=1, max_length=20, pattern=r"^[0-9]+$")
+    text: str = Field(min_length=1, max_length=20_000)
+    language: str = Field(min_length=2, max_length=10)
+
+
 class ServingInput(Schema):
     """A product's serving (see Product.serving_quantity)."""
 

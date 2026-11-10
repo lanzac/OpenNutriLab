@@ -3,8 +3,6 @@
 // products found listed, and the one chosen loaded the way a barcode typed is.
 import './off-search.css';
 
-import { reloadWith } from './barcode-actions.js';
-
 // How long a person must stop typing before OpenFoodFacts is asked.
 const PAUSE = 400;
 
@@ -13,7 +11,7 @@ function detailOf(hit) {
   return [hit.brands, hit.quantity, hit.barcode].filter(Boolean).join(' · ');
 }
 
-function itemOf(hit, placeholder) {
+function itemOf(hit, placeholder, onChoose) {
   const item = document.createElement('li');
   const button = document.createElement('button');
   button.type = 'button';
@@ -36,7 +34,7 @@ function itemOf(hit, placeholder) {
   text.append(name, detail);
 
   button.append(image, text);
-  button.addEventListener('click', () => reloadWith('barcode', hit.barcode));
+  button.addEventListener('click', () => onChoose?.(hit.barcode));
   item.append(button);
   return item;
 }
@@ -45,8 +43,10 @@ function itemOf(hit, placeholder) {
  * @param {{ url: string, minLength: number, placeholderImage: string,
  *   labels: { searching: string, none: string, error: string } }} config Built server-side (see
  *   product_form_config in opennutrilab/products/views.py).
+ * @param {{ onChoose?: (barcode: string) => void }} [options] `onChoose` is given the
+ *   barcode of the product the person chose.
  */
-export function initOffSearch(config) {
+export function initOffSearch(config, { onChoose } = {}) {
   const input = document.getElementById('off-search-input');
   const status = document.getElementById('off-search-status');
   const results = document.getElementById('off-search-results');
@@ -77,7 +77,7 @@ export function initOffSearch(config) {
       const { results: hits } = await response.json();
       reset(hits.length === 0 ? config.labels.none : '');
       results.append(
-        ...hits.map((hit) => itemOf(hit, config.placeholderImage)),
+        ...hits.map((hit) => itemOf(hit, config.placeholderImage, onChoose)),
       );
     } catch (error) {
       // A search replaced by a newer one is not a failure.

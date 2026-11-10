@@ -1,9 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { reloadWith } from './barcode-actions.js';
 import { initOffSearch } from './off-search.js';
 
-vi.mock('./barcode-actions.js', () => ({ reloadWith: vi.fn() }));
+const onChoose = vi.fn();
 
 const CONFIG = {
   url: '/products/search-off/',
@@ -51,7 +50,7 @@ beforeEach(() => {
       <div id="off-search-status"></div>
       <ul id="off-search-results"></ul>
     </form>`;
-  initOffSearch(CONFIG);
+  initOffSearch(CONFIG, { onChoose });
 });
 
 afterEach(() => {
@@ -140,13 +139,13 @@ describe('initOffSearch', () => {
     expect(status().textContent).toBe('Injoignable.');
   });
 
-  it('loads the product chosen the way a barcode typed is', async () => {
+  it('hands over the barcode of the product chosen, to be loaded as one typed is', async () => {
     vi.stubGlobal('fetch', answer([HIT]));
     await type('colin');
 
     hits()[0].click();
 
-    expect(reloadWith).toHaveBeenCalledWith('barcode', '3700966568466');
+    expect(onChoose).toHaveBeenCalledWith('3700966568466');
   });
 
   it('searches at once on Enter, and does not send the form', async () => {

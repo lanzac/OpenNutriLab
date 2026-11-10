@@ -1,3 +1,4 @@
+import re
 from collections.abc import Iterable
 from decimal import Decimal
 from decimal import InvalidOperation
@@ -5,12 +6,14 @@ from http import HTTPStatus
 from typing import Any
 
 import requests
+from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
 from pydantic import ValidationError
 
 from opennutrilab.products.api.openfoodfacts.schemas import OFFProductAPIResponseSchema
 from opennutrilab.products.api.openfoodfacts.schemas import OFFProductSchema
 from opennutrilab.products.api.openfoodfacts.schemas import OFFSearchHitSchema
+from opennutrilab.products.api.openfoodfacts.schemas import OFFWriteAnswerSchema
 from opennutrilab.products.api.openfoodfacts.schemas import StatusEnum
 from opennutrilab.products.api.schemas.inbound import IngredientInput
 from opennutrilab.products.api.schemas.inbound import validate_off_image_url
@@ -126,6 +129,74 @@ def fetch_from_off(
         raise OFFProductNotFoundError(msg)
 
     return product
+
+
+def off_write_configured() -> bool:
+    """Whether an OpenFoodFacts account is set to send corrections with."""
+    return bool(settings.OFF_USER_ID and settings.OFF_PASSWORD)
+
+
+# A language code as OpenFoodFacts suffixes its fields with: "fr", "en", "haw".
+_OFF_LANGUAGE = re.compile(r"[a-z]{2,3}")
+
+
+def send_ingredients_text_to_off(barcode: str, text: str, language: str) -> bool:
+    """
+    Replace the ingredient list OpenFoodFacts has for a product by `text`.
+
+    Public and signed with the configured account (see OFF_USER_ID): the caller
+    decides who may. Only a product OpenFoodFacts already has is edited, since this
+    would otherwise create one holding nothing but a list. Returns False, sending
+    nothing, when its list already is `text`. Raises OFFError when nothing was
+    sent: no account, a language that is not one, no such product, an answer that
+    is not a success.
+    """
+    if not off_write_configured():
+        msg = "No OpenFoodFacts account is configured."
+        raise OFFError(msg)
+    code = language.strip().lower()
+    if not _OFF_LANGUAGE.fullmatch(code):
+        msg = f"{language!r} is not a language OpenFoodFacts knows."
+        raise OFFError(msg)
+    text = text.strip()
+    if not text:
+        msg = "An empty list is not sent."
+        raise OFFError(msg)
+
+    current = fetch_from_off(query_barcode=barcode)
+    if (current.ingredients_text or "").strip() == text:
+        return False
+
+    try:
+        response = requests.post(
+            settings.OFF_WRITE_URL,
+            data={
+                "code": barcode,
+                "user_id": settings.OFF_USER_ID,
+                "password": settings.OFF_PASSWORD,
+                f"ingredients_text_{code}": text,
+                "comment": "Ingredient list corrected from OpenNutriLab",
+            },
+            timeout=30,
+            headers=OFF_HEADERS,
+        )
+    except requests.RequestException as e:
+        msg = f"External API unreachable: {e}"
+        raise OFFError(msg) from e
+    if response.status_code != HTTPStatus.OK:
+        msg = f"External API returned an error: {response.status_code}"
+        raise OFFError(msg)
+    try:
+        answer = OFFWriteAnswerSchema.model_validate(response.json())
+    except ValueError as e:
+        # Not JSON, or not the shape of an answer: pydantic's error is a ValueError.
+        msg = f"Invalid answer received from external API: {e}"
+        raise OFFError(msg) from e
+    # 1 is "saved"; a refused login or field comes back as 0 with the reason.
+    if answer.status != 1:
+        msg = f"OpenFoodFacts did not save the list: {answer.status_verbose}"
+        raise OFFError(msg)
+    return True
 
 
 OFF_SEARCH_URL = "https://search.openfoodfacts.org/search"

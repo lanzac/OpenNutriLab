@@ -532,3 +532,301 @@ describe('initIngredientsText', () => {
     );
   });
 });
+
+describe('initIngredientsText: correcting the text', () => {
+  const TEXT = 'Colin 72%, sel.';
+  const CONFIG = {
+    canSend: true,
+    sendUrl: '/products/send-label/',
+    defaultLanguage: 'fr',
+    labels: {
+      edited: 'Corrected here.',
+      confirmSend: 'Send it?',
+      sending: 'Sending…',
+      sent: 'Sent.',
+      alreadyThere: 'Already there.',
+      sendFailed: 'Not taken.',
+    },
+  };
+  const READING = {
+    rows: [{ name: 'colin' }],
+    ingredients: '[{"name":"colin"}]',
+    used: [[0, 9]],
+    warnings: [],
+  };
+
+  function page({
+    text = TEXT,
+    language = 'fr',
+    barcode = '3017620422003',
+  } = {}) {
+    document.body.innerHTML = `
+      <form id="product-form">
+        <input type="hidden" name="csrfmiddlewaretoken" value="token-1">
+        <input type="text" name="barcode" value="${barcode}">
+        <input type="hidden" name="off_barcode" value="">
+        <input type="hidden" name="off_ingredients" value="">
+        <input type="hidden" name="off_ingredients_text" value="">
+        <input type="hidden" name="ingredients_ignored" value="[]">
+        <input type="hidden" name="ingredients_lc" value="">
+        <div id="ingredients-text" data-read-url="/products/read-label/"
+             data-reading="Reading…" data-failed="Failed.">
+          <div id="ingredients-text-view"></div>
+          <div id="ingredients-text-empty" hidden>No list.</div>
+          <textarea id="ingredients-text-editor" hidden></textarea>
+          <div id="ingredients-text-tools" hidden>
+            <button type="button" data-action="ignore" disabled>Leave out</button>
+            <button type="button" data-action="restore" disabled>Put back</button>
+            <button type="button" data-action="clear" hidden>All back</button>
+            <button type="button" data-action="edit">Correct</button>
+            <button type="button" data-action="read" hidden>Read</button>
+            <button type="button" data-action="cancel" hidden>Cancel</button>
+            <button type="button" data-action="send" hidden>Send</button>
+            <span id="ingredients-text-status"></span>
+          </div>
+          <div id="ingredients-text-warnings"></div>
+          <span id="ingredients-text-note" data-saved="Saved with the product."></span>
+          <script id="ingredients-text-state" type="application/json"></script>
+        </div>
+      </form>`;
+    document.getElementById('ingredients-text-state').textContent =
+      JSON.stringify({ text, used: [], ignored: [], language, barcode: '' });
+  }
+
+  const $ = (id) => document.getElementById(id);
+  const button = (action) =>
+    document.querySelector(`[data-action="${action}"]`);
+  const hidden = (name) => document.querySelector(`[name="${name}"]`).value;
+  const status = () => $('ingredients-text-status').textContent;
+
+  const answer = (body, ok = true) =>
+    vi.fn().mockResolvedValue({
+      ok,
+      status: ok ? 200 : 502,
+      json: async () => body,
+    });
+
+  /** Types a corrected text and has it read, as a person does. */
+  async function correct(text) {
+    button('edit').click();
+    $('ingredients-text-editor').value = text;
+    button('read').click();
+    await vi.waitFor(() =>
+      expect($('ingredients-text-editor').hidden).toBe(true),
+    );
+  }
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', answer(READING));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('opens an editor with the text, and closes it on cancel', () => {
+    page();
+    initIngredientsText({ config: CONFIG });
+
+    button('edit').click();
+
+    expect($('ingredients-text-editor').hidden).toBe(false);
+    expect($('ingredients-text-editor').value).toBe(TEXT);
+    expect($('ingredients-text-view').hidden).toBe(true);
+    expect(button('read').hidden).toBe(false);
+    expect(button('edit').hidden).toBe(true);
+
+    button('cancel').click();
+
+    expect($('ingredients-text-editor').hidden).toBe(true);
+    expect($('ingredients-text-view').hidden).toBe(false);
+    expect(button('edit').hidden).toBe(false);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('reads the corrected text, shows it, and keeps it in the form to be saved', async () => {
+    page();
+    const onRead = vi.fn();
+    initIngredientsText({ onRead, config: CONFIG });
+
+    await correct('Colin 70%, sel.');
+
+    const [url, options] = fetch.mock.calls[0];
+    expect(url).toBe('/products/read-label/');
+    // The places belong to the old text: nothing is left out of the new one.
+    expect(JSON.parse(options.body)).toEqual({
+      text: 'Colin 70%, sel.',
+      language: 'fr',
+      ignored: [],
+    });
+    expect($('ingredients-text-view').textContent).toBe('Colin 70%, sel.');
+    expect($('ingredients-text-editor').hidden).toBe(true);
+    expect(hidden('off_ingredients_text')).toBe('Colin 70%, sel.');
+    expect(hidden('off_ingredients')).toBe('[{"name":"colin"}]');
+    expect(hidden('off_barcode')).toBe('3017620422003');
+    expect(hidden('ingredients_lc')).toBe('fr');
+    expect($('ingredients-text-note').textContent).toBe('Corrected here.');
+  });
+
+  it('keeps the editor open, and the text as it was, when it cannot be read', async () => {
+    page();
+    fetch.mockResolvedValue({ ok: false, status: 500, json: async () => ({}) });
+    initIngredientsText({ config: CONFIG });
+
+    button('edit').click();
+    $('ingredients-text-editor').value = 'Other';
+    button('read').click();
+    await vi.waitFor(() => expect(status()).toBe('Failed.'));
+
+    expect($('ingredients-text-editor').hidden).toBe(false);
+    expect($('ingredients-text-editor').value).toBe('Other');
+    expect(hidden('off_ingredients_text')).toBe('');
+  });
+
+  it('takes a list typed where none was known for one in the language of the page', async () => {
+    page({ text: '', language: '' });
+    initIngredientsText({ config: CONFIG });
+    expect($('ingredients-text-empty').hidden).toBe(false);
+
+    button('edit').click();
+    $('ingredients-text-editor').value = 'sucre, sel';
+    button('read').click();
+    await vi.waitFor(() =>
+      expect(hidden('off_ingredients_text')).toBe('sucre, sel'),
+    );
+
+    expect(JSON.parse(fetch.mock.calls[0][1].body).language).toBe('fr');
+    expect(hidden('ingredients_lc')).toBe('fr');
+    expect($('ingredients-text-empty').hidden).toBe(true);
+  });
+
+  it('gives a list typed by hand the barcode the form has when it is sent', async () => {
+    page({ text: '', language: '', barcode: '3017620422003' });
+    initIngredientsText({ config: CONFIG });
+    await correct('sucre');
+    expect(hidden('off_barcode')).toBe('3017620422003');
+
+    document.querySelector('[name="barcode"]').value = '3229820794556';
+    document.getElementById('product-form').dispatchEvent(new Event('submit'));
+
+    expect(hidden('off_barcode')).toBe('3229820794556');
+  });
+
+  describe('sending to OpenFoodFacts', () => {
+    it('is offered only for a text corrected here, and only when it can be sent', async () => {
+      page();
+      initIngredientsText({ config: CONFIG });
+      expect(button('send').hidden).toBe(true);
+
+      await correct('Colin 70%, sel.');
+
+      expect(button('send').hidden).toBe(false);
+    });
+
+    it('is never offered when the page cannot send', async () => {
+      page();
+      initIngredientsText({ config: { ...CONFIG, canSend: false } });
+
+      await correct('Colin 70%, sel.');
+
+      expect(button('send').hidden).toBe(true);
+    });
+
+    it('asks first, and does nothing when the person declines', async () => {
+      page();
+      initIngredientsText({ config: CONFIG });
+      await correct('Colin 70%, sel.');
+      fetch.mockClear();
+      vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+      button('send').click();
+
+      expect(window.confirm).toHaveBeenCalledWith('Send it?');
+      expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it('sends the barcode, the text and its language, then stops offering it', async () => {
+      page();
+      initIngredientsText({ config: CONFIG });
+      await correct('Colin 70%, sel.');
+      fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ sent: true }),
+      });
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+      button('send').click();
+      await vi.waitFor(() => expect(status()).toBe('Sent.'));
+
+      const [url, options] = fetch.mock.calls.at(-1);
+      expect(url).toBe('/products/send-label/');
+      expect(options.headers['X-CSRFToken']).toBe('token-1');
+      expect(JSON.parse(options.body)).toEqual({
+        barcode: '3017620422003',
+        text: 'Colin 70%, sel.',
+        language: 'fr',
+      });
+      expect(button('send').hidden).toBe(true);
+    });
+
+    it('says what OpenFoodFacts answered when it did not take the list', async () => {
+      page();
+      initIngredientsText({ config: CONFIG });
+      await correct('Colin 70%, sel.');
+      fetch.mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: async () => ({ error: 'No such product.' }),
+      });
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+      button('send').click();
+      await vi.waitFor(() => expect(status()).toBe('No such product.'));
+
+      expect(button('send').hidden).toBe(false);
+    });
+  });
+
+  describe('load', () => {
+    const LABEL = {
+      barcode: '3017620422003',
+      text: 'Sucre, huile.',
+      language: 'fr',
+      ingredients: '[{"name":"sucre"}]',
+      rows: [{ name: 'sucre' }],
+      used: [[0, 12]],
+    };
+
+    it('takes the list of a lookup as the page’s own, without calling it a correction', () => {
+      page();
+      const onRead = vi.fn();
+      const text = initIngredientsText({ onRead, config: CONFIG });
+
+      text.load(LABEL);
+
+      expect(text.text()).toBe('Sucre, huile.');
+      expect($('ingredients-text-view').textContent).toBe('Sucre, huile.');
+      expect(hidden('off_ingredients_text')).toBe('Sucre, huile.');
+      expect(hidden('off_ingredients')).toBe('[{"name":"sucre"}]');
+      expect(hidden('off_barcode')).toBe('3017620422003');
+      expect(hidden('ingredients_ignored')).toBe('[]');
+      expect(onRead.mock.calls[0][0].rows).toEqual([{ name: 'sucre' }]);
+      expect($('ingredients-text-note').textContent).toBe(
+        'Saved with the product.',
+      );
+      expect(button('send').hidden).toBe(true);
+    });
+
+    it('puts back what a person had left out of the text it replaces', () => {
+      page();
+      const text = initIngredientsText({ config: CONFIG });
+
+      text.load(LABEL);
+
+      expect(hidden('ingredients_ignored')).toBe('[]');
+      expect(button('clear').hidden).toBe(true);
+    });
+  });
+});

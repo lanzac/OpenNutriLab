@@ -329,6 +329,8 @@ class ProductForm(forms.ModelForm):
             )
             if self.is_edit
             else Row(barcode_field),
+            # What a lookup found, to choose from; empty until one is made.
+            HTML("{% include 'products/components/off_review.html' %}"),
             Row(
                 Column(
                     Field("name", css_class="col-md-8"),
@@ -398,8 +400,8 @@ class ProductForm(forms.ModelForm):
         What the block with the label's ingredient list says, and why.
 
         The text of the lookup this page was loaded from, if it was, which is what
-        will be saved; else the one saved with the product. A new product that was
-        not looked up has nothing to show, and no block.
+        will be saved; else the one saved with the product. A product with none, or
+        a new one, has an empty block to write the list in.
         """
         looked_up = bool(self["off_barcode"].value())
         text = plain_newlines(
@@ -414,17 +416,22 @@ class ProductForm(forms.ModelForm):
         if looked_up:
             note = _("Loaded from OpenFoodFacts. It is saved with the product.")
             empty = _("OpenFoodFacts has no ingredient list for this product.")
-        else:
+        elif self.is_edit:
             note = _(
                 "Saved with the product: the text its ingredients were read from. "
-                'Use "Reset data" to load the current one from OpenFoodFacts.'
+                'Use "Compare with OpenFoodFacts" to see the current one there.'
             )
             empty = _(
-                "No text was saved for this product. "
-                'Use "Reset data" to load it from OpenFoodFacts.'
+                "No text was saved for this product. Write it here, or use "
+                '"Compare with OpenFoodFacts" to load it.'
+            )
+        else:
+            note = ""
+            empty = _(
+                "No list yet. Write it as the label prints it, or load the product "
+                "from OpenFoodFacts."
             )
         return {
-            "show": looked_up or self.is_edit,
             "text": text,
             # What the script marks in it, and what it sends back to read it again.
             "state": {
@@ -452,14 +459,17 @@ class ProductForm(forms.ModelForm):
             return []
 
     def _get_barcode_field_layout(self) -> FieldWithButtons:
+        # One button for both pages: it asks OpenFoodFacts without leaving the page,
+        # and what it finds is set against the form, never poured over it (see
+        # off-lookup.js). Named for where the data comes from.
         if not self.is_edit:
             return FieldWithButtons(
                 Field("barcode"),
                 StrictButton(
-                    content="🔍" + _("Fetch data"),
+                    content="🔍 " + _("Load from OpenFoodFacts"),
                     css_class="btn btn-outline-secondary",
                     type="button",
-                    id="fetch-product-data",
+                    id="off-lookup",
                 ),
             )
         # The barcode is the primary key. Disabled rather than readonly:
@@ -469,10 +479,13 @@ class ProductForm(forms.ModelForm):
         return FieldWithButtons(
             Field("barcode"),
             StrictButton(
-                content="🔴 " + _("Reset data"),
+                content=format_html(
+                    '<i class="fa-solid fa-code-compare" aria-hidden="true"></i> {}',
+                    _("Compare with OpenFoodFacts"),
+                ),
                 css_class="btn btn-outline-secondary",
                 type="button",
-                id="reset-product-data",
+                id="off-lookup",
             ),
             HTML(
                 format_html(
@@ -626,7 +639,7 @@ class ProductForm(forms.ModelForm):
                 "name": cleaned.get("serving_name") or "",
             },
         }
-        if from_off:
+        if ingredients is not None:
             # Goes with the ingredients it was read from: replaced when they are,
             # left alone when they are.
             payload["ingredients_text"] = plain_newlines(
@@ -645,7 +658,7 @@ class ProductForm(forms.ModelForm):
         if self.is_edit:
             payload["nutrients"] = nutrients
             # None leaves the stored ingredients alone: they are replaced only
-            # when this page was loaded from OpenFoodFacts ("Reset data").
+            # when the page carries a list: taken from OpenFoodFacts, or corrected.
             payload["ingredients"] = ingredients
             return ProductUpdate.model_validate(payload)
         payload["barcode"] = barcode

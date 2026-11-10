@@ -302,5 +302,17 @@ TRANSLATION_API_KEY = env("TRANSLATION_API_KEY", default="")
 # Seconds to wait for one translation.
 TRANSLATION_TIMEOUT = env.int("TRANSLATION_TIMEOUT", default=10)
 
+# OpenFoodFacts ACCOUNT used to send a corrected ingredient list back to its database
+# (see api/openfoodfacts/services.send_ingredients_text_to_off). Both empty, which is
+# the default, turns sending off: the product page then offers no such button. Only
+# staff can send, and what is sent is public and signed with this account. Use the
+# account's user name, not its email address. To try it out, point OFF_WRITE_URL at
+# the staging site (https://world.openfoodfacts.net/cgi/product_jqm2.pl).
+OFF_USER_ID = env("OFF_USER_ID", default="")
+OFF_PASSWORD = env("OFF_PASSWORD", default="")
+OFF_WRITE_URL = env(
+    "OFF_WRITE_URL", default="https://world.openfoodfacts.org/cgi/product_jqm2.pl"
+)
+
 # Your stuff...
 # ------------------------------------------------------------------------------

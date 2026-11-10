@@ -22,6 +22,12 @@ TEST_RUNNER = "django.test.runner.DiscoverRunner"
 TRANSLATION_URL = ""
 TRANSLATION_API_KEY = ""
 
+# OPENFOODFACTS ACCOUNT
+# ------------------------------------------------------------------------------
+# Tests never write to OpenFoodFacts, whatever the environment of the machine says.
+OFF_USER_ID = ""
+OFF_PASSWORD = ""
+
 # PASSWORDS
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#password-hashers

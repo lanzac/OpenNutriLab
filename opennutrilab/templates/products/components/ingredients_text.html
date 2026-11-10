@@ -2,48 +2,69 @@
 
 {% translate "Reading…" as reading %}
 {% translate "The text could not be read again. Try again." as failed %}
-{# The label's ingredient list, word for word, above the tree read from it. See ProductForm._ingredients_text_context and ingredients-text.js, which marks in it what was read and lets a person leave places out. #}
-{% if show %}
-  <div id="ingredients-text"
-       class="mb-3"
-       data-read-url="{% url 'read_label' %}"
-       data-reading="{{ reading|force_escape }}"
-       data-failed="{{ failed|force_escape }}">
-    <div id="ingredients-text-label" class="fw-semibold">{% translate "Ingredient list, as the label prints it" %}</div>
-    {% if text %}
-      {# Plain text until the script marks it. No name: it is shown, not posted. #}
-      <div id="ingredients-text-view"
-           class="ingredients-text-view form-control bg-body-tertiary"
-           aria-labelledby="ingredients-text-label">{{ text }}</div>
-      <div id="ingredients-text-tools"
-           class="d-flex flex-wrap align-items-center gap-2 mt-2"
-           hidden>
-        <button type="button"
-                class="btn btn-sm btn-outline-secondary"
-                data-action="ignore"
-                disabled>{% translate "Leave out the selection" %}</button>
-        <button type="button"
-                class="btn btn-sm btn-outline-secondary"
-                data-action="restore"
-                disabled>{% translate "Put the selection back" %}</button>
-        <button type="button"
-                class="btn btn-sm btn-outline-secondary"
-                data-action="clear"
-                hidden>{% translate "Put everything back" %}</button>
-        <span id="ingredients-text-status"
-              class="small text-body-secondary"
-              role="status"></span>
-      </div>
-      <div id="ingredients-text-warnings" class="small mt-1" role="status"></div>
-      <div class="form-text">
-        {{ note }}
-        <span id="ingredients-text-legend" hidden>
-          {% translate "Highlighted: read as ingredients. Struck through: left out by you. Select a part of the text to leave it out of the reading, or to put it back." %}
-        </span>
-      </div>
-      {{ state|json_script:"ingredients-text-state" }}
-    {% else %}
-      <div class="text-muted fst-italic">{{ empty }}</div>
-    {% endif %}
+{# The label's ingredient list, word for word, above the tree read from it. See ProductForm._ingredients_text_context and ingredients-text.js, which marks in it what was read, lets a person leave places out, or correct the text itself, and (staff) send the correction to OpenFoodFacts. #}
+<div id="ingredients-text"
+     class="mb-3"
+     data-read-url="{% url 'read_label' %}"
+     data-reading="{{ reading|force_escape }}"
+     data-failed="{{ failed|force_escape }}">
+  <div id="ingredients-text-label" class="fw-semibold">{% translate "Ingredient list, as the label prints it" %}</div>
+  {# Plain text until the script marks it. No name: it is shown, not posted. #}
+  <div id="ingredients-text-view"
+       class="ingredients-text-view form-control bg-body-tertiary"
+       aria-labelledby="ingredients-text-label"
+       {% if not text %}hidden{% endif %}>{{ text }}</div>
+  <div id="ingredients-text-empty"
+       class="text-muted fst-italic"
+       {% if text %}hidden{% endif %}>{{ empty }}</div>
+  {# Where the text is corrected. Not posted either: the form carries the text read from it. #}
+  <textarea id="ingredients-text-editor"
+            class="form-control"
+            rows="{{ rows }}"
+            spellcheck="false"
+            aria-labelledby="ingredients-text-label"
+            hidden></textarea>
+  <div id="ingredients-text-tools"
+       class="d-flex flex-wrap align-items-center gap-2 mt-2"
+       hidden>
+    <button type="button"
+            class="btn btn-sm btn-outline-secondary"
+            data-action="ignore"
+            disabled>{% translate "Leave out the selection" %}</button>
+    <button type="button"
+            class="btn btn-sm btn-outline-secondary"
+            data-action="restore"
+            disabled>{% translate "Put the selection back" %}</button>
+    <button type="button"
+            class="btn btn-sm btn-outline-secondary"
+            data-action="clear"
+            hidden>{% translate "Put everything back" %}</button>
+    <button type="button"
+            class="btn btn-sm btn-outline-primary"
+            data-action="edit">{% translate "Correct the text" %}</button>
+    <button type="button"
+            class="btn btn-sm btn-primary"
+            data-action="read"
+            hidden>{% translate "Read this text" %}</button>
+    <button type="button"
+            class="btn btn-sm btn-outline-secondary"
+            data-action="cancel"
+            hidden>{% translate "Cancel" %}</button>
+    {# Staff only, and only with an OpenFoodFacts account set: the script shows it. #}
+    <button type="button"
+            class="btn btn-sm btn-outline-danger"
+            data-action="send"
+            hidden>{% translate "Send this list to OpenFoodFacts" %}</button>
+    <span id="ingredients-text-status"
+          class="small text-body-secondary"
+          role="status"></span>
   </div>
-{% endif %}
+  <div id="ingredients-text-warnings" class="small mt-1" role="status"></div>
+  <div class="form-text">
+    <span id="ingredients-text-note" data-saved="{{ note|force_escape }}">{{ note }}</span>
+    <span id="ingredients-text-legend" hidden>
+      {% translate "Highlighted: read as ingredients. Struck through: left out by you. Select a part of the text to leave it out of the reading, or to put it back. Correct the text itself when the label was typed wrongly." %}
+    </span>
+  </div>
+  {{ state|json_script:"ingredients-text-state" }}
+</div>

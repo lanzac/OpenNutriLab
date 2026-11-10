@@ -127,3 +127,10 @@ class OFFProductAPIResponseSchema(Schema):
     warnings: list[WarningOrError] | None = None
     errors: list[WarningOrError] | None = None
     product: OFFProductSchema | None = None
+
+
+class OFFWriteAnswerSchema(Schema):
+    """What the write API of OpenFoodFacts answers: 1 when it saved, else why not."""
+
+    status: int
+    status_verbose: str | None = None

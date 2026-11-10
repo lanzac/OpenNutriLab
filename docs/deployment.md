@@ -264,6 +264,24 @@ instance) add its origin:
 DJANGO_CORS_ALLOWED_ORIGINS=capacitor://localhost,https://app.opennutrilab.example
 ```
 
+## Sending a corrected ingredient list to OpenFoodFacts (optional)
+
+On a product's page, a person can correct the label's ingredient list in the form.
+The correction is saved with the product and changes nothing on OpenFoodFacts. Staff
+can also send it there, when the site has an OpenFoodFacts account: set `OFF_USER_ID`
+(the account's user name, not its email address) and `OFF_PASSWORD` in
+`.envs/.production/.django`. With either empty, which is the default, the button is
+not offered and the endpoint (`/products/send-label/`) answers 404.
+
+What is sent is public and signed with that account, so use one made for the site.
+Only the list is sent (`ingredients_text_<language>`, through
+`cgi/product_jqm2.pl`), and only for a product OpenFoodFacts already has: the site
+asks first, and sends nothing when the list is the same. Each send is logged with the
+staff member's name. To try it without touching the real database, point
+`OFF_WRITE_URL` at the staging site, `https://world.openfoodfacts.net/cgi/product_jqm2.pl`
+(it is behind basic authentication, which this setting does not handle). The tests
+never send: they set both variables empty.
+
 ## Translating ingredient names (optional)
 
 The admin can propose the English name of a reference ingredient that has none

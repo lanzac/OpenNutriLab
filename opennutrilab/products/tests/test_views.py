@@ -16,6 +16,7 @@ from django.test import Client
 from django.urls import reverse
 from django.utils import translation
 from PIL import Image
+from pytest_django.fixtures import SettingsWrapper
 
 from opennutrilab.products.api.openfoodfacts.schemas import OFFProductSchema
 from opennutrilab.products.api.openfoodfacts.schemas import OFFSearchHitSchema
@@ -649,31 +650,29 @@ def script_of(page: str, element_id: str) -> Any:
 @pytest.mark.django_db
 class TestProductEditView:
     @patch("opennutrilab.products.views.fetch_from_off")
-    def test_failed_reset_falls_back_to_stored_values(
+    def test_the_page_no_longer_reloads_to_ask_openfoodfacts(
         self, mock_fetch_from_off: MagicMock, client: Client
     ):
         """
-        `?reset=1` on a product OFF has since dropped must not 500. The form
-        keeps the values already in the database and says why nothing changed.
+        What OpenFoodFacts has is asked for by the page's script (see OffLookupView)
+        and set against the form: a GET of the edit page never replaces the stored
+        values with it.
         """
-        product = Product.objects.create(
-            barcode="1234567890123",
-            name="Stored Product",
-        )
-        mock_fetch_from_off.side_effect = OFFProductNotFoundError("Product not found.")
+        product = Product.objects.create(barcode=NUTELLA, name="Stored Product")
+        mock_fetch_from_off.return_value = off_product()
 
         response: HttpResponse = client.get(
             reverse("edit_product", args=[product.pk]), {"reset": "1"}
         )
 
-        assert response.status_code == 200  # noqa: PLR2004
-        assert response.context["form"].instance.name == "Stored Product"
-        notices = [str(m) for m in response.context["messages"]]
-        assert any("was not found in OpenFoodFacts" in n for n in notices), notices
+        mock_fetch_from_off.assert_not_called()
+        assert response.context["form"]["name"].value() == "Stored Product"
+        assert not response.context["form"]["off_barcode"].value()
 
+    @patch("opennutrilab.products.services.product_services.requests.get")
     @patch("opennutrilab.products.views.fetch_from_off")
-    def test_a_reset_keeps_a_serving_entered_by_hand_when_openfoodfacts_has_none(
-        self, mock_fetch_from_off: MagicMock, client: Client
+    def test_taking_a_lookup_keeps_a_serving_made_by_hand_when_off_has_none(
+        self, mock_fetch_from_off: MagicMock, mock_get: MagicMock, client: Client
     ):
         product = Product.objects.create(
             barcode=NUTELLA,
@@ -682,24 +681,22 @@ class TestProductEditView:
             serving_unit="g",
             serving_name="1 cuillère",
         )
+        mock_get.return_value = ok_image_response()
         mock_fetch_from_off.return_value = off_product(serving_size=None)
         url = reverse("edit_product", args=[product.pk])
+        form: ProductForm = client.get(url).context["form"]
+        taken = taken_from_lookup(client, serving_size=None)
+        assert "serving_quantity" not in taken
 
-        form: ProductForm = client.get(url, {"reset": "1"}).context["form"]
-        assert form["serving_quantity"].value() == "15"
-
-        with patch("opennutrilab.products.views.fetch_from_off"):
-            client.post(url, submitted(form))
+        client.post(url, submitted(form, **taken))
 
         product.refresh_from_db()
         assert product.serving_quantity == Decimal(15)
         assert product.serving_name == "1 cuillère"
 
-        # One OpenFoodFacts gives replaces it.
-        mock_fetch_from_off.return_value = off_product(serving_size="30 g")
-        form = client.get(url, {"reset": "1"}).context["form"]
-        with patch("opennutrilab.products.views.fetch_from_off"):
-            client.post(url, submitted(form))
+        # One OpenFoodFacts gives replaces it, once taken.
+        taken = taken_from_lookup(client, serving_size="30 g")
+        client.post(url, submitted(form, **taken))
 
         product.refresh_from_db()
         assert product.serving_quantity == Decimal(30)
@@ -730,7 +727,7 @@ class TestProductEditView:
 
     @patch("opennutrilab.products.services.product_services.requests.get")
     @patch("opennutrilab.products.views.fetch_from_off")
-    def test_reset_then_save_replaces_ingredients_and_warns_about_the_photo(
+    def test_taking_a_lookup_then_saving_replaces_ingredients_and_warns_about_the_photo(
         self,
         mock_fetch_from_off: MagicMock,
         mock_get: MagicMock,
@@ -744,10 +741,10 @@ class TestProductEditView:
         mock_fetch_from_off.return_value = off_product()
         mock_get.side_effect = requests.ConnectTimeout("timed out")
         url = reverse("edit_product", args=[product.pk])
-        form = client.get(url, {"reset": "1"}).context["form"]
-        assert form["off_barcode"].value() == NUTELLA
+        form = client.get(url).context["form"]
+        taken = taken_from_lookup(client)
 
-        response: HttpResponse = client.post(url, submitted(form), follow=True)
+        response: HttpResponse = client.post(url, submitted(form, **taken), follow=True)
 
         product.refresh_from_db()
         assert product.name == "Nutella"
@@ -906,7 +903,7 @@ def looked_up(
     language: str = "en",
     **query: str,
 ):
-    """The create page (or the edit one, with reset=1) after an OFF lookup."""
+    """The create page after an OFF lookup (what the scan and the search link to)."""
     path = query.pop("path", reverse("create_product"))
     params = {"barcode": NUTELLA, **query}
     with patch(
@@ -914,6 +911,30 @@ def looked_up(
         return_value=off_product(ingredients_text=text),
     ):
         return client.get(path, params, headers={"accept-language": language})
+
+
+def taken_from_lookup(
+    client: Client, text: str | None = LABEL_TEXT, **off: Any
+) -> dict[str, Any]:
+    """
+    What the page's script puts in the form after taking everything a lookup found:
+    the fields OpenFoodFacts has a value for, and the hidden ones that carry the
+    list and the photo.
+    """
+    with patch(
+        "opennutrilab.products.views.fetch_from_off",
+        return_value=off_product(ingredients_text=text, **off),
+    ):
+        found = client.get(reverse("lookup_off"), {"barcode": NUTELLA}).json()
+    return {
+        **{name: value for name, value in found["fields"].items() if name != "barcode"},
+        "off_barcode": NUTELLA,
+        "off_image_url": found["image"] or "",
+        "off_ingredients": found["label"]["ingredients"],
+        "off_ingredients_text": found["label"]["text"],
+        "ingredients_ignored": "[]",
+        "ingredients_lc": found["label"]["language"],
+    }
 
 
 @pytest.mark.django_db
@@ -989,7 +1010,7 @@ class TestIngredientListText:
             ).content.decode()
 
         assert "No text was saved for this product." in page
-        assert "Reset data" in page
+        assert "Compare with OpenFoodFacts" in page
 
     def test_a_lookup_that_has_no_list_says_so(self, client: Client):
         with translation.override("en"):
@@ -997,27 +1018,81 @@ class TestIngredientListText:
 
         assert "OpenFoodFacts has no ingredient list for this product." in page
 
-    def test_a_new_product_not_looked_up_has_no_block(self, client: Client):
-        page = client.get(reverse("create_product")).content.decode()
-
-        assert 'id="ingredients-text"' not in page
-
-    def test_reset_shows_the_current_text_and_saving_replaces_the_saved_one(
+    def test_a_new_product_not_looked_up_has_an_empty_block_to_write_the_list_in(
         self, client: Client
     ):
+        with translation.override("en"):
+            page = client.get(reverse("create_product")).content.decode()
+
+        block = page.split('id="ingredients-text"', 1)[1]
+        assert "No list yet." in block
+        assert 'id="ingredients-text-editor"' in block
+        assert 'data-action="edit"' in block
+
+    def test_taking_the_list_of_a_lookup_replaces_the_saved_text(self, client: Client):
         product = Product.objects.create(
             barcode=NUTELLA, name="Nutella", ingredients_text="An old text"
         )
         url = reverse("edit_product", args=[product.pk])
+        form = client.get(url).context["form"]
 
-        response = looked_up(client, path=url, reset="1")
+        client.post(url, submitted(form, **taken_from_lookup(client)))
 
-        page = response.content.decode()
-        assert "An old text" not in page
-        assert "&lt;b&gt;lait&lt;/b&gt;" in page
-        client.post(url, submitted(response.context["form"]))
         product.refresh_from_db()
         assert product.ingredients_text == LABEL_TEXT
+
+    def test_taking_only_the_photo_leaves_the_saved_list_alone(self, client: Client):
+        """The page sets the photo apart from the list: neither wipes the other."""
+        product = Product.objects.create(
+            barcode=NUTELLA, name="Nutella", ingredients_text="Saved"
+        )
+        url = reverse("edit_product", args=[product.pk])
+        form = client.get(url).context["form"]
+
+        with patch(
+            "opennutrilab.products.services.product_services.requests.get",
+            return_value=ok_image_response(),
+        ):
+            client.post(
+                url,
+                submitted(form, off_barcode=NUTELLA, off_image_url=IMAGE_URL),
+            )
+
+        product.refresh_from_db()
+        assert product.ingredients_text == "Saved"
+        assert product.image
+
+    def test_a_list_typed_on_a_new_product_is_saved_with_the_ingredients_read_from_it(
+        self, client: Client
+    ):
+        form = client.get(reverse("create_product")).context["form"]
+        reading = json_post(
+            client, {"text": "Sucre, sel.", "language": "fr", "ignored": []}
+        ).json()
+
+        # What the script does: keep the reading in the form, for the barcode typed.
+        response = client.post(
+            reverse("create_product"),
+            submitted(
+                form,
+                barcode=NUTELLA,
+                name="Mine",
+                off_barcode=NUTELLA,
+                off_ingredients=reading["ingredients"],
+                off_ingredients_text="Sucre, sel.",
+                ingredients_ignored="[]",
+                ingredients_lc="fr",
+            ),
+        )
+
+        assert response.status_code == HTTPStatus.FOUND
+        product = Product.objects.get(pk=NUTELLA)
+        assert product.ingredients_text == "Sucre, sel."
+        assert product.ingredients_language == "fr"
+        assert [str(i) for i in product.ingredients.filter(parent=None)] == [
+            "sucre",
+            "sel",
+        ]
 
     def test_a_plain_edit_leaves_the_saved_text_alone(self, client: Client):
         product = Product.objects.create(
@@ -1956,13 +2031,16 @@ class TestLeavingPlacesOut:
     ):
         product = self.stored(ingredients_ignored=[FISH_ZONE])
         url = reverse("edit_product", args=[product.pk])
+        form = client.get(url).context["form"]
+        taken = taken_from_lookup(client, text=FISH_TEXT)
 
-        response = looked_up(client, path=url, reset="1", text=FISH_TEXT)
+        assert taken["ingredients_ignored"] == "[]"
+        assert taken["ingredients_lc"] == "fr"
+        client.post(url, submitted(form, **taken))
 
-        form = response.context["form"]
-        assert form["ingredients_ignored"].value() == "[]"
-        assert form["ingredients_lc"].value() == "fr"
-        assert state_of(response.content.decode())["ignored"] == []
+        product.refresh_from_db()
+        assert product.ingredients_ignored == []
+        assert product.ingredients_text == FISH_TEXT
 
     def test_a_correction_made_on_the_page_is_saved_with_the_ingredients_it_gave(
         self, client: Client
@@ -2068,3 +2146,227 @@ class TestLeavingPlacesOut:
 
         assert not Product.objects.exists()
         assert response.status_code == HTTPStatus.OK
+
+
+@pytest.mark.django_db
+class TestOffLookupView:
+    """What the page asks OpenFoodFacts for, to set against the form."""
+
+    def ask(self, client: Client, barcode: str = NUTELLA, **product: Any):
+        with patch(
+            "opennutrilab.products.views.fetch_from_off",
+            return_value=off_product(**product),
+        ):
+            return client.get(reverse("lookup_off"), {"barcode": barcode})
+
+    def test_it_gives_the_fields_the_photo_and_the_list_apart(self, client: Client):
+        response = self.ask(client, serving_size="30 g", quantity="400 g")
+
+        assert response.status_code == HTTPStatus.OK
+        found = response.json()
+        assert found["fields"]["name"] == "Nutella"
+        assert found["fields"]["nutrient_energy"] == "2252"
+        assert found["fields"]["serving_quantity"] == "30"
+        assert found["fields"]["package_quantity"] == "400"
+        # Hidden bookkeeping is not a field to choose.
+        assert not [n for n in found["fields"] if n.startswith("off_")]
+        assert "ingredients_lc" not in found["fields"]
+        assert found["image"] == IMAGE_URL
+        label = found["label"]
+        assert label["barcode"] == NUTELLA
+        assert label["text"] == "Sucre 56,3 %, lait (lait écrémé)"
+        assert label["language"] == "fr"
+        assert [row["name"] for row in label["rows"]][:2] == ["sucre", "lait"]
+        assert json.loads(label["ingredients"])[0]["name"] == "sucre"
+        assert label["used"][0] == [0, len("Sucre 56,3 %")]
+        assert found["notices"] == []
+
+    def test_it_gives_no_serving_when_openfoodfacts_has_none(self, client: Client):
+        found = self.ask(client, serving_size=None).json()
+
+        assert "serving_quantity" not in found["fields"]
+        assert "package_quantity" not in found["fields"]
+
+    def test_what_could_not_be_read_comes_as_notices(self, client: Client):
+        found = self.ask(client, serving_size="a spoonful").json()
+
+        assert any("serving" in notice for notice in found["notices"]), found
+
+    def test_a_list_that_looks_badly_read_is_told_and_gives_no_ingredient(
+        self, client: Client
+    ):
+        found = self.ask(client, ingredients_text="Sucre [lait").json()
+
+        assert found["label"]["rows"] == []
+        assert found["label"]["text"] == "Sucre [lait"
+        assert any("looks badly read" in notice for notice in found["notices"])
+
+    def test_a_product_openfoodfacts_does_not_have_is_a_404_with_the_reason(
+        self, client: Client
+    ):
+        with patch(
+            "opennutrilab.products.views.fetch_from_off",
+            side_effect=OFFProductNotFoundError("not found"),
+        ):
+            response = client.get(reverse("lookup_off"), {"barcode": NUTELLA})
+
+        assert response.status_code == HTTPStatus.NOT_FOUND
+        assert "was not found in OpenFoodFacts" in response.json()["error"]
+
+    def test_an_openfoodfacts_that_cannot_be_reached_is_a_502(self, client: Client):
+        with patch(
+            "opennutrilab.products.views.fetch_from_off",
+            side_effect=OFFError("down"),
+        ):
+            response = client.get(reverse("lookup_off"), {"barcode": NUTELLA})
+
+        assert response.status_code == HTTPStatus.BAD_GATEWAY
+        assert "could not be reached" in response.json()["error"]
+
+    def test_it_needs_a_barcode(self, client: Client):
+        assert client.get(reverse("lookup_off")).status_code == HTTPStatus.BAD_REQUEST
+        assert (
+            client.get(reverse("lookup_off"), {"barcode": " "}).status_code
+            == HTTPStatus.BAD_REQUEST
+        )
+
+    def test_it_needs_a_signed_in_user(self, client: Client):
+        client.logout()
+
+        response = client.get(reverse("lookup_off"), {"barcode": NUTELLA})
+
+        assert response.status_code == HTTPStatus.FORBIDDEN
+
+
+SEND = {"barcode": NUTELLA, "text": "Sucre, lait.", "language": "fr"}
+
+
+@pytest.mark.django_db
+class TestSendLabelView:
+    """A corrected list sent to OpenFoodFacts, by staff only."""
+
+    @pytest.fixture(autouse=True)
+    def _account(self, settings: SettingsWrapper) -> None:  # pyright: ignore[reportUnusedFunction]
+        settings.OFF_USER_ID = "opennutrilab"
+        settings.OFF_PASSWORD = "secret"  # noqa: S105
+
+    def send(self, client: Client, body: Any = SEND):
+        return client.post(
+            reverse("send_label"), json.dumps(body), content_type="application/json"
+        )
+
+    @pytest.fixture(autouse=True)
+    def _staff(self, client: Client) -> None:  # pyright: ignore[reportUnusedFunction]
+        client.force_login(UserFactory(is_staff=True))
+
+    def test_staff_send_the_list_and_are_told_it_was_taken(self, client: Client):
+        with patch(
+            "opennutrilab.products.views.send_ingredients_text_to_off",
+            return_value=True,
+        ) as send:
+            response = self.send(client)
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.json() == {"sent": True}
+        send.assert_called_once_with(NUTELLA, "Sucre, lait.", "fr")
+
+    def test_it_says_when_openfoodfacts_already_had_the_list(self, client: Client):
+        with patch(
+            "opennutrilab.products.views.send_ingredients_text_to_off",
+            return_value=False,
+        ):
+            assert self.send(client).json() == {"sent": False}
+
+    def test_other_users_cannot_send(self, client: Client, user: User):
+        client.force_login(user)
+
+        with patch("opennutrilab.products.views.send_ingredients_text_to_off") as send:
+            response = self.send(client)
+
+        assert response.status_code == HTTPStatus.FORBIDDEN
+        send.assert_not_called()
+
+    def test_a_visitor_cannot_send(self, client: Client):
+        client.logout()
+
+        with patch("opennutrilab.products.views.send_ingredients_text_to_off") as send:
+            response = self.send(client)
+
+        assert response.status_code == HTTPStatus.FORBIDDEN
+        send.assert_not_called()
+
+    def test_without_an_account_there_is_nothing_to_send_with(
+        self, client: Client, settings: SettingsWrapper
+    ):
+        settings.OFF_USER_ID = ""
+        settings.OFF_PASSWORD = ""
+        with patch("opennutrilab.products.views.send_ingredients_text_to_off") as send:
+            response = self.send(client)
+
+        assert response.status_code == HTTPStatus.NOT_FOUND
+        send.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            {**SEND, "barcode": "../x"},
+            {**SEND, "text": ""},
+            {**SEND, "language": "f"},
+            {"text": "x"},
+        ],
+    )
+    def test_a_request_that_makes_no_sense_is_refused(self, client: Client, body: Any):
+        with patch("opennutrilab.products.views.send_ingredients_text_to_off") as send:
+            response = self.send(client, body)
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        send.assert_not_called()
+
+    def test_a_product_openfoodfacts_does_not_have_is_told(self, client: Client):
+        with patch(
+            "opennutrilab.products.views.send_ingredients_text_to_off",
+            side_effect=OFFProductNotFoundError("not found"),
+        ):
+            response = self.send(client)
+
+        assert response.status_code == HTTPStatus.NOT_FOUND
+        assert NUTELLA in response.json()["error"]
+
+    def test_a_refusal_of_openfoodfacts_is_a_502_that_does_not_leak_its_detail(
+        self, client: Client
+    ):
+        with patch(
+            "opennutrilab.products.views.send_ingredients_text_to_off",
+            side_effect=OFFError("password rejected for opennutrilab"),
+        ):
+            response = self.send(client)
+
+        assert response.status_code == HTTPStatus.BAD_GATEWAY
+        assert "password" not in response.json()["error"]
+
+
+@pytest.mark.django_db
+class TestSendingIsOfferedToStaffWithAnAccountOnly:
+    def config(self, client: Client) -> dict[str, Any]:
+        response = client.get(reverse("create_product"))
+        return response.context["product_form_config"]["ingredientsText"]
+
+    @pytest.fixture(autouse=True)
+    def _account(self, settings: SettingsWrapper) -> None:  # pyright: ignore[reportUnusedFunction]
+        settings.OFF_USER_ID = "opennutrilab"
+        settings.OFF_PASSWORD = "secret"  # noqa: S105
+
+    def test_staff_with_an_account(self, client: Client):
+        client.force_login(UserFactory(is_staff=True))
+
+        assert self.config(client)["canSend"] is True
+
+    def test_not_other_users(self, client: Client):
+        assert self.config(client)["canSend"] is False
+
+    def test_not_without_an_account(self, client: Client, settings: SettingsWrapper):
+        settings.OFF_USER_ID = ""
+        settings.OFF_PASSWORD = ""
+        client.force_login(UserFactory(is_staff=True))
+
+        assert self.config(client)["canSend"] is False

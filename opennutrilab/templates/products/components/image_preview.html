@@ -2,7 +2,8 @@
 
 {% comment %}
   The OpenFoodFacts photo comes first: when this page was loaded from OFF
-  (a new product, or "Reset data"), that is the photo saving will store.
+  (a new product), or a lookup's photo was taken, that is the photo saving
+  will store. data-placeholder marks the picture shown when there is none.
 {% endcomment %}
 {% if form.preview_image_url %}
   <img src="{{ form.preview_image_url }}"
@@ -15,5 +16,6 @@
 {% else %}
   <img src="{% static 'images/milk-carton-svgrepo-com.png' %}"
        class="product-image-preview"
+       data-placeholder="1"
        alt="Image not found" />
 {% endif %}

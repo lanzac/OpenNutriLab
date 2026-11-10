@@ -1,0 +1,18 @@
+/* What a lookup on OpenFoodFacts found, set against the form (see off-lookup.js). */
+.off-review-table {
+  max-height: 24rem;
+  overflow-y: auto;
+}
+
+/* A list of ingredients is long: it keeps its line breaks and scrolls. */
+.off-review-text {
+  white-space: pre-wrap;
+  max-height: 8rem;
+  overflow-y: auto;
+}
+
+.off-review-thumb {
+  max-height: 5rem;
+  max-width: 100%;
+  object-fit: contain;
+}
