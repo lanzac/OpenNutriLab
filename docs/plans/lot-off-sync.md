@@ -1,6 +1,6 @@
 # Plan: compare with OpenFoodFacts, correct the list, send it back
 
-Status: built 2026-11-02, not committed. Asked by the user on the product form: the
+Status: built 2026-11-02 (cb57434). Asked by the user on the product form: the
 button "Récupérer les données" did not say where from; used on a form that was filled
 in it **replaced** what was there with no way to say no; the ingredients could not be
 corrected without first correcting them in the OpenFoodFacts app; and, if possible,

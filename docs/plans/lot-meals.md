@@ -768,7 +768,7 @@ is really at home, and for the stock to **follow the meals eaten** they declared
 Asked by the user: "Propose a day" does not say what it does; "Eaten" is not clear
 either (perhaps something like "lock"); the page is heavy (buttons for the quantities,
 a small nutrition table in every meal); and choosing a product in a long list is hard:
-no photo, no category, one has to find it by eye. Built the same day (not committed).
+no photo, no category, one has to find it by eye. Built the same day (a9a6828).
 
 - **The words.** "Proposer un jour" is **"Compléter ma journée"** ("Fill in my day":
   that is what it does, it fills the meals that are not eaten from the inventory) and
